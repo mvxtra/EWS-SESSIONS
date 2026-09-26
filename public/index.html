@@ -299,6 +299,11 @@ input:focus{
   border-color:#aaa;
 }
 
+#stream-indicator.error{
+  color:#ff5555;
+  border-color:#ff5555;
+}
+
 #lang-bar{
   position:absolute;
   right:220px;
@@ -346,28 +351,42 @@ input:focus{
   border-color:#aaa;
 }
 
-#ssh101-hidden-player{
-  position:fixed;
-  width:360px;
-  height:203px;
-  left:50%;
-  top:92px;
-  transform:translateX(-50%);
-  border:1px solid #333;
-  background:#000;
-  z-index:99;
-  display:none;
+#audio-control:disabled{
+  opacity:.7;
+  cursor:wait;
 }
 
-
+#ews-audio{
+  position:absolute;
+  width:1px;
+  height:1px;
+  opacity:0;
+  pointer-events:none;
+}
 
 /* ================= MOBILE ================= */
-@media (max-width: 700px){
-  #top-logo{top:12px;left:12px;font-size:22px;}
-  #top-logo span{font-size:9px;}
 
-  #lang-bar{right:12px;top:12px;}
-  #lang{padding:6px 7px;font-size:11px;}
+@media (max-width:700px){
+
+  #top-logo{
+    top:12px;
+    left:12px;
+    font-size:22px;
+  }
+
+  #top-logo span{
+    font-size:9px;
+  }
+
+  #lang-bar{
+    right:12px;
+    top:12px;
+  }
+
+  #lang{
+    padding:6px 7px;
+    font-size:11px;
+  }
 
   #online-box{
     top:52px;
@@ -376,9 +395,20 @@ input:focus{
     padding:9px;
     max-height:105px;
   }
-  #online-list{max-height:62px;font-size:10px;}
-  #online-box h3{font-size:8px;margin-bottom:5px;}
-  #online-list li{padding:2px 0;}
+
+  #online-list{
+    max-height:62px;
+    font-size:10px;
+  }
+
+  #online-box h3{
+    font-size:8px;
+    margin-bottom:5px;
+  }
+
+  #online-list li{
+    padding:2px 0;
+  }
 
   #stream-indicator{
     top:52px;
@@ -397,15 +427,6 @@ input:focus{
     z-index:150;
   }
 
-  #ssh101-hidden-player{
-    width:calc(100vw - 24px);
-    height:82px;
-    left:12px;
-    top:122px;
-    transform:none;
-    z-index:140;
-  }
-
   #chat{
     left:10px;
     right:10px;
@@ -418,11 +439,32 @@ input:focus{
     z-index:200;
     background:rgba(0,0,0,.86);
   }
-  #chat-title{font-size:8px;margin-bottom:6px;}
-  #chat-messages{font-size:11px;margin-bottom:6px;}
-  .msg{font-size:11px;margin-bottom:5px;}
-  #chat-input{height:38px;font-size:14px;padding:0 9px;}
-  #chat-send{width:44px;font-size:18px;}
+
+  #chat-title{
+    font-size:8px;
+    margin-bottom:6px;
+  }
+
+  #chat-messages{
+    font-size:11px;
+    margin-bottom:6px;
+  }
+
+  .msg{
+    font-size:11px;
+    margin-bottom:5px;
+  }
+
+  #chat-input{
+    height:38px;
+    font-size:14px;
+    padding:0 9px;
+  }
+
+  #chat-send{
+    width:44px;
+    font-size:18px;
+  }
 
   #hint{
     display:none;
@@ -434,10 +476,20 @@ input:focus{
   }
 }
 
-@media (max-width: 420px){
-  #online-box{width:125px;}
-  #chat{height:34vh;min-height:185px;}
-  #zone-label{bottom:calc(34vh + 20px);}
+@media (max-width:420px){
+
+  #online-box{
+    width:125px;
+  }
+
+  #chat{
+    height:34vh;
+    min-height:185px;
+  }
+
+  #zone-label{
+    bottom:calc(34vh + 20px);
+  }
 }
 
 </style>
@@ -449,17 +501,14 @@ input:focus{
 
 <canvas id="canvas3d"></canvas>
 
-<!-- SSH101 AUDIO PLAYER
-     The official SSH101 player is loaded invisibly.
-     Audio is started from the user's click on the AUDIO button.
--->
-<iframe
-  id="ssh101-hidden-player"
-  title="EWS SESSIONS audio"
-  allow="autoplay; fullscreen; encrypted-media"
-  frameborder="0"
-  scrolling="no">
-</iframe>
+<!-- REAL LOCAL HLS AUDIO -->
+
+<audio
+  id="ews-audio"
+  crossorigin="anonymous"
+  playsinline
+  preload="none">
+</audio>
 
 
 <!-- LOGIN -->
@@ -469,64 +518,88 @@ input:focus{
   <div class="login-box">
 
     <h1>EWS</h1>
-    <p>SESSIONS / UNDERGROUND CLUB</p>
+
+    <p>
+      SESSIONS / UNDERGROUND CLUB
+    </p>
 
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('login')">
+
+      <button
+        class="tab active"
+        onclick="switchTab('login')">
         ВХОД
       </button>
 
-      <button class="tab" onclick="switchTab('register')">
+      <button
+        class="tab"
+        onclick="switchTab('register')">
         РЕГИСТРАЦИЯ
       </button>
+
     </div>
 
     <input
       id="f-username"
       placeholder="USERNAME"
-      autocomplete="username"
-    >
+      autocomplete="username">
 
     <input
       id="f-password"
       type="password"
       placeholder="PASSWORD"
-      autocomplete="current-password"
-    >
+      autocomplete="current-password">
 
     <button
       class="btn"
       id="submitBtn"
-      onclick="doLogin()"
-    >
+      onclick="doLogin()">
       ВОЙТИ
     </button>
 
-    <div id="error" class="error"></div>
+    <div
+      id="error"
+      class="error">
+    </div>
 
   </div>
 
 </div>
+
 
 <!-- HUD -->
 
 <div id="hud">
 
   <div id="top-logo">
+
     EWS
-    <span>SESSIONS</span>
+
+    <span>
+      SESSIONS
+    </span>
+
   </div>
+
 
   <div id="stream-indicator">
-    AUDIO: CONNECTING
+    AUDIO: READY
   </div>
 
-  <button id="audio-control" onclick="startSSHAudio()">
+
+  <button
+    id="audio-control"
+    onclick="startSSHAudio()">
+
     ▶ AUDIO: START
+
   </button>
 
+
   <div id="lang-bar">
+
     <select id="lang">
+
       <option value="ru">RU</option>
       <option value="en">EN</option>
       <option value="es">ES</option>
@@ -541,13 +614,22 @@ input:focus{
       <option value="it">IT</option>
       <option value="tr">TR</option>
       <option value="uk">UA</option>
+
     </select>
+
   </div>
 
+
   <div id="online-box">
-    <h3>ONLINE</h3>
+
+    <h3>
+      ONLINE
+    </h3>
+
     <ul id="online-list"></ul>
+
   </div>
+
 
   <div id="chat">
 
@@ -562,8 +644,7 @@ input:focus{
       <input
         id="chat-input"
         autocomplete="off"
-        placeholder="write something..."
-      >
+        placeholder="write something...">
 
       <button id="chat-send">
         →
@@ -573,9 +654,11 @@ input:focus{
 
   </div>
 
+
   <div id="zone-label">
     MAIN FLOOR
   </div>
+
 
   <div id="hint">
     WASD MOVE · MOUSE LOOK · C CHAT
@@ -585,6 +668,7 @@ input:focus{
 
 </div>
 
+
 <script>
 
 /* =========================================================
@@ -592,7 +676,9 @@ input:focus{
 ========================================================= */
 
 let mode = 'login';
+
 let socket = null;
+
 let currentUser = null;
 
 let scene;
@@ -603,23 +689,39 @@ let keys = {};
 
 let yaw = 0;
 let pitch = 0;
+
 let pointerLocked = false;
+
 let chatMode = false;
 
 let clock = new THREE.Clock();
 
 let neonObjects = [];
+
 let lightObjects = [];
+
 let particles;
 
 let analyser = null;
+
 let freqData = null;
 
 let audioLevel = 0;
+
 let bassLevel = 0;
 
+let audioContext = null;
+
+let audioSource = null;
+
+let audioStarted = false;
+
+let hls = null;
+
 let screenTexture;
+
 let screenCanvas;
+
 let screenCtx;
 
 let playerBody;
@@ -635,7 +737,9 @@ function switchTab(type){
 
   document
     .querySelectorAll('.tab')
-    .forEach(t => t.classList.remove('active'));
+    .forEach(t =>
+      t.classList.remove('active')
+    );
 
   if(type === 'login'){
 
@@ -657,20 +761,28 @@ function switchTab(type){
 
   }
 
-  document.getElementById('error').textContent = '';
+  document.getElementById('error')
+    .textContent = '';
+
 }
 
 
 async function doLogin(){
 
   const username =
-    document.getElementById('f-username').value.trim();
+    document.getElementById(
+      'f-username'
+    ).value.trim();
 
   const password =
-    document.getElementById('f-password').value;
+    document.getElementById(
+      'f-password'
+    ).value;
 
   const error =
-    document.getElementById('error');
+    document.getElementById(
+      'error'
+    );
 
   error.textContent = '';
 
@@ -684,25 +796,32 @@ async function doLogin(){
 
   try{
 
-    const res = await fetch(
-      '/api/' + mode,
-      {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json'
-        },
-        body:JSON.stringify({
-          username,
-          password
-        })
-      }
-    );
+    const res =
+      await fetch(
+        '/api/' + mode,
+        {
+          method:'POST',
 
-    const data = await res.json();
+          headers:{
+            'Content-Type':
+              'application/json'
+          },
+
+          body:JSON.stringify({
+            username,
+            password
+          })
+        }
+      );
+
+    const data =
+      await res.json();
 
     if(data.error){
 
-      error.textContent = data.error;
+      error.textContent =
+        data.error;
+
       return;
 
     }
@@ -711,10 +830,13 @@ async function doLogin(){
 
   }catch(err){
 
+    console.error(err);
+
     error.textContent =
       'Ошибка соединения';
 
   }
+
 }
 
 
@@ -736,75 +858,95 @@ function startSession(username){
 
   socket = io();
 
-  socket.emit('join',username);
-
-  socket.on('online',list=>{
-
-    const ul =
-      document.getElementById('online-list');
-
-    ul.innerHTML = '';
-
-    list.forEach(name=>{
-
-      const li =
-        document.createElement('li');
-
-      li.textContent = name;
-
-      ul.appendChild(li);
-
-    });
-
-  });
+  socket.emit(
+    'join',
+    username
+  );
 
 
-  socket.on('msg',message=>{
+  socket.on(
+    'online',
+    list => {
 
-    const el =
-      document.createElement('div');
+      const ul =
+        document.getElementById(
+          'online-list'
+        );
 
-    el.className = 'msg';
+      ul.innerHTML = '';
 
-    const time =
-      new Date(message.ts)
-        .toLocaleTimeString();
+      list.forEach(name => {
 
-    const user =
-      document.createElement('span');
+        const li =
+          document.createElement('li');
 
-    user.className = 'u';
+        li.textContent = name;
 
-    user.textContent = message.user;
+        ul.appendChild(li);
 
-    const text =
-      document.createElement('span');
+      });
 
-    text.className = 't';
+    }
+  );
 
-    text.textContent =
-      ' ' + message.text;
 
-    el.appendChild(user);
+  socket.on(
+    'msg',
+    message => {
 
-    el.appendChild(
-      document.createTextNode(
-        ' ' + time + ' '
-      )
-    );
+      const el =
+        document.createElement(
+          'div'
+        );
 
-    el.appendChild(text);
+      el.className = 'msg';
 
-    document
-      .getElementById('chat-messages')
-      .appendChild(el);
+      const time =
+        new Date(message.ts)
+          .toLocaleTimeString();
 
-    const box =
-      document.getElementById('chat-messages');
+      const user =
+        document.createElement(
+          'span'
+        );
 
-    box.scrollTop = box.scrollHeight;
+      user.className = 'u';
 
-  });
+      user.textContent =
+        message.user;
+
+      const text =
+        document.createElement(
+          'span'
+        );
+
+      text.className = 't';
+
+      text.textContent =
+        ' ' + message.text;
+
+      el.appendChild(user);
+
+      el.appendChild(
+        document.createTextNode(
+          ' ' + time + ' '
+        )
+      );
+
+      el.appendChild(text);
+
+      const box =
+        document.getElementById(
+          'chat-messages'
+        );
+
+      box.appendChild(el);
+
+      box.scrollTop =
+        box.scrollHeight;
+
+    }
+  );
 
 }
 
@@ -815,30 +957,40 @@ function startSession(username){
 
 document
   .getElementById('chat-form')
-  .addEventListener('submit',function(e){
+  .addEventListener(
+    'submit',
+    function(e){
 
-    e.preventDefault();
+      e.preventDefault();
 
-    if(!socket) return;
+      if(!socket) return;
 
-    const input =
-      document.getElementById('chat-input');
+      const input =
+        document.getElementById(
+          'chat-input'
+        );
 
-    const text =
-      input.value.trim();
+      const text =
+        input.value.trim();
 
-    if(!text) return;
+      if(!text) return;
 
-    socket.emit('msg',{
-      user:currentUser,
-      text:text,
-      lang:
-        document.getElementById('lang').value
-    });
+      socket.emit(
+        'msg',
+        {
+          user:currentUser,
+          text:text,
+          lang:
+            document.getElementById(
+              'lang'
+            ).value
+        }
+      );
 
-    input.value='';
+      input.value = '';
 
-  });
+    }
+  );
 
 
 /* =========================================================
@@ -851,7 +1003,9 @@ function init3D(){
     new THREE.Scene();
 
   scene.background =
-    new THREE.Color(0x030303);
+    new THREE.Color(
+      0x030303
+    );
 
   scene.fog =
     new THREE.FogExp2(
@@ -878,19 +1032,26 @@ function init3D(){
   renderer =
     new THREE.WebGLRenderer({
       canvas:
-        document.getElementById('canvas3d'),
-
+        document.getElementById(
+          'canvas3d'
+        ),
       antialias:true
     });
+
 
   renderer.setSize(
     innerWidth,
     innerHeight
   );
 
+
   renderer.setPixelRatio(
-    Math.min(devicePixelRatio,2)
+    Math.min(
+      devicePixelRatio,
+      2
+    )
   );
+
 
   renderer.shadowMap.enabled = true;
 
@@ -924,7 +1085,9 @@ function init3D(){
     -5
   );
 
-  scene.add(ceilingLight);
+  scene.add(
+    ceilingLight
+  );
 
   lightObjects.push(
     ceilingLight
@@ -1031,22 +1194,35 @@ function init3D(){
 ========================================================= */
 
 function createBox(
-  w,h,d,
-  x,y,z,
+  w,
+  h,
+  d,
+  x,
+  y,
+  z,
   material,
-  cast=true,
-  receive=true
+  cast = true,
+  receive = true
 ){
 
   const mesh =
     new THREE.Mesh(
-      new THREE.BoxGeometry(w,h,d),
+      new THREE.BoxGeometry(
+        w,
+        h,
+        d
+      ),
       material
     );
 
-  mesh.position.set(x,y,z);
+  mesh.position.set(
+    x,
+    y,
+    z
+  );
 
   mesh.castShadow = cast;
+
   mesh.receiveShadow = receive;
 
   scene.add(mesh);
@@ -1057,7 +1233,9 @@ function createBox(
 
 
 function createLight(
-  x,y,z,
+  x,
+  y,
+  z,
   color,
   intensity,
   distance
@@ -1070,7 +1248,11 @@ function createLight(
       distance
     );
 
-  light.position.set(x,y,z);
+  light.position.set(
+    x,
+    y,
+    z
+  );
 
   light.castShadow = true;
 
@@ -1096,6 +1278,7 @@ function createFloor(){
       roughness:.28
     });
 
+
   const floor =
     new THREE.Mesh(
       new THREE.PlaneGeometry(
@@ -1106,7 +1289,7 @@ function createFloor(){
     );
 
   floor.rotation.x =
-    -Math.PI/2;
+    -Math.PI / 2;
 
   floor.receiveShadow = true;
 
@@ -1121,7 +1304,7 @@ function createFloor(){
       0x111111
     );
 
-  grid.position.y=.012;
+  grid.position.y = .012;
 
   scene.add(grid);
 
@@ -1147,9 +1330,9 @@ function createCeiling(){
     );
 
   ceiling.rotation.x =
-    Math.PI/2;
+    Math.PI / 2;
 
-  ceiling.position.y=6;
+  ceiling.position.y = 6;
 
   scene.add(ceiling);
 
@@ -1170,26 +1353,42 @@ function createWalls(){
 
 
   createBox(
-    36,6,.5,
-    0,3,-17,
+    36,
+    6,
+    .5,
+    0,
+    3,
+    -17,
     mat
   );
 
   createBox(
-    36,6,.5,
-    0,3,17,
+    36,
+    6,
+    .5,
+    0,
+    3,
+    17,
     mat
   );
 
   createBox(
-    .5,6,34,
-    -18,3,0,
+    .5,
+    6,
+    34,
+    -18,
+    3,
+    0,
     mat
   );
 
   createBox(
-    .5,6,34,
-    18,3,0,
+    .5,
+    6,
+    34,
+    18,
+    3,
+    0,
     mat
   );
 
@@ -1222,7 +1421,7 @@ function createDanceFloor(){
     -1
   );
 
-  floor.receiveShadow=true;
+  floor.receiveShadow = true;
 
   scene.add(floor);
 
@@ -1233,15 +1432,20 @@ function createDanceFloor(){
     });
 
 
-  const lines=[
+  const lines = [
+
     [-7,.16,-1,14,.04,.04],
+
     [7,.16,-1,14,.04,.04],
+
     [0,.16,-8,.04,.04,14],
+
     [0,.16,6,.04,.04,14]
+
   ];
 
 
-  lines.forEach(l=>{
+  lines.forEach(l => {
 
     const mesh =
       createBox(
@@ -1270,13 +1474,20 @@ function createDanceFloor(){
 function createMainScreen(){
 
   screenCanvas =
-    document.createElement('canvas');
+    document.createElement(
+      'canvas'
+    );
 
-  screenCanvas.width=1024;
-  screenCanvas.height=512;
+  screenCanvas.width = 1024;
+
+  screenCanvas.height = 512;
+
 
   screenCtx =
-    screenCanvas.getContext('2d');
+    screenCanvas.getContext(
+      '2d'
+    );
+
 
   screenTexture =
     new THREE.CanvasTexture(
@@ -1298,6 +1509,7 @@ function createMainScreen(){
       })
     );
 
+
   frame.position.set(
     0,
     3.6,
@@ -1317,6 +1529,7 @@ function createMainScreen(){
         map:screenTexture
       })
     );
+
 
   screen.position.set(
     0,
@@ -1436,7 +1649,7 @@ function createBar(){
       );
 
     bottle.position.set(
-      -15+i*.8,
+      -15 + i*.8,
       1.7,
       6.5
     );
@@ -1500,7 +1713,7 @@ function createLounge(){
       );
 
     table.position.set(
-      8+i*3,
+      8 + i*3,
       .75,
       4
     );
@@ -1526,15 +1739,20 @@ function createColumns(){
     });
 
 
-  const positions=[
+  const positions = [
+
     [-15,5],
+
     [15,5],
+
     [-15,-5],
+
     [15,-5]
+
   ];
 
 
-  positions.forEach(p=>{
+  positions.forEach(p => {
 
     createBox(
       1,
@@ -1559,6 +1777,7 @@ function createColumns(){
           color:0xffffff
         })
       );
+
 
     ring.position.set(
       p[0],
@@ -1599,48 +1818,64 @@ function createEntrance(){
   );
 
 
-  const door =
-    createBox(
-      5.8,
-      4.7,
-      .1,
-      0,
-      2.35,
-      15.98,
-      new THREE.MeshBasicMaterial({
-        color:0x020202
-      }),
-      false,
-      false
-    );
+  createBox(
+    5.8,
+    4.7,
+    .1,
+    0,
+    2.35,
+    15.98,
+    new THREE.MeshBasicMaterial({
+      color:0x020202
+    }),
+    false,
+    false
+  );
 
 
   const signCanvas =
-    document.createElement('canvas');
+    document.createElement(
+      'canvas'
+    );
 
-  signCanvas.width=600;
-  signCanvas.height=160;
+  signCanvas.width = 600;
+
+  signCanvas.height = 160;
+
 
   const ctx =
-    signCanvas.getContext('2d');
+    signCanvas.getContext(
+      '2d'
+    );
 
-  ctx.fillStyle='#050505';
+
+  ctx.fillStyle =
+    '#050505';
 
   ctx.fillRect(
-    0,0,600,160
+    0,
+    0,
+    600,
+    160
   );
 
-  ctx.fillStyle='#fff';
 
-  ctx.font='bold 58px Arial';
+  ctx.fillStyle =
+    '#fff';
 
-  ctx.textAlign='center';
+  ctx.font =
+    'bold 58px Arial';
+
+  ctx.textAlign =
+    'center';
+
 
   ctx.fillText(
     'EWS SESSIONS',
     300,
     95
   );
+
 
   const tex =
     new THREE.CanvasTexture(
@@ -1658,6 +1893,7 @@ function createEntrance(){
         map:tex
       })
     );
+
 
   sign.position.set(
     0,
@@ -1682,7 +1918,11 @@ function createNeonArchitecture(){
     });
 
 
-  for(let z=-14;z<=14;z+=4){
+  for(
+    let z=-14;
+    z<=14;
+    z+=4
+  ){
 
     const left =
       createBox(
@@ -1697,6 +1937,7 @@ function createNeonArchitecture(){
         false
       );
 
+
     const right =
       createBox(
         .06,
@@ -1710,6 +1951,7 @@ function createNeonArchitecture(){
         false
       );
 
+
     neonObjects.push(
       left,
       right
@@ -1718,7 +1960,11 @@ function createNeonArchitecture(){
   }
 
 
-  for(let z=-15;z<=15;z+=5){
+  for(
+    let z=-15;
+    z<=15;
+    z+=5
+  ){
 
     const beam =
       createBox(
@@ -1733,7 +1979,10 @@ function createNeonArchitecture(){
         false
       );
 
-    neonObjects.push(beam);
+
+    neonObjects.push(
+      beam
+    );
 
   }
 
@@ -1754,7 +2003,11 @@ function createCeilingBeams(){
     });
 
 
-  for(let x=-14;x<=14;x+=4){
+  for(
+    let x=-14;
+    x<=14;
+    x+=4
+  ){
 
     createBox(
       .3,
@@ -1785,15 +2038,20 @@ function createSpeakers(){
     });
 
 
-  const positions=[
+  const positions = [
+
     [-8,2,-11],
+
     [8,2,-11],
+
     [-11,2,-10],
+
     [11,2,-10]
+
   ];
 
 
-  positions.forEach(p=>{
+  positions.forEach(p => {
 
     createBox(
       1.2,
@@ -1821,13 +2079,17 @@ function createSpeakers(){
           })
         );
 
-      cone.rotation.x=Math.PI/2;
+
+      cone.rotation.x =
+        Math.PI / 2;
+
 
       cone.position.set(
         p[0],
-        1.3+i*.6,
+        1.3 + i*.6,
         p[2]-.45
       );
+
 
       scene.add(cone);
 
@@ -1839,19 +2101,19 @@ function createSpeakers(){
 
 
 /* =========================================================
-   PARTICLES / ATMOSPHERE
+   PARTICLES
 ========================================================= */
 
 function createParticles(){
 
-  const count=900;
+  const count = 900;
 
   const geo =
     new THREE.BufferGeometry();
 
   const pos =
     new Float32Array(
-      count*3
+      count * 3
     );
 
 
@@ -1904,6 +2166,7 @@ function createPlayer(){
   playerBody =
     new THREE.Group();
 
+
   const body =
     new THREE.Mesh(
       new THREE.CylinderGeometry(
@@ -1918,7 +2181,8 @@ function createPlayer(){
       })
     );
 
-  body.position.y=.5;
+
+  body.position.y = .5;
 
   playerBody.add(body);
 
@@ -1936,7 +2200,8 @@ function createPlayer(){
       })
     );
 
-  head.position.y=1.25;
+
+  head.position.y = 1.25;
 
   playerBody.add(head);
 
@@ -1946,6 +2211,7 @@ function createPlayer(){
     0,
     13
   );
+
 
   scene.add(playerBody);
 
@@ -1959,58 +2225,520 @@ function createPlayer(){
 function setupAudio(){
 
   const indicator =
-    document.getElementById('stream-indicator');
+    document.getElementById(
+      'stream-indicator'
+    );
 
   const button =
-    document.getElementById('audio-control');
+    document.getElementById(
+      'audio-control'
+    );
 
-  indicator.textContent = 'AUDIO: READY';
 
-  if(button){
-    button.textContent = '▶ AUDIO: START';
-    button.classList.remove('live');
-  }
+  indicator.textContent =
+    'AUDIO: READY';
+
+  indicator.classList.remove(
+    'live',
+    'error'
+  );
+
+
+  button.textContent =
+    '▶ AUDIO: START';
+
+  button.classList.remove(
+    'live'
+  );
 
 }
 
 
-function startSSHAudio(){
+/* =========================================================
+   REAL HLS AUDIO
+========================================================= */
 
-  const iframe =
-    document.getElementById('ssh101-hidden-player');
+async function startSSHAudio(){
+
+  const audio =
+    document.getElementById(
+      'ews-audio'
+    );
 
   const indicator =
-    document.getElementById('stream-indicator');
+    document.getElementById(
+      'stream-indicator'
+    );
 
   const button =
-    document.getElementById('audio-control');
+    document.getElementById(
+      'audio-control'
+    );
 
-  if(!iframe) return;
+
+  if(!audio) return;
+
 
   /*
-     SSH101 officially provides this iframe player for embedding.
-     Loading it from a real user click gives the browser a user
-     activation, which is required for live audio autoplay.
+     ВАЖНО:
+
+     Это уже НЕ SSH101.
+
+     Поток берётся с нашего собственного
+     Node.js / FFmpeg HLS сервера.
   */
-  iframe.src =
-    'https://ssh101.com/securelive/index.php?id=ewsessions';
-  iframe.style.display = 'block';
 
-  indicator.textContent = 'AUDIO: STARTING...';
+  const hlsUrl =
+    window.location.origin +
+    '/hls/ews/index.m3u8';
 
-  if(button){
-    button.textContent = '● AUDIO: STARTING';
+
+  indicator.classList.remove(
+    'error'
+  );
+
+  indicator.classList.add(
+    'live'
+  );
+
+  indicator.textContent =
+    'AUDIO: CONNECTING...';
+
+
+  button.disabled = true;
+
+  button.textContent =
+    '● AUDIO: CONNECTING';
+
+
+  try{
+
+    /*
+       Создаём Web Audio только
+       после клика пользователя.
+    */
+
+    if(!audioContext){
+
+      audioContext =
+        new (
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+      audioSource =
+        audioContext.createMediaElementSource(
+          audio
+        );
+
+      analyser =
+        audioContext.createAnalyser();
+
+      analyser.fftSize = 256;
+
+      analyser.smoothingTimeConstant =
+        0.82;
+
+
+      freqData =
+        new Uint8Array(
+          analyser.frequencyBinCount
+        );
+
+
+      audioSource.connect(
+        analyser
+      );
+
+      analyser.connect(
+        audioContext.destination
+      );
+
+    }
+
+
+    if(
+      audioContext.state ===
+      'suspended'
+    ){
+
+      await audioContext.resume();
+
+    }
+
+
+    /*
+       Если HLS уже создан —
+       просто запускаем его.
+    */
+
+    if(hls){
+
+      try{
+        hls.destroy();
+      }catch(e){}
+
+      hls = null;
+
+    }
+
+
+    /*
+       Chrome / Edge / Firefox:
+
+       hls.js подключает HLS
+       непосредственно к audio element.
+    */
+
+    if(
+      window.Hls &&
+      Hls.isSupported()
+    ){
+
+      hls =
+        new Hls({
+          enableWorker:true,
+
+          lowLatencyMode:true,
+
+          backBufferLength:30,
+
+          maxBufferLength:10,
+
+          maxMaxBufferLength:20,
+
+          liveSyncDurationCount:3,
+
+          liveMaxLatencyDurationCount:6
+        });
+
+
+      hls.loadSource(
+        hlsUrl
+      );
+
+
+      hls.attachMedia(
+        audio
+      );
+
+
+      hls.on(
+        Hls.Events.MANIFEST_PARSED,
+        async function(){
+
+          indicator.textContent =
+            'AUDIO: LIVE';
+
+          button.textContent =
+            '● AUDIO: LIVE';
+
+          button.classList.add(
+            'live'
+          );
+
+          button.disabled = false;
+
+          audioStarted = true;
+
+
+          try{
+
+            await audio.play();
+
+          }catch(err){
+
+            console.warn(
+              'Audio play blocked:',
+              err
+            );
+
+            indicator.textContent =
+              'AUDIO: PRESS START';
+
+            button.textContent =
+              '▶ AUDIO: START';
+
+            button.classList.remove(
+              'live'
+            );
+
+          }
+
+        }
+      );
+
+
+      hls.on(
+        Hls.Events.ERROR,
+        function(
+          event,
+          data
+        ){
+
+          console.error(
+            '[HLS]',
+            data
+          );
+
+
+          if(
+            !data.fatal
+          ){
+
+            return;
+
+          }
+
+
+          if(
+            data.type ===
+            Hls.ErrorTypes.NETWORK_ERROR
+          ){
+
+            indicator.textContent =
+              'AUDIO: RECONNECTING...';
+
+
+            button.textContent =
+              '● AUDIO: RECONNECTING';
+
+
+            setTimeout(
+              function(){
+
+                if(hls){
+
+                  try{
+                    hls.startLoad();
+                  }catch(e){}
+
+                }
+
+              },
+              1000
+            );
+
+          }
+
+
+          else if(
+            data.type ===
+            Hls.ErrorTypes.MEDIA_ERROR
+          ){
+
+            indicator.textContent =
+              'AUDIO: RECOVERING...';
+
+
+            try{
+
+              hls.recoverMediaError();
+
+            }catch(e){
+
+              console.error(e);
+
+            }
+
+          }
+
+
+          else{
+
+            indicator.textContent =
+              'AUDIO: NO STREAM';
+
+            indicator.classList.remove(
+              'live'
+            );
+
+            indicator.classList.add(
+              'error'
+            );
+
+
+            button.textContent =
+              '▶ AUDIO: RETRY';
+
+            button.classList.remove(
+              'live'
+            );
+
+            button.disabled = false;
+
+          }
+
+        }
+      );
+
+    }
+
+
+    /*
+       Safari / browsers with native HLS.
+    */
+
+    else if(
+      audio.canPlayType(
+        'application/vnd.apple.mpegurl'
+      )
+    ){
+
+      audio.src =
+        hlsUrl;
+
+
+      audio.addEventListener(
+        'loadedmetadata',
+        async function(){
+
+          try{
+
+            await audio.play();
+
+          }catch(err){
+
+            console.error(err);
+
+          }
+
+        },
+        {
+          once:true
+        }
+      );
+
+    }
+
+
+    else{
+
+      throw new Error(
+        'HLS is not supported by this browser'
+      );
+
+    }
+
+
+    /*
+       AUDIO EVENTS
+    */
+
+    audio.onplaying =
+      function(){
+
+        indicator.textContent =
+          'AUDIO: LIVE';
+
+        indicator.classList.add(
+          'live'
+        );
+
+        indicator.classList.remove(
+          'error'
+        );
+
+        button.textContent =
+          '● AUDIO: LIVE';
+
+        button.classList.add(
+          'live'
+        );
+
+        button.disabled = false;
+
+        audioStarted = true;
+
+      };
+
+
+    audio.onpause =
+      function(){
+
+        if(
+          audioStarted &&
+          !audio.ended
+        ){
+
+          indicator.textContent =
+            'AUDIO: PAUSED';
+
+          button.textContent =
+            '▶ AUDIO: RESUME';
+
+          button.classList.remove(
+            'live'
+          );
+
+        }
+
+      };
+
+
+    audio.onerror =
+      function(){
+
+        console.error(
+          '[AUDIO]',
+          audio.error
+        );
+
+        indicator.textContent =
+          'AUDIO: ERROR';
+
+        indicator.classList.remove(
+          'live'
+        );
+
+        indicator.classList.add(
+          'error'
+        );
+
+        button.textContent =
+          '▶ AUDIO: RETRY';
+
+        button.classList.remove(
+          'live'
+        );
+
+        button.disabled = false;
+
+      };
+
+
+  }catch(err){
+
+    console.error(
+      '[EWS AUDIO ERROR]',
+      err
+    );
+
+
+    indicator.textContent =
+      'AUDIO: NO STREAM';
+
+    indicator.classList.remove(
+      'live'
+    );
+
+    indicator.classList.add(
+      'error'
+    );
+
+
+    button.textContent =
+      '▶ AUDIO: RETRY';
+
+    button.classList.remove(
+      'live'
+    );
+
+    button.disabled = false;
+
   }
 
-  iframe.onload = function(){
-    indicator.textContent = 'AUDIO: READY';
-    if(button){
-      button.textContent = '▶ PRESS PLAY IN PLAYER';
-    }
-  };
-
 }
-
 
 
 /* =========================================================
@@ -2023,10 +2751,17 @@ function setupControls(){
     'resize',
     function(){
 
+      if(!camera || !renderer)
+        return;
+
+
       camera.aspect =
-        innerWidth/innerHeight;
+        innerWidth /
+        innerHeight;
+
 
       camera.updateProjectionMatrix();
+
 
       renderer.setSize(
         innerWidth,
@@ -2041,12 +2776,15 @@ function setupControls(){
     'keydown',
     function(e){
 
-      keys[e.code]=true;
+      keys[e.code] = true;
 
 
-      if(e.code==='KeyC'){
+      if(
+        e.code === 'KeyC'
+      ){
 
-        chatMode=!chatMode;
+        chatMode =
+          !chatMode;
 
         toggleChat();
 
@@ -2060,7 +2798,7 @@ function setupControls(){
     'keyup',
     function(e){
 
-      keys[e.code]=false;
+      keys[e.code] = false;
 
     }
   );
@@ -2091,7 +2829,8 @@ function setupControls(){
     function(){
 
       pointerLocked =
-        document.pointerLockElement===canvas;
+        document.pointerLockElement ===
+        canvas;
 
     }
   );
@@ -2101,13 +2840,16 @@ function setupControls(){
     'mousemove',
     function(e){
 
-      if(!pointerLocked)return;
+      if(!pointerLocked)
+        return;
+
 
       yaw -=
-        e.movementX*.002;
+        e.movementX * .002;
+
 
       pitch -=
-        e.movementY*.002;
+        e.movementY * .002;
 
 
       pitch =
@@ -2159,7 +2901,8 @@ function animate(){
   );
 
 
-  if(!scene)return;
+  if(!scene)
+    return;
 
 
   const dt =
@@ -2170,85 +2913,151 @@ function animate(){
 
 
   const time =
-    performance.now()/1000;
+    performance.now() / 1000;
 
 
-  /* AUDIO */
+  /* =======================================================
+     AUDIO ANALYSIS
+  ======================================================= */
 
-  let bass=.2;
-  let level=.2;
+  let bass = .2;
+
+  let level = .2;
 
 
-  if(analyser && freqData){
+  if(
+    analyser &&
+    freqData &&
+    audioStarted
+  ){
 
     analyser.getByteFrequencyData(
       freqData
     );
 
 
-    let b=0;
+    /*
+       BASS
+    */
 
-    for(let i=0;i<10;i++){
-
-      b+=freqData[i];
-
-    }
-
-    bass =
-      b/(10*255);
+    let b = 0;
 
 
-    let total=0;
+    for(
+      let i=0;
+      i<10 && i<freqData.length;
+      i++
+    ){
 
-    for(let i=0;i<freqData.length;i++){
-
-      total+=freqData[i];
+      b +=
+        freqData[i];
 
     }
 
-    level =
-      total/
-      (freqData.length*255);
-
-  }else{
 
     bass =
-      .25+
-      Math.sin(time*3)*.12;
+      b /
+      (
+        Math.min(
+          10,
+          freqData.length
+        ) * 255
+      );
+
+
+    /*
+       TOTAL LEVEL
+    */
+
+    let total = 0;
+
+
+    for(
+      let i=0;
+      i<freqData.length;
+      i++
+    ){
+
+      total +=
+        freqData[i];
+
+    }
+
 
     level =
-      .25+
-      Math.sin(time*1.5)*.08;
+      total /
+      (
+        freqData.length * 255
+      );
+
+  }
+
+
+  /*
+     Пока музыка не подключена —
+     лёгкая атмосферная анимация.
+  */
+
+  else{
+
+    bass =
+      .25 +
+      Math.sin(
+        time * 3
+      ) * .12;
+
+
+    level =
+      .25 +
+      Math.sin(
+        time * 1.5
+      ) * .08;
 
   }
 
 
   bassLevel =
-    bassLevel*.82+
-    bass*.18;
+    bassLevel * .82 +
+    bass * .18;
+
 
   audioLevel =
-    audioLevel*.88+
-    level*.12;
+    audioLevel * .88 +
+    level * .12;
 
 
-  /* MOVEMENT */
+/* =========================================================
+   MOVEMENT
+========================================================= */
 
   const speed =
-    chatMode ? 0 : 5*dt;
+    chatMode
+      ? 0
+      : 5 * dt;
 
 
-  let forward=0;
-  let side=0;
+  let forward = 0;
+
+  let side = 0;
 
 
-  if(keys['KeyW']) forward+=1;
-  if(keys['KeyS']) forward-=1;
-  if(keys['KeyA']) side-=1;
-  if(keys['KeyD']) side+=1;
+  if(keys['KeyW'])
+    forward += 1;
+
+  if(keys['KeyS'])
+    forward -= 1;
+
+  if(keys['KeyA'])
+    side -= 1;
+
+  if(keys['KeyD'])
+    side += 1;
 
 
-  if(pointerLocked && !chatMode){
+  if(
+    pointerLocked &&
+    !chatMode
+  ){
 
     const fx =
       -Math.sin(yaw);
@@ -2264,13 +3073,17 @@ function animate(){
 
 
     camera.position.x +=
-      (fx*forward+
-       rx*side)*speed;
+      (
+        fx * forward +
+        rx * side
+      ) * speed;
 
 
     camera.position.z +=
-      (fz*forward+
-       rz*side)*speed;
+      (
+        fz * forward +
+        rz * side
+      ) * speed;
 
   }
 
@@ -2291,17 +3104,24 @@ function animate(){
     );
 
 
-  camera.position.y=1.7;
+  camera.position.y = 1.7;
 
 
-  camera.rotation.order='YXZ';
-
-  camera.rotation.y=yaw;
-
-  camera.rotation.x=pitch;
+  camera.rotation.order =
+    'YXZ';
 
 
-  /* PLAYER BODY */
+  camera.rotation.y =
+    yaw;
+
+
+  camera.rotation.x =
+    pitch;
+
+
+/* =========================================================
+   PLAYER
+========================================================= */
 
   if(playerBody){
 
@@ -2311,12 +3131,15 @@ function animate(){
     playerBody.position.z =
       camera.position.z;
 
-    playerBody.visible=false;
+    playerBody.visible =
+      false;
 
   }
 
 
-  /* PARTICLES */
+/* =========================================================
+   PARTICLES
+========================================================= */
 
   if(particles){
 
@@ -2325,30 +3148,34 @@ function animate(){
 
 
     particles.material.opacity =
-      .12+
-      audioLevel*.2;
+      .12 +
+      audioLevel * .2;
 
   }
 
 
-  /* NEON PULSE */
+/* =========================================================
+   NEON PULSE
+========================================================= */
 
   neonObjects.forEach(
-    (obj,index)=>{
+    (obj,index) => {
 
       const pulse =
-        .5+
+        .5 +
         Math.sin(
-          time*3+
-          index*.4
-        )*.25+
-        bassLevel*.7;
+          time * 3 +
+          index * .4
+        ) * .25 +
+        bassLevel * .7;
+
 
       const value =
         Math.min(
           1,
           pulse
         );
+
 
       obj.material.color.setRGB(
         value,
@@ -2360,29 +3187,34 @@ function animate(){
   );
 
 
-  /* LIGHT PULSE */
+/* =========================================================
+   LIGHT PULSE
+========================================================= */
 
   lightObjects.forEach(
-    (light,index)=>{
+    (light,index) => {
 
       light.intensity =
-        1+
-        bassLevel*
-        2+
+        1 +
+        bassLevel * 2 +
         Math.sin(
-          time*2+
+          time * 2 +
           index
-        )*.15;
+        ) * .15;
 
     }
   );
 
 
-  /* SCREEN */
+/* =========================================================
+   MAIN SCREEN
+========================================================= */
 
   if(screenCtx){
 
-    screenCtx.fillStyle='#050505';
+    screenCtx.fillStyle =
+      '#050505';
+
 
     screenCtx.fillRect(
       0,
@@ -2400,10 +3232,11 @@ function animate(){
         0
       );
 
+
     const intensity =
-      40+
+      40 +
       Math.floor(
-        bassLevel*120
+        bassLevel * 120
       );
 
 
@@ -2412,10 +3245,12 @@ function animate(){
       `rgb(${intensity},${intensity},${intensity})`
     );
 
+
     grd.addColorStop(
       .5,
       '#050505'
     );
+
 
     grd.addColorStop(
       1,
@@ -2423,7 +3258,9 @@ function animate(){
     );
 
 
-    screenCtx.fillStyle=grd;
+    screenCtx.fillStyle =
+      grd;
+
 
     screenCtx.fillRect(
       0,
@@ -2433,12 +3270,17 @@ function animate(){
     );
 
 
-    screenCtx.fillStyle='#fff';
+    screenCtx.fillStyle =
+      '#fff';
 
-    screenCtx.font=
+
+    screenCtx.font =
       'bold 80px Arial';
 
-    screenCtx.textAlign='center';
+
+    screenCtx.textAlign =
+      'center';
+
 
     screenCtx.fillText(
       'EWS SESSIONS',
@@ -2447,10 +3289,13 @@ function animate(){
     );
 
 
-    screenCtx.font=
+    screenCtx.font =
       '22px Arial';
 
-    screenCtx.fillStyle='#777';
+
+    screenCtx.fillStyle =
+      '#777';
+
 
     screenCtx.fillText(
       'UNDERGROUND CLUB',
@@ -2459,56 +3304,74 @@ function animate(){
     );
 
 
-    const bars=48;
+    const bars = 48;
 
-    const bw=
-      800/bars;
+    const bw =
+      800 / bars;
 
 
-    for(let i=0;i<bars;i++){
+    for(
+      let i=0;
+      i<bars;
+      i++
+    ){
 
       let value;
 
-      if(freqData){
+
+      if(
+        freqData &&
+        audioStarted
+      ){
 
         value =
           freqData[
             Math.floor(
-              i*freqData.length/bars
+              i *
+              freqData.length /
+              bars
             )
-          ]/255;
+          ] / 255;
 
       }else{
 
         value =
-          .2+
+          .2 +
           Math.sin(
-            time*4+i*.5
-          )*.15;
+            time * 4 +
+            i * .5
+          ) * .15;
 
       }
 
 
       const h =
-        value*180;
+        value * 180;
 
 
-      screenCtx.fillStyle='#fff';
+      screenCtx.fillStyle =
+        '#fff';
+
 
       screenCtx.fillRect(
-        112+i*bw,
-        450-h,
-        bw-3,
+        112 + i * bw,
+        450 - h,
+        bw - 3,
         h
       );
 
     }
 
 
-    screenTexture.needsUpdate=true;
+    screenTexture.needsUpdate =
+      true;
 
   }
 
+
+/* =========================================================
+   RENDER
+========================================================= */
 
   renderer.render(
     scene,
@@ -2516,6 +3379,35 @@ function animate(){
   );
 
 }
+
+
+/* =========================================================
+   CLEANUP WHEN PAGE CLOSES
+========================================================= */
+
+window.addEventListener(
+  'beforeunload',
+  function(){
+
+    try{
+
+      if(hls){
+        hls.destroy();
+      }
+
+    }catch(e){}
+
+
+    try{
+
+      if(audioContext){
+        audioContext.close();
+      }
+
+    }catch(e){}
+
+  }
+);
 
 </script>
 
