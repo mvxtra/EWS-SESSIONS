@@ -247,12 +247,6 @@ input:focus{
   color:#aaa;
 }
 
-.translation-mark{
-  color:#666;
-  font-size:10px;
-  margin-left:4px;
-}
-
 #chat-form{
   display:flex;
   gap:6px;
@@ -610,13 +604,7 @@ function startSession(username){
 
   socket = io();
 
-  const selectedLang =
-    document.getElementById('lang').value || 'ru';
-
-  socket.emit('join',{
-    username:username,
-    lang:selectedLang
-  });
+  socket.emit('join',username);
 
   socket.on('online',list=>{
 
@@ -638,6 +626,7 @@ function startSession(username){
 
   });
 
+
   socket.on('msg',message=>{
 
     const el =
@@ -653,13 +642,16 @@ function startSession(username){
       document.createElement('span');
 
     user.className = 'u';
+
     user.textContent = message.user;
 
     const text =
       document.createElement('span');
 
     text.className = 't';
-    text.textContent = ' ' + message.text;
+
+    text.textContent =
+      ' ' + message.text;
 
     el.appendChild(user);
 
@@ -670,14 +662,6 @@ function startSession(username){
     );
 
     el.appendChild(text);
-
-    if(message.translated && !message.system){
-      const mark = document.createElement('span');
-      mark.className = 'translation-mark';
-      mark.textContent = '  🌐';
-      mark.title = 'Automatically translated';
-      el.appendChild(mark);
-    }
 
     document
       .getElementById('chat-messages')
@@ -715,21 +699,12 @@ document
 
     socket.emit('msg',{
       user:currentUser,
-      text:text
+      text:text,
+      lang:
+        document.getElementById('lang').value
     });
 
     input.value='';
-
-  });
-
-
-document
-  .getElementById('lang')
-  .addEventListener('change',function(){
-
-    if(!socket) return;
-
-    socket.emit('language',this.value);
 
   });
 
@@ -1863,8 +1838,7 @@ function setupAudio(){
 
 
   const url =
-    window.location.origin +
-    '/hls/ews/index.m3u8';
+    'https://usb.bozztv.com/ewsessions/index.m3u8';
 
 
   if(window.Hls && Hls.isSupported()){
