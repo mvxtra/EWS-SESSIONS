@@ -334,9 +334,8 @@ input:focus{
   cursor:pointer;
 }
 
-
 /* =========================================================
-   CLUB SCREEN / MEDIA
+   CLUB SCREEN
 ========================================================= */
 
 #screen-control{
@@ -377,7 +376,9 @@ input:focus{
   pointer-events:auto;
 }
 
-#screen-menu.open{display:block;}
+#screen-menu.open{
+  display:block;
+}
 
 #screen-menu-title{
   font-size:10px;
@@ -431,7 +432,9 @@ input:focus{
   pointer-events:auto;
 }
 
-#media-screen.active{display:block;}
+#media-screen.active{
+  display:block;
+}
 
 #media-screen iframe{
   width:100%;
@@ -457,8 +460,15 @@ input:focus{
 }
 
 @media(max-width:700px){
-  #screen-menu-row{flex-wrap:wrap;}
-  #screen-url{flex-basis:100%;}
+
+  #screen-menu-row{
+    flex-wrap:wrap;
+  }
+
+  #screen-url{
+    flex-basis:100%;
+  }
+
 }
 
 /* =========================================================
@@ -733,6 +743,7 @@ input:focus{
 
     font-size:8px;
   }
+
 }
 
 @media(max-width:420px){
@@ -749,6 +760,7 @@ input:focus{
   #zone-label{
     bottom:calc(34vh + 20px);
   }
+
 }
 
 </style>
@@ -854,18 +866,38 @@ input:focus{
   </button>
 
   <div id="screen-menu">
-    <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
+
+    <div id="screen-menu-title">
+      EWS SESSIONS / CLUB SCREEN
+    </div>
+
     <div id="screen-menu-row">
+
       <input
         id="screen-url"
         type="url"
         placeholder="YouTube / Twitch / website URL"
         autocomplete="off"
       >
-      <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
-      <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
+
+      <button
+        class="screen-btn"
+        onclick="loadClubScreen()">
+        LOAD
+      </button>
+
+      <button
+        class="screen-btn"
+        onclick="clearClubScreen()">
+        CLEAR
+      </button>
+
     </div>
-    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
+
+    <div id="screen-status">
+      YouTube и Twitch открываются со звуком через официальный embed.
+    </div>
+
   </div>
 
   <div id="lang-bar">
@@ -926,8 +958,19 @@ input:focus{
   </div>
 
   <div id="media-screen">
-    <button id="media-screen-close" onclick="clearClubScreen()">×</button>
-    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+
+    <button
+      id="media-screen-close"
+      onclick="clearClubScreen()">
+      ×
+    </button>
+
+    <iframe
+      id="media-screen-frame"
+      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen>
+    </iframe>
+
   </div>
 
   <div id="zone-label">
@@ -987,32 +1030,65 @@ let screenCtx;
 let screenMesh;
 let screenMediaActive=false;
 let screenMediaUrl='';
+
 let onlineUserList=[];
+
 let remotePlayers=new Map();
+
 let lastPlayerBroadcast=0;
+
 let clubScreenHost=null;
 
 let playerBody;
 
 /* =========================================================
-   EWS TEXTURES
-   CC0 seamless textures from ShareTextures
+   TEXTURES
 ========================================================= */
 
 const EWS_TEXTURES = {
-  concrete: 'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
-  floor: 'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+
+  concrete:
+    'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
+
+  floor:
+    'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+
 };
 
-const ewsTextureLoader = new THREE.TextureLoader();
+const ewsTextureLoader =
+  new THREE.TextureLoader();
 
-function loadEWSTexture(url, repeatX=4, repeatY=4){
-  const texture = ewsTextureLoader.load(url);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeatX, repeatY);
-  texture.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 8);
-  texture.colorSpace = THREE.SRGBColorSpace;
+function loadEWSTexture(
+  url,
+  repeatX=4,
+  repeatY=4
+){
+
+  const texture =
+    ewsTextureLoader.load(url);
+
+  texture.wrapS =
+    THREE.RepeatWrapping;
+
+  texture.wrapT =
+    THREE.RepeatWrapping;
+
+  texture.repeat.set(
+    repeatX,
+    repeatY
+  );
+
+  texture.anisotropy =
+    Math.min(
+      8,
+      renderer
+        ? renderer.capabilities.getMaxAnisotropy()
+        : 8
+    );
+
+  texture.colorSpace =
+    THREE.SRGBColorSpace;
+
   return texture;
 }
 
@@ -1107,15 +1183,25 @@ async function doLogin(){
     const data =
       await res.json();
 
-    if(data.error){
+    /*
+    Сервер использует message,
+    а не только error.
+    */
 
-      error.textContent=
-        data.error;
+    if(!data.ok){
+
+      error.textContent =
+        data.message ||
+        data.error ||
+        'Ошибка';
 
       return;
     }
 
-    startSession(username);
+    startSession(
+      data.username ||
+      username
+    );
 
   }catch(err){
 
@@ -1148,66 +1234,133 @@ function startSession(username){
 
   socket=io();
 
-  socket.on('connect',function(){
+  socket.on(
+    'connect',
+    function(){
 
-    socket.emit(
-      'join',
-      {
-        username: currentUser,
-        language:
-          document.getElementById('lang').value
-      }
-    );
+      console.log(
+        '[SOCKET] CONNECTED',
+        socket.id
+      );
 
-  });
+      socket.emit(
+        'join',
+        {
+          username:
+            currentUser,
+
+          language:
+            document.getElementById(
+              'lang'
+            ).value
+        }
+      );
+
+    }
+  );
+
+  socket.on(
+    'disconnect',
+    function(){
+
+      console.log(
+        '[SOCKET] DISCONNECTED'
+      );
+
+    }
+  );
+
+  /* =======================================================
+     ONLINE USERS
+  ======================================================= */
 
   socket.on(
     'online-users',
     list=>{
 
-      onlineUserList=Array.isArray(list)?list:[];
-      clubScreenHost=onlineUserList.length? (typeof onlineUserList[0]==='string'?onlineUserList[0]:onlineUserList[0].username) : currentUser;
+      onlineUserList =
+        Array.isArray(list)
+          ? list
+          : [];
 
       const ul =
-        document.getElementById('online-list');
+        document.getElementById(
+          'online-list'
+        );
 
       ul.innerHTML='';
 
-      const screenButton=document.getElementById('screen-control');
-      if(screenButton){ screenButton.style.display=isClubHost()?'block':'none'; }
+      /*
+      Определяем владельца экрана.
+      */
 
-      if(!Array.isArray(list)) return;
+      const owner =
+        onlineUserList.find(
+          user=>{
 
-      list.forEach(user=>{
+            const name =
+              typeof user === 'string'
+                ? user
+                : user?.username;
 
-        const li =
-          document.createElement('li');
+            return String(name || '')
+              .toLowerCase() ===
+              'mvxtra';
+          }
+        );
 
-        const name =
-          typeof user === 'string'
-            ? user
-            : user.username;
+      clubScreenHost =
+        owner
+          ? (
+              typeof owner === 'string'
+                ? owner
+                : owner.username
+            )
+          : 'mvxtra';
 
-        li.textContent =
-          name === currentUser
-            ? name + ' (YOU)'
-            : name;
+      const screenButton =
+        document.getElementById(
+          'screen-control'
+        );
 
-        ul.appendChild(li);
+      if(screenButton){
 
-      });
+        screenButton.style.display =
+          isClubHost()
+            ? 'block'
+            : 'none';
+
+      }
+
+      list.forEach(
+        user=>{
+
+          const li =
+            document.createElement(
+              'li'
+            );
+
+          const name =
+            typeof user === 'string'
+              ? user
+              : user?.username;
+
+          li.textContent =
+            name === currentUser
+              ? name + ' (YOU)'
+              : name;
+
+          ul.appendChild(li);
+
+        }
+      );
 
     }
   );
 
-  // Compatibility with an older server version.
-  socket.on('online',list=>{
-
-    if(socket.connected){
-      socket.emit('request-online');
-    }
-
-  });
+  /* =======================================================
+     CHAT
+  ======================================================= */
 
   socket.on(
     'chat-message',
@@ -1222,7 +1375,8 @@ function startSession(username){
 
       const time =
         new Date(
-          message.ts
+          message.ts ||
+          Date.now()
         ).toLocaleTimeString();
 
       const user =
@@ -1232,8 +1386,10 @@ function startSession(username){
 
       user.className='u';
 
-      user.textContent=
-        message.username || message.user || 'Guest';
+      user.textContent =
+        message.user ||
+        message.username ||
+        'USER';
 
       const text =
         document.createElement(
@@ -1242,8 +1398,15 @@ function startSession(username){
 
       text.className='t';
 
-      text.textContent=
-        ' '+time+' '+message.text;
+      text.textContent =
+        ' '+
+        time+
+        ' '+
+        (
+          message.text ||
+          message.original ||
+          ''
+        );
 
       el.appendChild(user);
 
@@ -1260,25 +1423,293 @@ function startSession(username){
 
       box.appendChild(el);
 
-      box.scrollTop=
+      box.scrollTop =
         box.scrollHeight;
 
     }
   );
 
-  socket.on('club-screen-state', state=>{
-    if(!state || !state.src) return;
-    applyRemoteClubScreen(state);
-  });
+  /* =======================================================
+     SCREEN
+  ======================================================= */
 
-  socket.on('player-state', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
+  socket.on(
+    'club-screen-state',
+    state=>{
 
-  socket.on('player-left', id=>{
-    removeRemotePlayer(id);
-  });
+      if(!state){
+
+        return;
+      }
+
+      applyRemoteClubScreen(
+        state
+      );
+
+    }
+  );
+
+  /* =======================================================
+     IMPORTANT:
+     EXISTING PLAYERS
+  ======================================================= */
+
+  socket.on(
+    'players-state',
+    list=>{
+
+      console.log(
+        '[PLAYERS STATE]',
+        list
+      );
+
+      if(!Array.isArray(list)){
+        return;
+      }
+
+      list.forEach(
+        player=>{
+
+          if(!player){
+            return;
+          }
+
+          if(!player.id){
+            return;
+          }
+
+          if(
+            socket &&
+            player.id === socket.id
+          ){
+            return;
+          }
+
+          updateRemotePlayer(
+            player
+          );
+
+        }
+      );
+
+    }
+  );
+
+  /* =======================================================
+     IMPORTANT:
+     NEW PLAYER
+  ======================================================= */
+
+  socket.on(
+    'player-joined',
+    player=>{
+
+      console.log(
+        '[PLAYER JOINED]',
+        player
+      );
+
+      if(!player){
+        return;
+      }
+
+      if(!player.id){
+        return;
+      }
+
+      if(
+        socket &&
+        player.id === socket.id
+      ){
+        return;
+      }
+
+      updateRemotePlayer(
+        player
+      );
+
+    }
+  );
+
+  /* =======================================================
+     PLAYER STATE
+  ======================================================= */
+
+  socket.on(
+    'player-state',
+    data=>{
+
+      if(!data){
+        return;
+      }
+
+      if(!data.id){
+        return;
+      }
+
+      if(
+        socket &&
+        data.id === socket.id
+      ){
+        return;
+      }
+
+      updateRemotePlayer(
+        data
+      );
+
+    }
+  );
+
+  /* =======================================================
+     PLAYER MOVE
+  ======================================================= */
+
+  socket.on(
+    'player-move',
+    data=>{
+
+      if(!data){
+        return;
+      }
+
+      if(!data.id){
+        return;
+      }
+
+      if(
+        socket &&
+        data.id === socket.id
+      ){
+        return;
+      }
+
+      updateRemotePlayer(
+        data
+      );
+
+    }
+  );
+
+  /* =======================================================
+     PLAYER LEFT
+  ======================================================= */
+
+  socket.on(
+    'player-left',
+    id=>{
+
+      removeRemotePlayer(
+        id
+      );
+
+    }
+  );
+
+  socket.on(
+    'player-removed',
+    id=>{
+
+      removeRemotePlayer(
+        id
+      );
+
+    }
+  );
+
+  /* =======================================================
+     SYSTEM
+  ======================================================= */
+
+  socket.on(
+    'system-message',
+    message=>{
+
+      if(!message){
+        return;
+      }
+
+      const box =
+        document.getElementById(
+          'chat-messages'
+        );
+
+      if(!box){
+        return;
+      }
+
+      const el =
+        document.createElement(
+          'div'
+        );
+
+      el.className='msg';
+
+      const text =
+        document.createElement(
+          'span'
+        );
+
+      text.className='t';
+
+      text.textContent =
+        message.text || '';
+
+      el.appendChild(text);
+
+      box.appendChild(el);
+
+      box.scrollTop =
+        box.scrollHeight;
+
+    }
+  );
+
+  /* =======================================================
+     COMPATIBILITY
+  ======================================================= */
+
+  socket.on(
+    'online',
+    list=>{
+
+      if(
+        socket &&
+        socket.connected
+      ){
+
+        socket.emit(
+          'request-online'
+        );
+
+      }
+
+    }
+  );
+
+  /*
+  После подключения дополнительно
+  просим сервер прислать игроков.
+  */
+
+  socket.on(
+    'joined',
+    ()=>{
+
+      socket.emit(
+        'request-online'
+      );
+
+      socket.emit(
+        'request-players'
+      );
+
+      socket.emit(
+        'request-club-screen'
+      );
+
+    }
+  );
 
 }
 
@@ -1294,7 +1725,12 @@ document
 
       e.preventDefault();
 
-      if(!socket)return;
+      if(
+        !socket ||
+        !socket.connected
+      ){
+        return;
+      }
 
       const input =
         document.getElementById(
@@ -1304,13 +1740,18 @@ document
       const text =
         input.value.trim();
 
-      if(!text)return;
+      if(!text){
+        return;
+      }
 
       socket.emit(
         'chat-message',
         {
-          user:currentUser,
-          text:text,
+          user:
+            currentUser,
+
+          text:
+            text,
 
           lang:
             document.getElementById(
@@ -1334,7 +1775,10 @@ document
     'change',
     function(){
 
-      if(socket){
+      if(
+        socket &&
+        socket.connected
+      ){
 
         socket.emit(
           'language-change',
@@ -1369,7 +1813,8 @@ function init3D(){
   camera =
     new THREE.PerspectiveCamera(
       72,
-      innerWidth/innerHeight,
+      innerWidth/
+      innerHeight,
       0.1,
       150
     );
@@ -1512,10 +1957,10 @@ function createBox(
     x,y,z
   );
 
-  mesh.castShadow=
+  mesh.castShadow =
     cast;
 
-  mesh.receiveShadow=
+  mesh.receiveShadow =
     receive;
 
   scene.add(mesh);
@@ -1556,58 +2001,111 @@ function createLight(
 
 function createFloor(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.floor,8,10);
+  const texture =
+    loadEWSTexture(
+      EWS_TEXTURES.floor,
+      8,
+      10
+    );
 
-  const mat = new THREE.MeshStandardMaterial({
-    map:texture,
-    color:0x121212,
-    metalness:.18,
-    roughness:.82
-  });
+  const mat =
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x121212,
+      metalness:.18,
+      roughness:.82
+    });
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(36,42),
-    mat
-  );
+  const floor =
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        36,
+        42
+      ),
+      mat
+    );
 
-  floor.rotation.x=-Math.PI/2;
+  floor.rotation.x =
+    -Math.PI/2;
+
   floor.receiveShadow=true;
+
   scene.add(floor);
+
 }
 
 function createCeiling(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.concrete,7,8);
+  const texture =
+    loadEWSTexture(
+      EWS_TEXTURES.concrete,
+      7,
+      8
+    );
 
-  const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(36,42),
-    new THREE.MeshStandardMaterial({
-      map:texture,
-      color:0x080808,
-      roughness:1
-    })
-  );
+  const ceiling =
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        36,
+        42
+      ),
+      new THREE.MeshStandardMaterial({
+        map:texture,
+        color:0x080808,
+        roughness:1
+      })
+    );
 
-  ceiling.rotation.x=Math.PI/2;
+  ceiling.rotation.x =
+    Math.PI/2;
+
   ceiling.position.y=6;
+
   scene.add(ceiling);
+
 }
 
 function createWalls(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.concrete,6,2);
+  const texture =
+    loadEWSTexture(
+      EWS_TEXTURES.concrete,
+      6,
+      2
+    );
 
-  const mat = new THREE.MeshStandardMaterial({
-    map:texture,
-    color:0x101010,
-    roughness:.93,
-    metalness:.04
-  });
+  const mat =
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x101010,
+      roughness:.93,
+      metalness:.04
+    });
 
-  createBox(36,6,.5,0,3,-17,mat);
-  createBox(36,6,.5,0,3,17,mat);
-  createBox(.5,6,34,-18,3,0,mat);
-  createBox(.5,6,34,18,3,0,mat);
+  createBox(
+    36,6,.5,
+    0,3,-17,
+    mat
+  );
+
+  createBox(
+    36,6,.5,
+    0,3,17,
+    mat
+  );
+
+  createBox(
+    .5,6,34,
+    -18,3,0,
+    mat
+  );
+
+  createBox(
+    .5,6,34,
+    18,3,0,
+    mat
+  );
+
 }
 
 function createDanceFloor(){
@@ -1618,7 +2116,12 @@ function createDanceFloor(){
         14,.12,14
       ),
       new THREE.MeshStandardMaterial({
-        map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
+        map:
+          loadEWSTexture(
+            EWS_TEXTURES.floor,
+            4,
+            4
+          ),
         color:0x151515,
         metalness:.35,
         roughness:.58
@@ -1670,36 +2173,145 @@ function createDanceFloor(){
 
 }
 
+/* =========================================================
+   MAIN SCREEN
+========================================================= */
+
 function createMainScreen(){
-  screenCanvas=document.createElement('canvas');
+
+  screenCanvas =
+    document.createElement(
+      'canvas'
+    );
+
   screenCanvas.width=1024;
   screenCanvas.height=512;
-  screenCtx=screenCanvas.getContext('2d');
+
+  screenCtx =
+    screenCanvas.getContext(
+      '2d'
+    );
+
   screenCtx.fillStyle='#050505';
-  screenCtx.fillRect(0,0,1024,512);
-  screenTexture=new THREE.CanvasTexture(screenCanvas);
+
+  screenCtx.fillRect(
+    0,
+    0,
+    1024,
+    512
+  );
+
+  screenTexture =
+    new THREE.CanvasTexture(
+      screenCanvas
+    );
+
   screenTexture.needsUpdate=true;
 
-  const frame=new THREE.Mesh(
-    new THREE.BoxGeometry(14.6,6.6,.42),
-    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
+  const frame =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        14.6,
+        6.6,
+        .42
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0x080808,
+        metalness:.75,
+        roughness:.28
+      })
+    );
+
+  frame.position.set(
+    0,
+    3.65,
+    -16.72
   );
-  frame.position.set(0,3.65,-16.72);
+
   scene.add(frame);
 
-  screenMesh=new THREE.Mesh(
-    new THREE.PlaneGeometry(14,6),
-    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
+  screenMesh =
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        14,
+        6
+      ),
+      new THREE.MeshBasicMaterial({
+        map:screenTexture,
+        side:THREE.FrontSide
+      })
+    );
+
+  screenMesh.position.set(
+    0,
+    3.65,
+    -16.48
   );
-  screenMesh.position.set(0,3.65,-16.48);
+
   scene.add(screenMesh);
 
-  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
-    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
-    m.position.set(a[3],a[4],a[5]);
-    scene.add(m);
-  });
+  const borderMat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  [
+    [
+      14.2,
+      .035,
+      .035,
+      0,
+      6.68,
+      -16.43
+    ],
+    [
+      14.2,
+      .035,
+      .035,
+      0,
+      .62,
+      -16.43
+    ],
+    [
+      .035,
+      6.1,
+      .035,
+      -7.08,
+      3.65,
+      -16.43
+    ],
+    [
+      .035,
+      6.1,
+      .035,
+      7.08,
+      3.65,
+      -16.43
+    ]
+  ].forEach(
+    a=>{
+
+      const m =
+        new THREE.Mesh(
+          new THREE.BoxGeometry(
+            a[0],
+            a[1],
+            a[2]
+          ),
+          borderMat
+        );
+
+      m.position.set(
+        a[3],
+        a[4],
+        a[5]
+      );
+
+      scene.add(m);
+
+    }
+  );
+
 }
 
 function createStage(){
@@ -1867,7 +2479,9 @@ function createColumns(){
     p=>{
 
       createBox(
-        1,6,1,
+        1,
+        6,
+        1,
         p[0],
         3,
         p[1],
@@ -1913,14 +2527,22 @@ function createEntrance(){
     });
 
   createBox(
-    7,5.5,.6,
-    0,2.75,16.3,
+    7,
+    5.5,
+    .6,
+    0,
+    2.75,
+    16.3,
     frameMat
   );
 
   createBox(
-    5.8,4.7,.1,
-    0,2.35,15.98,
+    5.8,
+    4.7,
+    .1,
+    0,
+    2.35,
+    15.98,
     new THREE.MeshBasicMaterial({
       color:0x020202
     }),
@@ -2004,7 +2626,9 @@ function createNeonArchitecture(){
 
     const left =
       createBox(
-        .06,4,.06,
+        .06,
+        4,
+        .06,
         -17.5,
         3,
         z,
@@ -2015,7 +2639,9 @@ function createNeonArchitecture(){
 
     const right =
       createBox(
-        .06,4,.06,
+        .06,
+        4,
+        .06,
         17.5,
         3,
         z,
@@ -2039,7 +2665,9 @@ function createNeonArchitecture(){
 
     const beam =
       createBox(
-        34,.05,.05,
+        34,
+        .05,
+        .05,
         0,
         5.4,
         z,
@@ -2072,8 +2700,12 @@ function createCeilingBeams(){
   ){
 
     createBox(
-      .3,.3,34,
-      x,5.7,0,
+      .3,
+      .3,
+      34,
+      x,
+      5.7,
+      0,
       mat
     );
 
@@ -2101,7 +2733,9 @@ function createSpeakers(){
     p=>{
 
       createBox(
-        1.2,2.5,.8,
+        1.2,
+        2.5,
+        .8,
         p[0],
         p[1],
         p[2],
@@ -2127,7 +2761,7 @@ function createSpeakers(){
             })
           );
 
-        cone.rotation.x=
+        cone.rotation.x =
           Math.PI/2;
 
         cone.position.set(
@@ -2832,153 +3466,559 @@ function toggleChat(){
 
 }
 
-
 /* =========================================================
-   CLUB SCREEN MEDIA
+   CLUB SCREEN
 ========================================================= */
 
 function toggleScreenMenu(){
-  const menu=document.getElementById('screen-menu');
-  if(!menu) return;
-  menu.classList.toggle('open');
-  if(menu.classList.contains('open')){
-    const input=document.getElementById('screen-url');
-    setTimeout(()=>input && input.focus(),40);
+
+  const menu =
+    document.getElementById(
+      'screen-menu'
+    );
+
+  if(!menu)return;
+
+  menu.classList.toggle(
+    'open'
+  );
+
+  if(
+    menu.classList.contains(
+      'open'
+    )
+  ){
+
+    const input =
+      document.getElementById(
+        'screen-url'
+      );
+
+    setTimeout(
+      ()=>{
+        if(input){
+          input.focus();
+        }
+      },
+      40
+    );
+
   }
+
 }
 
 function setScreenStatus(text){
-  const el=document.getElementById('screen-status');
-  if(el) el.textContent=text;
+
+  const el =
+    document.getElementById(
+      'screen-status'
+    );
+
+  if(el){
+    el.textContent=text;
+  }
+
 }
 
 function youtubeEmbed(url){
+
   try{
-    const u=new URL(url);
+
+    const u =
+      new URL(url);
+
     let id='';
-    if(u.hostname.includes('youtu.be')){
-      id=u.pathname.split('/').filter(Boolean)[0]||'';
-    }else if(u.hostname.includes('youtube.com')){
-      id=u.searchParams.get('v')||'';
-      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
-      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
+
+    if(
+      u.hostname.includes(
+        'youtu.be'
+      )
+    ){
+
+      id =
+        u.pathname
+          .split('/')
+          .filter(Boolean)[0] ||
+        '';
+
+    }else if(
+      u.hostname.includes(
+        'youtube.com'
+      )
+    ){
+
+      id =
+        u.searchParams.get('v') ||
+        '';
+
+      if(
+        !id &&
+        u.pathname.startsWith(
+          '/shorts/'
+        )
+      ){
+
+        id =
+          u.pathname
+            .split('/')[2] ||
+          '';
+
+      }
+
+      if(
+        !id &&
+        u.pathname.startsWith(
+          '/embed/'
+        )
+      ){
+
+        id =
+          u.pathname
+            .split('/')[2] ||
+          '';
+
+      }
+
     }
-    if(!id) return null;
-    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
-  }catch(e){ return null; }
+
+    if(!id){
+      return null;
+    }
+
+    return (
+      'https://www.youtube.com/embed/' +
+      encodeURIComponent(id) +
+      '?autoplay=1&rel=0&playsinline=1'
+    );
+
+  }catch(e){
+
+    return null;
+
+  }
+
 }
 
 function twitchEmbed(url){
+
   try{
-    const u=new URL(url);
-    if(!u.hostname.includes('twitch.tv')) return null;
-    const parts=u.pathname.split('/').filter(Boolean);
-    if(!parts.length) return null;
-    const parent=location.hostname || 'ews-sessions.onrender.com';
-    if(parts[0]==='videos' && parts[1]){
-      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+
+    const u =
+      new URL(url);
+
+    if(
+      !u.hostname.includes(
+        'twitch.tv'
+      )
+    ){
+
+      return null;
     }
-    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-  }catch(e){ return null; }
+
+    const parts =
+      u.pathname
+        .split('/')
+        .filter(Boolean);
+
+    if(!parts.length){
+      return null;
+    }
+
+    const parent =
+      location.hostname ||
+      'ews-sessions.onrender.com';
+
+    if(
+      parts[0]==='videos' &&
+      parts[1]
+    ){
+
+      return (
+        'https://player.twitch.tv/?video=' +
+        encodeURIComponent(parts[1]) +
+        '&parent=' +
+        encodeURIComponent(parent) +
+        '&autoplay=true'
+      );
+
+    }
+
+    return (
+      'https://player.twitch.tv/?channel=' +
+      encodeURIComponent(parts[0]) +
+      '&parent=' +
+      encodeURIComponent(parent) +
+      '&autoplay=true'
+    );
+
+  }catch(e){
+
+    return null;
+
+  }
+
 }
 
 function normalizeClubScreenUrl(raw){
-  const value=String(raw||'').trim();
-  if(!value) return null;
 
-  const yt=youtubeEmbed(value);
-  if(yt) return {src:yt,name:'YOUTUBE'};
+  const value =
+    String(raw || '').trim();
 
-  const tw=twitchEmbed(value);
-  if(tw) return {src:tw,name:'TWITCH'};
-
-  try{
-    const u=new URL(value);
-    if(u.protocol!=='http:' && u.protocol!=='https:') return null;
-    return {src:u.href,name:'WEBSITE'};
-  }catch(e){
+  if(!value){
     return null;
   }
+
+  const yt =
+    youtubeEmbed(value);
+
+  if(yt){
+
+    return {
+      src:yt,
+      name:'YOUTUBE'
+    };
+
+  }
+
+  const tw =
+    twitchEmbed(value);
+
+  if(tw){
+
+    return {
+      src:tw,
+      name:'TWITCH'
+    };
+
+  }
+
+  try{
+
+    const u =
+      new URL(value);
+
+    if(
+      u.protocol!=='http:' &&
+      u.protocol!=='https:'
+    ){
+
+      return null;
+    }
+
+    return {
+      src:u.href,
+      name:'WEBSITE'
+    };
+
+  }catch(e){
+
+    return null;
+
+  }
+
 }
 
 function isClubHost(){
-  return !clubScreenHost || clubScreenHost===currentUser;
+
+  return (
+    !clubScreenHost ||
+    String(
+      clubScreenHost
+    ).toLowerCase() ===
+    String(
+      currentUser
+    ).toLowerCase()
+  );
+
 }
 
 function loadClubScreen(){
+
   if(!isClubHost()){
-    setScreenStatus('Только главный пользователь клуба может включать экран.');
+
+    setScreenStatus(
+      'Только mvxtra может включать экран.'
+    );
+
     return;
   }
-  const input=document.getElementById('screen-url');
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(!input || !frame || !panel) return;
 
-  const result=normalizeClubScreenUrl(input.value);
+  const input =
+    document.getElementById(
+      'screen-url'
+    );
+
+  const frame =
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel =
+    document.getElementById(
+      'media-screen'
+    );
+
+  if(
+    !input ||
+    !frame ||
+    !panel
+  ){
+
+    return;
+  }
+
+  const result =
+    normalizeClubScreenUrl(
+      input.value
+    );
+
   if(!result){
-    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');
+
+    setScreenStatus(
+      'Неверная ссылка.'
+    );
+
     return;
   }
 
-  frame.src=result.src;
-  panel.classList.add('active');
-  screenMediaActive=true;
-  screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — звук управляется плеером на экране.');
-  if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
+  frame.src =
+    result.src;
 
-  const menu=document.getElementById('screen-menu');
-  if(menu) menu.classList.remove('open');
+  panel.classList.add(
+    'active'
+  );
+
+  screenMediaActive=true;
+
+  screenMediaUrl =
+    result.src;
+
+  setScreenStatus(
+    result.name+
+    ' LOADED'
+  );
+
+  if(socket){
+
+    socket.emit(
+      'club-screen-state',
+      {
+        src:
+          result.src,
+
+        name:
+          result.name,
+
+        active:
+          true,
+
+        owner:
+          currentUser
+      }
+    );
+
+  }
+
+  const menu =
+    document.getElementById(
+      'screen-menu'
+    );
+
+  if(menu){
+
+    menu.classList.remove(
+      'open'
+    );
+
+  }
+
 }
 
 function clearClubScreen(){
-  if(!isClubHost()) return;
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(frame) frame.src='about:blank';
-  if(panel) panel.classList.remove('active');
+
+  if(!isClubHost()){
+    return;
+  }
+
+  const frame =
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel =
+    document.getElementById(
+      'media-screen'
+    );
+
+  if(frame){
+
+    frame.src=
+      'about:blank';
+
+  }
+
+  if(panel){
+
+    panel.classList.remove(
+      'active'
+    );
+
+  }
+
   screenMediaActive=false;
+
   screenMediaUrl='';
-  if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
-  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
+
+  if(socket){
+
+    socket.emit(
+      'club-screen-state',
+      {
+        active:false,
+        owner:currentUser
+      }
+    );
+
+  }
+
+  setScreenStatus(
+    'Экран очищен.'
+  );
+
 }
 
 function updateClubScreenOverlay(){
-  const panel=document.getElementById('media-screen');
-  if(!panel || !screenMesh || !camera || !renderer) return;
+
+  const panel =
+    document.getElementById(
+      'media-screen'
+    );
+
+  if(
+    !panel ||
+    !screenMesh ||
+    !camera ||
+    !renderer
+  ){
+
+    return;
+  }
+
   if(!screenMediaActive){
-    panel.style.display='none';
+
+    panel.style.display=
+      'none';
+
     return;
   }
-  const w=renderer.domElement.clientWidth;
-  const h=renderer.domElement.clientHeight;
-  if(!w || !h){ panel.style.display='none'; return; }
 
-  const leftPoint=new THREE.Vector3(-7,3.65,-16.47).project(camera);
-  const rightPoint=new THREE.Vector3(7,3.65,-16.47).project(camera);
-  const topPoint=new THREE.Vector3(0,6.65,-16.47).project(camera);
-  const bottomPoint=new THREE.Vector3(0,.65,-16.47).project(camera);
-  const center=new THREE.Vector3(0,3.65,-16.47).project(camera);
+  const w =
+    renderer.domElement.clientWidth;
 
-  const left=(leftPoint.x*.5+.5)*w;
-  const right=(rightPoint.x*.5+.5)*w;
-  const top=(-topPoint.y*.5+.5)*h;
-  const bottom=(-bottomPoint.y*.5+.5)*h;
-  const cx=(center.x*.5+.5)*w;
-  const cy=(-center.y*.5+.5)*h;
-  const width=Math.abs(right-left);
-  const height=Math.abs(bottom-top);
+  const h =
+    renderer.domElement.clientHeight;
 
-  if(center.z>1 || width<5 || height<5){
-    panel.style.display='none';
+  if(
+    !w ||
+    !h
+  ){
+
+    panel.style.display=
+      'none';
+
     return;
   }
-  panel.style.display='block';
-  panel.style.left=(cx-width/2)+'px';
-  panel.style.top=(cy-height/2)+'px';
-  panel.style.width=width+'px';
-  panel.style.height=height+'px';
+
+  const leftPoint =
+    new THREE.Vector3(
+      -7,
+      3.65,
+      -16.47
+    ).project(camera);
+
+  const rightPoint =
+    new THREE.Vector3(
+      7,
+      3.65,
+      -16.47
+    ).project(camera);
+
+  const topPoint =
+    new THREE.Vector3(
+      0,
+      6.65,
+      -16.47
+    ).project(camera);
+
+  const bottomPoint =
+    new THREE.Vector3(
+      0,
+      .65,
+      -16.47
+    ).project(camera);
+
+  const center =
+    new THREE.Vector3(
+      0,
+      3.65,
+      -16.47
+    ).project(camera);
+
+  const left =
+    (leftPoint.x*.5+.5)*w;
+
+  const right =
+    (rightPoint.x*.5+.5)*w;
+
+  const top =
+    (-topPoint.y*.5+.5)*h;
+
+  const bottom =
+    (-bottomPoint.y*.5+.5)*h;
+
+  const cx =
+    (center.x*.5+.5)*w;
+
+  const cy =
+    (-center.y*.5+.5)*h;
+
+  const width =
+    Math.abs(
+      right-left
+    );
+
+  const height =
+    Math.abs(
+      bottom-top
+    );
+
+  if(
+    center.z>1 ||
+    width<5 ||
+    height<5
+  ){
+
+    panel.style.display=
+      'none';
+
+    return;
+  }
+
+  panel.style.display=
+    'block';
+
+  panel.style.left=
+    (cx-width/2)+'px';
+
+  panel.style.top=
+    (cy-height/2)+'px';
+
+  panel.style.width=
+    width+'px';
+
+  panel.style.height=
+    height+'px';
+
 }
 
 /* =========================================================
@@ -2991,7 +4031,9 @@ function animate(){
     animate
   );
 
-  if(!scene)return;
+  if(!scene){
+    return;
+  }
 
   const dt =
     Math.min(
@@ -3028,7 +4070,7 @@ function animate(){
 
     }
 
-    bass=
+    bass =
       b/
       (
         Math.min(
@@ -3049,35 +4091,33 @@ function animate(){
 
     }
 
-    level=
+    level =
       total/
       (
         freqData.length*255
       );
 
-  }
+  }else{
 
-  else{
-
-    bass=
+    bass =
       .25+
       Math.sin(time*3)*.12;
 
-    level=
+    level =
       .25+
       Math.sin(time*1.5)*.08;
 
   }
 
-  bassLevel=
+  bassLevel =
     bassLevel*.82+
     bass*.18;
 
-  audioLevel=
+  audioLevel =
     audioLevel*.88+
     level*.12;
 
-  const speed=
+  const speed =
     chatMode
       ?0
       :5*dt;
@@ -3088,25 +4128,33 @@ function animate(){
   if(
     keys['KeyW']
   ){
+
     forward+=1;
+
   }
 
   if(
     keys['KeyS']
   ){
+
     forward-=1;
+
   }
 
   if(
     keys['KeyA']
   ){
+
     side-=1;
+
   }
 
   if(
     keys['KeyD']
   ){
+
     side+=1;
+
   }
 
   if(
@@ -3114,25 +4162,25 @@ function animate(){
     !chatMode
   ){
 
-    const fx=
+    const fx =
       -Math.sin(yaw);
 
-    const fz=
+    const fz =
       -Math.cos(yaw);
 
-    const rx=
+    const rx =
       Math.cos(yaw);
 
-    const rz=
+    const rz =
       -Math.sin(yaw);
 
-    camera.position.x+=
+    camera.position.x +=
       (
         fx*forward+
         rx*side
       )*speed;
 
-    camera.position.z+=
+    camera.position.z +=
       (
         fz*forward+
         rz*side
@@ -3140,14 +4188,14 @@ function animate(){
 
   }
 
-  camera.position.x=
+  camera.position.x =
     THREE.MathUtils.clamp(
       camera.position.x,
       -16,
       16
     );
 
-  camera.position.z=
+  camera.position.z =
     THREE.MathUtils.clamp(
       camera.position.z,
       -15.5,
@@ -3177,7 +4225,14 @@ function animate(){
 
   }
 
-  broadcastPlayerState(performance.now());
+  /*
+  Передаём своё положение
+  серверу примерно 20 раз в секунду.
+  */
+
+  broadcastPlayerState(
+    performance.now()
+  );
 
   if(particles){
 
@@ -3190,17 +4245,48 @@ function animate(){
 
   }
 
-  remotePlayers.forEach(p=>{
-    const t=performance.now()/1000;
-    const swing=p.moving?Math.sin(t*8)*.35:0;
-    const limbs=p.group.children.filter(o=>o.isMesh);
-    if(limbs.length>=5){ limbs[2].rotation.x=swing; limbs[3].rotation.x=-swing; limbs[4].rotation.x=-swing; }
-  });
+  /*
+  Анимация удалённых игроков.
+  */
+
+  remotePlayers.forEach(
+    p=>{
+
+      const t =
+        performance.now()/1000;
+
+      const swing =
+        p.moving
+          ?Math.sin(t*8)*.35
+          :0;
+
+      const limbs =
+        p.group.children.filter(
+          o=>o.isMesh
+        );
+
+      if(
+        limbs.length>=5
+      ){
+
+        limbs[2].rotation.x=
+          swing;
+
+        limbs[3].rotation.x=
+          -swing;
+
+        limbs[4].rotation.x=
+          -swing;
+
+      }
+
+    }
+  );
 
   neonObjects.forEach(
     (obj,index)=>{
 
-      const pulse=
+      const pulse =
         .5+
         Math.sin(
           time*3+
@@ -3208,7 +4294,7 @@ function animate(){
         )*.25+
         bassLevel*.7;
 
-      const value=
+      const value =
         Math.min(
           1,
           pulse
@@ -3226,7 +4312,7 @@ function animate(){
   lightObjects.forEach(
     (light,index)=>{
 
-      light.intensity=
+      light.intensity =
         1+
         bassLevel*2+
         Math.sin(
@@ -3236,6 +4322,10 @@ function animate(){
 
     }
   );
+
+  /*
+  Main screen visualizer.
+  */
 
   if(screenCtx){
 
@@ -3257,7 +4347,7 @@ function animate(){
         0
       );
 
-    const intensity=
+    const intensity =
       40+
       Math.floor(
         bassLevel*120
@@ -3333,7 +4423,7 @@ function animate(){
         audioStarted
       ){
 
-        value=
+        value =
           freqData[
             Math.floor(
               i*
@@ -3344,7 +4434,7 @@ function animate(){
 
       }else{
 
-        value=
+        value =
           .2+
           Math.sin(
             time*4+
@@ -3353,7 +4443,7 @@ function animate(){
 
       }
 
-      const h=
+      const h =
         value*180;
 
       screenCtx.fillStyle=
@@ -3382,81 +4472,665 @@ function animate(){
 }
 
 /* =========================================================
-   REMOTE PLAYERS / SILHOUETTES
+   REMOTE PLAYERS
 ========================================================= */
+
 function createRemotePlayer(data){
-  const g=new THREE.Group();
-  g.userData.username=data.username||'PLAYER';
 
-  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
-  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
+  if(
+    !data ||
+    !data.id
+  ){
 
-  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
+    return null;
+  }
+
+  /*
+  Если такой игрок уже существует,
+  не создаём второго.
+  */
+
+  if(
+    remotePlayers.has(
+      data.id
+    )
+  ){
+
+    return remotePlayers.get(
+      data.id
+    );
+
+  }
+
+  const g =
+    new THREE.Group();
+
+  g.userData.username =
+    data.username ||
+    'PLAYER';
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x777777,
+      roughness:1,
+      metalness:0
+    });
+
+  const dark =
+    new THREE.MeshStandardMaterial({
+      color:0x151515,
+      roughness:1
+    });
+
+  /*
+  BODY
+  */
+
+  const torso =
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        .22,
+        .30,
+        .85,
+        8
+      ),
+      mat
+    );
+
   torso.position.y=.78;
+
   g.add(torso);
 
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
+  /*
+  HEAD
+  */
+
+  const head =
+    new THREE.Mesh(
+      new THREE.SphereGeometry(
+        .23,
+        12,
+        12
+      ),
+      mat
+    );
+
   head.position.y=1.42;
+
   g.add(head);
 
-  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
-  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
-  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
-  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
-  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
-  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
+  /*
+  ARMS
+  */
 
-  const labelCanvas=document.createElement('canvas');
-  labelCanvas.width=256; labelCanvas.height=64;
-  const ctx=labelCanvas.getContext('2d');
-  ctx.clearRect(0,0,256,64);
-  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
-  ctx.fillText(g.userData.username,128,32);
-  const tex=new THREE.CanvasTexture(labelCanvas);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+  const armGeo =
+    new THREE.CylinderGeometry(
+      .075,
+      .09,
+      .72,
+      6
+    );
 
-  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y=Number(data.yaw)||0;
+  const leftArm =
+    new THREE.Mesh(
+      armGeo,
+      dark
+    );
+
+  leftArm.position.set(
+    -.34,
+    .80,
+    0
+  );
+
+  leftArm.rotation.z=
+    -.12;
+
+  g.add(leftArm);
+
+  const rightArm =
+    new THREE.Mesh(
+      armGeo,
+      dark
+    );
+
+  rightArm.position.set(
+    .34,
+    .80,
+    0
+  );
+
+  rightArm.rotation.z=
+    .12;
+
+  g.add(rightArm);
+
+  /*
+  LEGS
+  */
+
+  const legGeo =
+    new THREE.CylinderGeometry(
+      .09,
+      .11,
+      .82,
+      6
+    );
+
+  const leftLeg =
+    new THREE.Mesh(
+      legGeo,
+      dark
+    );
+
+  leftLeg.position.set(
+    -.13,
+    .30,
+    0
+  );
+
+  g.add(leftLeg);
+
+  const rightLeg =
+    new THREE.Mesh(
+      legGeo,
+      dark
+    );
+
+  rightLeg.position.set(
+    .13,
+    .30,
+    0
+  );
+
+  g.add(rightLeg);
+
+  /*
+  NAME
+  */
+
+  const labelCanvas =
+    document.createElement(
+      'canvas'
+    );
+
+  labelCanvas.width=256;
+  labelCanvas.height=64;
+
+  const ctx =
+    labelCanvas.getContext(
+      '2d'
+    );
+
+  ctx.clearRect(
+    0,
+    0,
+    256,
+    64
+  );
+
+  ctx.font=
+    'bold 24px Arial';
+
+  ctx.textAlign=
+    'center';
+
+  ctx.fillStyle=
+    '#ffffff';
+
+  ctx.fillText(
+    g.userData.username,
+    128,
+    32
+  );
+
+  const tex =
+    new THREE.CanvasTexture(
+      labelCanvas
+    );
+
+  const label =
+    new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map:tex,
+        transparent:true,
+        depthTest:false
+      })
+    );
+
+  label.scale.set(
+    1.7,
+    .42,
+    1
+  );
+
+  label.position.y=
+    1.95;
+
+  g.add(label);
+
+  /*
+  ПРАВИЛЬНЫЕ КООРДИНАТЫ.
+  */
+
+  g.position.set(
+    Number.isFinite(
+      Number(data.x)
+    )
+      ? Number(data.x)
+      : 0,
+
+    0,
+
+    Number.isFinite(
+      Number(data.z)
+    )
+      ? Number(data.z)
+      : 0
+  );
+
+  /*
+  Сервер может прислать ry
+  или yaw.
+  */
+
+  const initialYaw =
+    Number.isFinite(
+      Number(data.yaw)
+    )
+      ? Number(data.yaw)
+      : (
+          Number.isFinite(
+            Number(data.ry)
+          )
+            ? Number(data.ry)
+            : 0
+        );
+
+  g.rotation.y=
+    initialYaw;
+
   scene.add(g);
-  remotePlayers.set(data.id,{group:g,last:{x:g.position.x,z:g.position.z,yaw:g.rotation.y},moving:false});
+
+  const remote = {
+
+    group:g,
+
+    last:{
+      x:g.position.x,
+      z:g.position.z,
+      yaw:g.rotation.y
+    },
+
+    moving:
+      !!data.moving
+
+  };
+
+  remotePlayers.set(
+    data.id,
+    remote
+  );
+
+  console.log(
+    '[REMOTE PLAYER CREATED]',
+    data.username,
+    data.id,
+    g.position.x,
+    g.position.z
+  );
+
+  return remote;
 }
 
 function updateRemotePlayer(data){
-  if(!data.id || data.id===socket?.id) return;
-  if(!remotePlayers.has(data.id)) createRemotePlayer(data);
-  const p=remotePlayers.get(data.id);
-  const nx=Number(data.x)||0, nz=Number(data.z)||0;
-  const dx=nx-p.group.position.x, dz=nz-p.group.position.z;
-  p.moving=Math.hypot(dx,dz)>.002;
-  p.group.position.x=nx; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
+
+  if(
+    !data ||
+    !data.id
+  ){
+
+    return;
+  }
+
+  if(
+    socket &&
+    data.id === socket.id
+  ){
+
+    return;
+  }
+
+  /*
+  Если друга ещё нет —
+  СОЗДАЁМ его сразу.
+  */
+
+  if(
+    !remotePlayers.has(
+      data.id
+    )
+  ){
+
+    createRemotePlayer(
+      data
+    );
+
+  }
+
+  const p =
+    remotePlayers.get(
+      data.id
+    );
+
+  if(!p){
+    return;
+  }
+
+  const nx =
+    Number.isFinite(
+      Number(data.x)
+    )
+      ? Number(data.x)
+      : p.group.position.x;
+
+  const nz =
+    Number.isFinite(
+      Number(data.z)
+    )
+      ? Number(data.z)
+      : p.group.position.z;
+
+  const dx =
+    nx-
+    p.group.position.x;
+
+  const dz =
+    nz-
+    p.group.position.z;
+
+  /*
+  Сервер явно сообщает moving,
+  поэтому используем его.
+  */
+
+  p.moving =
+    typeof data.moving === 'boolean'
+      ? data.moving
+      : Math.hypot(
+          dx,
+          dz
+        )>.002;
+
+  /*
+  Обновляем позицию.
+  */
+
+  p.group.position.x=
+    nx;
+
+  p.group.position.z=
+    nz;
+
+  /*
+  Поддерживаем и yaw,
+  и ry.
+  */
+
+  let newYaw;
+
+  if(
+    Number.isFinite(
+      Number(data.yaw)
+    )
+  ){
+
+    newYaw =
+      Number(data.yaw);
+
+  }else if(
+    Number.isFinite(
+      Number(data.ry)
+    )
+  ){
+
+    newYaw =
+      Number(data.ry);
+
+  }
+
+  if(
+    Number.isFinite(
+      newYaw
+    )
+  ){
+
+    p.group.rotation.y=
+      newYaw;
+
+  }
+
+  p.last.x=
+    nx;
+
+  p.last.z=
+    nz;
+
+  p.last.yaw=
+    p.group.rotation.y;
+
 }
 
 function removeRemotePlayer(id){
-  const p=remotePlayers.get(id);
-  if(!p) return;
-  scene.remove(p.group);
-  p.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }});
-  remotePlayers.delete(id);
+
+  if(!id){
+    return;
+  }
+
+  const p =
+    remotePlayers.get(
+      id
+    );
+
+  if(!p){
+    return;
+  }
+
+  scene.remove(
+    p.group
+  );
+
+  p.group.traverse(
+    o=>{
+
+      if(o.geometry){
+
+        o.geometry.dispose();
+
+      }
+
+      if(o.material){
+
+        if(
+          o.material.map
+        ){
+
+          o.material.map.dispose();
+
+        }
+
+        o.material.dispose();
+
+      }
+
+    }
+  );
+
+  remotePlayers.delete(
+    id
+  );
+
+  console.log(
+    '[REMOTE PLAYER REMOVED]',
+    id
+  );
+
 }
+
+/* =========================================================
+   SEND OUR PLAYER POSITION
+========================================================= */
 
 function broadcastPlayerState(now){
-  if(!socket || !socket.connected || !camera) return;
-  if(now-lastPlayerBroadcast<50) return;
-  lastPlayerBroadcast=now;
-  socket.emit('player-state',{x:camera.position.x,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser});
+
+  if(
+    !socket ||
+    !socket.connected ||
+    !camera
+  ){
+
+    return;
+  }
+
+  /*
+  Не чаще примерно 20 раз/сек.
+  */
+
+  if(
+    now-lastPlayerBroadcast<
+    50
+  ){
+
+    return;
+  }
+
+  lastPlayerBroadcast=
+    now;
+
+  const moving =
+    !!(
+      keys['KeyW'] ||
+      keys['KeyA'] ||
+      keys['KeyS'] ||
+      keys['KeyD']
+    );
+
+  const data={
+
+    x:
+      camera.position.x,
+
+    y:
+      camera.position.y,
+
+    z:
+      camera.position.z,
+
+    yaw:
+      yaw,
+
+    ry:
+      yaw,
+
+    pitch:
+      pitch,
+
+    moving:
+      moving,
+
+    jumping:
+      false,
+
+    username:
+      currentUser
+
+  };
+
+  /*
+  Основное событие.
+  */
+
+  socket.emit(
+    'player-state',
+    data
+  );
+
+  /*
+  Совместимость.
+  */
+
+  socket.emit(
+    'player-move',
+    data
+  );
+
 }
 
-function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(!frame || !panel) return;
-  if(!state.active){
-    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl=''; return;
+/* =========================================================
+   REMOTE SCREEN
+========================================================= */
+
+function applyRemoteClubScreen(
+  state
+){
+
+  const frame =
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel =
+    document.getElementById(
+      'media-screen'
+    );
+
+  if(
+    !frame ||
+    !panel
+  ){
+
+    return;
   }
-  if(state.src && state.src!==screenMediaUrl){
-    frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
+
+  if(
+    state.active === false
+  ){
+
+    frame.src=
+      'about:blank';
+
+    panel.classList.remove(
+      'active'
+    );
+
+    screenMediaActive=false;
+
+    screenMediaUrl='';
+
+    return;
+
   }
+
+  if(
+    state.src &&
+    state.src !==
+      screenMediaUrl
+  ){
+
+    frame.src=
+      state.src;
+
+    screenMediaUrl=
+      state.src;
+
+    screenMediaActive=true;
+
+    panel.classList.add(
+      'active'
+    );
+
+  }
+
 }
 
 /* =========================================================
@@ -3470,7 +5144,9 @@ window.addEventListener(
     try{
 
       if(hls){
+
         hls.destroy();
+
       }
 
     }catch(e){}
@@ -3478,12 +5154,20 @@ window.addEventListener(
     try{
 
       if(audioContext){
+
         audioContext.close();
+
       }
 
     }catch(e){}
 
   }
+);
+
+</script>
+
+</body>
+</html>
 );
 
 </script>
