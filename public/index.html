@@ -1696,9 +1696,11 @@ function createMainScreen(){
 
   // Единая неподвижная группа: экран намертво закреплён на передней стене.
   const wallScreen=new THREE.Group();
-  wallScreen.position.set(0,3.6,-16.70);
-  wallScreen.rotation.set(0,0,0);
-  wallScreen.quaternion.set(0,0,0,1);
+  // Главный screen стоит на той же задней стене, где раньше был логотип EWS SESSIONS.
+  // Он не следует за камерой и не вращается.
+  wallScreen.position.set(0,5.35,15.25);
+  wallScreen.rotation.set(0,Math.PI,0);
+  wallScreen.quaternion.setFromEuler(new THREE.Euler(0,Math.PI,0));
   scene.add(wallScreen);
 
   const frame=new THREE.Mesh(
@@ -1712,7 +1714,8 @@ function createMainScreen(){
     new THREE.PlaneGeometry(15.5,6.5),
     new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
   );
-  screenMesh.position.set(0,0,.20);
+  screenMesh.position.set(0,0,-.20);
+  // Передняя сторона экрана смотрит в зал, от задней стены.
   screenMesh.rotation.set(0,0,0);
   wallScreen.add(screenMesh);
 
@@ -2003,6 +2006,8 @@ function createEntrance(){
     15.65
   );
 
+  // Старую надпись EWS SESSIONS убираем: на её месте теперь настоящий club screen.
+  sign.visible = false;
   scene.add(sign);
 
 }
@@ -2971,10 +2976,10 @@ function updateClubScreenOverlay(){
   if(!w || !h) return;
 
   const center=screenMesh.position.clone().project(camera);
-  const leftPoint=new THREE.Vector3(-7.75,3.25,-16.28).project(camera);
-  const rightPoint=new THREE.Vector3(7.75,3.25,-16.28).project(camera);
-  const topPoint=new THREE.Vector3(0,6.85,-16.28).project(camera);
-  const bottomPoint=new THREE.Vector3(0,.35,-16.28).project(camera);
+  const leftPoint=new THREE.Vector3(-7.75,8.60,15.05).project(camera);
+  const rightPoint=new THREE.Vector3(7.75,8.60,15.05).project(camera);
+  const topPoint=new THREE.Vector3(0,8.60,15.05).project(camera);
+  const bottomPoint=new THREE.Vector3(0,2.10,15.05).project(camera);
 
   const cx=(center.x*.5+.5)*w;
   const cy=(-center.y*.5+.5)*h;
