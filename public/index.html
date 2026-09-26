@@ -323,17 +323,63 @@ input:focus{
   color:rgba(255,255,255,.4);
   pointer-events:none;
 }
-#ssh101-player{
+
+#ssh101-audio-panel{
   position:fixed;
-  width:320px;
-  height:180px;
   right:20px;
   bottom:20px;
-  z-index:30;
-  border:1px solid rgba(255,255,255,.18);
+  width:360px;
+  height:235px;
+  z-index:50;
+  background:#050505;
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 0 30px rgba(0,0,0,.6);
+  font-family:monospace;
+}
+
+#ssh101-title{
+  height:32px;
+  display:flex;
+  align-items:center;
+  padding:0 10px;
+  box-sizing:border-box;
+  color:#fff;
+  background:#090909;
+  border-bottom:1px solid #222;
+  font-size:9px;
+  letter-spacing:2px;
+}
+
+#ssh101-player{
+  display:block;
+  width:360px;
+  height:203px;
+  border:0;
   background:#000;
 }
 
+#ssh101-help{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+
+@media(max-width:600px){
+  #ssh101-audio-panel{
+    right:10px;
+    bottom:10px;
+    width:300px;
+    height:200px;
+  }
+  #ssh101-player{
+    width:300px;
+    height:168px;
+  }
+}
 </style>
 </head>
 
@@ -343,7 +389,18 @@ input:focus{
 
 <canvas id="canvas3d"></canvas>
 
-<iframe id="ssh101-player" src="https://ssh101.com/securelive/index.php?id=ewsessions" allow="autoplay; fullscreen" frameborder="0" scrolling="no"></iframe>
+<div id="ssh101-audio-panel">
+  <div id="ssh101-title">EWS SESSIONS / LIVE AUDIO</div>
+  <iframe
+    id="ssh101-player"
+    src="https://ssh101.com/securelive/index.php?id=ewsessions"
+    allow="autoplay; fullscreen; encrypted-media"
+    frameborder="0"
+    scrolling="no"
+    allowfullscreen>
+  </iframe>
+  <div id="ssh101-help">PRESS PLAY TO START AUDIO</div>
+</div>
 
 <!-- LOGIN -->
 
@@ -1854,22 +1911,15 @@ function setupAudio(){
   }
 
   indicator.textContent =
-    'AUDIO: SSH101';
+    'AUDIO: CLICK PLAY';
 
   player.addEventListener('load',function(){
     indicator.textContent =
-      'AUDIO: LIVE';
-
-    indicator.classList.add('live');
+      'AUDIO: READY — PRESS PLAY';
   });
 
-  /*
-     SSH101 handles the live stream inside its own official player.
-     The player is embedded directly into EWS SESSIONS, so the site
-     no longer depends on the broken direct HLS URL/certificate.
-  */
-
 }
+
 
 
 /* =========================================================
