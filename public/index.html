@@ -1,2836 +1,3097 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0"
+>
+
 <title>EWS SESSIONS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="/socket.io/socket.io.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
+<script src="/socket.io/socket.io.js"></script>
+
 <style>
+
 *{
-    box-sizing:border-box;
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
 }
 
 html,
 body{
-    width:100%;
-    height:100%;
-    margin:0;
-    overflow:hidden;
-    background:#000;
-    color:#fff;
-    font-family:Arial,Helvetica,sans-serif;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#050505;
+  color:#fff;
+  font-family:Arial,Helvetica,sans-serif;
 }
 
-body{
-    user-select:none;
+#app{
+  position:relative;
+  width:100vw;
+  height:100vh;
 }
 
-#game{
-    position:fixed;
-    inset:0;
+#canvas3d{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
 }
 
-canvas{
-    display:block;
-}
-
-/* =========================
+/* =========================================================
    LOGIN
-========================= */
+========================================================= */
 
 #login{
-    position:fixed;
-    inset:0;
-    z-index:1000;
+  position:absolute;
+  inset:0;
+  z-index:1000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    background:
-        radial-gradient(
-            ellipse at center,
-            #111 0%,
-            #050505 38%,
-            #000 78%
-        );
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(255,255,255,.08),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      #171717,
+      #030303 70%
+    );
 }
 
-.login{
-    width:350px;
-    padding:38px 34px;
+.login-box{
+  width:380px;
+  padding:42px;
 
-    background:rgba(0,0,0,.88);
+  background:rgba(5,5,5,.88);
 
-    border:1px solid #292929;
+  border:1px solid #444;
 
-    box-shadow:
-        0 0 80px rgba(255,255,255,.025),
-        0 30px 100px rgba(0,0,0,.95);
+  box-shadow:
+    0 0 80px rgba(255,255,255,.06),
+    inset 0 0 40px rgba(255,255,255,.02);
+
+  text-align:center;
 }
 
-.logo{
-    text-align:center;
-
-    font-size:42px;
-    line-height:1;
-
-    font-weight:900;
-    letter-spacing:13px;
-
-    margin-left:13px;
+.login-box h1{
+  font-size:31px;
+  letter-spacing:8px;
+  font-weight:900;
+  color:#fff;
+  margin-bottom:8px;
 }
 
-.logoLine{
-    width:100%;
-    height:1px;
-
-    margin:18px 0;
-
-    background:#252525;
+.login-box p{
+  font-size:10px;
+  letter-spacing:5px;
+  color:#777;
+  margin-bottom:30px;
 }
 
-.subtitle{
-    text-align:center;
-
-    color:#666;
-
-    font-size:8px;
-    letter-spacing:5px;
-
-    margin-bottom:28px;
+.tabs{
+  display:flex;
+  margin-bottom:20px;
+  border:1px solid #333;
 }
 
-.login input{
-    width:100%;
-    height:44px;
-
-    margin-top:9px;
-
-    padding:0 13px;
-
-    outline:none;
-
-    border:1px solid #222;
-
-    background:#080808;
-
-    color:#eee;
-
-    font-size:11px;
-
-    letter-spacing:1px;
+.tab{
+  flex:1;
+  padding:11px;
+  border:0;
+  background:#0c0c0c;
+  color:#666;
+  cursor:pointer;
+  letter-spacing:2px;
 }
 
-.login input:focus{
-    border-color:#555;
+.tab.active{
+  background:#fff;
+  color:#000;
 }
 
-.login button{
-    width:100%;
-    height:44px;
+input{
+  width:100%;
+  height:45px;
+  margin-bottom:12px;
+  padding:0 14px;
 
-    margin-top:14px;
+  border:1px solid #333;
+  background:#080808;
+  color:#fff;
 
-    border:0;
-
-    background:#eee;
-    color:#050505;
-
-    font-size:10px;
-    font-weight:bold;
-
-    letter-spacing:3px;
-
-    cursor:pointer;
+  outline:none;
 }
 
-.login button:hover{
-    background:#fff;
+input:focus{
+  border-color:#aaa;
 }
 
-#switch{
-    margin-top:18px;
+.btn{
+  width:100%;
+  height:45px;
 
-    text-align:center;
+  border:0;
 
-    color:#555;
+  background:#fff;
+  color:#000;
 
-    font-size:9px;
-    letter-spacing:2px;
+  font-weight:bold;
+  letter-spacing:2px;
 
-    cursor:pointer;
+  cursor:pointer;
 }
 
-#switch:hover{
-    color:#aaa;
+.btn:hover{
+  background:#ddd;
 }
 
-#loginMessage{
-    min-height:16px;
-
-    margin-top:12px;
-
-    text-align:center;
-
-    color:#777;
-
-    font-size:10px;
+.error{
+  min-height:20px;
+  margin-top:12px;
+  color:#ff5555;
+  font-size:12px;
 }
 
-/* =========================
+/* =========================================================
    HUD
-========================= */
+========================================================= */
 
 #hud{
-    position:fixed;
-    inset:0;
+  position:absolute;
+  inset:0;
+  z-index:20;
 
-    z-index:50;
+  display:none;
 
-    pointer-events:none;
+  pointer-events:none;
 }
 
-.hidden{
-    display:none!important;
+#top-logo{
+  position:absolute;
+
+  top:18px;
+  left:20px;
+
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:5px;
+
+  text-shadow:0 0 20px #fff;
 }
 
-#logoHud{
-    position:absolute;
+#top-logo span{
+  display:block;
 
-    top:24px;
-    left:27px;
+  margin-top:4px;
+
+  font-size:8px;
+  letter-spacing:3px;
+  color:#777;
 }
 
-#logoHud .big{
-    font-size:17px;
-    font-weight:900;
-    letter-spacing:5px;
+#online-box{
+  position:absolute;
+
+  top:18px;
+  right:18px;
+
+  width:190px;
+
+  padding:13px;
+
+  background:rgba(0,0,0,.72);
+
+  border:1px solid #333;
+
+  pointer-events:auto;
 }
 
-#logoHud .small{
-    margin-top:3px;
-
-    color:#555;
-
-    font-size:7px;
-    letter-spacing:4px;
+#online-box h3{
+  font-size:10px;
+  letter-spacing:3px;
+  color:#aaa;
+  margin-bottom:9px;
 }
 
-#online{
-    position:absolute;
+#online-list{
+  list-style:none;
 
-    top:25px;
-    right:27px;
+  max-height:180px;
+  overflow:auto;
 
-    text-align:right;
-
-    color:#777;
-
-    font-size:8px;
-    letter-spacing:3px;
+  color:#ddd;
+  font-size:12px;
 }
 
-#online strong{
-    color:#ddd;
+#online-list li{
+  padding:4px 0;
+
+  border-bottom:1px solid #161616;
 }
 
-/* =========================
-   ONLINE PANEL
-========================= */
+#online-list li::before{
+  content:"●";
 
-#onlinePanel{
-    position:absolute;
+  color:#fff;
 
-    right:27px;
-    top:57px;
+  margin-right:7px;
 
-    width:175px;
-
-    padding:13px;
-
-    pointer-events:none;
-
-    background:rgba(0,0,0,.48);
-
-    border:1px solid rgba(255,255,255,.07);
-
-    backdrop-filter:blur(12px);
+  font-size:8px;
 }
 
-.panelTitle{
-    color:#444;
-
-    font-size:7px;
-    letter-spacing:3px;
-
-    margin-bottom:9px;
-}
-
-.user{
-    padding:5px 0;
-
-    border-bottom:1px solid rgba(255,255,255,.04);
-
-    color:#aaa;
-
-    font-size:10px;
-}
-
-.user:last-child{
-    border-bottom:0;
-}
-
-.user::before{
-    content:"";
-
-    display:inline-block;
-
-    width:4px;
-    height:4px;
-
-    margin-right:7px;
-
-    border-radius:50%;
-
-    background:#888;
-}
-
-/* =========================
+/* =========================================================
    CHAT
-========================= */
+========================================================= */
 
 #chat{
-    position:absolute;
+  position:absolute;
 
-    left:27px;
-    bottom:27px;
+  left:18px;
+  bottom:18px;
 
-    width:330px;
-    height:205px;
+  width:390px;
+  height:250px;
 
-    pointer-events:auto;
+  padding:12px;
 
-    display:flex;
-    flex-direction:column;
+  display:flex;
+  flex-direction:column;
 
-    background:rgba(0,0,0,.45);
+  background:rgba(0,0,0,.75);
 
-    border:1px solid rgba(255,255,255,.08);
+  border:1px solid #333;
 
-    backdrop-filter:blur(12px);
+  pointer-events:auto;
 }
 
-#messages{
-    flex:1;
+#chat-title{
+  font-size:9px;
+  letter-spacing:3px;
+  color:#777;
 
-    padding:12px;
-
-    overflow-y:auto;
-
-    scrollbar-width:none;
+  margin-bottom:8px;
 }
 
-#messages::-webkit-scrollbar{
-    display:none;
+#chat-messages{
+  flex:1;
+
+  overflow-y:auto;
+
+  margin-bottom:8px;
 }
 
 .msg{
-    margin-bottom:8px;
+  margin-bottom:7px;
 
-    font-size:10px;
-    line-height:1.4;
-
-    color:#999;
+  font-size:12px;
+  line-height:1.4;
 }
 
-.msg b{
-    margin-right:5px;
-
-    color:#ddd;
-
-    font-weight:600;
+.msg .u{
+  color:#fff;
+  font-weight:bold;
 }
 
-.msg.system{
-    color:#444;
-
-    font-size:9px;
+.msg .t{
+  color:#aaa;
 }
 
-#chatForm{
-    height:38px;
-
-    display:flex;
-
-    border-top:1px solid rgba(255,255,255,.07);
+#chat-form{
+  display:flex;
+  gap:6px;
 }
 
-#chatInput{
-    flex:1;
-
-    min-width:0;
-
-    border:0;
-    outline:0;
-
-    padding:0 12px;
-
-    background:#050505;
-
-    color:#ddd;
-
-    font-size:10px;
+#chat-input{
+  flex:1;
+  height:35px;
+  margin:0;
 }
 
-#chatInput::placeholder{
-    color:#444;
+#chat-send{
+  width:45px;
+
+  border:0;
+
+  background:#fff;
+  color:#000;
+
+  cursor:pointer;
 }
 
-#send{
-    width:60px;
+/* =========================================================
+   OTHER HUD
+========================================================= */
 
-    border:0;
+#hint{
+  position:absolute;
 
-    background:#ddd;
-    color:#050505;
+  right:18px;
+  bottom:18px;
 
-    font-size:8px;
-    font-weight:bold;
+  padding:9px 12px;
 
-    letter-spacing:1px;
+  background:rgba(0,0,0,.65);
 
-    cursor:pointer;
+  border:1px solid #292929;
+
+  color:#777;
+
+  font-size:10px;
+  letter-spacing:1px;
 }
 
-#send:hover{
-    background:#fff;
+#stream-indicator{
+  position:absolute;
+
+  top:18px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  padding:6px 12px;
+
+  background:rgba(0,0,0,.75);
+
+  border:1px solid #333;
+
+  color:#777;
+
+  font-family:monospace;
+
+  font-size:10px;
+  letter-spacing:2px;
 }
 
-/* =========================
-   AUDIO
-========================= */
-
-#audio{
-    position:absolute;
-
-    right:27px;
-    bottom:27px;
-
-    width:145px;
-    height:32px;
-
-    pointer-events:auto;
-
-    border:1px solid rgba(255,255,255,.12);
-
-    background:rgba(0,0,0,.55);
-
-    color:#888;
-
-    font-size:8px;
-    letter-spacing:2px;
-
-    cursor:pointer;
+#stream-indicator.live{
+  color:#fff;
+  border-color:#aaa;
 }
 
-#audio:hover{
-    color:#fff;
-
-    border-color:#444;
+#stream-indicator.error{
+  color:#ff5555;
+  border-color:#ff5555;
 }
 
-/* =========================
-   FADE
-========================= */
+#lang-bar{
+  position:absolute;
 
-#fade{
-    position:fixed;
-    inset:0;
+  right:220px;
+  top:18px;
 
-    z-index:900;
-
-    background:#000;
-
-    pointer-events:none;
-
-    opacity:1;
-
-    transition:opacity 1.2s ease;
+  pointer-events:auto;
 }
 
-/* =========================
+#lang{
+  background:#080808;
+
+  border:1px solid #333;
+
+  color:#aaa;
+
+  padding:7px 10px;
+}
+
+#zone-label{
+  position:absolute;
+
+  left:50%;
+  bottom:90px;
+
+  transform:translateX(-50%);
+
+  font-size:10px;
+
+  letter-spacing:5px;
+
+  color:rgba(255,255,255,.4);
+
+  pointer-events:none;
+}
+
+#audio-control{
+  position:absolute;
+
+  top:58px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  z-index:100;
+
+  pointer-events:auto;
+
+  padding:9px 14px;
+
+  border:1px solid #444;
+
+  background:rgba(0,0,0,.78);
+
+  color:#aaa;
+
+  font-family:monospace;
+
+  font-size:10px;
+
+  letter-spacing:2px;
+
+  cursor:pointer;
+}
+
+#audio-control.live{
+  color:#fff;
+  border-color:#aaa;
+}
+
+#audio-control:disabled{
+  opacity:.7;
+  cursor:wait;
+}
+
+#ews-audio{
+  position:absolute;
+
+  width:1px;
+  height:1px;
+
+  opacity:0;
+
+  pointer-events:none;
+}
+
+/* =========================================================
    MOBILE
-========================= */
+========================================================= */
 
 @media(max-width:700px){
 
-    #chat{
-        left:12px;
-        bottom:12px;
+  #top-logo{
+    top:12px;
+    left:12px;
+    font-size:22px;
+  }
 
-        width:calc(100% - 24px);
-    }
+  #top-logo span{
+    font-size:9px;
+  }
 
-    #onlinePanel{
-        right:12px;
-        top:55px;
+  #lang-bar{
+    right:12px;
+    top:12px;
+  }
 
-        width:145px;
-    }
+  #lang{
+    padding:6px 7px;
+    font-size:11px;
+  }
 
-    #audio{
-        right:12px;
-        bottom:230px;
-    }
+  #online-box{
+    top:52px;
+    right:12px;
 
-    #logoHud{
-        left:14px;
-        top:14px;
-    }
+    width:145px;
 
-    #online{
-        right:14px;
-        top:16px;
-    }
+    padding:9px;
 
+    max-height:105px;
+  }
+
+  #online-list{
+    max-height:62px;
+    font-size:10px;
+  }
+
+  #online-box h3{
+    font-size:8px;
+    margin-bottom:5px;
+  }
+
+  #online-list li{
+    padding:2px 0;
+  }
+
+  #stream-indicator{
+    top:52px;
+    left:12px;
+
+    transform:none;
+
+    padding:5px 8px;
+
+    font-size:8px;
+  }
+
+  #audio-control{
+    top:84px;
+    left:12px;
+
+    transform:none;
+
+    padding:8px 10px;
+
+    font-size:8px;
+
+    z-index:150;
+  }
+
+  #chat{
+    left:10px;
+    right:10px;
+    bottom:10px;
+
+    width:auto;
+
+    height:31vh;
+
+    min-height:190px;
+    max-height:270px;
+
+    padding:9px;
+
+    z-index:200;
+
+    background:rgba(0,0,0,.86);
+  }
+
+  #chat-title{
+    font-size:8px;
+    margin-bottom:6px;
+  }
+
+  #chat-messages{
+    font-size:11px;
+    margin-bottom:6px;
+  }
+
+  .msg{
+    font-size:11px;
+    margin-bottom:5px;
+  }
+
+  #chat-input{
+    height:38px;
+
+    font-size:14px;
+
+    padding:0 9px;
+  }
+
+  #chat-send{
+    width:44px;
+
+    font-size:18px;
+  }
+
+  #hint{
+    display:none;
+  }
+
+  #zone-label{
+    bottom:calc(31vh + 20px);
+
+    font-size:8px;
+  }
 }
+
+@media(max-width:420px){
+
+  #online-box{
+    width:125px;
+  }
+
+  #chat{
+    height:34vh;
+    min-height:185px;
+  }
+
+  #zone-label{
+    bottom:calc(34vh + 20px);
+  }
+}
+
 </style>
 </head>
 
 <body>
 
-<div id="game"></div>
+<div id="app">
 
-<div id="fade"></div>
+<canvas id="canvas3d"></canvas>
 
-<!-- LOGIN -->
+<audio
+  id="ews-audio"
+  crossorigin="anonymous"
+  playsinline
+  preload="none">
+</audio>
+
+<!-- =====================================================
+     LOGIN
+===================================================== -->
 
 <div id="login">
 
-    <div class="login">
+  <div class="login-box">
 
-        <div class="logo">EWS</div>
+    <h1>EWS</h1>
 
-        <div class="logoLine"></div>
+    <p>
+      SESSIONS / UNDERGROUND CLUB
+    </p>
 
-        <div class="subtitle">
-            SESSIONS / UNDERGROUND CLUB
-        </div>
+    <div class="tabs">
 
-        <input
-            id="username"
-            placeholder="USERNAME"
-            autocomplete="username"
-        >
+      <button
+        class="tab active"
+        onclick="switchTab('login')">
+        ВХОД
+      </button>
 
-        <input
-            id="password"
-            type="password"
-            placeholder="PASSWORD"
-            autocomplete="current-password"
-        >
-
-        <button id="loginButton">
-            ENTER
-        </button>
-
-        <div id="switch">
-            CREATE ACCOUNT
-        </div>
-
-        <div id="loginMessage"></div>
+      <button
+        class="tab"
+        onclick="switchTab('register')">
+        РЕГИСТРАЦИЯ
+      </button>
 
     </div>
 
-</div>
+    <input
+      id="f-username"
+      placeholder="USERNAME"
+      autocomplete="username"
+    >
 
-<!-- HUD -->
+    <input
+      id="f-password"
+      type="password"
+      placeholder="PASSWORD"
+      autocomplete="current-password"
+    >
 
-<div id="hud" class="hidden">
-
-    <div id="logoHud">
-
-        <div class="big">EWS</div>
-
-        <div class="small">
-            SESSIONS
-        </div>
-
-    </div>
-
-    <div id="online">
-
-        <strong id="onlineCount">0</strong>
-        ONLINE
-
-    </div>
-
-    <div id="onlinePanel">
-
-        <div class="panelTitle">
-            IN THE CLUB
-        </div>
-
-        <div id="onlineUsers"></div>
-
-    </div>
-
-    <div id="chat">
-
-        <div id="messages"></div>
-
-        <form id="chatForm">
-
-            <input
-                id="chatInput"
-                autocomplete="off"
-                maxlength="500"
-                placeholder="message..."
-            >
-
-            <button id="send">
-                SEND
-            </button>
-
-        </form>
-
-    </div>
-
-    <button id="audio">
-        STREAM / OFF
+    <button
+      class="btn"
+      id="submitBtn"
+      onclick="doLogin()">
+      ВОЙТИ
     </button>
 
+    <div
+      id="error"
+      class="error">
+    </div>
+
+  </div>
+
 </div>
 
-<audio
-    id="stream"
-    playsinline
-></audio>
+<!-- =====================================================
+     HUD
+===================================================== -->
+
+<div id="hud">
+
+  <div id="top-logo">
+    EWS
+    <span>SESSIONS</span>
+  </div>
+
+  <div id="stream-indicator">
+    AUDIO: READY
+  </div>
+
+  <button
+    id="audio-control"
+    onclick="startSSHAudio()">
+    ▶ AUDIO: START
+  </button>
+
+  <div id="lang-bar">
+
+    <select id="lang">
+
+      <option value="ru">RU</option>
+      <option value="en">EN</option>
+      <option value="es">ES</option>
+      <option value="de">DE</option>
+      <option value="fr">FR</option>
+      <option value="zh">中文</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="ar">AR</option>
+      <option value="hi">HI</option>
+      <option value="pt">PT</option>
+      <option value="it">IT</option>
+      <option value="tr">TR</option>
+      <option value="uk">UA</option>
+
+    </select>
+
+  </div>
+
+  <div id="online-box">
+
+    <h3>
+      ONLINE
+    </h3>
+
+    <ul id="online-list"></ul>
+
+  </div>
+
+  <div id="chat">
+
+    <div id="chat-title">
+      EWS SESSIONS / CHAT
+    </div>
+
+    <div id="chat-messages"></div>
+
+    <form id="chat-form">
+
+      <input
+        id="chat-input"
+        autocomplete="off"
+        placeholder="write something..."
+      >
+
+      <button id="chat-send">
+        →
+      </button>
+
+    </form>
+
+  </div>
+
+  <div id="zone-label">
+    MAIN FLOOR
+  </div>
+
+  <div id="hint">
+    WASD MOVE · MOUSE LOOK · C CHAT
+  </div>
+
+</div>
+
+</div>
 
 <script>
 
-/* ============================================================
-   CONNECTION
-============================================================ */
+let mode='login';
 
-const socket = io({
-    transports:[
-        'websocket',
-        'polling'
-    ]
-});
-
-/* ============================================================
-   STATE
-============================================================ */
-
-let username = '';
-let language =
-    (navigator.language || 'en')
-    .toLowerCase()
-    .split('-')[0];
-
-let loggedIn = false;
-let registerMode = false;
-
-let gameStarted = false;
+let socket=null;
+let currentUser=null;
 
 let scene;
 let camera;
 let renderer;
-let clock;
 
-let player;
-let playerGroup;
+let keys={};
 
-const remotePlayers = new Map();
+let yaw=0;
+let pitch=0;
 
-const keys = {};
+let pointerLocked=false;
+let chatMode=false;
 
-let yaw = 0;
-let pitch = 0.25;
+let clock=new THREE.Clock();
 
-let pointerLocked = false;
+let neonObjects=[];
+let lightObjects=[];
 
-let velocity =
-    new THREE.Vector3();
+let particles;
 
-let grounded = true;
+let analyser=null;
+let freqData=null;
 
-let walkingTime = 0;
+let audioLevel=0;
+let bassLevel=0;
 
-let sendTimer = 0;
+let audioContext=null;
+let audioSource=null;
 
-const colliders = [];
+let audioStarted=false;
 
-/* ============================================================
-   DOM
-============================================================ */
+let hls=null;
 
-const login = document.getElementById('login');
-const hud = document.getElementById('hud');
+let screenTexture;
+let screenCanvas;
+let screenCtx;
 
-const usernameInput =
-    document.getElementById('username');
+let playerBody;
 
-const passwordInput =
-    document.getElementById('password');
+/* =========================================================
+   EWS TEXTURES
+   CC0 seamless textures from ShareTextures
+========================================================= */
 
-const loginButton =
-    document.getElementById('loginButton');
+const EWS_TEXTURES = {
+  concrete: 'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
+  floor: 'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+};
 
-const switchButton =
-    document.getElementById('switch');
+const ewsTextureLoader = new THREE.TextureLoader();
 
-const loginMessage =
-    document.getElementById('loginMessage');
+function loadEWSTexture(url, repeatX=4, repeatY=4){
+  const texture = ewsTextureLoader.load(url);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 8);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
 
-const messages =
-    document.getElementById('messages');
-
-const onlineUsers =
-    document.getElementById('onlineUsers');
-
-const onlineCount =
-    document.getElementById('onlineCount');
-
-const chatForm =
-    document.getElementById('chatForm');
-
-const chatInput =
-    document.getElementById('chatInput');
-
-const audioButton =
-    document.getElementById('audio');
-
-const stream =
-    document.getElementById('stream');
-
-/* ============================================================
+/* =========================================================
    LOGIN
-============================================================ */
+========================================================= */
 
-switchButton.onclick = ()=>{
+function switchTab(type){
 
-    registerMode =
-        !registerMode;
+  mode=type;
 
-    loginButton.textContent =
-        registerMode
-            ? 'CREATE ACCOUNT'
-            : 'ENTER';
-
-    switchButton.textContent =
-        registerMode
-            ? 'BACK TO LOGIN'
-            : 'CREATE ACCOUNT';
-
-    loginMessage.textContent = '';
-
-};
-
-loginButton.onclick = async ()=>{
-
-    const user =
-        usernameInput.value.trim();
-
-    const pass =
-        passwordInput.value;
-
-    if(!user || !pass){
-
-        loginMessage.textContent =
-            'ENTER USERNAME AND PASSWORD';
-
-        return;
-    }
-
-    loginButton.disabled = true;
-
-    try{
-
-        const endpoint =
-            registerMode
-                ? '/api/register'
-                : '/api/login';
-
-        const response =
-            await fetch(
-                endpoint,
-                {
-                    method:'POST',
-
-                    headers:{
-                        'Content-Type':
-                            'application/json'
-                    },
-
-                    body:JSON.stringify({
-                        username:user,
-                        password:pass
-                    })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if(!data.ok){
-
-            loginMessage.textContent =
-                data.message ||
-                'ERROR';
-
-            loginButton.disabled = false;
-
-            return;
-        }
-
-        if(registerMode){
-
-            registerMode = false;
-
-            loginButton.textContent =
-                'ENTER';
-
-            switchButton.textContent =
-                'CREATE ACCOUNT';
-
-            loginMessage.textContent =
-                'ACCOUNT CREATED';
-
-            loginButton.disabled = false;
-
-            return;
-        }
-
-        enterClub(
-            data.username || user
-        );
-
-    }catch(error){
-
-        console.error(error);
-
-        loginMessage.textContent =
-            'SERVER ERROR';
-
-    }
-
-    loginButton.disabled = false;
-
-};
-
-passwordInput.onkeydown = e=>{
-
-    if(e.key === 'Enter'){
-        loginButton.click();
-    }
-
-};
-
-usernameInput.onkeydown = e=>{
-
-    if(e.key === 'Enter'){
-        passwordInput.focus();
-    }
-
-};
-
-/* ============================================================
-   ENTER CLUB
-============================================================ */
-
-function enterClub(name){
-
-    username = name;
-
-    loggedIn = true;
-
-    login.classList.add('hidden');
-
-    hud.classList.remove('hidden');
-
-    document.getElementById('fade')
-        .style.opacity = '0';
-
-    init();
-
-    socket.emit(
-        'join',
-        {
-            username,
-            language
-        }
+  document
+    .querySelectorAll('.tab')
+    .forEach(
+      t=>t.classList.remove('active')
     );
 
-    socket.emit(
-        'request-online'
-    );
-
-    socket.emit(
-        'request-players'
-    );
-
-    addSystem(
-        `WELCOME TO EWS SESSIONS`
-    );
-
-}
-
-/* ============================================================
-   SOCKET
-============================================================ */
-
-socket.on('connect',()=>{
-
-    if(loggedIn){
-
-        socket.emit(
-            'join',
-            {
-                username,
-                language
-            }
-        );
-
-        socket.emit(
-            'request-online'
-        );
-
-        socket.emit(
-            'request-players'
-        );
-
-    }
-
-});
-
-/* ONLINE */
-
-socket.on(
-    'online-users',
-    users=>{
-
-        if(!Array.isArray(users)){
-            return;
-        }
-
-        onlineCount.textContent =
-            users.length;
-
-        onlineUsers.innerHTML = '';
-
-        users.forEach(user=>{
-
-            const el =
-                document.createElement('div');
-
-            el.className =
-                'user';
-
-            el.textContent =
-                user.username ||
-                user.user ||
-                'Guest';
-
-            onlineUsers.appendChild(el);
-
-        });
-
-    }
-);
-
-/* SYSTEM */
-
-socket.on(
-    'system-message',
-    data=>{
-
-        if(data && data.text){
-            addSystem(data.text);
-        }
-
-    }
-);
-
-/* CHAT */
-
-socket.on(
-    'chat-message',
-    data=>{
-
-        if(!data) return;
-
-        /*
-         * ВАЖНО:
-         * server.js уже отправляет каждому
-         * пользователю его перевод.
-         *
-         * Поэтому здесь показываем
-         * только data.text.
-         *
-         * original НЕ выводим.
-         */
-
-        addMessage(
-            data.username ||
-            data.user ||
-            'Guest',
-
-            data.text || ''
-        );
-
-    }
-);
-
-/* PLAYERS */
-
-socket.on(
-    'players-state',
-    players=>{
-
-        if(!Array.isArray(players)){
-            return;
-        }
-
-        players.forEach(data=>{
-
-            if(
-                data.id === socket.id
-            ){
-                return;
-            }
-
-            createRemote(data);
-
-        });
-
-    }
-);
-
-socket.on(
-    'player-joined',
-    data=>{
-
-        if(!data) return;
-
-        if(
-            data.id === socket.id
-        ){
-            return;
-        }
-
-        createRemote(data);
-
-    }
-);
-
-socket.on(
-    'player-move',
-    data=>{
-
-        if(!data) return;
-
-        if(
-            data.id === socket.id
-        ){
-            return;
-        }
-
-        updateRemoteTarget(data);
-
-    }
-);
-
-socket.on(
-    'player-left',
-    id=>{
-
-        removeRemote(id);
-
-    }
-);
-
-/* ============================================================
-   CHAT UI
-============================================================ */
-
-chatForm.onsubmit = e=>{
-
-    e.preventDefault();
-
-    const text =
-        chatInput.value.trim();
-
-    if(!text) return;
-
-    socket.emit(
-        'chat-message',
-        {
-            text
-        }
-    );
-
-    chatInput.value = '';
-
-};
-
-function addMessage(
-    user,
-    text
-){
-
-    const row =
-        document.createElement('div');
-
-    row.className =
-        'msg';
-
-    const name =
-        document.createElement('b');
-
-    name.textContent =
-        user + ':';
-
-    const body =
-        document.createElement('span');
-
-    body.textContent =
-        text;
-
-    row.appendChild(name);
-    row.appendChild(body);
-
-    messages.appendChild(row);
-
-    while(
-        messages.children.length > 100
-    ){
-        messages.removeChild(
-            messages.firstChild
-        );
-    }
-
-    messages.scrollTop =
-        messages.scrollHeight;
-
-}
-
-function addSystem(text){
-
-    const row =
-        document.createElement('div');
-
-    row.className =
-        'msg system';
-
-    row.textContent =
-        text;
-
-    messages.appendChild(row);
-
-    messages.scrollTop =
-        messages.scrollHeight;
-
-}
-
-/* ============================================================
-   THREE INIT
-============================================================ */
-
-function init(){
-
-    if(gameStarted){
-        return;
-    }
-
-    gameStarted = true;
-
-    scene =
-        new THREE.Scene();
-
-    /*
-     * ГЛАВНОЕ:
-     * сцена действительно чёрная.
-     */
-
-    scene.background =
-        new THREE.Color(
-            0x010101
-        );
-
-    scene.fog =
-        new THREE.FogExp2(
-            0x010101,
-            0.025
-        );
-
-    camera =
-        new THREE.PerspectiveCamera(
-            67,
-            innerWidth / innerHeight,
-            .1,
-            180
-        );
-
-    renderer =
-        new THREE.WebGLRenderer({
-            antialias:true,
-            powerPreference:
-                'high-performance'
-        });
-
-    renderer.setPixelRatio(
-        Math.min(
-            devicePixelRatio,
-            2
-        )
-    );
-
-    renderer.setSize(
-        innerWidth,
-        innerHeight
-    );
-
-    renderer.shadowMap.enabled = true;
-
-    renderer.shadowMap.type =
-        THREE.PCFSoftShadowMap;
-
-    renderer.outputEncoding =
-        THREE.sRGBEncoding;
+  if(type==='login'){
 
     document
-        .getElementById('game')
-        .appendChild(renderer.domElement);
+      .querySelectorAll('.tab')[0]
+      .classList.add('active');
 
-    clock =
-        new THREE.Clock();
+    document.getElementById(
+      'submitBtn'
+    ).textContent='ВОЙТИ';
 
-    createClubLighting();
+  }else{
 
-    createClub();
+    document
+      .querySelectorAll('.tab')[1]
+      .classList.add('active');
 
-    createLocalPlayer();
+    document.getElementById(
+      'submitBtn'
+    ).textContent='СОЗДАТЬ АККАУНТ';
 
-    bindControls();
+  }
 
-    addEventListener(
-        'resize',
-        resize
-    );
-
-    animate();
+  document.getElementById(
+    'error'
+  ).textContent='';
 
 }
 
-/* ============================================================
-   MATERIALS
-============================================================ */
+async function doLogin(){
 
-function material(
-    color,
-    roughness=.9
-){
+  const username =
+    document
+      .getElementById('f-username')
+      .value
+      .trim();
 
-    return new THREE.MeshStandardMaterial({
+  const password =
+    document
+      .getElementById('f-password')
+      .value;
 
-        color,
+  const error =
+    document.getElementById('error');
 
-        roughness,
+  error.textContent='';
 
-        metalness:.05
+  if(!username || !password){
 
+    error.textContent=
+      'Введите логин и пароль';
+
+    return;
+  }
+
+  try{
+
+    const res =
+      await fetch(
+        '/api/'+mode,
+        {
+          method:'POST',
+
+          headers:{
+            'Content-Type':
+              'application/json'
+          },
+
+          body:JSON.stringify({
+            username,
+            password
+          })
+        }
+      );
+
+    const data =
+      await res.json();
+
+    if(data.error){
+
+      error.textContent=
+        data.error;
+
+      return;
+    }
+
+    startSession(username);
+
+  }catch(err){
+
+    console.error(err);
+
+    error.textContent=
+      'Ошибка соединения';
+
+  }
+
+}
+
+/* =========================================================
+   SESSION
+========================================================= */
+
+function startSession(username){
+
+  currentUser=username;
+
+  document.getElementById(
+    'login'
+  ).style.display='none';
+
+  document.getElementById(
+    'hud'
+  ).style.display='block';
+
+  init3D();
+
+  socket=io();
+
+  socket.on('connect',function(){
+
+    socket.emit(
+      'join',
+      {
+        username: currentUser,
+        language:
+          document.getElementById('lang').value
+      }
+    );
+
+  });
+
+  socket.on(
+    'online-users',
+    list=>{
+
+      const ul =
+        document.getElementById('online-list');
+
+      ul.innerHTML='';
+
+      if(!Array.isArray(list)) return;
+
+      list.forEach(user=>{
+
+        const li =
+          document.createElement('li');
+
+        const name =
+          typeof user === 'string'
+            ? user
+            : user.username;
+
+        li.textContent =
+          name === currentUser
+            ? name + ' (YOU)'
+            : name;
+
+        ul.appendChild(li);
+
+      });
+
+    }
+  );
+
+  // Compatibility with an older server version.
+  socket.on('online',list=>{
+
+    if(socket.connected){
+      socket.emit('request-online');
+    }
+
+  });
+
+  socket.on(
+    'chat-message',
+    message=>{
+
+      const el =
+        document.createElement(
+          'div'
+        );
+
+      el.className='msg';
+
+      const time =
+        new Date(
+          message.ts
+        ).toLocaleTimeString();
+
+      const user =
+        document.createElement(
+          'span'
+        );
+
+      user.className='u';
+
+      user.textContent=
+        message.user;
+
+      const text =
+        document.createElement(
+          'span'
+        );
+
+      text.className='t';
+
+      text.textContent=
+        ' '+time+' '+message.text;
+
+      el.appendChild(user);
+
+      el.appendChild(
+        document.createTextNode(' ')
+      );
+
+      el.appendChild(text);
+
+      const box =
+        document.getElementById(
+          'chat-messages'
+        );
+
+      box.appendChild(el);
+
+      box.scrollTop=
+        box.scrollHeight;
+
+    }
+  );
+
+}
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+document
+  .getElementById('chat-form')
+  .addEventListener(
+    'submit',
+    function(e){
+
+      e.preventDefault();
+
+      if(!socket)return;
+
+      const input =
+        document.getElementById(
+          'chat-input'
+        );
+
+      const text =
+        input.value.trim();
+
+      if(!text)return;
+
+      socket.emit(
+        'chat-message',
+        {
+          user:currentUser,
+          text:text,
+
+          lang:
+            document.getElementById(
+              'lang'
+            ).value
+        }
+      );
+
+      input.value='';
+
+    }
+  );
+
+/* =========================================================
+   LANGUAGE
+========================================================= */
+
+document
+  .getElementById('lang')
+  .addEventListener(
+    'change',
+    function(){
+
+      if(socket){
+
+        socket.emit(
+          'language-change',
+          this.value
+        );
+
+      }
+
+    }
+  );
+
+/* =========================================================
+   THREE.JS
+========================================================= */
+
+function init3D(){
+
+  scene =
+    new THREE.Scene();
+
+  scene.background =
+    new THREE.Color(
+      0x030303
+    );
+
+  scene.fog =
+    new THREE.FogExp2(
+      0x030303,
+      0.035
+    );
+
+  camera =
+    new THREE.PerspectiveCamera(
+      72,
+      innerWidth/innerHeight,
+      0.1,
+      150
+    );
+
+  camera.position.set(
+    0,
+    1.7,
+    13
+  );
+
+  renderer =
+    new THREE.WebGLRenderer({
+      canvas:
+        document.getElementById(
+          'canvas3d'
+        ),
+
+      antialias:true
     });
 
-}
+  renderer.setSize(
+    innerWidth,
+    innerHeight
+  );
 
-const FLOOR =
-    material(0x020202);
+  renderer.setPixelRatio(
+    Math.min(
+      devicePixelRatio,
+      2
+    )
+  );
 
-const WALL =
-    material(0x050505);
+  renderer.shadowMap.enabled=true;
 
-const BLACK =
-    material(0x080808);
+  renderer.shadowMap.type =
+    THREE.PCFSoftShadowMap;
 
-const DARK =
-    material(0x101010);
-
-const DETAIL =
-    material(0x181818);
-
-const HUMAN =
-    material(0x111111);
-
-const WHITE =
-    material(0xbcbcbc);
-
-/* ============================================================
-   CLUB LIGHTING
-============================================================ */
-
-function createClubLighting(){
-
-    /*
-     * Очень слабый общий свет.
-     * Он НЕ должен превращать клуб в серую комнату.
-     */
-
-    const ambient =
-        new THREE.AmbientLight(
-            0xffffff,
-            .045
-        );
-
-    scene.add(ambient);
-
-    /*
-     * Центральный мягкий overhead light.
-     */
-
-    const center =
-        new THREE.PointLight(
-            0xffffff,
-            2.0,
-            18,
-            2
-        );
-
-    center.position.set(
-        0,
-        7,
-        -1
+  const ambient =
+    new THREE.AmbientLight(
+      0xffffff,
+      0.13
     );
 
-    center.castShadow = true;
+  scene.add(ambient);
 
-    center.shadow.mapSize.width =
-        1024;
-
-    center.shadow.mapSize.height =
-        1024;
-
-    scene.add(center);
-
-    /*
-     * Боковые клубные пятна.
-     */
-
-    createSpot(
-        -10,
-        5.5,
-        -7,
-        0xffffff,
-        2.2,
-        Math.PI / 5
+  const ceilingLight =
+    new THREE.PointLight(
+      0xffffff,
+      1.4,
+      40
     );
 
-    createSpot(
-        10,
-        5.5,
-        -7,
-        0xffffff,
-        2.2,
-        Math.PI / 5
-    );
+  ceilingLight.position.set(
+    0,
+    5.5,
+    -5
+  );
 
-    createSpot(
-        -10,
-        5.5,
-        8,
-        0xbcbcbc,
-        1.4,
-        Math.PI / 5
-    );
+  scene.add(
+    ceilingLight
+  );
 
-    createSpot(
-        10,
-        5.5,
-        8,
-        0xbcbcbc,
-        1.4,
-        Math.PI / 5
-    );
+  lightObjects.push(
+    ceilingLight
+  );
 
-    /*
-     * Очень слабая задняя подсветка.
-     */
+  createLight(
+    -7,3,-7,
+    0xffffff,
+    5,
+    16
+  );
 
-    const rear =
-        new THREE.PointLight(
-            0xffffff,
-            .75,
-            15
-        );
+  createLight(
+    7,3,-7,
+    0xffffff,
+    5,
+    16
+  );
 
-    rear.position.set(
-        0,
-        3.5,
-        -14
-    );
+  createLight(
+    -8,2,5,
+    0x888888,
+    2,
+    14
+  );
 
-    scene.add(rear);
+  createLight(
+    8,2,5,
+    0x888888,
+    2,
+    14
+  );
+
+  createFloor();
+  createCeiling();
+  createWalls();
+  createDanceFloor();
+  createMainScreen();
+  createStage();
+  createBar();
+  createLounge();
+  createColumns();
+  createEntrance();
+  createNeonArchitecture();
+  createCeilingBeams();
+  createSpeakers();
+  createParticles();
+  createPlayer();
+
+  setupAudio();
+
+  setupControls();
+
+  animate();
 
 }
 
-function createSpot(
-    x,
-    y,
-    z,
-    color,
-    intensity,
-    angle
+/* =========================================================
+   OBJECTS
+========================================================= */
+
+function createBox(
+  w,h,d,
+  x,y,z,
+  material,
+  cast=true,
+  receive=true
 ){
 
-    const light =
-        new THREE.SpotLight(
-            color,
-            intensity,
-            24,
-            angle,
-            .72,
-            1.8
-        );
-
-    light.position.set(
-        x,
-        y,
-        z
+  const mesh =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        w,h,d
+      ),
+      material
     );
 
-    light.target.position.set(
-        x * .35,
-        0,
-        z * .15
-    );
+  mesh.position.set(
+    x,y,z
+  );
 
-    light.castShadow = true;
+  mesh.castShadow=
+    cast;
 
-    scene.add(
-        light.target
-    );
+  mesh.receiveShadow=
+    receive;
 
-    scene.add(light);
+  scene.add(mesh);
+
+  return mesh;
 
 }
 
-/* ============================================================
-   WORLD
-============================================================ */
-
-function cube(
-    x,y,z,
-    sx,sy,sz,
-    mat,
-    collision=false
+function createLight(
+  x,y,z,
+  color,
+  intensity,
+  distance
 ){
 
-    const mesh =
+  const light =
+    new THREE.PointLight(
+      color,
+      intensity,
+      distance
+    );
+
+  light.position.set(
+    x,y,z
+  );
+
+  light.castShadow=true;
+
+  scene.add(light);
+
+  lightObjects.push(
+    light
+  );
+
+  return light;
+
+}
+
+function createFloor(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.floor,8,10);
+
+  const mat = new THREE.MeshStandardMaterial({
+    map:texture,
+    color:0x5a5a5a,
+    metalness:.18,
+    roughness:.82
+  });
+
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(36,42),
+    mat
+  );
+
+  floor.rotation.x=-Math.PI/2;
+  floor.receiveShadow=true;
+  scene.add(floor);
+}
+
+function createCeiling(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.concrete,7,8);
+
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(36,42),
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x292929,
+      roughness:1
+    })
+  );
+
+  ceiling.rotation.x=Math.PI/2;
+  ceiling.position.y=6;
+  scene.add(ceiling);
+}
+
+function createWalls(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.concrete,6,2);
+
+  const mat = new THREE.MeshStandardMaterial({
+    map:texture,
+    color:0x555555,
+    roughness:.93,
+    metalness:.04
+  });
+
+  createBox(36,6,.5,0,3,-17,mat);
+  createBox(36,6,.5,0,3,17,mat);
+  createBox(.5,6,34,-18,3,0,mat);
+  createBox(.5,6,34,18,3,0,mat);
+}
+
+function createDanceFloor(){
+
+  const floor =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        14,.12,14
+      ),
+      new THREE.MeshStandardMaterial({
+        map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
+        color:0x4a4a4a,
+        metalness:.35,
+        roughness:.58
+      })
+    );
+
+  floor.position.set(
+    0,.08,-1
+  );
+
+  floor.receiveShadow=true;
+
+  scene.add(floor);
+
+  const frameMat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  const lines=[
+    [-7,.16,-1,14,.04,.04],
+    [7,.16,-1,14,.04,.04],
+    [0,.16,-8,.04,.04,14],
+    [0,.16,6,.04,.04,14]
+  ];
+
+  lines.forEach(
+    l=>{
+
+      const mesh =
+        createBox(
+          l[3],
+          l[4],
+          l[5],
+          l[0],
+          l[1],
+          l[2],
+          frameMat,
+          false,
+          false
+        );
+
+      neonObjects.push(
+        mesh
+      );
+
+    }
+  );
+
+}
+
+function createMainScreen(){
+
+  screenCanvas =
+    document.createElement(
+      'canvas'
+    );
+
+  screenCanvas.width=1024;
+  screenCanvas.height=512;
+
+  screenCtx =
+    screenCanvas.getContext(
+      '2d'
+    );
+
+  screenTexture =
+    new THREE.CanvasTexture(
+      screenCanvas
+    );
+
+  const frame =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        16,7,.35
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0x151515,
+        metalness:.7,
+        roughness:.3
+      })
+    );
+
+  frame.position.set(
+    0,3.6,-16.5
+  );
+
+  scene.add(frame);
+
+  const screen =
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        15.5,
+        6.5
+      ),
+      new THREE.MeshBasicMaterial({
+        map:screenTexture
+      })
+    );
+
+  screen.position.set(
+    0,3.6,-16.28
+  );
+
+  scene.add(screen);
+
+}
+
+function createStage(){
+
+  const stageMat =
+    new THREE.MeshStandardMaterial({
+      color:0x111111,
+      metalness:.6,
+      roughness:.35
+    });
+
+  createBox(
+    17,.45,3,
+    0,.3,-12.5,
+    stageMat
+  );
+
+  const stripMat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  const strip =
+    createBox(
+      16,.04,.08,
+      0,.54,-11,
+      stripMat,
+      false,
+      false
+    );
+
+  neonObjects.push(
+    strip
+  );
+
+}
+
+function createBar(){
+
+  const wood =
+    new THREE.MeshStandardMaterial({
+      color:0x141414,
+      metalness:.3,
+      roughness:.55
+    });
+
+  createBox(
+    8,1.1,2,
+    -12,.65,7,
+    wood
+  );
+
+  createBox(
+    8.5,.15,2.3,
+    -12,1.25,7,
+    new THREE.MeshStandardMaterial({
+      color:0xdddddd,
+      metalness:.7,
+      roughness:.25
+    })
+  );
+
+  for(
+    let i=0;
+    i<5;
+    i++
+  ){
+
+    const bottle =
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .07,
+          .09,
+          .65,
+          12
+        ),
+        new THREE.MeshStandardMaterial({
+          color:0x888888,
+          metalness:.6,
+          roughness:.25
+        })
+      );
+
+    bottle.position.set(
+      -15+i*.8,
+      1.7,
+      6.5
+    );
+
+    scene.add(bottle);
+
+  }
+
+}
+
+function createLounge(){
+
+  const sofaMat =
+    new THREE.MeshStandardMaterial({
+      color:0x181818,
+      roughness:.9
+    });
+
+  createBox(
+    6,.8,1.6,
+    11,.7,8,
+    sofaMat
+  );
+
+  createBox(
+    1.6,1.4,5.5,
+    14,1.2,8,
+    sofaMat
+  );
+
+  for(
+    let i=0;
+    i<3;
+    i++
+  ){
+
+    const table =
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .65,
+          .65,
+          .08,
+          32
+        ),
+        new THREE.MeshStandardMaterial({
+          color:0x555555,
+          metalness:.7
+        })
+      );
+
+    table.position.set(
+      8+i*3,
+      .75,
+      4
+    );
+
+    scene.add(table);
+
+  }
+
+}
+
+function createColumns(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x101010,
+      metalness:.55,
+      roughness:.35
+    });
+
+  const positions=[
+    [-15,5],
+    [15,5],
+    [-15,-5],
+    [15,-5]
+  ];
+
+  positions.forEach(
+    p=>{
+
+      createBox(
+        1,6,1,
+        p[0],
+        3,
+        p[1],
+        mat
+      );
+
+      const ring =
         new THREE.Mesh(
-            new THREE.BoxGeometry(
-                sx,sy,sz
-            ),
-            mat
+          new THREE.TorusGeometry(
+            .72,
+            .06,
+            8,
+            32
+          ),
+          new THREE.MeshBasicMaterial({
+            color:0xffffff
+          })
         );
 
-    mesh.position.set(
-        x,y,z
+      ring.position.set(
+        p[0],
+        2,
+        p[1]
+      );
+
+      scene.add(ring);
+
+      neonObjects.push(
+        ring
+      );
+
+    }
+  );
+
+}
+
+function createEntrance(){
+
+  const frameMat =
+    new THREE.MeshStandardMaterial({
+      color:0x191919,
+      metalness:.7
+    });
+
+  createBox(
+    7,5.5,.6,
+    0,2.75,16.3,
+    frameMat
+  );
+
+  createBox(
+    5.8,4.7,.1,
+    0,2.35,15.98,
+    new THREE.MeshBasicMaterial({
+      color:0x020202
+    }),
+    false,
+    false
+  );
+
+  const signCanvas =
+    document.createElement(
+      'canvas'
     );
 
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+  signCanvas.width=600;
+  signCanvas.height=160;
 
-    scene.add(mesh);
+  const ctx =
+    signCanvas.getContext(
+      '2d'
+    );
 
-    if(collision){
+  ctx.fillStyle='#050505';
 
-        colliders.push({
+  ctx.fillRect(
+    0,
+    0,
+    600,
+    160
+  );
 
-            minX:x-sx/2,
-            maxX:x+sx/2,
+  ctx.fillStyle='#fff';
 
-            minZ:z-sz/2,
-            maxZ:z+sz/2,
+  ctx.font=
+    'bold 58px Arial';
 
-            minY:y-sy/2,
-            maxY:y+sy/2
+  ctx.textAlign='center';
+
+  ctx.fillText(
+    'EWS SESSIONS',
+    300,
+    95
+  );
+
+  const tex =
+    new THREE.CanvasTexture(
+      signCanvas
+    );
+
+  const sign =
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        5,
+        1.35
+      ),
+      new THREE.MeshBasicMaterial({
+        map:tex
+      })
+    );
+
+  sign.position.set(
+    0,
+    5.4,
+    15.65
+  );
+
+  scene.add(sign);
+
+}
+
+function createNeonArchitecture(){
+
+  const mat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  for(
+    let z=-14;
+    z<=14;
+    z+=4
+  ){
+
+    const left =
+      createBox(
+        .06,4,.06,
+        -17.5,
+        3,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    const right =
+      createBox(
+        .06,4,.06,
+        17.5,
+        3,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    neonObjects.push(
+      left,
+      right
+    );
+
+  }
+
+  for(
+    let z=-15;
+    z<=15;
+    z+=5
+  ){
+
+    const beam =
+      createBox(
+        34,.05,.05,
+        0,
+        5.4,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    neonObjects.push(
+      beam
+    );
+
+  }
+
+}
+
+function createCeilingBeams(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x151515,
+      metalness:.8,
+      roughness:.3
+    });
+
+  for(
+    let x=-14;
+    x<=14;
+    x+=4
+  ){
+
+    createBox(
+      .3,.3,34,
+      x,5.7,0,
+      mat
+    );
+
+  }
+
+}
+
+function createSpeakers(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x050505,
+      metalness:.4,
+      roughness:.7
+    });
+
+  const positions=[
+    [-8,2,-11],
+    [8,2,-11],
+    [-11,2,-10],
+    [11,2,-10]
+  ];
+
+  positions.forEach(
+    p=>{
+
+      createBox(
+        1.2,2.5,.8,
+        p[0],
+        p[1],
+        p[2],
+        mat
+      );
+
+      for(
+        let i=0;
+        i<3;
+        i++
+      ){
+
+        const cone =
+          new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              .23,
+              .23,
+              .12,
+              24
+            ),
+            new THREE.MeshBasicMaterial({
+              color:0xaaaaaa
+            })
+          );
+
+        cone.rotation.x=
+          Math.PI/2;
+
+        cone.position.set(
+          p[0],
+          1.3+i*.6,
+          p[2]-.45
+        );
+
+        scene.add(cone);
+
+      }
+
+    }
+  );
+
+}
+
+function createParticles(){
+
+  const count=900;
+
+  const geo =
+    new THREE.BufferGeometry();
+
+  const pos =
+    new Float32Array(
+      count*3
+    );
+
+  for(
+    let i=0;
+    i<count;
+    i++
+  ){
+
+    pos[i*3]=
+      (Math.random()-.5)*34;
+
+    pos[i*3+1]=
+      Math.random()*5.8;
+
+    pos[i*3+2]=
+      (Math.random()-.5)*34;
+
+  }
+
+  geo.setAttribute(
+    'position',
+    new THREE.BufferAttribute(
+      pos,
+      3
+    )
+  );
+
+  particles =
+    new THREE.Points(
+      geo,
+      new THREE.PointsMaterial({
+        color:0xffffff,
+        size:.025,
+        transparent:true,
+        opacity:.18
+      })
+    );
+
+  scene.add(
+    particles
+  );
+
+}
+
+function createPlayer(){
+
+  playerBody =
+    new THREE.Group();
+
+  const body =
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        .25,
+        .32,
+        1,
+        12
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xffffff,
+        roughness:.7
+      })
+    );
+
+  body.position.y=.5;
+
+  playerBody.add(
+    body
+  );
+
+  const head =
+    new THREE.Mesh(
+      new THREE.SphereGeometry(
+        .23,
+        16,
+        16
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xdddddd,
+        roughness:.7
+      })
+    );
+
+  head.position.y=1.25;
+
+  playerBody.add(
+    head
+  );
+
+  playerBody.position.set(
+    0,
+    0,
+    13
+  );
+
+  scene.add(
+    playerBody
+  );
+
+}
+
+/* =========================================================
+   AUDIO
+========================================================= */
+
+function setupAudio(){
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  indicator.textContent=
+    'AUDIO: READY';
+
+  indicator.classList.remove(
+    'live',
+    'error'
+  );
+
+  button.textContent=
+    '▶ AUDIO: START';
+
+  button.classList.remove(
+    'live'
+  );
+
+}
+
+async function startSSHAudio(){
+
+  const audio =
+    document.getElementById(
+      'ews-audio'
+    );
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  if(!audio)return;
+
+  const hlsUrl =
+    window.location.origin+
+    '/hls/ews/index.m3u8';
+
+  indicator.classList.remove(
+    'error'
+  );
+
+  indicator.classList.add(
+    'live'
+  );
+
+  indicator.textContent=
+    'AUDIO: CONNECTING...';
+
+  button.disabled=true;
+
+  button.textContent=
+    '● AUDIO: CONNECTING';
+
+  try{
+
+    if(!audioContext){
+
+      audioContext =
+        new(
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+      audioSource =
+        audioContext.createMediaElementSource(
+          audio
+        );
+
+      analyser =
+        audioContext.createAnalyser();
+
+      analyser.fftSize=256;
+
+      analyser.smoothingTimeConstant=.82;
+
+      freqData =
+        new Uint8Array(
+          analyser.frequencyBinCount
+        );
+
+      audioSource.connect(
+        analyser
+      );
+
+      analyser.connect(
+        audioContext.destination
+      );
+
+    }
+
+    if(
+      audioContext.state===
+      'suspended'
+    ){
+
+      await audioContext.resume();
+
+    }
+
+    if(hls){
+
+      try{
+        hls.destroy();
+      }catch(e){}
+
+      hls=null;
+
+    }
+
+    if(
+      window.Hls &&
+      Hls.isSupported()
+    ){
+
+      hls =
+        new Hls({
+
+          enableWorker:true,
+
+          lowLatencyMode:true,
+
+          backBufferLength:30,
+
+          maxBufferLength:10,
+
+          maxMaxBufferLength:20,
+
+          liveSyncDurationCount:3,
+
+          liveMaxLatencyDurationCount:6
 
         });
 
-    }
+      hls.loadSource(
+        hlsUrl
+      );
 
-    return mesh;
+      hls.attachMedia(
+        audio
+      );
 
-}
+      hls.on(
+        Hls.Events.MANIFEST_PARSED,
+        async function(){
 
-function createClub(){
+          indicator.textContent=
+            'AUDIO: LIVE';
 
-    /*
-     * Большой чёрный пол.
-     */
+          button.textContent=
+            '● AUDIO: LIVE';
 
-    cube(
-        0,
-        -.3,
-        0,
-        44,
-        .6,
-        36,
-        FLOOR
-    );
+          button.classList.add(
+            'live'
+          );
 
-    /*
-     * Чёрные стены.
-     */
+          button.disabled=false;
 
-    cube(
-        0,
-        4,
-        -18,
-        44,
-        8,
-        1,
-        WALL,
-        true
-    );
+          audioStarted=true;
 
-    cube(
-        -22,
-        4,
-        0,
-        1,
-        8,
-        36,
-        WALL,
-        true
-    );
+          try{
 
-    cube(
-        22,
-        4,
-        0,
-        1,
-        8,
-        36,
-        WALL,
-        true
-    );
+            await audio.play();
 
-    cube(
-        0,
-        4,
-        18,
-        44,
-        8,
-        1,
-        WALL,
-        true
-    );
+          }catch(err){
 
-    /*
-     * Архитектура.
-     * Не серые кубы — почти чёрные объёмы.
-     */
-
-    cube(
-        -15,
-        2,
-        -11,
-        5,
-        4,
-        5,
-        BLACK,
-        true
-    );
-
-    cube(
-        15,
-        2,
-        -11,
-        5,
-        4,
-        5,
-        BLACK,
-        true
-    );
-
-    cube(
-        -15,
-        1.3,
-        9,
-        5,
-        2.6,
-        6,
-        DARK,
-        true
-    );
-
-    cube(
-        15,
-        1.3,
-        9,
-        5,
-        2.6,
-        6,
-        DARK,
-        true
-    );
-
-    /*
-     * Центральная задняя архитектура.
-     */
-
-    cube(
-        0,
-        2.7,
-        -15.5,
-        19,
-        5.4,
-        1.2,
-        BLACK,
-        true
-    );
-
-    /*
-     * Узкие вертикальные элементы.
-     */
-
-    for(
-        let x=-18;
-        x<=18;
-        x+=6
-    ){
-
-        cube(
-            x,
-            3.5,
-            -5,
-            .5,
-            7,
-            .5,
-            DETAIL,
-            true
-        );
-
-    }
-
-    /*
-     * Потолочные балки.
-     */
-
-    for(
-        let x=-18;
-        x<=18;
-        x+=6
-    ){
-
-        cube(
-            x,
-            7.5,
-            0,
-            .45,
-            .35,
-            34,
-            BLACK
-        );
-
-    }
-
-    /*
-     * Тонкие архитектурные линии.
-     * Они НЕ освещают всю комнату.
-     */
-
-    createLightLine(
-        -21.35,
-        5.5,
-        0,
-        .08,
-        .08,
-        27
-    );
-
-    createLightLine(
-        21.35,
-        5.5,
-        0,
-        .08,
-        .08,
-        27
-    );
-
-    /*
-     * Задняя вывеска EWS.
-     */
-
-    createLogo();
-
-}
-
-/* ============================================================
-   LIGHT LINES
-============================================================ */
-
-function createLightLine(
-    x,y,z,
-    sx,sy,sz
-){
-
-    const mesh =
-        new THREE.Mesh(
-
-            new THREE.BoxGeometry(
-                sx,sy,sz
-            ),
-
-            new THREE.MeshBasicMaterial({
-                color:0x666666
-            })
-
-        );
-
-    mesh.position.set(
-        x,y,z
-    );
-
-    scene.add(mesh);
-
-}
-
-/* ============================================================
-   LOGO
-============================================================ */
-
-function createLogo(){
-
-    const canvas =
-        document.createElement(
-            'canvas'
-        );
-
-    canvas.width = 1000;
-    canvas.height = 300;
-
-    const ctx =
-        canvas.getContext('2d');
-
-    ctx.fillStyle =
-        '#030303';
-
-    ctx.fillRect(
-        0,
-        0,
-        1000,
-        300
-    );
-
-    ctx.textAlign =
-        'center';
-
-    ctx.textBaseline =
-        'middle';
-
-    ctx.fillStyle =
-        '#bdbdbd';
-
-    ctx.font =
-        '900 150px Arial';
-
-    ctx.fillText(
-        'EWS',
-        500,
-        125
-    );
-
-    ctx.fillStyle =
-        '#555';
-
-    ctx.font =
-        '24px Arial';
-
-    ctx.fillText(
-        'SESSIONS',
-        500,
-        220
-    );
-
-    const texture =
-        new THREE.CanvasTexture(
-            canvas
-        );
-
-    const mesh =
-        new THREE.Mesh(
-
-            new THREE.PlaneGeometry(
-                9,
-                2.7
-            ),
-
-            new THREE.MeshBasicMaterial({
-                map:texture
-            })
-
-        );
-
-    mesh.position.set(
-        0,
-        4.1,
-        -17.4
-    );
-
-    scene.add(mesh);
-
-}
-
-/* ============================================================
-   PLAYER
-============================================================ */
-
-function createLocalPlayer(){
-
-    playerGroup =
-        new THREE.Group();
-
-    playerGroup.position.set(
-        0,
-        0,
-        6
-    );
-
-    scene.add(
-        playerGroup
-    );
-
-    player =
-        createHuman();
-
-    playerGroup.add(
-        player
-    );
-
-}
-
-function createHuman(){
-
-    const root =
-        new THREE.Group();
-
-    const body =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .65,
-                1.15,
-                .38
-            ),
-            HUMAN
-        );
-
-    body.position.y =
-        2.05;
-
-    body.castShadow = true;
-
-    root.add(body);
-
-    const head =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                .3,
-                16,
-                12
-            ),
-            BLACK
-        );
-
-    head.position.y =
-        3.0;
-
-    head.castShadow = true;
-
-    root.add(head);
-
-    const neck =
-        new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                .11,
-                .13,
-                .18,
-                12
-            ),
-            BLACK
-        );
-
-    neck.position.y =
-        2.68;
-
-    root.add(neck);
-
-    const leftArm =
-        limb(
-            .16,
-            .82,
-            .17
-        );
-
-    leftArm.position.set(
-        -.47,
-        2.15,
-        0
-    );
-
-    root.add(leftArm);
-
-    const rightArm =
-        limb(
-            .16,
-            .82,
-            .17
-        );
-
-    rightArm.position.set(
-        .47,
-        2.15,
-        0
-    );
-
-    root.add(rightArm);
-
-    const hips =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .7,
-                .28,
-                .4
-            ),
-            HUMAN
-        );
-
-    hips.position.y =
-        1.38;
-
-    root.add(hips);
-
-    const leftLeg =
-        limb(
-            .22,
-            1.05,
-            .22
-        );
-
-    leftLeg.position.set(
-        -.21,
-        .78,
-        0
-    );
-
-    root.add(leftLeg);
-
-    const rightLeg =
-        limb(
-            .22,
-            1.05,
-            .22
-        );
-
-    rightLeg.position.set(
-        .21,
-        .78,
-        0
-    );
-
-    root.add(rightLeg);
-
-    const leftFoot =
-        foot();
-
-    leftFoot.position.set(
-        -.21,
-        .14,
-        -.09
-    );
-
-    root.add(leftFoot);
-
-    const rightFoot =
-        foot();
-
-    rightFoot.position.set(
-        .21,
-        .14,
-        -.09
-    );
-
-    root.add(rightFoot);
-
-    /*
-     * Небольшая белая деталь лица.
-     */
-
-    const face =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .16,
-                .035,
-                .025
-            ),
-            WHITE
-        );
-
-    face.position.set(
-        0,
-        3.03,
-        -.292
-    );
-
-    root.add(face);
-
-    root.userData.parts = {
-        leftArm,
-        rightArm,
-        leftLeg,
-        rightLeg
-    };
-
-    return root;
-
-}
-
-function limb(
-    x,
-    y,
-    z
-){
-
-    const mesh =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                x,y,z
-            ),
-            HUMAN
-        );
-
-    mesh.castShadow = true;
-
-    return mesh;
-
-}
-
-function foot(){
-
-    const mesh =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .27,
-                .15,
-                .45
-            ),
-            BLACK
-        );
-
-    mesh.castShadow = true;
-
-    return mesh;
-
-}
-
-/* ============================================================
-   CONTROLS
-============================================================ */
-
-function bindControls(){
-
-    addEventListener(
-        'keydown',
-        e=>{
-
-            if(
-                e.code === 'Space'
-            ){
-                e.preventDefault();
-            }
-
-            keys[e.code] = true;
-
-            if(
-                e.code === 'Space' &&
-                grounded
-            ){
-
-                velocity.y =
-                    7.2;
-
-                grounded = false;
-
-            }
-
-        }
-    );
-
-    addEventListener(
-        'keyup',
-        e=>{
-
-            keys[e.code] = false;
-
-        }
-    );
-
-    renderer.domElement.onclick =
-        ()=>{
-
-            renderer.domElement
-                .requestPointerLock();
-
-        };
-
-    document.addEventListener(
-        'pointerlockchange',
-        ()=>{
-
-            pointerLocked =
-                document.pointerLockElement ===
-                renderer.domElement;
-
-        }
-    );
-
-    document.addEventListener(
-        'mousemove',
-        e=>{
-
-            if(!pointerLocked){
-                return;
-            }
-
-            yaw -=
-                e.movementX * .0024;
-
-            pitch -=
-                e.movementY * .0018;
-
-            pitch =
-                Math.max(
-                    -.1,
-                    Math.min(
-                        .55,
-                        pitch
-                    )
-                );
-
-        }
-    );
-
-}
-
-/* ============================================================
-   MOVEMENT
-============================================================ */
-
-function updatePlayer(dt){
-
-    const forward =
-        new THREE.Vector3(
-            -Math.sin(yaw),
-            0,
-            -Math.cos(yaw)
-        );
-
-    const right =
-        new THREE.Vector3(
-            Math.cos(yaw),
-            0,
-            -Math.sin(yaw)
-        );
-
-    const direction =
-        new THREE.Vector3();
-
-    if(keys.KeyW)
-        direction.add(forward);
-
-    if(keys.KeyS)
-        direction.sub(forward);
-
-    if(keys.KeyD)
-        direction.add(right);
-
-    if(keys.KeyA)
-        direction.sub(right);
-
-    const moving =
-        direction.lengthSq() > .001;
-
-    if(moving){
-
-        direction.normalize();
-
-        const acceleration =
-            22 * dt;
-
-        velocity.x +=
-            direction.x *
-            acceleration;
-
-        velocity.z +=
-            direction.z *
-            acceleration;
-
-        const speed =
-            Math.sqrt(
-                velocity.x *
-                velocity.x +
-                velocity.z *
-                velocity.z
+            console.warn(
+              'Audio play blocked:',
+              err
             );
 
-        const max =
-            4.8;
+            indicator.textContent=
+              'AUDIO: PRESS START';
 
-        if(speed > max){
+            button.textContent=
+              '▶ AUDIO: START';
 
-            velocity.x *=
-                max / speed;
+            button.classList.remove(
+              'live'
+            );
 
-            velocity.z *=
-                max / speed;
+          }
 
         }
+      );
 
-        /*
-         * Поворачиваем тело
-         * в сторону движения.
-         */
-
-        const target =
-            Math.atan2(
-                direction.x,
-                direction.z
-            );
-
-        rotateSmooth(
-            playerGroup,
-            target,
-            dt * 12
-        );
-
-    }else{
-
-        /*
-         * Настоящее торможение,
-         * а не резкая остановка.
-         */
-
-        const friction =
-            Math.pow(
-                .0005,
-                dt
-            );
-
-        velocity.x *= friction;
-        velocity.z *= friction;
-
-    }
-
-    velocity.y -=
-        19 * dt;
-
-    const nextX =
-        playerGroup.position.x +
-        velocity.x * dt;
-
-    const nextZ =
-        playerGroup.position.z +
-        velocity.z * dt;
-
-    if(
-        !blocked(
-            nextX,
-            playerGroup.position.z,
-            .4
-        )
-    ){
-
-        playerGroup.position.x =
-            nextX;
-
-    }else{
-
-        velocity.x = 0;
-
-    }
-
-    if(
-        !blocked(
-            playerGroup.position.x,
-            nextZ,
-            .4
-        )
-    ){
-
-        playerGroup.position.z =
-            nextZ;
-
-    }else{
-
-        velocity.z = 0;
-
-    }
-
-    playerGroup.position.y +=
-        velocity.y * dt;
-
-    if(
-        playerGroup.position.y <= 0
-    ){
-
-        playerGroup.position.y = 0;
-
-        velocity.y = 0;
-
-        grounded = true;
-
-    }
-
-    const horizontal =
-        Math.sqrt(
-            velocity.x *
-            velocity.x +
-            velocity.z *
-            velocity.z
-        );
-
-    animateHuman(
-        player,
-        horizontal,
-        dt
-    );
-
-}
-
-/* ============================================================
-   WALK ANIMATION
-============================================================ */
-
-function animateHuman(
-    human,
-    speed,
-    dt
-){
-
-    const p =
-        human.userData.parts;
-
-    if(!p) return;
-
-    if(speed > .12){
-
-        walkingTime +=
-            dt *
-            (7 + speed * 2);
-
-        const amount =
-            Math.min(
-                .55,
-                speed * .13
-            );
-
-        const swing =
-            Math.sin(
-                walkingTime
-            ) *
-            amount;
-
-        /*
-         * Ноги идут навстречу рукам.
-         */
-
-        p.leftLeg.rotation.x =
-            swing;
-
-        p.rightLeg.rotation.x =
-            -swing;
-
-        p.leftArm.rotation.x =
-            -swing * .7;
-
-        p.rightArm.rotation.x =
-            swing * .7;
-
-    }else{
-
-        p.leftLeg.rotation.x *= .82;
-        p.rightLeg.rotation.x *= .82;
-
-        p.leftArm.rotation.x *= .82;
-        p.rightArm.rotation.x *= .82;
-
-    }
-
-}
-
-/* ============================================================
-   COLLISION
-============================================================ */
-
-function blocked(
-    x,
-    z,
-    radius
-){
-
-    for(
-        const c of colliders
-    ){
-
-        if(
-            x + radius > c.minX &&
-            x - radius < c.maxX &&
-            z + radius > c.minZ &&
-            z - radius < c.maxZ
+      hls.on(
+        Hls.Events.ERROR,
+        function(
+          event,
+          data
         ){
 
-            return true;
+          console.error(
+            '[HLS]',
+            data
+          );
+
+          if(!data.fatal)return;
+
+          if(
+            data.type===
+            Hls.ErrorTypes.NETWORK_ERROR
+          ){
+
+            indicator.textContent=
+              'AUDIO: RECONNECTING...';
+
+            button.textContent=
+              '● AUDIO: RECONNECTING';
+
+            setTimeout(
+              function(){
+
+                if(hls){
+
+                  try{
+                    hls.startLoad();
+                  }catch(e){}
+
+                }
+
+              },
+              1000
+            );
+
+          }
+
+          else if(
+            data.type===
+            Hls.ErrorTypes.MEDIA_ERROR
+          ){
+
+            indicator.textContent=
+              'AUDIO: RECOVERING...';
+
+            try{
+
+              hls.recoverMediaError();
+
+            }catch(e){
+
+              console.error(e);
+
+            }
+
+          }
+
+          else{
+
+            indicator.textContent=
+              'AUDIO: NO STREAM';
+
+            indicator.classList.remove(
+              'live'
+            );
+
+            indicator.classList.add(
+              'error'
+            );
+
+            button.textContent=
+              '▶ AUDIO: RETRY';
+
+            button.classList.remove(
+              'live'
+            );
+
+            button.disabled=false;
+
+          }
 
         }
+      );
 
     }
 
-    return false;
-
-}
-
-/* ============================================================
-   ROTATION
-============================================================ */
-
-function rotateSmooth(
-    object,
-    target,
-    amount
-){
-
-    let diff =
-        target -
-        object.rotation.y;
-
-    while(
-        diff > Math.PI
+    else if(
+      audio.canPlayType(
+        'application/vnd.apple.mpegurl'
+      )
     ){
-        diff -=
-            Math.PI * 2;
-    }
 
-    while(
-        diff < -Math.PI
-    ){
-        diff +=
-            Math.PI * 2;
-    }
+      audio.src=
+        hlsUrl;
 
-    object.rotation.y +=
-        diff *
-        Math.min(
-            1,
-            amount
-        );
+      audio.addEventListener(
+        'loadedmetadata',
+        async function(){
 
-}
+          try{
 
-/* ============================================================
-   CAMERA
-============================================================ */
+            await audio.play();
 
-function updateCamera(){
+          }catch(err){
 
-    if(!playerGroup){
-        return;
-    }
+            console.error(err);
 
-    const distance = 5.8;
+          }
 
-    const target =
-        playerGroup.position.clone();
-
-    target.y +=
-        2.0;
-
-    const offset =
-        new THREE.Vector3(
-            Math.sin(yaw) *
-                distance,
-
-            2.4 +
-                Math.sin(pitch) *
-                1.5,
-
-            Math.cos(yaw) *
-                distance
-        );
-
-    const desired =
-        target.clone()
-            .add(offset);
-
-    camera.position.lerp(
-        desired,
-        .1
-    );
-
-    camera.lookAt(
-        target
-    );
-
-}
-
-/* ============================================================
-   REMOTE PLAYERS
-============================================================ */
-
-function createRemote(data){
-
-    if(
-        !data ||
-        !data.id ||
-        data.id === socket.id
-    ){
-        return;
-    }
-
-    if(
-        remotePlayers.has(data.id)
-    ){
-        updateRemoteTarget(data);
-        return;
-    }
-
-    const group =
-        new THREE.Group();
-
-    group.position.set(
-        Number(data.x) || 0,
-        Number(data.y) || 0,
-        Number(data.z) || 0
-    );
-
-    group.rotation.y =
-        Number(data.ry) || 0;
-
-    const human =
-        createHuman();
-
-    group.add(
-        human
-    );
-
-    group.userData.target =
-        group.position.clone();
-
-    group.userData.targetRotation =
-        group.rotation.y;
-
-    group.userData.human =
-        human;
-
-    scene.add(
-        group
-    );
-
-    remotePlayers.set(
-        data.id,
-        group
-    );
-
-}
-
-function updateRemoteTarget(data){
-
-    const group =
-        remotePlayers.get(data.id);
-
-    if(!group){
-
-        createRemote(data);
-
-        return;
-
-    }
-
-    group.userData.target.set(
-        Number(data.x) || 0,
-        Number(data.y) || 0,
-        Number(data.z) || 0
-    );
-
-    group.userData.targetRotation =
-        Number(data.ry) || 0;
-
-}
-
-function updateRemotePlayers(dt){
-
-    remotePlayers.forEach(
-        group=>{
-
-            const old =
-                group.position.clone();
-
-            group.position.lerp(
-                group.userData.target,
-                Math.min(
-                    1,
-                    dt * 12
-                )
-            );
-
-            rotateSmooth(
-                group,
-                group.userData.targetRotation,
-                dt * 10
-            );
-
-            const moved =
-                old.distanceTo(
-                    group.position
-                );
-
-            animateHuman(
-                group.userData.human,
-                moved * 60,
-                dt
-            );
-
-        }
-    );
-
-}
-
-function removeRemote(id){
-
-    const group =
-        remotePlayers.get(id);
-
-    if(!group){
-        return;
-    }
-
-    scene.remove(
-        group
-    );
-
-    remotePlayers.delete(
-        id
-    );
-
-}
-
-/* ============================================================
-   PLAYER SYNC
-============================================================ */
-
-function syncPlayer(dt){
-
-    sendTimer += dt;
-
-    if(
-        sendTimer < .05
-    ){
-        return;
-    }
-
-    sendTimer = 0;
-
-    if(
-        !loggedIn ||
-        !playerGroup
-    ){
-        return;
-    }
-
-    socket.emit(
-        'player-move',
+        },
         {
-            x:
-                playerGroup.position.x,
-
-            y:
-                playerGroup.position.y,
-
-            z:
-                playerGroup.position.z,
-
-            ry:
-                playerGroup.rotation.y,
-
-            jumping:
-                !grounded
+          once:true
         }
-    );
-
-}
-
-/* ============================================================
-   HLS
-============================================================ */
-
-let hls = null;
-
-function startStream(){
-
-    const url =
-        '/hls/ews/index.m3u8';
-
-    if(
-        window.Hls &&
-        Hls.isSupported()
-    ){
-
-        hls =
-            new Hls({
-                enableWorker:true,
-                lowLatencyMode:true,
-                liveSyncDurationCount:2
-            });
-
-        hls.loadSource(url);
-
-        hls.attachMedia(
-            stream
-        );
-
-        hls.on(
-            Hls.Events.MANIFEST_PARSED,
-            ()=>{
-                console.log(
-                    '[EWS] STREAM READY'
-                );
-            }
-        );
-
-        hls.on(
-            Hls.Events.ERROR,
-            (event,data)=>{
-                console.log(
-                    '[EWS HLS]',
-                    data.type,
-                    data.details
-                );
-            }
-        );
-
-    }else{
-
-        stream.src = url;
+      );
 
     }
 
-}
+    else{
 
-startStream();
+      throw new Error(
+        'HLS is not supported by this browser'
+      );
 
-audioButton.onclick =
-    async()=>{
+    }
 
-        try{
+    audio.onplaying=function(){
 
-            if(
-                stream.paused
-            ){
+      indicator.textContent=
+        'AUDIO: LIVE';
 
-                await stream.play();
+      indicator.classList.add(
+        'live'
+      );
 
-                audioButton.textContent =
-                    'STREAM / ON';
+      indicator.classList.remove(
+        'error'
+      );
 
-            }else{
+      button.textContent=
+        '● AUDIO: LIVE';
 
-                stream.pause();
+      button.classList.add(
+        'live'
+      );
 
-                audioButton.textContent =
-                    'STREAM / OFF';
+      button.disabled=false;
 
-            }
-
-        }catch(error){
-
-            console.log(
-                '[AUDIO]',
-                error
-            );
-
-        }
+      audioStarted=true;
 
     };
 
-/* ============================================================
-   RENDER
-============================================================ */
+    audio.onpause=function(){
+
+      if(
+        audioStarted &&
+        !audio.ended
+      ){
+
+        indicator.textContent=
+          'AUDIO: PAUSED';
+
+        button.textContent=
+          '▶ AUDIO: RESUME';
+
+        button.classList.remove(
+          'live'
+        );
+
+      }
+
+    };
+
+    audio.onerror=function(){
+
+      console.error(
+        '[AUDIO]',
+        audio.error
+      );
+
+      indicator.textContent=
+        'AUDIO: ERROR';
+
+      indicator.classList.remove(
+        'live'
+      );
+
+      indicator.classList.add(
+        'error'
+      );
+
+      button.textContent=
+        '▶ AUDIO: RETRY';
+
+      button.classList.remove(
+        'live'
+      );
+
+      button.disabled=false;
+
+    };
+
+  }catch(err){
+
+    console.error(
+      '[EWS AUDIO ERROR]',
+      err
+    );
+
+    indicator.textContent=
+      'AUDIO: NO STREAM';
+
+    indicator.classList.remove(
+      'live'
+    );
+
+    indicator.classList.add(
+      'error'
+    );
+
+    button.textContent=
+      '▶ AUDIO: RETRY';
+
+    button.classList.remove(
+      'live'
+    );
+
+    button.disabled=false;
+
+  }
+
+}
+
+/* =========================================================
+   CONTROLS
+========================================================= */
+
+function setupControls(){
+
+  window.addEventListener(
+    'resize',
+    function(){
+
+      if(
+        !camera ||
+        !renderer
+      ){
+        return;
+      }
+
+      camera.aspect=
+        innerWidth/
+        innerHeight;
+
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(
+        innerWidth,
+        innerHeight
+      );
+
+    }
+  );
+
+  window.addEventListener(
+    'keydown',
+    function(e){
+
+      keys[e.code]=true;
+
+      if(
+        e.code==='KeyC'
+      ){
+
+        chatMode=
+          !chatMode;
+
+        toggleChat();
+
+      }
+
+    }
+  );
+
+  window.addEventListener(
+    'keyup',
+    function(e){
+
+      keys[e.code]=false;
+
+    }
+  );
+
+  const canvas =
+    document.getElementById(
+      'canvas3d'
+    );
+
+  canvas.addEventListener(
+    'click',
+    function(){
+
+      if(!chatMode){
+
+        canvas.requestPointerLock();
+
+      }
+
+    }
+  );
+
+  document.addEventListener(
+    'pointerlockchange',
+    function(){
+
+      pointerLocked=
+        document.pointerLockElement===
+        canvas;
+
+    }
+  );
+
+  document.addEventListener(
+    'mousemove',
+    function(e){
+
+      if(!pointerLocked)return;
+
+      yaw-=
+        e.movementX*.002;
+
+      pitch-=
+        e.movementY*.002;
+
+      pitch=
+        Math.max(
+          -1.45,
+          Math.min(
+            1.45,
+            pitch
+          )
+        );
+
+    }
+  );
+
+}
+
+function toggleChat(){
+
+  const input =
+    document.getElementById(
+      'chat-input'
+    );
+
+  if(chatMode){
+
+    document.exitPointerLock();
+
+    input.focus();
+
+  }else{
+
+    input.blur();
+
+  }
+
+}
+
+/* =========================================================
+   ANIMATION
+========================================================= */
 
 function animate(){
 
-    requestAnimationFrame(
-        animate
+  requestAnimationFrame(
+    animate
+  );
+
+  if(!scene)return;
+
+  const dt =
+    Math.min(
+      clock.getDelta(),
+      .05
     );
 
-    if(
-        !gameStarted
+  const time =
+    performance.now()/1000;
+
+  let bass=.2;
+  let level=.2;
+
+  if(
+    analyser &&
+    freqData &&
+    audioStarted
+  ){
+
+    analyser.getByteFrequencyData(
+      freqData
+    );
+
+    let b=0;
+
+    for(
+      let i=0;
+      i<10 &&
+      i<freqData.length;
+      i++
     ){
-        return;
+
+      b+=freqData[i];
+
     }
 
-    const dt =
+    bass=
+      b/
+      (
         Math.min(
-            clock.getDelta(),
-            .05
+          10,
+          freqData.length
+        )*255
+      );
+
+    let total=0;
+
+    for(
+      let i=0;
+      i<freqData.length;
+      i++
+    ){
+
+      total+=freqData[i];
+
+    }
+
+    level=
+      total/
+      (
+        freqData.length*255
+      );
+
+  }
+
+  else{
+
+    bass=
+      .25+
+      Math.sin(time*3)*.12;
+
+    level=
+      .25+
+      Math.sin(time*1.5)*.08;
+
+  }
+
+  bassLevel=
+    bassLevel*.82+
+    bass*.18;
+
+  audioLevel=
+    audioLevel*.88+
+    level*.12;
+
+  const speed=
+    chatMode
+      ?0
+      :5*dt;
+
+  let forward=0;
+  let side=0;
+
+  if(
+    keys['KeyW']
+  ){
+    forward+=1;
+  }
+
+  if(
+    keys['KeyS']
+  ){
+    forward-=1;
+  }
+
+  if(
+    keys['KeyA']
+  ){
+    side-=1;
+  }
+
+  if(
+    keys['KeyD']
+  ){
+    side+=1;
+  }
+
+  if(
+    pointerLocked &&
+    !chatMode
+  ){
+
+    const fx=
+      -Math.sin(yaw);
+
+    const fz=
+      -Math.cos(yaw);
+
+    const rx=
+      Math.cos(yaw);
+
+    const rz=
+      -Math.sin(yaw);
+
+    camera.position.x+=
+      (
+        fx*forward+
+        rx*side
+      )*speed;
+
+    camera.position.z+=
+      (
+        fz*forward+
+        rz*side
+      )*speed;
+
+  }
+
+  camera.position.x=
+    THREE.MathUtils.clamp(
+      camera.position.x,
+      -16,
+      16
+    );
+
+  camera.position.z=
+    THREE.MathUtils.clamp(
+      camera.position.z,
+      -15.5,
+      15.5
+    );
+
+  camera.position.y=1.7;
+
+  camera.rotation.order=
+    'YXZ';
+
+  camera.rotation.y=
+    yaw;
+
+  camera.rotation.x=
+    pitch;
+
+  if(playerBody){
+
+    playerBody.position.x=
+      camera.position.x;
+
+    playerBody.position.z=
+      camera.position.z;
+
+    playerBody.visible=false;
+
+  }
+
+  if(particles){
+
+    particles.rotation.y+=
+      .00015;
+
+    particles.material.opacity=
+      .12+
+      audioLevel*.2;
+
+  }
+
+  neonObjects.forEach(
+    (obj,index)=>{
+
+      const pulse=
+        .5+
+        Math.sin(
+          time*3+
+          index*.4
+        )*.25+
+        bassLevel*.7;
+
+      const value=
+        Math.min(
+          1,
+          pulse
         );
 
-    updatePlayer(dt);
+      obj.material.color.setRGB(
+        value,
+        value,
+        value
+      );
 
-    updateRemotePlayers(dt);
+    }
+  );
 
-    updateCamera();
+  lightObjects.forEach(
+    (light,index)=>{
 
-    syncPlayer(dt);
+      light.intensity=
+        1+
+        bassLevel*2+
+        Math.sin(
+          time*2+
+          index
+        )*.15;
 
-    renderer.render(
-        scene,
-        camera
+    }
+  );
+
+  if(screenCtx){
+
+    screenCtx.fillStyle=
+      '#050505';
+
+    screenCtx.fillRect(
+      0,
+      0,
+      1024,
+      512
     );
 
-}
+    const grd =
+      screenCtx.createLinearGradient(
+        0,
+        0,
+        1024,
+        0
+      );
 
-/* ============================================================
-   RESIZE
-============================================================ */
+    const intensity=
+      40+
+      Math.floor(
+        bassLevel*120
+      );
 
-function resize(){
+    grd.addColorStop(
+      0,
+      `rgb(${intensity},${intensity},${intensity})`
+    );
 
-    if(
-        !camera ||
-        !renderer
+    grd.addColorStop(
+      .5,
+      '#050505'
+    );
+
+    grd.addColorStop(
+      1,
+      `rgb(${intensity},${intensity},${intensity})`
+    );
+
+    screenCtx.fillStyle=
+      grd;
+
+    screenCtx.fillRect(
+      0,
+      0,
+      1024,
+      512
+    );
+
+    screenCtx.fillStyle=
+      '#fff';
+
+    screenCtx.font=
+      'bold 80px Arial';
+
+    screenCtx.textAlign=
+      'center';
+
+    screenCtx.fillText(
+      'EWS SESSIONS',
+      512,
+      200
+    );
+
+    screenCtx.font=
+      '22px Arial';
+
+    screenCtx.fillStyle=
+      '#777';
+
+    screenCtx.fillText(
+      'UNDERGROUND CLUB',
+      512,
+      245
+    );
+
+    const bars=48;
+
+    const bw=
+      800/bars;
+
+    for(
+      let i=0;
+      i<bars;
+      i++
     ){
-        return;
+
+      let value;
+
+      if(
+        freqData &&
+        audioStarted
+      ){
+
+        value=
+          freqData[
+            Math.floor(
+              i*
+              freqData.length/
+              bars
+            )
+          ]/255;
+
+      }else{
+
+        value=
+          .2+
+          Math.sin(
+            time*4+
+            i*.5
+          )*.15;
+
+      }
+
+      const h=
+        value*180;
+
+      screenCtx.fillStyle=
+        '#fff';
+
+      screenCtx.fillRect(
+        112+i*bw,
+        450-h,
+        bw-3,
+        h
+      );
+
     }
 
-    camera.aspect =
-        innerWidth /
-        innerHeight;
+    screenTexture.needsUpdate=true;
 
-    camera.updateProjectionMatrix();
+  }
 
-    renderer.setSize(
-        innerWidth,
-        innerHeight
-    );
+  renderer.render(
+    scene,
+    camera
+  );
 
 }
+
+/* =========================================================
+   CLEANUP
+========================================================= */
+
+window.addEventListener(
+  'beforeunload',
+  function(){
+
+    try{
+
+      if(hls){
+        hls.destroy();
+      }
+
+    }catch(e){}
+
+    try{
+
+      if(audioContext){
+        audioContext.close();
+      }
+
+    }catch(e){}
+
+  }
+);
 
 </script>
 
