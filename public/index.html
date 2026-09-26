@@ -475,121 +475,6 @@ input:focus{
 }
 
 /* =========================================================
-   VK SEARCH
-========================================================= */
-
-#vk-music{
-  position:absolute;
-
-  top:105px;
-  left:50%;
-
-  transform:translateX(-50%);
-
-  width:420px;
-
-  padding:14px;
-
-  background:rgba(0,0,0,.84);
-
-  border:1px solid #333;
-
-  z-index:120;
-
-  pointer-events:auto;
-
-  box-shadow:
-    0 0 35px rgba(0,0,0,.5);
-}
-
-#vk-title{
-  font-size:9px;
-
-  letter-spacing:4px;
-
-  color:#aaa;
-
-  margin-bottom:10px;
-
-  text-align:center;
-}
-
-#vk-search-row{
-  display:flex;
-  gap:6px;
-}
-
-#vk-search-input{
-  flex:1;
-
-  height:38px;
-
-  margin:0;
-
-  padding:0 10px;
-
-  background:#080808;
-
-  border:1px solid #333;
-
-  color:#fff;
-
-  outline:none;
-}
-
-#vk-search-input:focus{
-  border-color:#888;
-}
-
-#vk-search-btn{
-  width:85px;
-
-  border:0;
-
-  background:#fff;
-
-  color:#000;
-
-  font-size:10px;
-
-  font-weight:bold;
-
-  letter-spacing:1px;
-
-  cursor:pointer;
-}
-
-#vk-search-btn:hover{
-  background:#ddd;
-}
-
-#vk-result{
-  display:none;
-
-  margin-top:10px;
-
-  padding:10px;
-
-  border-top:1px solid #222;
-
-  color:#888;
-
-  font-size:10px;
-
-  line-height:1.5;
-}
-
-#vk-result a{
-  color:#fff;
-
-  text-decoration:none;
-}
-
-#vk-result a:hover{
-  text-decoration:underline;
-}
-
-/* =========================================================
    MOBILE
 ========================================================= */
 
@@ -662,28 +547,6 @@ input:focus{
     font-size:8px;
 
     z-index:150;
-  }
-
-  #vk-music{
-    top:125px;
-
-    left:12px;
-
-    transform:none;
-
-    width:calc(100vw - 24px);
-
-    max-width:420px;
-
-    padding:10px;
-  }
-
-  #vk-search-input{
-    font-size:14px;
-  }
-
-  #vk-search-btn{
-    width:75px;
   }
 
   #chat{
@@ -856,36 +719,6 @@ input:focus{
     onclick="startSSHAudio()">
     ▶ AUDIO: START
   </button>
-
-  <!-- ===================================================
-       VK MUSIC SEARCH
-  ==================================================== -->
-
-  <div id="vk-music">
-
-    <div id="vk-title">
-      VK MUSIC SEARCH
-    </div>
-
-    <div id="vk-search-row">
-
-      <input
-        id="vk-search-input"
-        type="text"
-        placeholder="Artist / Track..."
-        autocomplete="off"
-      >
-
-      <button
-        id="vk-search-btn">
-        SEARCH
-      </button>
-
-    </div>
-
-    <div id="vk-result"></div>
-
-  </div>
 
   <div id="lang-bar">
 
@@ -1133,48 +966,63 @@ function startSession(username){
 
   socket=io();
 
-  socket.emit(
-    'join',
-    {
-      username,
-      lang:
-        document.getElementById(
-          'lang'
-        ).value
-    }
-  );
+  socket.on('connect',function(){
+
+    socket.emit(
+      'join',
+      {
+        username: currentUser,
+        language:
+          document.getElementById('lang').value
+      }
+    );
+
+  });
 
   socket.on(
-    'online',
+    'online-users',
     list=>{
 
       const ul =
-        document.getElementById(
-          'online-list'
-        );
+        document.getElementById('online-list');
 
       ul.innerHTML='';
 
-      list.forEach(
-        name=>{
+      if(!Array.isArray(list)) return;
 
-          const li =
-            document.createElement(
-              'li'
-            );
+      list.forEach(user=>{
 
-          li.textContent=name;
+        const li =
+          document.createElement('li');
 
-          ul.appendChild(li);
+        const name =
+          typeof user === 'string'
+            ? user
+            : user.username;
 
-        }
-      );
+        li.textContent =
+          name === currentUser
+            ? name + ' (YOU)'
+            : name;
+
+        ul.appendChild(li);
+
+      });
 
     }
   );
 
+  // Compatibility with an older server version.
+  socket.on('online',list=>{
+
+    if(socket.connected){
+      socket.emit('request-online');
+    }
+
+  });
+
   socket.on(
-    'msg',
+    'chat-message',
     message=>{
 
       const el =
@@ -1257,7 +1105,7 @@ document
       if(!text)return;
 
       socket.emit(
-        'msg',
+        'chat-message',
         {
           user:currentUser,
           text:text,
@@ -1287,7 +1135,7 @@ document
       if(socket){
 
         socket.emit(
-          'language',
+          'language-change',
           this.value
         );
 
@@ -1295,84 +1143,6 @@ document
 
     }
   );
-
-/* =========================================================
-   VK MUSIC SEARCH
-========================================================= */
-
-const vkSearchInput =
-  document.getElementById(
-    'vk-search-input'
-  );
-
-const vkSearchBtn =
-  document.getElementById(
-    'vk-search-btn'
-  );
-
-const vkResult =
-  document.getElementById(
-    'vk-result'
-  );
-
-function searchVKMusic(){
-
-  const query =
-    vkSearchInput.value.trim();
-
-  if(!query){
-
-    vkResult.style.display=
-      'block';
-
-    vkResult.textContent=
-      'Введите исполнителя или название трека.';
-
-    return;
-  }
-
-  const vkUrl =
-    'https://vk.com/search?c[q]='+
-    encodeURIComponent(query)+
-    '&c[section]=audio';
-
-  vkResult.style.display=
-    'block';
-
-  vkResult.innerHTML=
-    '<a href="'+
-    vkUrl+
-    '" target="_blank" rel="noopener noreferrer">'+
-    'OPEN VK MUSIC SEARCH →'+
-    '</a>';
-
-  window.open(
-    vkUrl,
-    '_blank',
-    'noopener,noreferrer'
-  );
-
-}
-
-vkSearchBtn.addEventListener(
-  'click',
-  searchVKMusic
-);
-
-vkSearchInput.addEventListener(
-  'keydown',
-  function(e){
-
-    if(e.key==='Enter'){
-
-      e.preventDefault();
-
-      searchVKMusic();
-
-    }
-
-  }
-);
 
 /* =========================================================
    THREE.JS
