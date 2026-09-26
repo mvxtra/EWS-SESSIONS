@@ -24,13 +24,19 @@ const MEDIA = path.join(ROOT, 'media');
 const USERS_FILE = path.join(DATA, 'users.json');
 
 /*
-=========================================================
-EWS SESSIONS
-SCREEN OWNER
-=========================================================
+==================================================
+ EWS SESSIONS
+ MAIN USER
+==================================================
 */
 
-const SCREEN_OWNER_USERNAME = 'mvxtra';
+const MAIN_USERNAME = 'mvxtra';
+
+/*
+==================================================
+ FOLDERS
+==================================================
+*/
 
 fs.mkdirSync(DATA, { recursive: true });
 fs.mkdirSync(MEDIA, { recursive: true });
@@ -39,204 +45,246 @@ if (!fs.existsSync(USERS_FILE)) {
     fs.writeFileSync(USERS_FILE, '[]', 'utf8');
 }
 
+/*
+==================================================
+ EXPRESS
+==================================================
+*/
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-/*
-=========================================================
-HLS
-=========================================================
-*/
-
 app.use('/hls', express.static(MEDIA));
-
-/*
-=========================================================
-PUBLIC
-=========================================================
-*/
-
 app.use(express.static(PUBLIC));
 
 /*
-=========================================================
-USERS
-=========================================================
+==================================================
+ USERS
+==================================================
 */
 
 function loadUsers() {
     try {
-        return JSON.parse(
-            fs.readFileSync(USERS_FILE, 'utf8')
-        );
-    } catch {
+        const data = fs.readFileSync(USERS_FILE, 'utf8');
+        const users = JSON.parse(data);
+
+        return Array.isArray(users) ? users : [];
+    } catch (error) {
+        console.log('[USERS LOAD ERROR]', error.message);
         return [];
     }
 }
 
 function saveUsers(users) {
-    fs.writeFileSync(
-        USERS_FILE,
-        JSON.stringify(users, null, 2),
-        'utf8'
-    );
+    try {
+        fs.writeFileSync(
+            USERS_FILE,
+            JSON.stringify(users, null, 2),
+            'utf8'
+        );
+    } catch (error) {
+        console.log('[USERS SAVE ERROR]', error.message);
+    }
 }
 
 /*
-=========================================================
-REGISTER
-=========================================================
+==================================================
+ NORMALIZE USERNAME
+==================================================
+*/
+
+function normalizeUsername(username) {
+    return String(username || '')
+        .trim()
+        .toLowerCase();
+}
+
+/*
+==================================================
+ MAIN USER CHECK
+==================================================
+*/
+
+function isMainUser(username) {
+    return normalizeUsername(username) === normalizeUsername(MAIN_USERNAME);
+}
+
+/*
+==================================================
+ REGISTER
+==================================================
 */
 
 app.post('/api/register', (req, res) => {
 
-    const username = String(
-        req.body?.username || ''
-    ).trim();
+    const username = String(req.body?.username || '').trim();
+    const password = String(req.body?.password || '');
 
-    const password = String(
-        req.body?.password || ''
-    );
-
-    if (username.length < 2) {
-        return res.json({
+    if (!username || !password) {
+        return res.status(400).json({
             ok: false,
-            message: 'Username минимум 2 символа'
+            error: 'Введите логин и пароль'
         });
     }
 
-    if (password.length < 4) {
-        return res.json({
+    if (username.length < 3 || username.length > 32) {
+        return res.status(400).json({
             ok: false,
-            message: 'Пароль минимум 4 символа'
+            error: 'Логин должен быть от 3 до 32 символов'
+        });
+    }
+
+    if (password.length < 3) {
+        return res.status(400).json({
+            ok: false,
+            error: 'Пароль слишком короткий'
         });
     }
 
     const users = loadUsers();
 
-    const exists = users.some(
-        user =>
-            String(user.username).toLowerCase() ===
-            username.toLowerCase()
+    const exists = users.find(user =>
+        normalizeUsername(user.username) === normalizeUsername(username)
     );
 
     if (exists) {
-        return res.json({
+        return res.status(409).json({
             ok: false,
-            message: 'Пользователь уже существует'
+            error: 'Пользователь уже существует'
         });
     }
 
-    users.push({
-        username,
-        password
-    });
+    const isOwner = isMainUser(username);
 
+    const user = {
+        username,
+        password,
+        owner: isOwner,
+        role: isOwner ? 'owner' : 'user',
+        createdAt: Date.now()
+    };
+
+    users.push(user);
     saveUsers(users);
+
+    console.log(
+        `[REGISTER] ${username}${isOwner ? ' [MAIN USER]' : ''}`
+    );
 
     return res.json({
         ok: true,
-        username
+        username: user.username,
+        owner: isOwner,
+        role: user.role
     });
 });
 
 /*
-=========================================================
-LOGIN
-=========================================================
+==================================================
+ LOGIN
+==================================================
 */
 
 app.post('/api/login', (req, res) => {
 
-    const username = String(
-        req.body?.username || ''
-    ).trim();
+    const username = String(req.body?.username || '').trim();
+    const password = String(req.body?.password || '');
 
-    const password = String(
-        req.body?.password || ''
-    );
-
-    const users = loadUsers();
-
-    const user = users.find(
-        item =>
-            String(item.username).toLowerCase() ===
-                username.toLowerCase() &&
-            item.password === password
-    );
-
-    if (!user) {
-        return res.json({
+    if (!username || !password) {
+        return res.status(400).json({
             ok: false,
-            message: 'Неверный username или пароль'
+            error: 'Введите логин и пароль'
         });
     }
 
+    const users = loadUsers();
+
+    const user = users.find(item =>
+        normalizeUsername(item.username) === normalizeUsername(username)
+    );
+
+    if (!user) {
+        return res.status(401).json({
+            ok: false,
+            error: 'Пользователь не найден'
+        });
+    }
+
+    if (String(user.password) !== password) {
+        return res.status(401).json({
+            ok: false,
+            error: 'Неверный пароль'
+        });
+    }
+
+    /*
+    ==============================================
+    MAIN USER IS ALWAYS mvxtra
+    ==============================================
+    */
+
+    const owner = isMainUser(user.username);
+
+    /*
+    Исправляем старые аккаунты mvxtra,
+    если они были созданы раньше.
+    */
+
+    if (owner) {
+        user.owner = true;
+        user.role = 'owner';
+    }
+
+    saveUsers(users);
+
+    console.log(
+        `[LOGIN] ${user.username}${owner ? ' [MAIN USER]' : ''}`
+    );
+
     return res.json({
         ok: true,
-        username: user.username
+        username: user.username,
+        owner,
+        role: owner ? 'owner' : 'user'
     });
 });
 
 /*
-=========================================================
-STATUS
-=========================================================
+==================================================
+ STATUS
+==================================================
 */
 
 app.get('/api/status', (req, res) => {
 
-    res.json({
+    return res.json({
         ok: true,
-        online: onlineUsers.size,
-        stream: true,
-        screenOwner: SCREEN_OWNER_USERNAME
+        server: 'EWS SESSIONS',
+        mainUser: MAIN_USERNAME,
+        online: getOnlineUsers().length
     });
-
 });
 
 /*
-=========================================================
-ONLINE USERS
-=========================================================
+==================================================
+ ONLINE USERS
+==================================================
 */
 
 const onlineUsers = new Map();
 
 /*
-socket.id -> {
-    id,
-    username,
-    language
-}
-*/
-
-/*
-=========================================================
-PLAYERS
-=========================================================
+==================================================
+ PLAYERS
+==================================================
 */
 
 const players = new Map();
 
 /*
-socket.id -> {
-    id,
-    username,
-    x,
-    y,
-    z,
-    ry,
-    jumping,
-    moving,
-    timestamp
-}
-*/
-
-/*
-=========================================================
-CLUB SCREEN
-=========================================================
+==================================================
+ CLUB SCREEN
+==================================================
 */
 
 let screenHostId = null;
@@ -249,98 +297,69 @@ let clubScreenState = {
 };
 
 /*
-=========================================================
-ONLINE HELPERS
-=========================================================
+==================================================
+ ONLINE HELPERS
+==================================================
 */
 
 function getOnlineUsers() {
-
-    return Array.from(
-        onlineUsers.values()
-    );
-
+    return Array.from(onlineUsers.values());
 }
 
 function broadcastOnline() {
-
-    io.emit(
-        'online-users',
-        getOnlineUsers()
-    );
-
+    io.emit('online-users', getOnlineUsers());
 }
 
 /*
-=========================================================
-PLAYER HELPERS
-=========================================================
+==================================================
+ PLAYER HELPERS
+==================================================
 */
 
 function getPlayersFor(socketId) {
 
-    return Array.from(
-        players.values()
-    ).filter(
-        player =>
-            player.id !== socketId
-    );
-
+    return Array.from(players.values())
+        .filter(player => player.id !== socketId);
 }
 
 function broadcastPlayers() {
 
     io.emit(
         'players-state',
-        Array.from(
-            players.values()
-        )
+        Array.from(players.values())
     );
-
 }
 
 /*
-=========================================================
-SCREEN HELPERS
-=========================================================
+==================================================
+ MAIN USER ONLINE
+==================================================
 */
 
-function broadcastScreen() {
+function getMainUserOnline() {
 
-    io.emit(
-        'club-screen-state',
-        clubScreenState
-    );
+    for (const user of onlineUsers.values()) {
 
-}
-
-function getScreenOwnerOnline() {
-
-    for (
-        const user of onlineUsers.values()
-    ) {
-
-        if (
-            user.username.toLowerCase() ===
-            SCREEN_OWNER_USERNAME.toLowerCase()
-        ) {
+        if (isMainUser(user.username)) {
             return user;
         }
-
     }
 
     return null;
 }
 
+/*
+==================================================
+ SCREEN HOST
+==================================================
+*/
+
 function updateScreenHost() {
 
-    const owner =
-        getScreenOwnerOnline();
+    const owner = getMainUserOnline();
 
     if (!owner) {
-
         screenHostId = null;
-
         return null;
     }
 
@@ -351,87 +370,85 @@ function updateScreenHost() {
 
 function broadcastScreenHost() {
 
-    const owner =
-        updateScreenHost();
+    const owner = updateScreenHost();
 
     if (!owner) {
 
-        io.emit(
-            'screen-host',
-            {
-                id: null,
-                username: SCREEN_OWNER_USERNAME,
-                online: false
-            }
-        );
+        io.emit('screen-host', {
+            id: null,
+            username: MAIN_USERNAME,
+            online: false,
+            owner: true
+        });
 
         return;
     }
 
-    io.emit(
-        'screen-host',
-        {
-            id: owner.id,
-            username: owner.username,
-            online: true
-        }
-    );
+    io.emit('screen-host', {
 
+        id: owner.id,
+
+        username: owner.username,
+
+        online: true,
+
+        owner: true
+    });
 }
 
 /*
-=========================================================
-TRANSLATION CACHE
-=========================================================
+==================================================
+ CLUB SCREEN
+==================================================
+*/
+
+function broadcastScreen() {
+    io.emit(
+        'club-screen-state',
+        clubScreenState
+    );
+}
+
+/*
+==================================================
+ TRANSLATION CACHE
+==================================================
 */
 
 const translationCache = new Map();
 
+function getTranslationCacheKey(text, language) {
+
+    return (
+        String(language || 'en').toLowerCase() +
+        '::' +
+        String(text || '')
+    );
+}
+
 /*
-=========================================================
-TRANSLATION
-=========================================================
+==================================================
+ TRANSLATION
+==================================================
 */
 
-async function translateText(
-    text,
-    targetLanguage
-) {
+async function translateText(text, targetLanguage) {
 
-    const target =
-        String(
-            targetLanguage || 'en'
-        )
+    const target = String(targetLanguage || 'en')
         .trim()
         .toLowerCase();
 
-    /*
-    Английский:
-    оставляем оригинал.
-    */
-
-    if (
-        !target ||
-        target === 'en'
-    ) {
-
+    if (!target || target === 'en') {
         return text;
     }
 
-    /*
-    Проверяем кэш.
-    */
+    const key = getTranslationCacheKey(
+        text,
+        target
+    );
 
-    const cacheKey =
-        `${target}::${text}`;
-
-    if (
-        translationCache.has(cacheKey)
-    ) {
-
-        return translationCache.get(
-            cacheKey
-        );
+    if (translationCache.has(key)) {
+        return translationCache.get(key);
     }
 
     try {
@@ -446,60 +463,41 @@ async function translateText(
             '&q=' +
             encodeURIComponent(text);
 
-        const response =
-            await fetch(url);
+        const response = await fetch(url);
 
         if (!response.ok) {
-
-            console.log(
-                `[TRANSLATION HTTP ERROR] ${response.status}`
-            );
-
             return text;
         }
 
-        const result =
-            await response.json();
+        const result = await response.json();
 
         if (
             Array.isArray(result) &&
             Array.isArray(result[0])
         ) {
 
-            const translated =
-                result[0]
-                    .map(
-                        part => part[0]
-                    )
-                    .join('');
+            const translated = result[0]
+                .map(part => part[0])
+                .join('');
 
             if (translated) {
 
-                /*
-                Ограничиваем размер кэша.
-                */
-
-                if (
-                    translationCache.size >= 1000
-                ) {
-
-                    const firstKey =
-                        translationCache.keys()
-                            .next()
-                            .value;
-
-                    if (firstKey) {
-
-                        translationCache.delete(
-                            firstKey
-                        );
-                    }
-                }
-
                 translationCache.set(
-                    cacheKey,
+                    key,
                     translated
                 );
+
+                /*
+                Не даём кэшу расти бесконечно.
+                */
+
+                if (translationCache.size > 5000) {
+
+                    const firstKey =
+                        translationCache.keys().next().value;
+
+                    translationCache.delete(firstKey);
+                }
 
                 return translated;
             }
@@ -511,21 +509,15 @@ async function translateText(
             '[TRANSLATION ERROR]',
             error.message
         );
-
     }
-
-    /*
-    Если перевод не получился,
-    отправляем оригинал.
-    */
 
     return text;
 }
 
 /*
-=========================================================
-SOCKET.IO
-=========================================================
+==================================================
+ SOCKET.IO
+==================================================
 */
 
 io.on('connection', socket => {
@@ -534,121 +526,143 @@ io.on('connection', socket => {
         `[SOCKET CONNECT] ${socket.id}`
     );
 
-    socket.emit(
-        'server-ready',
-        {
-            ok: true
-        }
-    );
+    socket.emit('server-ready', {
+        ok: true
+    });
 
     /*
-    =====================================================
+    ==============================================
     JOIN
-    =====================================================
+    ==============================================
     */
 
     socket.on('join', data => {
 
-        const username =
-            String(
-                data?.username || 'Guest'
-            ).trim();
+        const username = String(
+            data?.username || 'Guest'
+        ).trim();
 
-        const language =
-            String(
-                data?.language || 'en'
-            )
-            .trim()
-            .toLowerCase();
+        const language = String(
+            data?.language || 'en'
+        ).trim();
 
         if (!username) {
             return;
         }
 
-        socket.username =
-            username;
+        /*
+        ==========================================
+        MAIN USER DETECTION
+        ==========================================
+        */
 
-        socket.language =
-            language;
+        const owner = isMainUser(username);
+
+        socket.username = username;
+        socket.language = language;
+        socket.isOwner = owner;
 
         /*
+        ==========================================
         ONLINE USER
+        ==========================================
         */
 
-        onlineUsers.set(
-            socket.id,
-            {
-                id: socket.id,
-                username,
-                language
-            }
-        );
+        onlineUsers.set(socket.id, {
+
+            id: socket.id,
+
+            username,
+
+            language,
+
+            owner
+        });
 
         /*
+        ==========================================
         PLAYER
+        ==========================================
         */
+
+        const player = {
+
+            id: socket.id,
+
+            username,
+
+            x: 0,
+
+            y: 0,
+
+            z: 13,
+
+            ry: 0,
+
+            jumping: false,
+
+            moving: false,
+
+            owner,
+
+            timestamp: Date.now()
+        };
 
         players.set(
             socket.id,
-            {
-                id: socket.id,
-                username,
-
-                x: 0,
-                y: 0,
-                z: 13,
-
-                ry: 0,
-
-                jumping: false,
-                moving: false,
-
-                timestamp: Date.now()
-            }
+            player
         );
 
         /*
-        SCREEN OWNER
+        ==========================================
+        MAIN USER ONLINE
+        ==========================================
         */
 
-        if (
-            username.toLowerCase() ===
-            SCREEN_OWNER_USERNAME.toLowerCase()
-        ) {
+        if (owner) {
 
-            screenHostId =
-                socket.id;
+            screenHostId = socket.id;
 
             console.log(
-                `[SCREEN OWNER ONLINE] ${username}`
+                `[MAIN USER ONLINE] ${username}`
             );
 
+            console.log(
+                `[SCREEN OWNER] ${username}`
+            );
         }
 
-        console.log(
-            `[ONLINE] ${username} | ${socket.id} | ${language}`
-        );
-
         /*
-        ONLINE
+        ==========================================
+        ONLINE BROADCAST
+        ==========================================
         */
 
         broadcastOnline();
 
         /*
-        JOINED
+        ==========================================
+        JOIN RESPONSE
+        ==========================================
         */
 
-        socket.emit(
-            'joined',
-            {
-                ok: true,
-                username
-            }
-        );
+        socket.emit('joined', {
+
+            ok: true,
+
+            username,
+
+            owner,
+
+            role: owner
+                ? 'owner'
+                : 'user'
+        });
 
         /*
-        PLAYERS
+        ==========================================
+        EXISTING PLAYERS
+        ==========================================
         */
 
         socket.emit(
@@ -657,7 +671,9 @@ io.on('connection', socket => {
         );
 
         /*
-        SCREEN
+        ==========================================
+        CURRENT SCREEN
+        ==========================================
         */
 
         socket.emit(
@@ -666,83 +682,69 @@ io.on('connection', socket => {
         );
 
         /*
-        SCREEN OWNER
+        ==========================================
+        CURRENT SCREEN HOST
+        ==========================================
         */
 
         const screenOwner =
-            getScreenOwnerOnline();
+            getMainUserOnline();
 
-        if (screenOwner) {
-
-            socket.emit(
-                'screen-host',
-                {
+        socket.emit(
+            'screen-host',
+            screenOwner
+                ? {
                     id: screenOwner.id,
                     username: screenOwner.username,
-                    online: true
+                    online: true,
+                    owner: true
                 }
-            );
-
-        } else {
-
-            socket.emit(
-                'screen-host',
-                {
+                : {
                     id: null,
-                    username: SCREEN_OWNER_USERNAME,
-                    online: false
+                    username: MAIN_USERNAME,
+                    online: false,
+                    owner: true
                 }
-            );
-
-        }
+        );
 
         /*
-        PLAYER JOINED
+        ==========================================
+        TELL OTHER PLAYERS
+        ==========================================
         */
 
         socket.broadcast.emit(
             'player-joined',
-            {
-                id: socket.id,
-                username,
-
-                x: 0,
-                y: 0,
-                z: 13,
-
-                ry: 0,
-
-                jumping: false,
-                moving: false
-            }
+            player
         );
-
-        /*
-        SYSTEM MESSAGE
-        */
 
         socket.broadcast.emit(
             'system-message',
             {
                 text:
                     `${username} entered EWS SESSIONS`,
-                ts:
-                    Date.now()
+                ts: Date.now()
             }
         );
 
         /*
-        SCREEN OWNER STATUS
+        ==========================================
+        SCREEN HOST
+        ==========================================
         */
 
         broadcastScreenHost();
 
+        console.log(
+            `[JOIN] ${username}` +
+            `${owner ? ' [MAIN USER / OWNER]' : ''}`
+        );
     });
 
     /*
-    =====================================================
+    ==============================================
     REQUEST ONLINE
-    =====================================================
+    ==============================================
     */
 
     socket.on(
@@ -758,9 +760,9 @@ io.on('connection', socket => {
     );
 
     /*
-    =====================================================
+    ==============================================
     REQUEST PLAYERS
-    =====================================================
+    ==============================================
     */
 
     socket.on(
@@ -776,9 +778,9 @@ io.on('connection', socket => {
     );
 
     /*
-    =====================================================
+    ==============================================
     PLAYER MOVE
-    =====================================================
+    ==============================================
     */
 
     socket.on(
@@ -834,12 +836,8 @@ io.on('connection', socket => {
                     Math.min(17, z)
                 );
 
-            if (
-                Number.isFinite(ry)
-            ) {
-
-                player.ry =
-                    ry;
+            if (Number.isFinite(ry)) {
+                player.ry = ry;
             }
 
             player.jumping =
@@ -865,14 +863,13 @@ io.on('connection', socket => {
                 'player-state',
                 player
             );
-
         }
     );
 
     /*
-    =====================================================
+    ==============================================
     PLAYER STATE
-    =====================================================
+    ==============================================
     */
 
     socket.on(
@@ -910,18 +907,26 @@ io.on('connection', socket => {
                     ? Number(data.y)
                     : player.y;
 
-            const ry =
+            let ry = player.ry;
+
+            if (
                 Number.isFinite(
                     Number(data?.yaw)
                 )
-                    ? Number(data.yaw)
-                    : (
-                        Number.isFinite(
-                            Number(data?.ry)
-                        )
-                            ? Number(data.ry)
-                            : player.ry
-                    );
+            ) {
+
+                ry =
+                    Number(data.yaw);
+
+            } else if (
+                Number.isFinite(
+                    Number(data?.ry)
+                )
+            ) {
+
+                ry =
+                    Number(data.ry);
+            }
 
             player.x =
                 Math.max(
@@ -941,8 +946,7 @@ io.on('connection', socket => {
                     Math.min(17, z)
                 );
 
-            player.ry =
-                ry;
+            player.ry = ry;
 
             player.jumping =
                 !!data?.jumping;
@@ -952,6 +956,9 @@ io.on('connection', socket => {
 
             player.username =
                 socket.username;
+
+            player.owner =
+                !!socket.isOwner;
 
             player.timestamp =
                 Date.now();
@@ -970,40 +977,50 @@ io.on('connection', socket => {
                 'player-move',
                 player
             );
-
         }
     );
 
     /*
-    =====================================================
+    ==============================================
     CLUB SCREEN
-    =====================================================
+    ONLY mvxtra
+    ==============================================
     */
 
     socket.on(
         'club-screen-state',
         data => {
 
-            /*
-            Только mvxtra.
-            */
-
             const isOwner =
-                String(
-                    socket.username || ''
-                )
-                .trim()
-                .toLowerCase() ===
-                SCREEN_OWNER_USERNAME.toLowerCase();
+                isMainUser(socket.username);
 
             if (!isOwner) {
 
                 console.log(
-                    `[SCREEN DENIED] ${socket.username || socket.id}`
+                    `[SCREEN DENIED] ` +
+                    `${socket.username || socket.id} ` +
+                    `is not ${MAIN_USERNAME}`
+                );
+
+                socket.emit(
+                    'screen-error',
+                    {
+                        ok: false,
+                        error:
+                            'Only mvxtra can control the club screen'
+                    }
                 );
 
                 return;
             }
+
+            /*
+            ======================================
+            ABSOLUTE OWNER
+            ======================================
+            */
+
+            socket.isOwner = true;
 
             screenHostId =
                 socket.id;
@@ -1013,28 +1030,38 @@ io.on('connection', socket => {
             }
 
             /*
-            CLEAR SCREEN
+            ======================================
+            TURN SCREEN OFF
+            ======================================
             */
 
-            if (
-                data.active === false
-            ) {
+            if (data.active === false) {
 
                 clubScreenState = {
+
                     active: false,
+
                     src: '',
+
                     name: '',
+
                     owner: socket.username
                 };
 
-                console.log(
-                    `[SCREEN CLEARED] ${socket.username}`
-                );
-
                 broadcastScreen();
+
+                console.log(
+                    '[SCREEN] OFF by mvxtra'
+                );
 
                 return;
             }
+
+            /*
+            ======================================
+            SCREEN URL
+            ======================================
+            */
 
             const src =
                 String(
@@ -1045,13 +1072,14 @@ io.on('connection', socket => {
                 return;
             }
 
-            /*
-            Только HTTP / HTTPS.
-            */
-
             if (
                 !/^https?:\/\//i.test(src)
             ) {
+
+                console.log(
+                    '[SCREEN] Invalid URL'
+                );
+
                 return;
             }
 
@@ -1068,23 +1096,21 @@ io.on('connection', socket => {
 
                 name,
 
-                owner:
-                    socket.username
+                owner: socket.username
             };
-
-            console.log(
-                `[SCREEN] ${socket.username} -> ${src}`
-            );
 
             broadcastScreen();
 
+            console.log(
+                `[SCREEN] ${name || src}`
+            );
         }
     );
 
     /*
-    =====================================================
-    REQUEST SCREEN
-    =====================================================
+    ==============================================
+    REQUEST CLUB SCREEN
+    ==============================================
     */
 
     socket.on(
@@ -1097,39 +1123,31 @@ io.on('connection', socket => {
             );
 
             const owner =
-                getScreenOwnerOnline();
+                getMainUserOnline();
 
-            if (owner) {
-
-                socket.emit(
-                    'screen-host',
-                    {
+            socket.emit(
+                'screen-host',
+                owner
+                    ? {
                         id: owner.id,
                         username: owner.username,
-                        online: true
+                        online: true,
+                        owner: true
                     }
-                );
-
-            } else {
-
-                socket.emit(
-                    'screen-host',
-                    {
+                    : {
                         id: null,
-                        username: SCREEN_OWNER_USERNAME,
-                        online: false
+                        username: MAIN_USERNAME,
+                        online: false,
+                        owner: true
                     }
-                );
-
-            }
-
+            );
         }
     );
 
     /*
-    =====================================================
+    ==============================================
     CHAT
-    =====================================================
+    ==============================================
     */
 
     socket.on(
@@ -1149,10 +1167,6 @@ io.on('connection', socket => {
                 return;
             }
 
-            /*
-            Максимум 500 символов.
-            */
-
             if (text.length > 500) {
                 return;
             }
@@ -1164,44 +1178,17 @@ io.on('connection', socket => {
                 Date.now();
 
             /*
-            Все пользователи онлайн.
+            ======================================
+            GROUP USERS BY LANGUAGE
+            ======================================
             */
 
-            const users =
-                Array.from(
-                    onlineUsers.entries()
-                );
-
-            /*
-            =================================================
-            ГРУППИРУЕМ SOCKETS ПО ЯЗЫКУ
-            =================================================
-
-            Например:
-
-            user1 -> ru
-            user2 -> ru
-            user3 -> en
-            user4 -> de
-
-            Получаем:
-
-            ru -> user1,user2
-            en -> user3
-            de -> user4
-
-            Поэтому Google Translate вызывается
-            один раз на каждый язык.
-            */
-
-            const usersByLanguage =
+            const languageGroups =
                 new Map();
 
             for (
-                const [
-                    socketId,
-                    user
-                ] of users
+                const user
+                of onlineUsers.values()
             ) {
 
                 const language =
@@ -1212,35 +1199,32 @@ io.on('connection', socket => {
                     .toLowerCase();
 
                 if (
-                    !usersByLanguage.has(
-                        language
-                    )
+                    !languageGroups.has(language)
                 ) {
 
-                    usersByLanguage.set(
+                    languageGroups.set(
                         language,
                         []
                     );
                 }
 
-                usersByLanguage
+                languageGroups
                     .get(language)
-                    .push(socketId);
+                    .push(user);
             }
 
             /*
-            =================================================
-            ПЕРЕВОДИМ
-            =================================================
+            ======================================
+            TRANSLATE ONCE PER LANGUAGE
+            ======================================
             */
-
-            const translations =
-                new Map();
 
             for (
                 const [
-                    language
-                ] of usersByLanguage
+                    language,
+                    users
+                ]
+                of languageGroups
             ) {
 
                 const translated =
@@ -1249,94 +1233,40 @@ io.on('connection', socket => {
                         language
                     );
 
-                translations.set(
-                    language,
-                    translated
-                );
-            }
-
-            /*
-            =================================================
-            ОТПРАВЛЯЕМ КАЖДОМУ ЕГО ЯЗЫК
-            =================================================
-            */
-
-            for (
-                const [
-                    language,
-                    socketIds
-                ] of usersByLanguage
-            ) {
-
-                const messageText =
-                    translations.get(
-                        language
-                    );
-
                 for (
-                    const socketId
-                    of socketIds
+                    const user
+                    of users
                 ) {
 
-                    io.to(socketId).emit(
+                    io.to(user.id).emit(
                         'chat-message',
                         {
-                            /*
-                            Текущий index.html
-                            использует message.user
-                            */
-
                             user:
                                 socket.username,
-
-                            /*
-                            Оставляем также username
-                            */
 
                             username:
                                 socket.username,
 
-                            /*
-                            Переведённый текст
-                            */
-
                             text:
-                                messageText,
+                                translated,
 
-                            /*
-                            Оригинал
-                            */
+                            original,
 
-                            original:
-                                original,
-
-                            /*
-                            Язык пользователя,
-                            которому отправили
-                            */
-
-                            language:
-                                language,
-
-                            /*
-                            Время сообщения
-                            */
+                            language,
 
                             ts:
                                 timestamp
                         }
                     );
-
                 }
             }
-
         }
     );
 
     /*
-    =====================================================
+    ==============================================
     LANGUAGE CHANGE
-    =====================================================
+    ==============================================
     */
 
     socket.on(
@@ -1344,9 +1274,7 @@ io.on('connection', socket => {
         language => {
 
             const user =
-                onlineUsers.get(
-                    socket.id
-                );
+                onlineUsers.get(socket.id);
 
             if (!user) {
                 return;
@@ -1373,16 +1301,17 @@ io.on('connection', socket => {
             broadcastOnline();
 
             console.log(
-                `[LANGUAGE] ${user.username}: ${newLanguage}`
+                `[LANGUAGE] ` +
+                `${user.username}: ` +
+                `${newLanguage}`
             );
-
         }
     );
 
     /*
-    =====================================================
+    ==============================================
     DISCONNECT
-    =====================================================
+    ==============================================
     */
 
     socket.on(
@@ -1390,29 +1319,30 @@ io.on('connection', socket => {
         reason => {
 
             const user =
-                onlineUsers.get(
-                    socket.id
-                );
+                onlineUsers.get(socket.id);
 
             if (user) {
 
                 console.log(
-                    `[OFFLINE] ${user.username} | ${reason}`
+                    `[OFFLINE] ` +
+                    `${user.username} | ` +
+                    `${reason}`
                 );
 
                 onlineUsers.delete(
                     socket.id
                 );
-
             }
-
-            /*
-            PLAYER
-            */
 
             players.delete(
                 socket.id
             );
+
+            /*
+            ======================================
+            REMOVE PLAYER
+            ======================================
+            */
 
             socket.broadcast.emit(
                 'player-left',
@@ -1425,43 +1355,44 @@ io.on('connection', socket => {
             );
 
             /*
-            =================================================
-            SCREEN OWNER LEFT
-            =================================================
-
-            Если mvxtra вышел,
-            новый хозяин НЕ назначается.
+            ======================================
+            MAIN USER LEFT
+            ======================================
             */
 
             if (
                 socket.id === screenHostId ||
                 (
                     user &&
-                    user.username.toLowerCase() ===
-                    SCREEN_OWNER_USERNAME.toLowerCase()
+                    isMainUser(user.username)
                 )
             ) {
 
                 console.log(
-                    `[SCREEN OWNER LEFT] ${user?.username || socket.id}`
+                    '[MAIN USER OFFLINE]'
                 );
 
                 screenHostId =
                     null;
 
                 clubScreenState = {
+
                     active: false,
+
                     src: '',
+
                     name: '',
+
                     owner: ''
                 };
 
                 broadcastScreen();
-
             }
 
             /*
+            ======================================
             SYSTEM MESSAGE
+            ======================================
             */
 
             if (user) {
@@ -1471,57 +1402,45 @@ io.on('connection', socket => {
                     {
                         text:
                             `${user.username} left EWS SESSIONS`,
+
                         ts:
                             Date.now()
                     }
                 );
-
             }
-
-            /*
-            ONLINE
-            */
 
             broadcastOnline();
 
-            /*
-            PLAYERS
-            */
-
             broadcastPlayers();
 
-            /*
-            SCREEN OWNER STATUS
-            */
-
             broadcastScreenHost();
-
         }
     );
-
 });
 
 /*
-=========================================================
-MAIN PAGE
-=========================================================
+==================================================
+ ROOT
+==================================================
 */
 
-app.get('/', (req, res) => {
+app.get(
+    '/',
+    (req, res) => {
 
-    res.sendFile(
-        path.join(
-            PUBLIC,
-            'index.html'
-        )
-    );
-
-});
+        res.sendFile(
+            path.join(
+                PUBLIC,
+                'index.html'
+            )
+        );
+    }
+);
 
 /*
-=========================================================
-RTMP / HLS
-=========================================================
+==================================================
+ RTMP / HLS
+==================================================
 */
 
 const mediaServerConfig = {
@@ -1537,7 +1456,6 @@ const mediaServerConfig = {
         ping: 30,
 
         ping_timeout: 60
-
     },
 
     http: {
@@ -1547,7 +1465,6 @@ const mediaServerConfig = {
         mediaroot: MEDIA,
 
         allow_origin: '*'
-
     },
 
     trans: {
@@ -1568,19 +1485,16 @@ const mediaServerConfig = {
                     '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
 
                 dash: false
-
             }
 
         ]
-
     }
-
 };
 
 /*
-=========================================================
-START MEDIA SERVER
-=========================================================
+==================================================
+ START NODE MEDIA SERVER
+==================================================
 */
 
 try {
@@ -1592,8 +1506,9 @@ try {
 
     nms.run();
 
-    console.log('');
-    console.log('RTMP SERVER READY');
+    console.log(
+        'RTMP SERVER READY'
+    );
 
     console.log(
         'RTMP: rtmp://localhost:1935/live'
@@ -1607,29 +1522,24 @@ try {
         'HLS: http://localhost:3000/hls/ews/index.m3u8'
     );
 
-    console.log('');
-
 } catch (error) {
 
     console.log(
         '[RTMP ERROR]',
         error.message
     );
-
 }
 
 /*
-=========================================================
-START WEB SERVER
-=========================================================
+==================================================
+ START WEB SERVER
+==================================================
 */
 
 server.listen(
     PORT,
     '0.0.0.0',
     () => {
-
-        console.log('');
 
         console.log(
             '=============================='
@@ -1664,7 +1574,11 @@ server.listen(
         );
 
         console.log(
-            `SCREEN OWNER: ${SCREEN_OWNER_USERNAME}`
+            `MAIN USER: ${MAIN_USERNAME}`
+        );
+
+        console.log(
+            'MAIN USER CONTROL: READY'
         );
 
         console.log(
@@ -1674,8 +1588,5 @@ server.listen(
         console.log(
             '=============================='
         );
-
-        console.log('');
-
     }
 );
