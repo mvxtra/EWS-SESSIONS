@@ -27,466 +27,457 @@ html,
 body {
     margin: 0;
     padding: 0;
+
     width: 100%;
     height: 100%;
-    overflow: hidden;
-    background: #000;
-    color: #fff;
-    font-family: Arial, Helvetica, sans-serif;
-}
 
-body {
-    position: relative;
+    overflow: hidden;
+
+    background: #000;
+
+    color: #fff;
+
+    font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
 }
 
 #canvas3d {
+
     position: fixed;
+
     inset: 0;
-    width: 100%;
-    height: 100%;
+
+    width: 100vw;
+    height: 100vh;
+
     display: block;
+
     background: #000;
+
+    z-index: 1;
 }
 
-/* =================================
-   LOGIN
-================================= */
+#loginScreen {
 
-#login-screen {
     position: fixed;
+
     inset: 0;
-    z-index: 1000;
+
+    z-index: 100;
 
     display: flex;
+
     align-items: center;
     justify-content: center;
 
     background:
         radial-gradient(
             circle at center,
-            #181818 0%,
-            #080808 45%,
+            #222 0%,
+            #050505 45%,
             #000 100%
         );
 }
 
-.login-box {
-    width: min(380px, 90vw);
+.loginBox {
 
-    padding: 35px;
+    width: 360px;
 
-    border: 1px solid rgba(255,255,255,.25);
+    max-width: calc(100vw - 40px);
 
-    background:
-        rgba(0,0,0,.82);
+    padding: 32px;
+
+    border: 1px solid #444;
+
+    background: rgba(0,0,0,.92);
 
     box-shadow:
-        0 0 60px rgba(255,255,255,.08);
+        0 0 40px rgba(255,255,255,.08);
 
     text-align: center;
 }
 
-.login-logo {
-    font-size: 42px;
+.logo {
+
+    font-size: 32px;
+
     font-weight: 900;
+
     letter-spacing: 8px;
-    margin-bottom: 5px;
+
+    margin-bottom: 8px;
 }
 
-.login-sub {
-    color: #aaa;
+.sub {
+
     font-size: 11px;
+
     letter-spacing: 4px;
-    margin-bottom: 30px;
+
+    color: #777;
+
+    margin-bottom: 28px;
 }
 
-.login-box input {
+.loginBox input {
+
     width: 100%;
-    height: 44px;
 
-    margin-bottom: 12px;
+    padding: 13px;
 
-    padding: 0 14px;
+    margin-bottom: 10px;
 
-    border: 1px solid #444;
+    border: 1px solid #333;
 
-    background: #080808;
+    background: #111;
 
-    color: white;
+    color: #fff;
 
     outline: none;
 }
 
-.login-box input:focus {
-    border-color: white;
-}
+.loginBox button {
 
-.login-buttons {
-    display: flex;
-    gap: 10px;
-}
+    width: 100%;
 
-.login-buttons button {
-    flex: 1;
+    padding: 13px;
 
-    height: 44px;
+    margin-top: 6px;
 
-    border: 1px solid white;
+    border: 0;
 
-    background: white;
+    background: #fff;
 
-    color: black;
+    color: #000;
 
-    font-weight: bold;
+    font-weight: 900;
 
     cursor: pointer;
 }
 
-.login-buttons button:last-child {
-    background: transparent;
-    color: white;
+.loginBox button:hover {
+
+    background: #ddd;
 }
 
-#login-status {
+#registerBtn {
+
+    background: #222;
+
+    color: #fff;
+}
+
+#error {
+
     min-height: 20px;
-    margin-top: 15px;
+
+    margin-top: 12px;
+
+    color: #ff5555;
+
     font-size: 12px;
-    color: #aaa;
 }
 
-/* =================================
-   HUD
-================================= */
+#club {
 
-#hud {
     position: fixed;
+
     inset: 0;
 
-    z-index: 50;
+    z-index: 5;
+
+    display: none;
+}
+
+#hud {
+
+    position: fixed;
+
+    top: 18px;
+
+    left: 18px;
+
+    z-index: 20;
 
     pointer-events: none;
 }
 
-#top-logo {
-    position: absolute;
-
-    left: 25px;
-    top: 20px;
+.brand {
 
     font-size: 20px;
+
     font-weight: 900;
 
     letter-spacing: 5px;
-
-    text-shadow:
-        0 0 10px rgba(255,255,255,.5);
 }
 
-#stream-indicator {
-    position: absolute;
+.status {
 
-    left: 25px;
-    top: 52px;
+    margin-top: 5px;
 
     font-size: 10px;
 
-    letter-spacing: 3px;
-
-    color: #999;
-}
-
-#audio-control {
-    position: absolute;
-
-    left: 25px;
-    bottom: 25px;
-
-    padding: 10px 16px;
-
-    border: 1px solid rgba(255,255,255,.5);
-
-    background: rgba(0,0,0,.65);
-
-    color: white;
-
-    cursor: pointer;
-
-    pointer-events: auto;
-
-    font-size: 11px;
-
     letter-spacing: 2px;
+
+    color: #aaa;
 }
 
-#lang {
-    position: absolute;
+#onlineBox {
 
-    right: 25px;
-    top: 20px;
+    position: fixed;
 
-    padding: 7px 10px;
+    top: 18px;
 
-    background: rgba(0,0,0,.7);
+    right: 18px;
 
-    color: white;
-
-    border: 1px solid #444;
-
-    pointer-events: auto;
-}
-
-/* =================================
-   ONLINE
-================================= */
-
-#online-box {
-    position: absolute;
-
-    right: 25px;
-    top: 65px;
+    z-index: 20;
 
     width: 190px;
 
-    padding: 14px;
+    max-height: 240px;
 
-    background:
-        rgba(0,0,0,.65);
+    overflow: auto;
 
-    border:
-        1px solid rgba(255,255,255,.15);
+    padding: 12px;
+
+    background: rgba(0,0,0,.65);
+
+    border: 1px solid #333;
 }
 
-.online-title {
+.onlineTitle {
+
     font-size: 10px;
+
     letter-spacing: 3px;
+
     color: #888;
+
     margin-bottom: 8px;
 }
 
-#online-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
+.onlineUser {
 
-    max-height: 180px;
-
-    overflow: auto;
-}
-
-#online-list li {
-    font-size: 12px;
     padding: 4px 0;
+
+    font-size: 12px;
 }
 
-.online-dot {
+.onlineDot {
+
     display: inline-block;
 
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
 
     margin-right: 7px;
 
     border-radius: 50%;
 
     background: #fff;
-
-    box-shadow:
-        0 0 8px #fff;
 }
-
-/* =================================
-   CHAT
-================================= */
 
 #chat {
-    position: absolute;
 
-    left: 25px;
-    bottom: 75px;
+    position: fixed;
 
-    width: 330px;
+    left: 18px;
 
-    pointer-events: auto;
+    bottom: 18px;
+
+    z-index: 20;
+
+    width: 340px;
+
+    max-width: calc(100vw - 36px);
 }
 
-#chat-messages {
-    height: 180px;
+#messages {
+
+    height: 170px;
 
     overflow-y: auto;
 
     padding: 10px;
 
-    background:
-        rgba(0,0,0,.55);
-
-    border:
-        1px solid rgba(255,255,255,.12);
-
-    margin-bottom: 7px;
-}
-
-.chat-line {
-    font-size: 12px;
-
-    margin-bottom: 7px;
-
-    line-height: 1.4;
-}
-
-.chat-user {
-    font-weight: bold;
-}
-
-.chat-system {
-    color: #777;
-    font-style: italic;
-}
-
-#chat-form {
-    display: flex;
-    gap: 5px;
-}
-
-#chat-input {
-    flex: 1;
-
-    height: 38px;
-
-    padding: 0 10px;
-
-    background: rgba(0,0,0,.8);
+    background: rgba(0,0,0,.55);
 
     border: 1px solid #333;
 
-    color: white;
+    margin-bottom: 6px;
+}
+
+.msg {
+
+    font-size: 12px;
+
+    margin-bottom: 6px;
+
+    line-height: 1.35;
+}
+
+.msgUser {
+
+    font-weight: 900;
+}
+
+.system {
+
+    color: #777;
+}
+
+#chatForm {
+
+    display: flex;
+
+    gap: 5px;
+}
+
+#chatInput {
+
+    flex: 1;
+
+    padding: 10px;
+
+    border: 1px solid #333;
+
+    background: rgba(0,0,0,.8);
+
+    color: #fff;
 
     outline: none;
 }
 
-#chat-send {
-    width: 65px;
+#chatForm button {
 
-    border: 1px solid white;
+    width: 60px;
 
-    background: white;
+    border: 0;
 
-    color: black;
+    background: #fff;
+
+    color: #000;
+
+    font-weight: 900;
+}
+
+#audioBtn {
+
+    position: fixed;
+
+    right: 18px;
+
+    bottom: 18px;
+
+    z-index: 30;
+
+    padding: 12px 18px;
+
+    border: 1px solid #555;
+
+    background: #000;
+
+    color: #fff;
 
     cursor: pointer;
 
-    font-weight: bold;
-}
-
-/* =================================
-   ZONE
-================================= */
-
-#zone-label {
-    position: absolute;
-
-    left: 50%;
-
-    bottom: 25px;
-
-    transform: translateX(-50%);
-
-    font-size: 10px;
-
-    letter-spacing: 5px;
-
-    color: #777;
+    font-weight: 900;
 }
 
 #hint {
-    position: absolute;
+
+    position: fixed;
 
     left: 50%;
 
-    bottom: 8px;
+    bottom: 20px;
 
     transform: translateX(-50%);
 
-    font-size: 9px;
+    z-index: 20;
 
-    letter-spacing: 2px;
+    padding: 8px 14px;
 
-    color: #555;
+    background: rgba(0,0,0,.55);
+
+    border: 1px solid #333;
+
+    font-size: 11px;
+
+    color: #aaa;
 }
 
-/* =================================
-   CROSSHAIR
-================================= */
-
 #crosshair {
-    position: absolute;
+
+    position: fixed;
 
     left: 50%;
+
     top: 50%;
 
-    width: 14px;
-    height: 14px;
+    width: 8px;
+
+    height: 8px;
 
     transform: translate(-50%,-50%);
 
-    opacity: .55;
+    z-index: 15;
+
+    pointer-events: none;
 }
 
 #crosshair::before,
 #crosshair::after {
+
     content: "";
 
     position: absolute;
 
-    background: white;
+    background: rgba(255,255,255,.8);
 }
 
 #crosshair::before {
-    left: 6px;
-    top: 0;
-
-    width: 1px;
-    height: 14px;
-}
-
-#crosshair::after {
-    left: 0;
-    top: 6px;
 
     width: 14px;
     height: 1px;
+
+    left: -3px;
+    top: 4px;
 }
 
-/* =================================
-   MOBILE
-================================= */
+#crosshair::after {
 
-@media(max-width:700px) {
+    width: 1px;
+    height: 14px;
 
-    #top-logo {
-        font-size: 15px;
-    }
+    left: 4px;
+    top: -3px;
+}
 
-    #online-box {
-        right: 10px;
-        top: 50px;
-        width: 150px;
-    }
+#zone {
 
-    #chat {
-        left: 10px;
-        bottom: 70px;
-        width: calc(100vw - 20px);
-    }
+    position: fixed;
 
-    #audio-control {
-        left: 10px;
-        bottom: 15px;
-    }
+    left: 50%;
 
-    #zone-label,
-    #hint {
-        display: none;
-    }
+    top: 20px;
+
+    transform: translateX(-50%);
+
+    z-index: 20;
+
+    font-size: 10px;
+
+    letter-spacing: 4px;
+
+    color: #aaa;
+}
+
+.hidden {
+
+    display: none !important;
 }
 
 </style>
@@ -497,27 +488,22 @@ body {
 
 <canvas id="canvas3d"></canvas>
 
-<!-- =================================
-     LOGIN
-================================= -->
+<div id="loginScreen">
 
-<div id="login-screen">
+    <div class="loginBox">
 
-    <div class="login-box">
-
-        <div class="login-logo">
+        <div class="logo">
             EWS
         </div>
 
-        <div class="login-sub">
-            SESSIONS / UNDERGROUND CLUB
+        <div class="sub">
+            SESSIONS
         </div>
 
         <input
             id="username"
             type="text"
             placeholder="USERNAME"
-            maxlength="24"
             autocomplete="username"
         >
 
@@ -525,107 +511,68 @@ body {
             id="password"
             type="password"
             placeholder="PASSWORD"
-            maxlength="60"
             autocomplete="current-password"
         >
 
-        <div class="login-buttons">
+        <button id="loginBtn">
+            ENTER CLUB
+        </button>
 
-            <button
-                id="login-btn"
-                type="button"
-            >
-                ENTER
-            </button>
+        <button id="registerBtn">
+            REGISTER
+        </button>
 
-            <button
-                id="register-btn"
-                type="button"
-            >
-                REGISTER
-            </button>
-
-        </div>
-
-        <div id="login-status"></div>
+        <div id="error"></div>
 
     </div>
 
 </div>
 
-<!-- =================================
-     HUD
-================================= -->
+<div id="club">
 
-<div id="hud">
+    <div id="hud">
 
-    <div id="top-logo">
-        EWS SESSIONS
+        <div class="brand">
+            EWS SESSIONS
+        </div>
+
+        <div class="status">
+            <span id="streamStatus">
+                STREAM OFFLINE
+            </span>
+        </div>
+
     </div>
 
-    <div id="stream-indicator">
-        AUDIO: READY
+    <div id="zone">
+        MAIN FLOOR
     </div>
 
-    <button
-        id="audio-control"
-        type="button"
-    >
-        ▶ AUDIO: START
-    </button>
+    <div id="onlineBox">
 
-    <select id="lang">
-
-        <option value="en">
-            EN
-        </option>
-
-        <option value="ru">
-            RU
-        </option>
-
-        <option value="nl">
-            NL
-        </option>
-
-        <option value="de">
-            DE
-        </option>
-
-        <option value="fr">
-            FR
-        </option>
-
-    </select>
-
-    <div id="online-box">
-
-        <div class="online-title">
+        <div class="onlineTitle">
             ONLINE
         </div>
 
-        <ul id="online-list"></ul>
+        <div id="onlineList">
+            nobody
+        </div>
 
     </div>
 
     <div id="chat">
 
-        <div id="chat-messages"></div>
+        <div id="messages"></div>
 
-        <form id="chat-form">
+        <form id="chatForm">
 
             <input
-                id="chat-input"
-                type="text"
-                maxlength="500"
+                id="chatInput"
                 autocomplete="off"
-                placeholder="type message..."
+                placeholder="chat..."
             >
 
-            <button
-                id="chat-send"
-                type="submit"
-            >
+            <button>
                 SEND
             </button>
 
@@ -633,46 +580,40 @@ body {
 
     </div>
 
-    <div id="crosshair"></div>
-
-    <div id="zone-label">
-        MAIN FLOOR
-    </div>
+    <button id="audioBtn">
+        🔊 START AUDIO
+    </button>
 
     <div id="hint">
-        WASD MOVE · SPACE JUMP · V CAMERA · C CHAT
+        WASD MOVE · SPACE JUMP · V VIEW · CLICK MOUSE
     </div>
+
+    <div id="crosshair"></div>
 
 </div>
 
 <audio
-    id="ews-audio"
+    id="ewsAudio"
     crossorigin="anonymous"
     playsinline
-    preload="none"
 ></audio>
 
 <script>
 
 'use strict';
 
-/* =========================================
+/* =========================
    GLOBALS
-========================================= */
+========================= */
+
+let scene;
+let camera;
+let renderer;
+let clock;
 
 let socket = null;
 
 let currentUser = null;
-
-let scene = null;
-let camera = null;
-let renderer = null;
-
-let clock = new THREE.Clock();
-
-let player = null;
-
-let remotePlayers = new Map();
 
 let keys = {};
 
@@ -683,133 +624,116 @@ let pointerLocked = false;
 
 let thirdPerson = true;
 
-let chatMode = false;
-
 let velocityY = 0;
 
-let grounded = true;
+let onGround = true;
 
-let lastNetworkUpdate = 0;
+let localPlayer = null;
 
-let audio = null;
+const remotePlayers = new Map();
+
 let hls = null;
-let audioStarted = false;
 
-/* =========================================
-   DOM
-========================================= */
+let audioStarted = false;
 
 const canvas =
     document.getElementById('canvas3d');
 
 const loginScreen =
-    document.getElementById('login-screen');
+    document.getElementById('loginScreen');
 
-const loginStatus =
-    document.getElementById('login-status');
+const club =
+    document.getElementById('club');
 
-const usernameInput =
-    document.getElementById('username');
+const errorBox =
+    document.getElementById('error');
 
-const passwordInput =
-    document.getElementById('password');
+const audio =
+    document.getElementById('ewsAudio');
 
-const onlineList =
-    document.getElementById('online-list');
+/* =========================
+   HELPERS
+========================= */
 
-const chatMessages =
-    document.getElementById('chat-messages');
+function escapeHTML(value) {
 
-const chatForm =
-    document.getElementById('chat-form');
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
-const chatInput =
-    document.getElementById('chat-input');
+function showError(text) {
 
-const audioControl =
-    document.getElementById('audio-control');
+    errorBox.textContent = text || '';
 
-const streamIndicator =
-    document.getElementById('stream-indicator');
+}
 
-/* =========================================
-   AUTH
-========================================= */
-
-document
-    .getElementById('login-btn')
-    .addEventListener(
-        'click',
-        () => auth(false)
-    );
+/* =========================
+   LOGIN
+========================= */
 
 document
-    .getElementById('register-btn')
-    .addEventListener(
-        'click',
-        () => auth(true)
-    );
+    .getElementById('loginBtn')
+    .onclick = login;
 
-passwordInput.addEventListener(
-    'keydown',
-    event => {
+document
+    .getElementById('registerBtn')
+    .onclick = register;
 
-        if (event.key === 'Enter') {
-            auth(false);
-        }
+async function login() {
 
-    }
-);
-
-async function auth(register) {
+    showError('');
 
     const username =
-        usernameInput.value.trim();
+        document
+            .getElementById('username')
+            .value
+            .trim();
 
     const password =
-        passwordInput.value;
+        document
+            .getElementById('password')
+            .value;
 
     if (!username || !password) {
 
-        loginStatus.textContent =
-            'ENTER USERNAME AND PASSWORD';
+        showError(
+            'Введите username и password'
+        );
 
         return;
     }
 
-    loginStatus.textContent =
-        'CONNECTING...';
-
     try {
 
         const response =
-            await fetch(
-                register
-                    ? '/api/register'
-                    : '/api/login',
-                {
-                    method: 'POST',
+            await fetch('/api/login', {
 
-                    headers: {
-                        'Content-Type':
-                            'application/json'
-                    },
+                method: 'POST',
 
-                    body: JSON.stringify({
-                        username,
-                        password
-                    })
-                }
-            );
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
 
         const data =
             await response.json();
 
         if (!data.ok) {
 
-            loginStatus.textContent =
+            showError(
                 data.message ||
-                'ERROR';
+                'Login failed'
+            );
 
             return;
         }
@@ -817,376 +741,140 @@ async function auth(register) {
         currentUser =
             data.username;
 
-        loginScreen.style.display =
-            'none';
-
-        startClub();
+        enterClub();
 
     } catch (error) {
 
         console.error(error);
 
-        loginStatus.textContent =
-            'SERVER CONNECTION ERROR';
+        showError(
+            'SERVER CONNECTION ERROR'
+        );
     }
 }
 
-/* =========================================
-   START
-========================================= */
+async function register() {
 
-function startClub() {
+    showError('');
+
+    const username =
+        document
+            .getElementById('username')
+            .value
+            .trim();
+
+    const password =
+        document
+            .getElementById('password')
+            .value;
+
+    if (!username || !password) {
+
+        showError(
+            'Введите username и password'
+        );
+
+        return;
+    }
+
+    try {
+
+        const response =
+            await fetch('/api/register', {
+
+                method: 'POST',
+
+                headers: {
+                    'Content-Type':
+                        'application/json'
+                },
+
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
+
+        const data =
+            await response.json();
+
+        if (!data.ok) {
+
+            showError(
+                data.message ||
+                'Registration failed'
+            );
+
+            return;
+        }
+
+        currentUser =
+            data.username;
+
+        enterClub();
+
+    } catch (error) {
+
+        console.error(error);
+
+        showError(
+            'SERVER CONNECTION ERROR'
+        );
+    }
+}
+
+/* =========================
+   ENTER
+========================= */
+
+function enterClub() {
+
+    loginScreen.style.display =
+        'none';
+
+    club.style.display =
+        'block';
 
     init3D();
 
     connectSocket();
 
-    setupChat();
+    setupAudio();
 
-    setupLanguage();
-
-    setupAudioButton();
-
-    window.focus();
-
-    addSystemMessage(
-        `Welcome ${currentUser}`
-    );
 }
 
-/* =========================================
-   SOCKET
-========================================= */
-
-function connectSocket() {
-
-    socket = io({
-        transports: [
-            'websocket',
-            'polling'
-        ],
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000
-    });
-
-    socket.on(
-        'connect',
-        () => {
-
-            console.log(
-                '[SOCKET CONNECTED]',
-                socket.id
-            );
-
-            socket.emit(
-                'join',
-                {
-                    username:
-                        currentUser,
-
-                    language:
-                        document.getElementById(
-                            'lang'
-                        ).value
-                }
-            );
-
-            socket.emit(
-                'request-online'
-            );
-        }
-    );
-
-    socket.on(
-        'disconnect',
-        () => {
-
-            console.log(
-                '[SOCKET DISCONNECTED]'
-            );
-        }
-    );
-
-    socket.on(
-        'online-users',
-        users => {
-
-            renderOnline(
-                Array.isArray(users)
-                    ? users
-                    : []
-            );
-        }
-    );
-
-    socket.on(
-        'players-state',
-        players => {
-
-            if (!Array.isArray(players)) {
-                return;
-            }
-
-            players.forEach(
-                data => {
-
-                    if (
-                        !data ||
-                        data.id === socket.id
-                    ) {
-                        return;
-                    }
-
-                    createOrUpdateRemote(
-                        data
-                    );
-                }
-            );
-        }
-    );
-
-    socket.on(
-        'player-joined',
-        data => {
-
-            if (
-                data &&
-                data.id !== socket.id
-            ) {
-
-                createRemote(
-                    data.id,
-                    data.username
-                );
-            }
-        }
-    );
-
-    socket.on(
-        'player-move',
-        data => {
-
-            if (
-                data &&
-                data.id !== socket.id
-            ) {
-
-                createOrUpdateRemote(
-                    data
-                );
-            }
-        }
-    );
-
-    socket.on(
-        'player-left',
-        data => {
-
-            if (data?.id) {
-                removeRemote(
-                    data.id
-                );
-            }
-        }
-    );
-
-    socket.on(
-        'system-message',
-        data => {
-
-            if (data?.text) {
-                addSystemMessage(
-                    data.text
-                );
-            }
-        }
-    );
-
-    socket.on(
-        'chat-message',
-        data => {
-
-            if (!data) return;
-
-            addChatMessage(
-                data.username ||
-                data.user ||
-                'Guest',
-
-                data.text || ''
-            );
-        }
-    );
-}
-
-/* =========================================
-   ONLINE
-========================================= */
-
-function renderOnline(users) {
-
-    onlineList.innerHTML = '';
-
-    users.forEach(user => {
-
-        const li =
-            document.createElement('li');
-
-        li.innerHTML =
-            `<span class="online-dot"></span>` +
-            escapeHTML(
-                user.username ||
-                'Guest'
-            );
-
-        onlineList.appendChild(
-            li
-        );
-    });
-}
-
-/* =========================================
-   CHAT
-========================================= */
-
-function setupChat() {
-
-    chatForm.addEventListener(
-        'submit',
-        event => {
-
-            event.preventDefault();
-
-            if (!socket) return;
-
-            const text =
-                chatInput.value.trim();
-
-            if (!text) return;
-
-            socket.emit(
-                'chat-message',
-                {
-                    text
-                }
-            );
-
-            chatInput.value = '';
-        }
-    );
-
-    chatInput.addEventListener(
-        'focus',
-        () => {
-
-            chatMode = true;
-
-            document.exitPointerLock?.();
-        }
-    );
-
-    chatInput.addEventListener(
-        'blur',
-        () => {
-
-            chatMode = false;
-        }
-    );
-}
-
-function addChatMessage(
-    username,
-    text
-) {
-
-    const div =
-        document.createElement('div');
-
-    div.className =
-        'chat-line';
-
-    div.innerHTML =
-        `<span class="chat-user">` +
-        `${escapeHTML(username)}:` +
-        `</span> ` +
-        `${escapeHTML(text)}`;
-
-    chatMessages.appendChild(
-        div
-    );
-
-    while (
-        chatMessages.children.length >
-        100
-    ) {
-        chatMessages.removeChild(
-            chatMessages.firstChild
-        );
-    }
-
-    chatMessages.scrollTop =
-        chatMessages.scrollHeight;
-}
-
-function addSystemMessage(text) {
-
-    const div =
-        document.createElement('div');
-
-    div.className =
-        'chat-line chat-system';
-
-    div.textContent =
-        text;
-
-    chatMessages.appendChild(
-        div
-    );
-
-    chatMessages.scrollTop =
-        chatMessages.scrollHeight;
-}
-
-/* =========================================
-   LANGUAGE
-========================================= */
-
-function setupLanguage() {
-
-    document
-        .getElementById('lang')
-        .addEventListener(
-            'change',
-            event => {
-
-                if (socket) {
-
-                    socket.emit(
-                        'language-change',
-                        event.target.value
-                    );
-                }
-            }
-        );
-}
-
-/* =========================================
-   3D
-========================================= */
+/* =========================
+   THREE
+========================= */
 
 function init3D() {
+
+    if (scene) return;
+
+    if (
+        typeof THREE === 'undefined'
+    ) {
+
+        showFatal(
+            'THREE.JS НЕ ЗАГРУЗИЛСЯ'
+        );
+
+        return;
+    }
+
+    clock =
+        new THREE.Clock();
 
     scene =
         new THREE.Scene();
 
     scene.background =
-        new THREE.Color(0x020202);
+        new THREE.Color(0x030303);
 
     scene.fog =
         new THREE.Fog(
-            0x020202,
-            10,
+            0x030303,
+            20,
             65
         );
 
@@ -1194,9 +882,9 @@ function init3D() {
         new THREE.PerspectiveCamera(
             70,
             window.innerWidth /
-                window.innerHeight,
+            window.innerHeight,
             0.1,
-            100
+            200
         );
 
     camera.position.set(
@@ -1207,14 +895,18 @@ function init3D() {
 
     renderer =
         new THREE.WebGLRenderer({
+
             canvas,
+
             antialias: true,
-            powerPreference: 'high-performance'
+
+            powerPreference:
+                'high-performance'
         });
 
     renderer.setPixelRatio(
         Math.min(
-            window.devicePixelRatio,
+            window.devicePixelRatio || 1,
             2
         )
     );
@@ -1224,1161 +916,97 @@ function init3D() {
         window.innerHeight
     );
 
-    renderer.shadowMap.enabled = true;
+    renderer.outputEncoding =
+        THREE.sRGBEncoding;
 
-    renderer.shadowMap.type =
-        THREE.PCFSoftShadowMap;
-
-    createLights();
-
-    createFloor();
-
-    createWalls();
-
-    createCeiling();
-
-    createDanceFloor();
-
-    createStage();
-
-    createScreen();
-
-    createBar();
-
-    createLounge();
-
-    createColumns();
-
-    createSpeakers();
-
-    createNeon();
-
-    createParticles();
-
-    createPlayer();
-
-    setupControls();
-
-    window.addEventListener(
-        'resize',
-        onResize
-    );
-
-    animate();
-}
-
-/* =========================================
-   LIGHTS
-========================================= */
-
-function createLights() {
+    /* LIGHT */
 
     const ambient =
         new THREE.AmbientLight(
             0xffffff,
-            0.12
+            0.45
         );
 
-    scene.add(
-        ambient
-    );
+    scene.add(ambient);
 
-    const main =
+    const light =
         new THREE.PointLight(
             0xffffff,
-            2.5,
+            2,
             35
         );
 
-    main.position.set(
+    light.position.set(
         0,
         5,
-        -5
-    );
-
-    main.castShadow = true;
-
-    scene.add(
-        main
-    );
-
-    const left =
-        new THREE.PointLight(
-            0x8844ff,
-            2,
-            25
-        );
-
-    left.position.set(
-        -12,
-        4,
-        -4
-    );
-
-    scene.add(
-        left
-    );
-
-    const right =
-        new THREE.PointLight(
-            0x4488ff,
-            2,
-            25
-        );
-
-    right.position.set(
-        12,
-        4,
-        -4
-    );
-
-    scene.add(
-        right
-    );
-}
-
-/* =========================================
-   FLOOR
-========================================= */
-
-function createFloor() {
-
-    const geometry =
-        new THREE.BoxGeometry(
-            36,
-            .3,
-            42
-        );
-
-    const material =
-        new THREE.MeshStandardMaterial({
-            color: 0x080808,
-            roughness: .85,
-            metalness: .25
-        });
-
-    const floor =
-        new THREE.Mesh(
-            geometry,
-            material
-        );
-
-    floor.position.y =
-        -.15;
-
-    floor.receiveShadow = true;
-
-    scene.add(
-        floor
-    );
-}
-
-/* =========================================
-   WALLS
-========================================= */
-
-function createWalls() {
-
-    const material =
-        new THREE.MeshStandardMaterial({
-            color: 0x101010,
-            roughness: .9
-        });
-
-    const back =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                36,
-                6,
-                .4
-            ),
-            material
-        );
-
-    back.position.set(
-        0,
-        3,
-        -18
-    );
-
-    scene.add(back);
-
-    const left =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .4,
-                6,
-                36
-            ),
-            material
-        );
-
-    left.position.set(
-        -18,
-        3,
         0
     );
 
-    scene.add(left);
+    scene.add(light);
 
-    const right =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .4,
-                6,
-                36
-            ),
-            material
+    /* ROOM */
+
+    createRoom();
+
+    /* PLAYER */
+
+    localPlayer =
+        createPlayer(
+            0xffffff
         );
 
-    right.position.set(
-        18,
-        3,
-        0
-    );
-
-    scene.add(right);
-
-    const front =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                36,
-                6,
-                .4
-            ),
-            material
-        );
-
-    front.position.set(
+    localPlayer.position.set(
         0,
-        3,
-        18
-    );
-
-    scene.add(front);
-}
-
-/* =========================================
-   CEILING
-========================================= */
-
-function createCeiling() {
-
-    const ceiling =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                36,
-                .3,
-                42
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x050505
-            })
-        );
-
-    ceiling.position.y =
-        6;
-
-    scene.add(
-        ceiling
-    );
-}
-
-/* =========================================
-   DANCE FLOOR
-========================================= */
-
-function createDanceFloor() {
-
-    const group =
-        new THREE.Group();
-
-    for (
-        let x = -7;
-        x < 7;
-        x++
-    ) {
-
-        for (
-            let z = -8;
-            z < 6;
-            z++
-        ) {
-
-            const tile =
-                new THREE.Mesh(
-                    new THREE.BoxGeometry(
-                        .96,
-                        .08,
-                        .96
-                    ),
-                    new THREE.MeshStandardMaterial({
-                        color:
-                            (
-                                (x + z) % 2 === 0
-                            )
-                            ? 0x181818
-                            : 0x080808,
-
-                        emissive:
-                            (
-                                (x + z) % 2 === 0
-                            )
-                            ? 0x050505
-                            : 0x000000
-                    })
-                );
-
-            tile.position.set(
-                x,
-                .04,
-                z
-            );
-
-            group.add(
-                tile
-            );
-        }
-    }
-
-    group.position.z =
-        1;
-
-    scene.add(
-        group
-    );
-}
-
-/* =========================================
-   STAGE
-========================================= */
-
-function createStage() {
-
-    const stage =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                15,
-                .7,
-                4
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x111111,
-                metalness: .5,
-                roughness: .5
-            })
-        );
-
-    stage.position.set(
-        0,
-        .35,
-        -13
-    );
-
-    stage.castShadow = true;
-    stage.receiveShadow = true;
-
-    scene.add(
-        stage
-    );
-
-    for (
-        let x = -6;
-        x <= 6;
-        x += 3
-    ) {
-
-        const light =
-            new THREE.PointLight(
-                0xffffff,
-                1.5,
-                8
-            );
-
-        light.position.set(
-            x,
-            2,
-            -11
-        );
-
-        scene.add(
-            light
-        );
-    }
-}
-
-/* =========================================
-   SCREEN
-========================================= */
-
-function createScreen() {
-
-    const screen =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                12,
-                5,
-                .3
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x050505,
-                emissive: 0x101010
-            })
-        );
-
-    screen.position.set(
-        0,
-        3.5,
-        -15.2
+        1,
+        7
     );
 
     scene.add(
-        screen
+        localPlayer
     );
-
-    const frameMaterial =
-        new THREE.MeshStandardMaterial({
-            color: 0x444444,
-            metalness: .7
-        });
-
-    const top =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                12.6,
-                .2,
-                .4
-            ),
-            frameMaterial
-        );
-
-    top.position.set(
-        0,
-        6.1,
-        -15
-    );
-
-    scene.add(top);
-}
-
-/* =========================================
-   BAR
-========================================= */
-
-function createBar() {
-
-    const bar =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                7,
-                1.2,
-                2
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x111111,
-                metalness: .6,
-                roughness: .3
-            })
-        );
-
-    bar.position.set(
-        -12,
-        .6,
-        9
-    );
-
-    bar.castShadow = true;
-
-    scene.add(
-        bar
-    );
-
-    for (
-        let i = 0;
-        i < 5;
-        i++
-    ) {
-
-        const lamp =
-            new THREE.Mesh(
-                new THREE.SphereGeometry(
-                    .08,
-                    10,
-                    10
-                ),
-                new THREE.MeshBasicMaterial({
-                    color: 0xffffff
-                })
-            );
-
-        lamp.position.set(
-            -15 + i * 1.5,
-            1.4,
-            8
-        );
-
-        scene.add(
-            lamp
-        );
-    }
-}
-
-/* =========================================
-   LOUNGE
-========================================= */
-
-function createLounge() {
-
-    for (
-        let i = 0;
-        i < 3;
-        i++
-    ) {
-
-        const sofa =
-            new THREE.Mesh(
-                new THREE.BoxGeometry(
-                    5,
-                    1,
-                    1.5
-                ),
-                new THREE.MeshStandardMaterial({
-                    color: 0x151515
-                })
-            );
-
-        sofa.position.set(
-            11,
-            .5,
-            7 + i * 3
-        );
-
-        sofa.castShadow = true;
-
-        scene.add(
-            sofa
-        );
-    }
-}
-
-/* =========================================
-   COLUMNS
-========================================= */
-
-function createColumns() {
-
-    const positions = [
-        [-15, -7],
-        [15, -7],
-        [-15, 2],
-        [15, 2],
-        [-15, 11],
-        [15, 11]
-    ];
-
-    positions.forEach(
-        position => {
-
-            const column =
-                new THREE.Mesh(
-                    new THREE.CylinderGeometry(
-                        .6,
-                        .6,
-                        6,
-                        12
-                    ),
-                    new THREE.MeshStandardMaterial({
-                        color: 0x141414,
-                        metalness: .5
-                    })
-                );
-
-            column.position.set(
-                position[0],
-                3,
-                position[1]
-            );
-
-            column.castShadow = true;
-
-            scene.add(
-                column
-            );
-        }
-    );
-}
-
-/* =========================================
-   SPEAKERS
-========================================= */
-
-function createSpeakers() {
-
-    [-7, 7].forEach(
-        x => {
-
-            for (
-                let i = 0;
-                i < 3;
-                i++
-            ) {
-
-                const speaker =
-                    new THREE.Mesh(
-                        new THREE.BoxGeometry(
-                            1.5,
-                            1.8,
-                            1
-                        ),
-                        new THREE.MeshStandardMaterial({
-                            color: 0x050505,
-                            roughness: .8
-                        })
-                    );
-
-                speaker.position.set(
-                    x,
-                    1 + i * 1.7,
-                    -11
-                );
-
-                speaker.castShadow = true;
-
-                scene.add(
-                    speaker
-                );
-            }
-        }
-    );
-}
-
-/* =========================================
-   NEON
-========================================= */
-
-function createNeon() {
-
-    const positions = [
-        [-17.7, 3, -4],
-        [17.7, 3, -4],
-        [-17.7, 3, 5],
-        [17.7, 3, 5]
-    ];
-
-    positions.forEach(
-        p => {
-
-            const tube =
-                new THREE.Mesh(
-                    new THREE.BoxGeometry(
-                        .08,
-                        5,
-                        .08
-                    ),
-                    new THREE.MeshBasicMaterial({
-                        color: 0xffffff
-                    })
-                );
-
-            tube.position.set(
-                p[0],
-                p[1],
-                p[2]
-            );
-
-            scene.add(
-                tube
-            );
-        }
-    );
-
-    for (
-        let i = -16;
-        i <= 16;
-        i += 4
-    ) {
-
-        const beam =
-            new THREE.Mesh(
-                new THREE.BoxGeometry(
-                    .12,
-                    .12,
-                    34
-                ),
-                new THREE.MeshBasicMaterial({
-                    color: 0x777777
-                })
-            );
-
-        beam.position.set(
-            i,
-            5.8,
-            0
-        );
-
-        scene.add(
-            beam
-        );
-    }
-}
-
-/* =========================================
-   PARTICLES
-========================================= */
-
-function createParticles() {
-
-    const count = 500;
-
-    const geometry =
-        new THREE.BufferGeometry();
-
-    const positions =
-        new Float32Array(
-            count * 3
-        );
-
-    for (
-        let i = 0;
-        i < count;
-        i++
-    ) {
-
-        positions[i * 3] =
-            (Math.random() - .5) * 34;
-
-        positions[i * 3 + 1] =
-            Math.random() * 5.5;
-
-        positions[i * 3 + 2] =
-            (Math.random() - .5) * 34;
-    }
-
-    geometry.setAttribute(
-        'position',
-        new THREE.BufferAttribute(
-            positions,
-            3
-        )
-    );
-
-    const material =
-        new THREE.PointsMaterial({
-            color: 0xffffff,
-            size: .025,
-            transparent: true,
-            opacity: .35
-        });
-
-    const points =
-        new THREE.Points(
-            geometry,
-            material
-        );
-
-    scene.add(
-        points
-    );
-}
-
-/* =========================================
-   PLAYER
-========================================= */
-
-function createPlayer() {
-
-    player =
-        new THREE.Group();
-
-    const body =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .65,
-                1.15,
-                .45
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0xffffff
-            })
-        );
-
-    body.position.y =
-        .9;
-
-    body.castShadow = true;
-
-    player.add(
-        body
-    );
-
-    const head =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                .32,
-                16,
-                16
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0xdddddd
-            })
-        );
-
-    head.position.y =
-        1.65;
-
-    head.castShadow = true;
-
-    player.add(
-        head
-    );
-
-    const leg1 =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .22,
-                .7,
-                .25
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x111111
-            })
-        );
-
-    leg1.position.set(
-        -.18,
-        .35,
-        0
-    );
-
-    player.add(
-        leg1
-    );
-
-    const leg2 =
-        leg1.clone();
-
-    leg2.position.x =
-        .18;
-
-    player.add(
-        leg2
-    );
-
-    player.position.set(
-        0,
-        0,
-        8
-    );
-
-    scene.add(
-        player
-    );
-}
-
-/* =========================================
-   REMOTE PLAYER
-========================================= */
-
-function createRemote(
-    id,
-    username
-) {
-
-    if (
-        remotePlayers.has(id)
-    ) {
-        return remotePlayers.get(id);
-    }
-
-    const group =
-        new THREE.Group();
-
-    const body =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .65,
-                1.15,
-                .45
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0x888888
-            })
-        );
-
-    body.position.y =
-        .9;
-
-    group.add(
-        body
-    );
-
-    const head =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                .32,
-                16,
-                16
-            ),
-            new THREE.MeshStandardMaterial({
-                color: 0xffffff
-            })
-        );
-
-    head.position.y =
-        1.65;
-
-    group.add(
-        head
-    );
-
-    const label =
-        makeNameLabel(
-            username || 'Guest'
-        );
-
-    label.position.y =
-        2.35;
-
-    group.add(
-        label
-    );
-
-    group.position.set(
-        0,
-        0,
-        8
-    );
-
-    scene.add(
-        group
-    );
-
-    remotePlayers.set(
-        id,
-        group
-    );
-
-    return group;
-}
-
-function createOrUpdateRemote(
-    data
-) {
-
-    if (
-        !data ||
-        !data.id ||
-        data.id === socket?.id
-    ) {
-        return;
-    }
-
-    const remote =
-        createRemote(
-            data.id,
-            data.username || 'Guest'
-        );
-
-    remote.position.set(
-        Number(data.x) || 0,
-        Number(data.y) || 0,
-        Number(data.z) || 0
-    );
-
-    remote.rotation.y =
-        Number(data.ry) || 0;
-}
-
-function removeRemote(id) {
-
-    const remote =
-        remotePlayers.get(id);
-
-    if (!remote) return;
-
-    scene.remove(
-        remote
-    );
-
-    remote.traverse(
-        object => {
-
-            if (object.geometry) {
-                object.geometry.dispose();
-            }
-
-            if (object.material) {
-
-                if (
-                    Array.isArray(
-                        object.material
-                    )
-                ) {
-
-                    object.material.forEach(
-                        material =>
-                            material.dispose()
-                    );
-
-                } else {
-                    object.material.dispose();
-                }
-            }
-        }
-    );
-
-    remotePlayers.delete(
-        id
-    );
-}
-
-/* =========================================
-   NAME LABEL
-========================================= */
-
-function makeNameLabel(text) {
-
-    const c =
-        document.createElement(
-            'canvas'
-        );
-
-    c.width = 512;
-    c.height = 128;
-
-    const ctx =
-        c.getContext('2d');
-
-    ctx.clearRect(
-        0,
-        0,
-        c.width,
-        c.height
-    );
-
-    ctx.fillStyle =
-        'rgba(0,0,0,.65)';
-
-    ctx.fillRect(
-        0,
-        20,
-        c.width,
-        88
-    );
-
-    ctx.fillStyle =
-        '#ffffff';
-
-    ctx.font =
-        'bold 42px Arial';
-
-    ctx.textAlign =
-        'center';
-
-    ctx.textBaseline =
-        'middle';
-
-    ctx.fillText(
-        text,
-        c.width / 2,
-        c.height / 2
-    );
-
-    const texture =
-        new THREE.CanvasTexture(c);
-
-    texture.needsUpdate =
-        true;
-
-    const material =
-        new THREE.SpriteMaterial({
-            map: texture,
-            transparent: true
-        });
-
-    const sprite =
-        new THREE.Sprite(
-            material
-        );
-
-    sprite.scale.set(
-        3,
-        .75,
-        1
-    );
-
-    return sprite;
-}
-
-/* =========================================
-   CONTROLS
-========================================= */
-
-function setupControls() {
 
     window.addEventListener(
+        'resize',
+        resize
+    );
+
+    document.addEventListener(
         'keydown',
-        event => {
+        e => {
+
+            keys[e.code] = true;
 
             if (
-                event.target.tagName ===
-                'INPUT'
+                e.code === 'Space' &&
+                onGround
             ) {
-                return;
+
+                velocityY = 7;
+
+                onGround = false;
             }
 
             if (
-                event.key.toLowerCase() ===
-                'c'
-            ) {
-
-                chatInput.focus();
-
-                return;
-            }
-
-            if (
-                event.key.toLowerCase() ===
-                'v'
+                e.code === 'KeyV'
             ) {
 
                 thirdPerson =
                     !thirdPerson;
-
-                return;
-            }
-
-            keys[
-                event.key.toLowerCase()
-            ] = true;
-
-            if (
-                event.code ===
-                'Space'
-            ) {
-
-                event.preventDefault();
-
-                jump();
             }
         }
     );
 
-    window.addEventListener(
+    document.addEventListener(
         'keyup',
-        event => {
+        e => {
 
-            keys[
-                event.key.toLowerCase()
-            ] = false;
+            keys[e.code] = false;
         }
     );
 
     canvas.addEventListener(
         'click',
         () => {
-
-            if (chatMode) return;
 
             canvas.requestPointerLock();
         }
@@ -2396,306 +1024,875 @@ function setupControls() {
 
     document.addEventListener(
         'mousemove',
-        event => {
+        e => {
 
-            if (
-                !pointerLocked ||
-                chatMode
-            ) {
+            if (!pointerLocked)
                 return;
-            }
 
             yaw -=
-                event.movementX *
-                0.0025;
+                e.movementX *
+                0.002;
 
             pitch -=
-                event.movementY *
-                0.0025;
+                e.movementY *
+                0.002;
 
             pitch =
                 Math.max(
-                    -1.1,
+                    -1.2,
                     Math.min(
-                        .9,
+                        1.2,
                         pitch
                     )
                 );
         }
     );
+
+    animate();
 }
 
-/* =========================================
-   JUMP
-========================================= */
+/* =========================
+   ROOM
+========================= */
 
-function jump() {
+function createRoom() {
 
-    if (!grounded) {
-        return;
-    }
+    const floorMat =
+        new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            roughness: .7,
+            metalness: .2
+        });
 
-    velocityY =
-        7;
+    const floor =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                36,
+                .4,
+                36
+            ),
+            floorMat
+        );
 
-    grounded =
-        false;
-}
+    floor.position.y =
+        -0.2;
 
-/* =========================================
-   COLLISION
-========================================= */
+    scene.add(floor);
 
-function blocked(
-    x,
-    z
-) {
+    const wallMat =
+        new THREE.MeshStandardMaterial({
+            color: 0x080808
+        });
 
-    const margin = .7;
+    createBox(
+        36,
+        6,
+        .5,
+        0,
+        3,
+        -18,
+        wallMat
+    );
 
-    if (
-        x < -17.1 ||
-        x > 17.1 ||
-        z < -17.1 ||
-        z > 17.1
-    ) {
-        return true;
-    }
+    createBox(
+        36,
+        6,
+        .5,
+        0,
+        3,
+        18,
+        wallMat
+    );
 
-    /* Stage */
+    createBox(
+        .5,
+        6,
+        36,
+        -18,
+        3,
+        0,
+        wallMat
+    );
 
-    if (
-        x > -8 &&
-        x < 8 &&
-        z > -15 &&
-        z < -10.8
-    ) {
-        return true;
-    }
+    createBox(
+        .5,
+        6,
+        36,
+        18,
+        3,
+        0,
+        wallMat
+    );
 
-    /* Bar */
+    /* DANCE FLOOR */
 
-    if (
-        x > -16 &&
-        x < -8.2 &&
-        z > 7.5 &&
-        z < 10.7
-    ) {
-        return true;
-    }
+    const dance =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                16,
+                .15,
+                12
+            ),
+            new THREE.MeshStandardMaterial({
+                color: 0x202020,
+                emissive: 0x101010
+            })
+        );
 
-    /* Lounge */
+    dance.position.set(
+        0,
+        .08,
+        -1
+    );
 
-    if (
-        x > 8 &&
-        x < 15 &&
-        z > 5.5 &&
-        z < 16
-    ) {
-        return true;
-    }
+    scene.add(dance);
 
-    /* Columns */
+    /* STAGE */
 
-    const columns = [
-        [-15,-7],
-        [15,-7],
-        [-15,2],
-        [15,2],
-        [-15,11],
-        [15,11]
+    createBox(
+        14,
+        1,
+        4,
+        0,
+        .5,
+        -13,
+        new THREE.MeshStandardMaterial({
+            color: 0x151515
+        })
+    );
+
+    /* SCREEN */
+
+    createBox(
+        10,
+        4,
+        .3,
+        0,
+        3,
+        -15,
+        new THREE.MeshStandardMaterial({
+            color: 0x050505,
+            emissive: 0x101010
+        })
+    );
+
+    /* BAR */
+
+    createBox(
+        7,
+        1.2,
+        2,
+        -11,
+        .6,
+        9,
+        new THREE.MeshStandardMaterial({
+            color: 0x151515
+        })
+    );
+
+    /* LOUNGE */
+
+    createBox(
+        5,
+        1,
+        3,
+        11,
+        .5,
+        8,
+        new THREE.MeshStandardMaterial({
+            color: 0x111111
+        })
+    );
+
+    /* COLUMNS */
+
+    const positions = [
+        [-14, 3, -8],
+        [14, 3, -8],
+        [-14, 3, 5],
+        [14, 3, 5]
     ];
 
     for (
-        const p of columns
+        const p of positions
     ) {
 
-        const dx =
-            x - p[0];
+        const column =
+            new THREE.Mesh(
+                new THREE.CylinderGeometry(
+                    .5,
+                    .5,
+                    6,
+                    16
+                ),
+                new THREE.MeshStandardMaterial({
+                    color: 0x181818
+                })
+            );
 
-        const dz =
-            z - p[1];
+        column.position.set(
+            p[0],
+            p[1],
+            p[2]
+        );
 
-        if (
-            Math.sqrt(
-                dx * dx +
-                dz * dz
-            ) <
-            1.15
-        ) {
-            return true;
-        }
+        scene.add(column);
     }
 
-    return false;
+    /* SPEAKERS */
+
+    for (
+        let x = -5;
+        x <= 5;
+        x += 10
+    ) {
+
+        createBox(
+            2,
+            3,
+            1,
+            x,
+            1.5,
+            -10,
+            new THREE.MeshStandardMaterial({
+                color: 0x050505
+            })
+        );
+    }
 }
 
-/* =========================================
-   MOVEMENT
-========================================= */
+function createBox(
+    sx,
+    sy,
+    sz,
+    x,
+    y,
+    z,
+    material
+) {
 
-function updatePlayer(delta) {
+    const mesh =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                sx,
+                sy,
+                sz
+            ),
+            material
+        );
 
-    if (!player) {
+    mesh.position.set(
+        x,
+        y,
+        z
+    );
+
+    scene.add(mesh);
+
+    return mesh;
+}
+
+/* =========================
+   PLAYER
+========================= */
+
+function createPlayer(
+    color
+) {
+
+    const group =
+        new THREE.Group();
+
+    const material =
+        new THREE.MeshStandardMaterial({
+            color
+        });
+
+    const body =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .8,
+                1.4,
+                .5
+            ),
+            material
+        );
+
+    body.position.y =
+        .9;
+
+    group.add(body);
+
+    const head =
+        new THREE.Mesh(
+            new THREE.SphereGeometry(
+                .32,
+                16,
+                16
+            ),
+            material
+        );
+
+    head.position.y =
+        1.85;
+
+    group.add(head);
+
+    const leg1 =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .25,
+                .8,
+                .3
+            ),
+            material
+        );
+
+    leg1.position.set(
+        -.2,
+        .1,
+        0
+    );
+
+    group.add(leg1);
+
+    const leg2 =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .25,
+                .8,
+                .3
+            ),
+            material
+        );
+
+    leg2.position.set(
+        .2,
+        .1,
+        0
+    );
+
+    group.add(leg2);
+
+    return group;
+}
+
+/* =========================
+   SOCKET
+========================= */
+
+function connectSocket() {
+
+    if (
+        typeof io !== 'function'
+    ) {
+
+        console.error(
+            'Socket.IO client missing'
+        );
+
         return;
     }
+
+    socket =
+        io({
+            transports: [
+                'websocket',
+                'polling'
+            ]
+        });
+
+    socket.on(
+        'connect',
+        () => {
+
+            console.log(
+                '[SOCKET] connected',
+                socket.id
+            );
+
+            socket.emit(
+                'join',
+                {
+                    username:
+                        currentUser,
+
+                    language:
+                        'en'
+                }
+            );
+
+            socket.emit(
+                'request-online'
+            );
+
+            socket.emit(
+                'request-players'
+            );
+        }
+    );
+
+    socket.on(
+        'disconnect',
+        reason => {
+
+            console.log(
+                '[SOCKET] disconnected',
+                reason
+            );
+        }
+    );
+
+    socket.on(
+        'online-users',
+        users => {
+
+            renderOnline(
+                users
+            );
+        }
+    );
+
+    socket.on(
+        'players-state',
+        players => {
+
+            if (!Array.isArray(players))
+                return;
+
+            players.forEach(
+                createRemotePlayer
+            );
+        }
+    );
+
+    socket.on(
+        'player-joined',
+        player => {
+
+            createRemotePlayer(
+                player
+            );
+        }
+    );
+
+    socket.on(
+        'player-move',
+        player => {
+
+            updateRemotePlayer(
+                player
+            );
+        }
+    );
+
+    socket.on(
+        'player-left',
+        id => {
+
+            removeRemotePlayer(
+                id
+            );
+        }
+    );
+
+    socket.on(
+        'chat-message',
+        message => {
+
+            addChatMessage(
+                message
+            );
+        }
+    );
+
+    socket.on(
+        'system-message',
+        message => {
+
+            addSystemMessage(
+                message.text
+            );
+        }
+    );
+}
+
+/* =========================
+   ONLINE
+========================= */
+
+function renderOnline(
+    users
+) {
+
+    const list =
+        document.getElementById(
+            'onlineList'
+        );
+
+    if (
+        !Array.isArray(users) ||
+        users.length === 0
+    ) {
+
+        list.innerHTML =
+            '<div style="color:#666">nobody</div>';
+
+        return;
+    }
+
+    list.innerHTML =
+        users.map(
+            user => `
+                <div class="onlineUser">
+                    <span class="onlineDot"></span>
+                    ${escapeHTML(
+                        user.username
+                    )}
+                </div>
+            `
+        ).join('');
+}
+
+/* =========================
+   REMOTE PLAYERS
+========================= */
+
+function createRemotePlayer(
+    data
+) {
+
+    if (!data?.id)
+        return;
+
+    if (
+        data.id === socket?.id
+    )
+        return;
+
+    if (
+        remotePlayers.has(
+            data.id
+        )
+    )
+        return;
+
+    const group =
+        createPlayer(
+            0xffffff
+        );
+
+    group.position.set(
+        Number(data.x) || 0,
+        Number(data.y) || 1,
+        Number(data.z) || 0
+    );
+
+    group.rotation.y =
+        Number(data.ry) || 0;
+
+    scene.add(group);
+
+    remotePlayers.set(
+        data.id,
+        {
+            object: group,
+            username:
+                data.username ||
+                'Guest'
+        }
+    );
+}
+
+function updateRemotePlayer(
+    data
+) {
+
+    const item =
+        remotePlayers.get(
+            data.id
+        );
+
+    if (!item) {
+
+        createRemotePlayer(
+            data
+        );
+
+        return;
+    }
+
+    item.object.position.set(
+        Number(data.x) || 0,
+        Number(data.y) || 1,
+        Number(data.z) || 0
+    );
+
+    item.object.rotation.y =
+        Number(data.ry) || 0;
+}
+
+function removeRemotePlayer(
+    id
+) {
+
+    const item =
+        remotePlayers.get(id);
+
+    if (!item)
+        return;
+
+    scene.remove(
+        item.object
+    );
+
+    remotePlayers.delete(id);
+}
+
+/* =========================
+   CHAT
+========================= */
+
+document
+    .getElementById('chatForm')
+    .addEventListener(
+        'submit',
+        e => {
+
+            e.preventDefault();
+
+            const input =
+                document.getElementById(
+                    'chatInput'
+                );
+
+            const text =
+                input.value.trim();
+
+            if (
+                !text ||
+                !socket ||
+                !socket.connected
+            )
+                return;
+
+            socket.emit(
+                'chat-message',
+                {
+                    text
+                }
+            );
+
+            input.value = '';
+        }
+    );
+
+function addChatMessage(
+    message
+) {
+
+    const box =
+        document.getElementById(
+            'messages'
+        );
+
+    const div =
+        document.createElement(
+            'div'
+        );
+
+    div.className =
+        'msg';
+
+    div.innerHTML =
+        `<span class="msgUser">
+            ${escapeHTML(
+                message.user ||
+                message.username ||
+                'Guest'
+            )}
+        </span>: 
+        ${escapeHTML(
+            message.text || ''
+        )}`;
+
+    box.appendChild(div);
+
+    box.scrollTop =
+        box.scrollHeight;
+}
+
+function addSystemMessage(
+    text
+) {
+
+    const box =
+        document.getElementById(
+            'messages'
+        );
+
+    const div =
+        document.createElement(
+            'div'
+        );
+
+    div.className =
+        'msg system';
+
+    div.textContent =
+        text;
+
+    box.appendChild(div);
+
+    box.scrollTop =
+        box.scrollHeight;
+}
+
+/* =========================
+   MOVEMENT
+========================= */
+
+function updatePlayer(
+    delta
+) {
+
+    if (!localPlayer)
+        return;
+
+    const speed =
+        5 * delta;
 
     let forward = 0;
     let side = 0;
 
-    if (keys.w) {
+    if (
+        keys['KeyW'] ||
+        keys['ArrowUp']
+    )
         forward += 1;
-    }
 
-    if (keys.s) {
+    if (
+        keys['KeyS'] ||
+        keys['ArrowDown']
+    )
         forward -= 1;
-    }
 
-    if (keys.a) {
+    if (
+        keys['KeyA'] ||
+        keys['ArrowLeft']
+    )
         side -= 1;
-    }
 
-    if (keys.d) {
+    if (
+        keys['KeyD'] ||
+        keys['ArrowRight']
+    )
         side += 1;
-    }
 
-    const length =
-        Math.sqrt(
-            forward * forward +
-            side * side
-        );
+    if (
+        forward ||
+        side
+    ) {
 
-    if (length > 0) {
+        const len =
+            Math.hypot(
+                forward,
+                side
+            );
 
-        forward /= length;
-        side /= length;
-
-        const speed =
-            5.5;
+        forward /= len;
+        side /= len;
 
         const dx =
             (
                 Math.sin(yaw) *
-                forward
-            ) +
-            (
+                forward +
                 Math.cos(yaw) *
                 side
-            );
+            ) * speed;
 
         const dz =
             (
                 Math.cos(yaw) *
-                forward
-            ) -
-            (
+                forward -
                 Math.sin(yaw) *
                 side
-            );
+            ) * speed;
 
-        const nextX =
-            player.position.x +
-            dx * speed * delta;
+        const nx =
+            localPlayer.position.x +
+            dx;
 
-        const nextZ =
-            player.position.z +
-            dz * speed * delta;
-
-        if (
-            !blocked(
-                nextX,
-                player.position.z
-            )
-        ) {
-
-            player.position.x =
-                nextX;
-        }
+        const nz =
+            localPlayer.position.z +
+            dz;
 
         if (
             !blocked(
-                player.position.x,
-                nextZ
+                nx,
+                nz
             )
         ) {
 
-            player.position.z =
-                nextZ;
+            localPlayer.position.x =
+                nx;
+
+            localPlayer.position.z =
+                nz;
         }
     }
 
     velocityY -=
         18 * delta;
 
-    player.position.y +=
+    localPlayer.position.y +=
         velocityY * delta;
 
     if (
-        player.position.y <= 0
+        localPlayer.position.y <= 1
     ) {
 
-        player.position.y = 0;
+        localPlayer.position.y =
+            1;
 
         velocityY = 0;
 
-        grounded = true;
+        onGround = true;
     }
 
-    player.rotation.y =
+    camera.rotation.order =
+        'YXZ';
+
+    camera.rotation.y =
         yaw;
 
-    updateCamera();
-
-    sendPlayerPosition();
-}
-
-/* =========================================
-   CAMERA
-========================================= */
-
-function updateCamera() {
-
-    if (!player) return;
+    camera.rotation.x =
+        pitch;
 
     if (thirdPerson) {
 
-        const distance =
-            5;
-
-        const height =
-            2.7;
-
-        const camX =
-            player.position.x -
-            Math.sin(yaw) *
-            distance;
-
-        const camZ =
-            player.position.z -
-            Math.cos(yaw) *
-            distance;
-
-        const desired =
-            new THREE.Vector3(
-                camX,
-                player.position.y +
-                    height,
-                camZ
-            );
-
-        camera.position.lerp(
-            desired,
-            .15
-        );
+        const distance = 5;
 
         const target =
             new THREE.Vector3(
-                player.position.x,
-                player.position.y +
-                    1.2 +
-                    pitch,
-                player.position.z
+                localPlayer.position.x,
+                localPlayer.position.y +
+                    1.3,
+                localPlayer.position.z
             );
+
+        const offset =
+            new THREE.Vector3(
+                Math.sin(yaw) *
+                    distance,
+                2.4,
+                Math.cos(yaw) *
+                    distance
+            );
+
+        camera.position.copy(
+            target.clone().add(offset)
+        );
 
         camera.lookAt(
             target
@@ -2704,112 +1901,94 @@ function updateCamera() {
     } else {
 
         camera.position.set(
-            player.position.x,
-            player.position.y +
-                1.65,
-            player.position.z
+            localPlayer.position.x,
+            localPlayer.position.y +
+                1.5,
+            localPlayer.position.z
         );
-
-        camera.rotation.order =
-            'YXZ';
-
-        camera.rotation.y =
-            yaw;
-
-        camera.rotation.x =
-            pitch;
     }
-}
-
-/* =========================================
-   NETWORK
-========================================= */
-
-function sendPlayerPosition() {
-
-    if (!socket) return;
-
-    const now =
-        performance.now();
 
     if (
-        now - lastNetworkUpdate <
-        50
+        socket &&
+        socket.connected
     ) {
-        return;
-    }
 
-    lastNetworkUpdate =
-        now;
+        socket.emit(
+            'player-move',
+            {
+                x:
+                    localPlayer.position.x,
 
-    socket.emit(
-        'player-move',
-        {
-            x:
-                player.position.x,
+                y:
+                    localPlayer.position.y,
 
-            y:
-                player.position.y,
+                z:
+                    localPlayer.position.z,
 
-            z:
-                player.position.z,
+                ry:
+                    yaw,
 
-            ry:
-                player.rotation.y,
-
-            jumping:
-                !grounded
-        }
-    );
-}
-
-/* =========================================
-   AUDIO
-========================================= */
-
-function setupAudioButton() {
-
-    audio =
-        document.getElementById(
-            'ews-audio'
+                jumping:
+                    !onGround
+            }
         );
-
-    audioControl.addEventListener(
-        'click',
-        startAudio
-    );
+    }
 }
 
-function startAudio() {
+/* =========================
+   COLLISION
+========================= */
 
-    if (!audio) return;
+function blocked(
+    x,
+    z
+) {
 
-    if (audioStarted) {
+    const limit = 17;
 
-        if (audio.paused) {
+    if (
+        x < -limit ||
+        x > limit ||
+        z < -limit ||
+        z > limit
+    )
+        return true;
 
-            audio.play()
-                .catch(
-                    console.error
-                );
+    if (
+        x > -7 &&
+        x < 7 &&
+        z < -10 &&
+        z > -15
+    )
+        return true;
 
-            audioControl.textContent =
-                '❚❚ AUDIO: PAUSE';
+    if (
+        x > -15 &&
+        x < -7 &&
+        z > 7 &&
+        z < 11
+    )
+        return true;
 
-        } else {
+    if (
+        x > 8 &&
+        x < 14 &&
+        z > 6 &&
+        z < 10
+    )
+        return true;
 
-            audio.pause();
+    return false;
+}
 
-            audioControl.textContent =
-                '▶ AUDIO: START';
-        }
+/* =========================
+   AUDIO / HLS
+========================= */
 
-        return;
-    }
+function setupAudio() {
 
-    const streamURL =
-        window.location.origin +
-        '/hls/ews/index.m3u8';
+    const url =
+        `${window.location.origin}/hls/live/ews/index.m3u8`;
 
     if (
         window.Hls &&
@@ -2818,66 +1997,34 @@ function startAudio() {
 
         hls =
             new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-                maxBufferLength: 10
+                enableWorker: true
             });
 
-        hls.loadSource(
-            streamURL
-        );
+        hls.loadSource(url);
 
-        hls.attachMedia(
-            audio
-        );
+        hls.attachMedia(audio);
 
         hls.on(
             Hls.Events.MANIFEST_PARSED,
             () => {
 
-                audio.play()
-                    .then(
-                        () => {
-
-                            audioStarted =
-                                true;
-
-                            streamIndicator.textContent =
-                                'AUDIO: PLAYING';
-
-                            audioControl.textContent =
-                                '❚❚ AUDIO: PAUSE';
-                        }
+                document
+                    .getElementById(
+                        'streamStatus'
                     )
-                    .catch(
-                        error => {
-
-                            console.log(
-                                '[AUDIO]',
-                                error
-                            );
-
-                            streamIndicator.textContent =
-                                'AUDIO: CLICK START';
-                        }
-                    );
+                    .textContent =
+                    'STREAM READY';
             }
         );
 
         hls.on(
             Hls.Events.ERROR,
-            (
-                event,
-                data
-            ) => {
+            (event, data) => {
 
                 console.log(
                     '[HLS]',
                     data
                 );
-
-                streamIndicator.textContent =
-                    'AUDIO: OFFLINE';
             }
         );
 
@@ -2887,68 +2034,55 @@ function startAudio() {
         )
     ) {
 
-        audio.src =
-            streamURL;
-
-        audio.addEventListener(
-            'loadedmetadata',
-            () => {
-
-                audio.play()
-                    .then(
-                        () => {
-
-                            audioStarted =
-                                true;
-
-                            streamIndicator.textContent =
-                                'AUDIO: PLAYING';
-
-                            audioControl.textContent =
-                                '❚❚ AUDIO: PAUSE';
-                        }
-                    );
-            }
-        );
-
-    } else {
-
-        streamIndicator.textContent =
-            'AUDIO: NOT SUPPORTED';
+        audio.src = url;
     }
 }
 
-/* =========================================
-   RESIZE
-========================================= */
+document
+    .getElementById('audioBtn')
+    .onclick = async () => {
 
-function onResize() {
+        try {
 
-    if (!camera || !renderer) {
-        return;
-    }
+            await audio.play();
 
-    camera.aspect =
-        window.innerWidth /
-        window.innerHeight;
+            audioStarted = true;
 
-    camera.updateProjectionMatrix();
+            document
+                .getElementById(
+                    'audioBtn'
+                )
+                .textContent =
+                '🔊 AUDIO ON';
 
-    renderer.setSize(
-        window.innerWidth,
-        window.innerHeight
-    );
-}
+            document
+                .getElementById(
+                    'streamStatus'
+                )
+                .textContent =
+                'STREAM ONLINE';
 
-/* =========================================
-   ANIMATION
-========================================= */
+        } catch (error) {
+
+            console.error(
+                '[AUDIO]',
+                error
+            );
+        }
+    };
+
+/* =========================
+   RENDER
+========================= */
 
 function animate() {
 
     requestAnimationFrame(
         animate
     );
+
+    if (!renderer || !scene)
+        return;
 
     const delta =
         Math.min(
@@ -2966,34 +2100,56 @@ function animate() {
     );
 }
 
-/* =========================================
-   ESCAPE HTML
-========================================= */
+/* =========================
+   RESIZE
+========================= */
 
-function escapeHTML(value) {
+function resize() {
 
-    return String(value)
-        .replace(
-            /&/g,
-            '&amp;'
-        )
-        .replace(
-            /</g,
-            '&lt;'
-        )
-        .replace(
-            />/g,
-            '&gt;'
-        )
-        .replace(
-            /"/g,
-            '&quot;'
-        )
-        .replace(
-            /'/g,
-            '&#039;'
-        );
+    if (
+        !camera ||
+        !renderer
+    )
+        return;
+
+    camera.aspect =
+        window.innerWidth /
+        window.innerHeight;
+
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(
+        window.innerWidth,
+        window.innerHeight
+    );
 }
+
+/* =========================
+   FATAL ERROR
+========================= */
+
+function showFatal(
+    text
+) {
+
+    loginScreen.style.display =
+        'flex';
+
+    errorBox.textContent =
+        text;
+
+    console.error(
+        text
+    );
+}
+
+/* =========================
+   START
+========================= */
+
+console.log(
+    'EWS SESSIONS CLIENT READY'
+);
 
 </script>
 
