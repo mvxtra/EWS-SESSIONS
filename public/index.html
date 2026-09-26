@@ -12,9 +12,7 @@
 <title>EWS SESSIONS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
-
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
@@ -57,6 +55,7 @@ body{
   position:absolute;
   inset:0;
   z-index:1000;
+
   display:flex;
   align-items:center;
   justify-content:center;
@@ -475,6 +474,35 @@ input:focus{
 }
 
 /* =========================================================
+   JUMP INDICATOR
+========================================================= */
+
+#jump-indicator{
+  position:absolute;
+
+  left:50%;
+  bottom:115px;
+
+  transform:translateX(-50%);
+
+  padding:5px 9px;
+
+  border:1px solid rgba(255,255,255,.15);
+
+  background:rgba(0,0,0,.35);
+
+  color:rgba(255,255,255,.35);
+
+  font-size:8px;
+
+  letter-spacing:2px;
+
+  pointer-events:none;
+
+  opacity:.7;
+}
+
+/* =========================================================
    MOBILE
 ========================================================= */
 
@@ -605,6 +633,10 @@ input:focus{
     bottom:calc(31vh + 20px);
 
     font-size:8px;
+  }
+
+  #jump-indicator{
+    display:none;
   }
 }
 
@@ -781,8 +813,12 @@ input:focus{
     MAIN FLOOR
   </div>
 
+  <div id="jump-indicator">
+    SPACE · JUMP
+  </div>
+
   <div id="hint">
-    WASD MOVE · MOUSE LOOK · C CHAT
+    WASD MOVE · MOUSE LOOK · SPACE JUMP · C CHAT
   </div>
 
 </div>
@@ -790,6 +826,10 @@ input:focus{
 </div>
 
 <script>
+
+/* =========================================================
+   GLOBALS
+========================================================= */
 
 let mode='login';
 
@@ -833,6 +873,64 @@ let screenCanvas;
 let screenCtx;
 
 let playerBody;
+
+/* =========================================================
+   PLAYER PHYSICS
+========================================================= */
+
+const player = {
+
+  x:0,
+  y:0,
+  z:13,
+
+  radius:.38,
+
+  height:1.7,
+
+  velocityY:0,
+
+  grounded:true,
+
+  jumpPower:7.2,
+
+  gravity:20,
+
+  speed:5.2,
+
+  bobTime:0
+
+};
+
+/* =========================================================
+   COLLISION OBJECTS
+========================================================= */
+
+const collisionBoxes=[];
+
+function addCollision(
+  x,
+  y,
+  z,
+  width,
+  height,
+  depth
+){
+
+  collisionBoxes.push({
+
+    minX:x-width/2,
+    maxX:x+width/2,
+
+    minY:y-height/2,
+    maxY:y+height/2,
+
+    minZ:z-depth/2,
+    maxZ:z+depth/2
+
+  });
+
+}
 
 /* =========================================================
    LOGIN
@@ -925,15 +1023,30 @@ async function doLogin(){
     const data =
       await res.json();
 
-    if(data.error){
+    if(!res.ok){
 
       error.textContent=
-        data.error;
+        data.message ||
+        data.error ||
+        'Ошибка';
 
       return;
     }
 
-    startSession(username);
+    if(data.error || data.ok===false){
+
+      error.textContent=
+        data.message ||
+        data.error ||
+        'Ошибка';
+
+      return;
+    }
+
+    startSession(
+      data.username ||
+      username
+    );
 
   }catch(err){
 
@@ -964,16 +1077,92 @@ function startSession(username){
 
   init3D();
 
-  socket=io();
+  socket=io({
+
+    transports:[
+      'websocket',
+      'polling'
+    ],
+
+    reconnection:true,
+
+    reconnectionAttempts:Infinity,
+
+    reconnectionDelay:1000,
+
+    reconnectionDelayMax:5000,
+
+    timeout:10000
+
+  });
 
   socket.on('connect',function(){
+
+    console.log(
+      '[EWS SOCKET] CONNECTED',
+      socket.id
+    );
 
     socket.emit(
       'join',
       {
-        username: currentUser,
+        username:currentUser,
+
         language:
-          document.getElementById('lang').value
+          document.getElementById(
+            'lang'
+          ).value
+      }
+    );
+
+  });
+
+  socket.on('joined',function(data){
+
+    console.log(
+      '[EWS SOCKET] JOINED',
+      data
+    );
+
+    socket.emit(
+      'request-online'
+    );
+
+  });
+
+  socket.on('disconnect',function(reason){
+
+    console.log(
+      '[EWS SOCKET] DISCONNECTED',
+      reason
+    );
+
+  });
+
+  socket.on('connect_error',function(error){
+
+    console.error(
+      '[EWS SOCKET] CONNECT ERROR',
+      error
+    );
+
+  });
+
+  socket.io.on('reconnect',function(){
+
+    console.log(
+      '[EWS SOCKET] RECONNECTED'
+    );
+
+    socket.emit(
+      'join',
+      {
+        username:currentUser,
+
+        language:
+          document.getElementById(
+            'lang'
+          ).value
       }
     );
 
@@ -984,11 +1173,15 @@ function startSession(username){
     list=>{
 
       const ul =
-        document.getElementById('online-list');
+        document.getElementById(
+          'online-list'
+        );
 
       ul.innerHTML='';
 
-      if(!Array.isArray(list)) return;
+      if(!Array.isArray(list)){
+        return;
+      }
 
       list.forEach(user=>{
 
@@ -996,14 +1189,18 @@ function startSession(username){
           document.createElement('li');
 
         const name =
-          typeof user === 'string'
-            ? user
-            : user.username;
+          typeof user==='string'
+            ?user
+            :user.username;
+
+        if(!name){
+          return;
+        }
 
         li.textContent =
-          name === currentUser
-            ? name + ' (YOU)'
-            : name;
+          name===currentUser
+            ?name+' (YOU)'
+            :name;
 
         ul.appendChild(li);
 
@@ -1012,18 +1209,32 @@ function startSession(username){
     }
   );
 
-  // Compatibility with an older server version.
-  socket.on('online',list=>{
+  socket.on(
+    'system-message',
+    message=>{
 
-    if(socket.connected){
-      socket.emit('request-online');
+      if(
+        !message ||
+        !message.text
+      ){
+        return;
+      }
+
+      addChatSystemMessage(
+        message.text,
+        message.ts
+      );
+
     }
-
-  });
+  );
 
   socket.on(
     'chat-message',
     message=>{
+
+      if(!message){
+        return;
+      }
 
       const el =
         document.createElement(
@@ -1034,7 +1245,8 @@ function startSession(username){
 
       const time =
         new Date(
-          message.ts
+          message.ts ||
+          Date.now()
         ).toLocaleTimeString();
 
       const user =
@@ -1045,7 +1257,9 @@ function startSession(username){
       user.className='u';
 
       user.textContent=
-        message.user;
+        message.user ||
+        message.username ||
+        'Guest';
 
       const text =
         document.createElement(
@@ -1055,7 +1269,10 @@ function startSession(username){
       text.className='t';
 
       text.textContent=
-        ' '+time+' '+message.text;
+        ' '+time+' '+
+        String(
+          message.text || ''
+        );
 
       el.appendChild(user);
 
@@ -1081,6 +1298,51 @@ function startSession(username){
 }
 
 /* =========================================================
+   SYSTEM CHAT MESSAGE
+========================================================= */
+
+function addChatSystemMessage(
+  message,
+  timestamp
+){
+
+  const el =
+    document.createElement(
+      'div'
+    );
+
+  el.className='msg';
+
+  const time =
+    new Date(
+      timestamp || Date.now()
+    ).toLocaleTimeString();
+
+  const text =
+    document.createElement(
+      'span'
+    );
+
+  text.className='t';
+
+  text.textContent=
+    '• '+time+' '+message;
+
+  el.appendChild(text);
+
+  const box =
+    document.getElementById(
+      'chat-messages'
+    );
+
+  box.appendChild(el);
+
+  box.scrollTop=
+    box.scrollHeight;
+
+}
+
+/* =========================================================
    CHAT
 ========================================================= */
 
@@ -1092,7 +1354,12 @@ document
 
       e.preventDefault();
 
-      if(!socket)return;
+      if(
+        !socket ||
+        !socket.connected
+      ){
+        return;
+      }
 
       const input =
         document.getElementById(
@@ -1102,18 +1369,14 @@ document
       const text =
         input.value.trim();
 
-      if(!text)return;
+      if(!text){
+        return;
+      }
 
       socket.emit(
         'chat-message',
         {
-          user:currentUser,
-          text:text,
-
-          lang:
-            document.getElementById(
-              'lang'
-            ).value
+          text:text
         }
       );
 
@@ -1132,7 +1395,10 @@ document
     'change',
     function(){
 
-      if(socket){
+      if(
+        socket &&
+        socket.connected
+      ){
 
         socket.emit(
           'language-change',
@@ -1166,7 +1432,7 @@ function init3D(){
 
   camera =
     new THREE.PerspectiveCamera(
-      72,
+      70,
       innerWidth/innerHeight,
       0.1,
       150
@@ -1174,18 +1440,20 @@ function init3D(){
 
   camera.position.set(
     0,
-    1.7,
-    13
+    2.6,
+    16
   );
 
   renderer =
     new THREE.WebGLRenderer({
+
       canvas:
         document.getElementById(
           'canvas3d'
         ),
 
       antialias:true
+
     });
 
   renderer.setSize(
@@ -1208,7 +1476,7 @@ function init3D(){
   const ambient =
     new THREE.AmbientLight(
       0xffffff,
-      0.13
+      0.16
     );
 
   scene.add(ambient);
@@ -1291,23 +1559,32 @@ function init3D(){
 ========================================================= */
 
 function createBox(
-  w,h,d,
-  x,y,z,
+  w,
+  h,
+  d,
+  x,
+  y,
+  z,
   material,
   cast=true,
-  receive=true
+  receive=true,
+  collidable=false
 ){
 
   const mesh =
     new THREE.Mesh(
       new THREE.BoxGeometry(
-        w,h,d
+        w,
+        h,
+        d
       ),
       material
     );
 
   mesh.position.set(
-    x,y,z
+    x,
+    y,
+    z
   );
 
   mesh.castShadow=
@@ -1318,12 +1595,27 @@ function createBox(
 
   scene.add(mesh);
 
+  if(collidable){
+
+    addCollision(
+      x,
+      y,
+      z,
+      w,
+      h,
+      d
+    );
+
+  }
+
   return mesh;
 
 }
 
 function createLight(
-  x,y,z,
+  x,
+  y,
+  z,
   color,
   intensity,
   distance
@@ -1337,7 +1629,9 @@ function createLight(
     );
 
   light.position.set(
-    x,y,z
+    x,
+    y,
+    z
   );
 
   light.castShadow=true;
@@ -1352,13 +1646,21 @@ function createLight(
 
 }
 
+/* =========================================================
+   FLOOR
+========================================================= */
+
 function createFloor(){
 
   const mat =
     new THREE.MeshStandardMaterial({
+
       color:0x080808,
+
       metalness:.75,
+
       roughness:.28
+
     });
 
   const floor =
@@ -1391,18 +1693,25 @@ function createFloor(){
 
 }
 
+/* =========================================================
+   CEILING
+========================================================= */
+
 function createCeiling(){
 
   const ceiling =
     new THREE.Mesh(
+
       new THREE.PlaneGeometry(
         36,
         42
       ),
+
       new THREE.MeshStandardMaterial({
         color:0x050505,
         roughness:1
       })
+
     );
 
   ceiling.rotation.x=
@@ -1414,52 +1723,82 @@ function createCeiling(){
 
 }
 
+/* =========================================================
+   WALLS
+========================================================= */
+
 function createWalls(){
 
   const mat =
     new THREE.MeshStandardMaterial({
+
       color:0x0b0b0b,
+
       roughness:.9
+
     });
 
   createBox(
     36,6,.5,
     0,3,-17,
-    mat
+    mat,
+    true,
+    true,
+    true
   );
 
   createBox(
     36,6,.5,
     0,3,17,
-    mat
+    mat,
+    true,
+    true,
+    true
   );
 
   createBox(
     .5,6,34,
     -18,3,0,
-    mat
+    mat,
+    true,
+    true,
+    true
   );
 
   createBox(
     .5,6,34,
     18,3,0,
-    mat
+    mat,
+    true,
+    true,
+    true
   );
 
 }
+
+/* =========================================================
+   DANCE FLOOR
+========================================================= */
 
 function createDanceFloor(){
 
   const floor =
     new THREE.Mesh(
+
       new THREE.BoxGeometry(
         14,.12,14
       ),
+
       new THREE.MeshStandardMaterial({
+
         color:0x111111,
+
         metalness:.9,
+
         roughness:.15
+
       })
+
     );
 
   floor.position.set(
@@ -1476,10 +1815,15 @@ function createDanceFloor(){
     });
 
   const lines=[
+
     [-7,.16,-1,14,.04,.04],
+
     [7,.16,-1,14,.04,.04],
+
     [0,.16,-8,.04,.04,14],
+
     [0,.16,6,.04,.04,14]
+
   ];
 
   lines.forEach(
@@ -1487,15 +1831,21 @@ function createDanceFloor(){
 
       const mesh =
         createBox(
+
           l[3],
           l[4],
           l[5],
+
           l[0],
           l[1],
           l[2],
+
           frameMat,
+
+          false,
           false,
           false
+
         );
 
       neonObjects.push(
@@ -1507,6 +1857,10 @@ function createDanceFloor(){
 
 }
 
+/* =========================================================
+   MAIN SCREEN
+========================================================= */
+
 function createMainScreen(){
 
   screenCanvas =
@@ -1515,6 +1869,7 @@ function createMainScreen(){
     );
 
   screenCanvas.width=1024;
+
   screenCanvas.height=512;
 
   screenCtx =
@@ -1529,14 +1884,21 @@ function createMainScreen(){
 
   const frame =
     new THREE.Mesh(
+
       new THREE.BoxGeometry(
         16,7,.35
       ),
+
       new THREE.MeshStandardMaterial({
+
         color:0x151515,
+
         metalness:.7,
+
         roughness:.3
+
       })
+
     );
 
   frame.position.set(
@@ -1547,13 +1909,16 @@ function createMainScreen(){
 
   const screen =
     new THREE.Mesh(
+
       new THREE.PlaneGeometry(
         15.5,
         6.5
       ),
+
       new THREE.MeshBasicMaterial({
         map:screenTexture
       })
+
     );
 
   screen.position.set(
@@ -1564,19 +1929,35 @@ function createMainScreen(){
 
 }
 
+/* =========================================================
+   STAGE
+========================================================= */
+
 function createStage(){
 
   const stageMat =
     new THREE.MeshStandardMaterial({
+
       color:0x111111,
+
       metalness:.6,
+
       roughness:.35
+
     });
 
   createBox(
+
     17,.45,3,
+
     0,.3,-12.5,
-    stageMat
+
+    stageMat,
+
+    true,
+    true,
+    true
+
   );
 
   const stripMat =
@@ -1586,11 +1967,17 @@ function createStage(){
 
   const strip =
     createBox(
+
       16,.04,.08,
+
       0,.54,-11,
+
       stripMat,
+
+      false,
       false,
       false
+
     );
 
   neonObjects.push(
@@ -1599,29 +1986,57 @@ function createStage(){
 
 }
 
+/* =========================================================
+   BAR
+========================================================= */
+
 function createBar(){
 
   const wood =
     new THREE.MeshStandardMaterial({
+
       color:0x141414,
+
       metalness:.3,
+
       roughness:.55
+
     });
 
   createBox(
+
     8,1.1,2,
+
     -12,.65,7,
-    wood
+
+    wood,
+
+    true,
+    true,
+    true
+
   );
 
   createBox(
+
     8.5,.15,2.3,
+
     -12,1.25,7,
+
     new THREE.MeshStandardMaterial({
+
       color:0xdddddd,
+
       metalness:.7,
+
       roughness:.25
-    })
+
+    }),
+
+    true,
+    true,
+    true
+
   );
 
   for(
@@ -1632,49 +2047,90 @@ function createBar(){
 
     const bottle =
       new THREE.Mesh(
+
         new THREE.CylinderGeometry(
           .07,
           .09,
           .65,
           12
         ),
+
         new THREE.MeshStandardMaterial({
+
           color:0x888888,
+
           metalness:.6,
+
           roughness:.25
+
         })
+
       );
 
     bottle.position.set(
+
       -15+i*.8,
       1.7,
       6.5
+
     );
 
     scene.add(bottle);
+
+    addCollision(
+      bottle.position.x,
+      1.7,
+      bottle.position.z,
+      .25,
+      .65,
+      .25
+    );
 
   }
 
 }
 
+/* =========================================================
+   LOUNGE
+========================================================= */
+
 function createLounge(){
 
   const sofaMat =
     new THREE.MeshStandardMaterial({
+
       color:0x181818,
+
       roughness:.9
+
     });
 
   createBox(
+
     6,.8,1.6,
+
     11,.7,8,
-    sofaMat
+
+    sofaMat,
+
+    true,
+    true,
+    true
+
   );
 
   createBox(
+
     1.6,1.4,5.5,
+
     14,1.2,8,
-    sofaMat
+
+    sofaMat,
+
+    true,
+    true,
+    true
+
   );
 
   for(
@@ -1685,16 +2141,22 @@ function createLounge(){
 
     const table =
       new THREE.Mesh(
+
         new THREE.CylinderGeometry(
           .65,
           .65,
           .08,
           32
         ),
+
         new THREE.MeshStandardMaterial({
+
           color:0x555555,
+
           metalness:.7
+
         })
+
       );
 
     table.position.set(
@@ -1705,54 +2167,86 @@ function createLounge(){
 
     scene.add(table);
 
+    addCollision(
+      table.position.x,
+      .75,
+      table.position.z,
+      1.3,
+      .8,
+      1.3
+    );
+
   }
 
 }
+
+/* =========================================================
+   COLUMNS
+========================================================= */
 
 function createColumns(){
 
   const mat =
     new THREE.MeshStandardMaterial({
+
       color:0x101010,
+
       metalness:.55,
+
       roughness:.35
+
     });
 
   const positions=[
+
     [-15,5],
     [15,5],
     [-15,-5],
     [15,-5]
+
   ];
 
   positions.forEach(
     p=>{
 
       createBox(
+
         1,6,1,
+
         p[0],
         3,
         p[1],
-        mat
+
+        mat,
+
+        true,
+        true,
+        true
+
       );
 
       const ring =
         new THREE.Mesh(
+
           new THREE.TorusGeometry(
             .72,
             .06,
             8,
             32
           ),
+
           new THREE.MeshBasicMaterial({
             color:0xffffff
           })
+
         );
 
       ring.position.set(
+
         p[0],
         2,
         p[1]
+
       );
 
       scene.add(ring);
@@ -1766,28 +2260,49 @@ function createColumns(){
 
 }
 
+/* =========================================================
+   ENTRANCE
+========================================================= */
+
 function createEntrance(){
 
   const frameMat =
     new THREE.MeshStandardMaterial({
+
       color:0x191919,
+
       metalness:.7
+
     });
 
   createBox(
+
     7,5.5,.6,
+
     0,2.75,16.3,
-    frameMat
+
+    frameMat,
+
+    true,
+    true,
+    true
+
   );
 
   createBox(
+
     5.8,4.7,.1,
+
     0,2.35,15.98,
+
     new THREE.MeshBasicMaterial({
       color:0x020202
     }),
+
+    false,
     false,
     false
+
   );
 
   const signCanvas =
@@ -1832,13 +2347,16 @@ function createEntrance(){
 
   const sign =
     new THREE.Mesh(
+
       new THREE.PlaneGeometry(
         5,
         1.35
       ),
+
       new THREE.MeshBasicMaterial({
         map:tex
       })
+
     );
 
   sign.position.set(
@@ -1850,6 +2368,10 @@ function createEntrance(){
   scene.add(sign);
 
 }
+
+/* =========================================================
+   NEON
+========================================================= */
 
 function createNeonArchitecture(){
 
@@ -1866,24 +2388,36 @@ function createNeonArchitecture(){
 
     const left =
       createBox(
+
         .06,4,.06,
+
         -17.5,
         3,
         z,
+
         mat,
+
+        false,
         false,
         false
+
       );
 
     const right =
       createBox(
+
         .06,4,.06,
+
         17.5,
         3,
         z,
+
         mat,
+
+        false,
         false,
         false
+
       );
 
     neonObjects.push(
@@ -1901,13 +2435,19 @@ function createNeonArchitecture(){
 
     const beam =
       createBox(
+
         34,.05,.05,
+
         0,
         5.4,
         z,
+
         mat,
+
+        false,
         false,
         false
+
       );
 
     neonObjects.push(
@@ -1918,13 +2458,21 @@ function createNeonArchitecture(){
 
 }
 
+/* =========================================================
+   CEILING BEAMS
+========================================================= */
+
 function createCeilingBeams(){
 
   const mat =
     new THREE.MeshStandardMaterial({
+
       color:0x151515,
+
       metalness:.8,
+
       roughness:.3
+
     });
 
   for(
@@ -1934,40 +2482,68 @@ function createCeilingBeams(){
   ){
 
     createBox(
+
       .3,.3,34,
-      x,5.7,0,
-      mat
+
+      x,
+      5.7,
+      0,
+
+      mat,
+
+      true,
+      true,
+      false
+
     );
 
   }
 
 }
 
+/* =========================================================
+   SPEAKERS
+========================================================= */
+
 function createSpeakers(){
 
   const mat =
     new THREE.MeshStandardMaterial({
+
       color:0x050505,
+
       metalness:.4,
+
       roughness:.7
+
     });
 
   const positions=[
+
     [-8,2,-11],
     [8,2,-11],
     [-11,2,-10],
     [11,2,-10]
+
   ];
 
   positions.forEach(
     p=>{
 
       createBox(
+
         1.2,2.5,.8,
+
         p[0],
         p[1],
         p[2],
-        mat
+
+        mat,
+
+        true,
+        true,
+        true
+
       );
 
       for(
@@ -1978,24 +2554,29 @@ function createSpeakers(){
 
         const cone =
           new THREE.Mesh(
+
             new THREE.CylinderGeometry(
               .23,
               .23,
               .12,
               24
             ),
+
             new THREE.MeshBasicMaterial({
               color:0xaaaaaa
             })
+
           );
 
         cone.rotation.x=
           Math.PI/2;
 
         cone.position.set(
+
           p[0],
           1.3+i*.6,
           p[2]-.45
+
         );
 
         scene.add(cone);
@@ -2006,6 +2587,10 @@ function createSpeakers(){
   );
 
 }
+
+/* =========================================================
+   PARTICLES
+========================================================= */
 
 function createParticles(){
 
@@ -2037,22 +2622,33 @@ function createParticles(){
   }
 
   geo.setAttribute(
+
     'position',
+
     new THREE.BufferAttribute(
       pos,
       3
     )
+
   );
 
   particles =
     new THREE.Points(
+
       geo,
+
       new THREE.PointsMaterial({
+
         color:0xffffff,
+
         size:.025,
+
         transparent:true,
+
         opacity:.18
+
       })
+
     );
 
   scene.add(
@@ -2061,59 +2657,298 @@ function createParticles(){
 
 }
 
+/* =========================================================
+   PLAYER
+========================================================= */
+
 function createPlayer(){
 
   playerBody =
     new THREE.Group();
 
+  /* BODY */
+
   const body =
     new THREE.Mesh(
+
       new THREE.CylinderGeometry(
         .25,
         .32,
         1,
         12
       ),
+
       new THREE.MeshStandardMaterial({
+
         color:0xffffff,
+
         roughness:.7
+
       })
+
     );
 
   body.position.y=.5;
+
+  body.castShadow=true;
 
   playerBody.add(
     body
   );
 
+  /* HEAD */
+
   const head =
     new THREE.Mesh(
+
       new THREE.SphereGeometry(
         .23,
         16,
         16
       ),
+
       new THREE.MeshStandardMaterial({
+
         color:0xdddddd,
+
         roughness:.7
+
       })
+
     );
 
   head.position.y=1.25;
+
+  head.castShadow=true;
 
   playerBody.add(
     head
   );
 
+  /* SHOULDERS */
+
+  const shoulders =
+    new THREE.Mesh(
+
+      new THREE.BoxGeometry(
+        .8,
+        .22,
+        .28
+      ),
+
+      new THREE.MeshStandardMaterial({
+
+        color:0xcccccc,
+
+        roughness:.8
+
+      })
+
+    );
+
+  shoulders.position.y=.88;
+
+  shoulders.castShadow=true;
+
+  playerBody.add(
+    shoulders
+  );
+
+  /* LEGS */
+
+  const legMat =
+    new THREE.MeshStandardMaterial({
+
+      color:0x777777,
+
+      roughness:.8
+
+    });
+
+  const leftLeg =
+    new THREE.Mesh(
+
+      new THREE.BoxGeometry(
+        .16,
+        .7,
+        .18
+      ),
+
+      legMat
+
+    );
+
+  leftLeg.position.set(
+    -.13,
+    .05,
+    0
+  );
+
+  leftLeg.castShadow=true;
+
+  playerBody.add(
+    leftLeg
+  );
+
+  const rightLeg =
+    new THREE.Mesh(
+
+      new THREE.BoxGeometry(
+        .16,
+        .7,
+        .18
+      ),
+
+      legMat
+
+    );
+
+  rightLeg.position.set(
+    .13,
+    .05,
+    0
+  );
+
+  rightLeg.castShadow=true;
+
+  playerBody.add(
+    rightLeg
+  );
+
   playerBody.position.set(
-    0,
-    0,
-    13
+    player.x,
+    player.y,
+    player.z
   );
 
   scene.add(
     playerBody
   );
+
+}
+
+/* =========================================================
+   COLLISION
+========================================================= */
+
+function collidesAt(
+  x,
+  z
+){
+
+  const r =
+    player.radius;
+
+  const minX=
+    x-r;
+
+  const maxX=
+    x+r;
+
+  const minZ=
+    z-r;
+
+  const maxZ=
+    z+r;
+
+  for(
+    const box of collisionBoxes
+  ){
+
+    if(
+      maxX>box.minX &&
+      minX<box.maxX &&
+      maxZ>box.minZ &&
+      minZ<box.maxZ
+    ){
+
+      return true;
+
+    }
+
+  }
+
+  return false;
+
+}
+
+/* =========================================================
+   MOVEMENT WITH COLLISION
+========================================================= */
+
+function movePlayer(
+  dx,
+  dz
+){
+
+  const nextX=
+    player.x+dx;
+
+  if(
+    !collidesAt(
+      nextX,
+      player.z
+    )
+  ){
+
+    player.x=
+      nextX;
+
+  }
+
+  const nextZ=
+    player.z+dz;
+
+  if(
+    !collidesAt(
+      player.x,
+      nextZ
+    )
+  ){
+
+    player.z=
+      nextZ;
+
+  }
+
+  player.x=
+    THREE.MathUtils.clamp(
+      player.x,
+      -17.1,
+      17.1
+    );
+
+  player.z=
+    THREE.MathUtils.clamp(
+      player.z,
+      -16.1,
+      16.1
+    );
+
+}
+
+/* =========================================================
+   JUMP
+========================================================= */
+
+function jump(){
+
+  if(
+    chatMode
+  ){
+    return;
+  }
+
+  if(
+    player.grounded
+  ){
+
+    player.velocityY=
+      player.jumpPower;
+
+    player.grounded=false;
+
+  }
 
 }
 
@@ -2593,6 +3428,24 @@ function setupControls(){
     'keydown',
     function(e){
 
+      if(
+        e.code==='Space'
+      ){
+
+        e.preventDefault();
+
+        if(!e.repeat){
+
+          jump();
+
+        }
+
+        keys[e.code]=true;
+
+        return;
+
+      }
+
       keys[e.code]=true;
 
       if(
@@ -2627,7 +3480,9 @@ function setupControls(){
     'click',
     function(){
 
-      if(!chatMode){
+      if(
+        !chatMode
+      ){
 
         canvas.requestPointerLock();
 
@@ -2654,16 +3509,16 @@ function setupControls(){
       if(!pointerLocked)return;
 
       yaw-=
-        e.movementX*.002;
+        e.movementX*.0025;
 
       pitch-=
         e.movementY*.002;
 
       pitch=
         Math.max(
-          -1.45,
+          -.55,
           Math.min(
-            1.45,
+            .45,
             pitch
           )
         );
@@ -2672,6 +3527,10 @@ function setupControls(){
   );
 
 }
+
+/* =========================================================
+   CHAT TOGGLE
+========================================================= */
 
 function toggleChat(){
 
@@ -2682,7 +3541,13 @@ function toggleChat(){
 
   if(chatMode){
 
-    document.exitPointerLock();
+    if(
+      document.pointerLockElement
+    ){
+
+      document.exitPointerLock();
+
+    }
 
     input.focus();
 
@@ -2691,6 +3556,192 @@ function toggleChat(){
     input.blur();
 
   }
+
+}
+
+/* =========================================================
+   THIRD PERSON CAMERA
+========================================================= */
+
+function updateThirdPersonCamera(){
+
+  if(!camera){
+    return;
+  }
+
+  /*
+   * Точка, куда смотрит камера.
+   * Немного выше центра персонажа.
+   */
+
+  const targetX=
+    player.x;
+
+  const targetY=
+    player.y+1.15;
+
+  const targetZ=
+    player.z;
+
+  /*
+   * Камера находится за персонажем.
+   */
+
+  const cameraDistance=
+    4.8;
+
+  const cameraHeight=
+    2.45;
+
+  const desiredX=
+    player.x+
+    Math.sin(yaw)*
+    cameraDistance;
+
+  const desiredZ=
+    player.z+
+    Math.cos(yaw)*
+    cameraDistance;
+
+  const desiredY=
+    player.y+
+    cameraHeight;
+
+  /*
+   * Небольшая защита камеры
+   * от захода за стены.
+   */
+
+  let finalX=
+    desiredX;
+
+  let finalZ=
+    desiredZ;
+
+  /*
+   * Если камера оказалась в стене,
+   * подтягиваем её ближе.
+   */
+
+  const steps=8;
+
+  for(
+    let i=steps;
+    i>=1;
+    i--
+  ){
+
+    const t=i/steps;
+
+    const testX=
+      player.x+
+      Math.sin(yaw)*
+      cameraDistance*
+      t;
+
+    const testZ=
+      player.z+
+      Math.cos(yaw)*
+      cameraDistance*
+      t;
+
+    if(
+      !collidesCamera(
+        testX,
+        testZ
+      )
+    ){
+
+      finalX=testX;
+      finalZ=testZ;
+
+      break;
+
+    }
+
+  }
+
+  camera.position.x +=
+    (
+      finalX-
+      camera.position.x
+    )*.16;
+
+  camera.position.y +=
+    (
+      desiredY-
+      camera.position.y
+    )*.16;
+
+  camera.position.z +=
+    (
+      finalZ-
+      camera.position.z
+    )*.16;
+
+  const lookDistance=
+    10;
+
+  const lookX=
+    targetX-
+    Math.sin(yaw)*
+    Math.cos(pitch)*
+    lookDistance;
+
+  const lookY=
+    targetY+
+    Math.sin(pitch)*
+    lookDistance;
+
+  const lookZ=
+    targetZ-
+    Math.cos(yaw)*
+    Math.cos(pitch)*
+    lookDistance;
+
+  camera.lookAt(
+    lookX,
+    lookY,
+    lookZ
+  );
+
+}
+
+/* =========================================================
+   CAMERA COLLISION
+========================================================= */
+
+function collidesCamera(
+  x,
+  z
+){
+
+  const r=.18;
+
+  const minX=x-r;
+  const maxX=x+r;
+
+  const minZ=z-r;
+  const maxZ=z+r;
+
+  for(
+    const box of collisionBoxes
+  ){
+
+    if(
+      maxX>box.minX &&
+      minX<box.maxX &&
+      maxZ>box.minZ &&
+      minZ<box.maxZ
+    ){
+
+      return true;
+
+    }
+
+  }
+
+  return false;
 
 }
 
@@ -2704,7 +3755,9 @@ function animate(){
     animate
   );
 
-  if(!scene)return;
+  if(!scene){
+    return;
+  }
 
   const dt =
     Math.min(
@@ -2714,6 +3767,10 @@ function animate(){
 
   const time =
     performance.now()/1000;
+
+  /* =======================================================
+     AUDIO ANALYSIS
+  ======================================================= */
 
   let bass=.2;
   let level=.2;
@@ -2768,9 +3825,7 @@ function animate(){
         freqData.length*255
       );
 
-  }
-
-  else{
+  }else{
 
     bass=
       .25+
@@ -2790,10 +3845,9 @@ function animate(){
     audioLevel*.88+
     level*.12;
 
-  const speed=
-    chatMode
-      ?0
-      :5*dt;
+  /* =======================================================
+     MOVEMENT
+  ======================================================= */
 
   let forward=0;
   let side=0;
@@ -2801,94 +3855,200 @@ function animate(){
   if(
     keys['KeyW']
   ){
+
     forward+=1;
+
   }
 
   if(
     keys['KeyS']
   ){
+
     forward-=1;
+
   }
 
   if(
     keys['KeyA']
   ){
+
     side-=1;
+
   }
 
   if(
     keys['KeyD']
   ){
+
     side+=1;
+
   }
 
   if(
-    pointerLocked &&
     !chatMode
   ){
 
-    const fx=
-      -Math.sin(yaw);
+    const length=
+      Math.sqrt(
+        forward*forward+
+        side*side
+      );
 
-    const fz=
-      -Math.cos(yaw);
+    if(length>0){
 
-    const rx=
-      Math.cos(yaw);
+      forward/=length;
+      side/=length;
 
-    const rz=
-      -Math.sin(yaw);
+      const fx=
+        -Math.sin(yaw);
 
-    camera.position.x+=
-      (
-        fx*forward+
-        rx*side
-      )*speed;
+      const fz=
+        -Math.cos(yaw);
 
-    camera.position.z+=
-      (
-        fz*forward+
-        rz*side
-      )*speed;
+      const rx=
+        Math.cos(yaw);
+
+      const rz=
+        -Math.sin(yaw);
+
+      const moveSpeed=
+        player.speed*dt;
+
+      const dx=
+        (
+          fx*forward+
+          rx*side
+        )*
+        moveSpeed;
+
+      const dz=
+        (
+          fz*forward+
+          rz*side
+        )*
+        moveSpeed;
+
+      movePlayer(
+        dx,
+        dz
+      );
+
+      player.bobTime+=
+        dt*10;
+
+    }
 
   }
 
-  camera.position.x=
-    THREE.MathUtils.clamp(
-      camera.position.x,
-      -16,
-      16
-    );
+  /* =======================================================
+     JUMP PHYSICS
+  ======================================================= */
 
-  camera.position.z=
-    THREE.MathUtils.clamp(
-      camera.position.z,
-      -15.5,
-      15.5
-    );
+  player.velocityY-=
+    player.gravity*dt;
 
-  camera.position.y=1.7;
+  player.y+=
+    player.velocityY*dt;
 
-  camera.rotation.order=
-    'YXZ';
+  if(
+    player.y<=0
+  ){
 
-  camera.rotation.y=
-    yaw;
+    player.y=0;
 
-  camera.rotation.x=
-    pitch;
+    player.velocityY=0;
+
+    player.grounded=true;
+
+  }
+
+  /* =======================================================
+     PLAYER VISUAL
+  ======================================================= */
 
   if(playerBody){
 
     playerBody.position.x=
-      camera.position.x;
+      player.x;
+
+    playerBody.position.y=
+      player.y;
 
     playerBody.position.z=
-      camera.position.z;
+      player.z;
 
-    playerBody.visible=false;
+    /*
+     * Персонаж смотрит туда,
+     * куда смотрит игрок.
+     */
+
+    playerBody.rotation.y=
+      yaw;
+
+    const moving=
+      (
+        Math.abs(
+          player.x
+        )+
+        Math.abs(
+          player.z
+        )
+      );
+
+    if(
+      forward!==0 ||
+      side!==0
+    ){
+
+      const walk=
+        Math.sin(
+          player.bobTime
+        )*.035;
+
+      playerBody.position.y+=
+        walk;
+
+    }
+
+    /*
+     * При прыжке чуть наклоняем тело.
+     */
+
+    playerBody.rotation.x=
+      THREE.MathUtils.clamp(
+        -player.velocityY*.025,
+        -.18,
+        .18
+      );
 
   }
+
+  /* =======================================================
+     THIRD PERSON CAMERA
+  ======================================================= */
+
+  if(
+    chatMode
+  ){
+
+    camera.position.y=
+      player.y+2.3;
+
+    camera.lookAt(
+      player.x,
+      player.y+1,
+      player.z
+    );
+
+  }else{
+
+    updateThirdPersonCamera();
+
+  }
+
+  /* =======================================================
+     PARTICLES
+  ======================================================= */
 
   if(particles){
 
@@ -2900,6 +4060,10 @@ function animate(){
       audioLevel*.2;
 
   }
+
+  /* =======================================================
+     NEON PULSE
+  ======================================================= */
 
   neonObjects.forEach(
     (obj,index)=>{
@@ -2927,6 +4091,10 @@ function animate(){
     }
   );
 
+  /* =======================================================
+     LIGHT PULSE
+  ======================================================= */
+
   lightObjects.forEach(
     (light,index)=>{
 
@@ -2940,6 +4108,10 @@ function animate(){
 
     }
   );
+
+  /* =======================================================
+     SCREEN
+  ======================================================= */
 
   if(screenCtx){
 

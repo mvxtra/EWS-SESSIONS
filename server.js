@@ -12,7 +12,22 @@ const NodeMediaServer = require('node-media-server');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+        origin: true,
+        methods: ['GET', 'POST']
+    },
+
+    transports: ['websocket', 'polling'],
+
+    pingInterval: 25000,
+    pingTimeout: 20000,
+
+    connectionStateRecovery: {
+        maxDisconnectionDuration: 120000,
+        skipMiddlewares: true
+    }
+});
 
 const PORT = 3000;
 const RTMP_PORT = 1935;
@@ -304,6 +319,11 @@ app.get('/api/translate', async (req, res) => {
     }
 });
 
+
+// ======================================================
+// FFMPEG
+// ======================================================
+
 // ======================================================
 // SOCKET.IO
 // ======================================================
@@ -312,81 +332,103 @@ const onlineUsers = new Map();
 
 io.on('connection', socket => {
 
-    console.log(
-        `[SOCKET] Connected ${socket.id}`
-    );
+    console.log(`[SOCKET] Connected: ${socket.id}`);
+
+    // --------------------------------------------------
+    // JOIN
+    // --------------------------------------------------
 
     socket.on('join', data => {
 
-        const username =
-            String(
-                data?.username || 'Guest'
-            ).trim();
+        const username = String(
+            data?.username || 'Guest'
+        ).trim();
 
-        const language =
-            String(
-                data?.language || 'en'
-            );
+        const language = String(
+            data?.language || 'en'
+        ).trim();
 
-        onlineUsers.set(
-            socket.id,
-            {
-                username,
-                language
-            }
-        );
+        if (!username) {
+            return;
+        }
 
         socket.username = username;
         socket.language = language;
 
+        onlineUsers.set(socket.id, {
+            username,
+            language
+        });
+
         console.log(
-            `[ONLINE] ${username}`
+            `[ONLINE] ${username} | ${socket.id}`
         );
 
-        io.emit(
-            'online-users',
-            Array.from(
-                onlineUsers.values()
-            )
-        );
+        broadcastOnlineUsers();
 
-        socket.broadcast.emit(
-            'system-message',
-            {
-                text: `${username} entered EWS SESSIONS`
-            }
-        );
+        socket.emit('joined', {
+            ok: true,
+            username
+        });
+
+        socket.broadcast.emit('system-message', {
+            text: `${username} entered EWS SESSIONS`,
+            ts: Date.now()
+        });
+
     });
 
-    // ==================================================
+    // --------------------------------------------------
+    // REQUEST ONLINE
+    // --------------------------------------------------
+
+    socket.on('request-online', () => {
+
+        socket.emit(
+            'online-users',
+            getOnlineUsers()
+        );
+
+    });
+
+    // --------------------------------------------------
     // CHAT
-    // ==================================================
+    // --------------------------------------------------
 
     socket.on('chat-message', async data => {
 
-        const username =
-            socket.username || 'Guest';
+        if (!socket.username) {
+            return;
+        }
 
-        const text =
-            String(
-                data?.text || ''
-            ).trim();
+        const text = String(
+            data?.text || ''
+        ).trim();
 
         if (!text) {
             return;
         }
 
-        const users =
-            Array.from(
-                onlineUsers.entries()
-            );
+        if (text.length > 500) {
+            return;
+        }
 
-        for (const [
-            socketId,
-            user
-        ] of users) {
+        const originalText = text;
+        const timestamp = Date.now();
 
-            let messageText = text;
+        const users = Array.from(
+            onlineUsers.entries()
+        );
+
+        for (const [socketId, user] of users) {
+
+            let messageText = originalText;
+
+            /*
+             * Перевод оставляем.
+             * Если перевод не сработал —
+             * отправляем оригинал.
+             */
 
             if (
                 user.language &&
@@ -400,59 +442,72 @@ io.on('connection', socket => {
                         '?client=gtx' +
                         '&sl=auto' +
                         '&tl=' +
-                        encodeURIComponent(
-                            user.language
-                        ) +
+                        encodeURIComponent(user.language) +
                         '&dt=t' +
                         '&q=' +
-                        encodeURIComponent(text);
+                        encodeURIComponent(originalText);
 
                     const response =
                         await fetch(url);
 
-                    const result =
-                        await response.json();
+                    if (response.ok) {
 
-                    if (
-                        Array.isArray(result) &&
-                        Array.isArray(result[0])
-                    ) {
+                        const result =
+                            await response.json();
 
-                        messageText =
-                            result[0]
-                                .map(item => item[0])
-                                .join('');
+                        if (
+                            Array.isArray(result) &&
+                            Array.isArray(result[0])
+                        ) {
+
+                            const translated =
+                                result[0]
+                                    .map(item => item[0])
+                                    .join('');
+
+                            if (translated) {
+                                messageText = translated;
+                            }
+                        }
                     }
 
                 } catch (error) {
 
-                    messageText = text;
+                    console.log(
+                        '[CHAT TRANSLATION]',
+                        error.message
+                    );
+
+                    messageText = originalText;
                 }
             }
 
             io.to(socketId).emit(
                 'chat-message',
                 {
-                    username,
+                    user: socket.username,
+                    username: socket.username,
                     text: messageText,
-                    original: text
+                    original: originalText,
+                    ts: timestamp
                 }
             );
         }
+
     });
 
-    // ==================================================
+    // --------------------------------------------------
     // LANGUAGE
-    // ==================================================
+    // --------------------------------------------------
 
     socket.on('language-change', language => {
 
-        if (!onlineUsers.has(socket.id)) {
-            return;
-        }
-
         const user =
             onlineUsers.get(socket.id);
+
+        if (!user) {
+            return;
+        }
 
         user.language =
             String(language || 'en');
@@ -462,19 +517,19 @@ io.on('connection', socket => {
             user
         );
 
-        io.emit(
-            'online-users',
-            Array.from(
-                onlineUsers.values()
-            )
+        broadcastOnlineUsers();
+
+        console.log(
+            `[LANGUAGE] ${user.username}: ${user.language}`
         );
+
     });
 
-    // ==================================================
+    // --------------------------------------------------
     // DISCONNECT
-    // ==================================================
+    // --------------------------------------------------
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', reason => {
 
         const user =
             onlineUsers.get(socket.id);
@@ -482,35 +537,60 @@ io.on('connection', socket => {
         if (user) {
 
             console.log(
-                `[OFFLINE] ${user.username}`
+                `[OFFLINE] ${user.username} | ${reason}`
+            );
+
+            onlineUsers.delete(
+                socket.id
             );
 
             socket.broadcast.emit(
                 'system-message',
                 {
                     text:
-                        `${user.username} left EWS SESSIONS`
+                        `${user.username} left EWS SESSIONS`,
+                    ts: Date.now()
                 }
             );
+
+            broadcastOnlineUsers();
+
         }
 
-        onlineUsers.delete(
-            socket.id
-        );
-
-        io.emit(
-            'online-users',
-            Array.from(
-                onlineUsers.values()
-            )
-        );
     });
+
 });
 
+
 // ======================================================
-// FFMPEG
+// ONLINE HELPERS
 // ======================================================
 
+function getOnlineUsers() {
+
+    return Array.from(
+        onlineUsers.values()
+    );
+
+}
+
+function broadcastOnlineUsers() {
+
+    const users =
+        getOnlineUsers();
+
+    console.log(
+        `[ONLINE LIST] ${users.map(
+            u => u.username
+        ).join(', ')}`
+    );
+
+    io.emit(
+        'online-users',
+        users
+    );
+
+}
 let ffmpegProcess = null;
 let ffmpegRestartTimer = null;
 let ffmpegStarting = false;
