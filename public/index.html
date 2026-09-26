@@ -12,9 +12,7 @@
 <title>EWS SESSIONS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
-
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
@@ -334,27 +332,33 @@ input:focus{
   cursor:pointer;
 }
 
-
 /* =========================================================
-   CLUB SCREEN / MEDIA
+   CLUB SCREEN
 ========================================================= */
 
 #screen-control{
-  display:block;
+  display:none;
+
   position:absolute;
   top:18px;
   left:50%;
   transform:translateX(-50%);
+
   z-index:31;
+
   pointer-events:auto;
+
   height:34px;
   padding:0 18px;
+
   border:1px solid #444;
   background:rgba(0,0,0,.78);
   color:#fff;
+
   font-size:10px;
   font-weight:bold;
   letter-spacing:3px;
+
   cursor:pointer;
 }
 
@@ -365,44 +369,32 @@ input:focus{
 
 #screen-menu{
   position:absolute;
+
   top:62px;
   left:50%;
+
   transform:translateX(-50%);
+
   z-index:40;
+
   width:min(560px,calc(100vw - 30px));
+
   padding:16px;
+
   background:rgba(4,4,4,.96);
+
   border:1px solid #444;
+
   box-shadow:0 20px 70px rgba(0,0,0,.7);
+
   display:none;
+
   pointer-events:auto;
 }
 
-#screen-menu.open{display:block;}
-
-#pause-panel{
-  position:absolute;
-  left:18px;
-  bottom:18px;
-  z-index:50;
-  width:260px;
-  padding:14px;
-  background:rgba(0,0,0,.90);
-  border:1px solid #333;
-  box-shadow:0 15px 50px rgba(0,0,0,.65);
-  display:none;
-  pointer-events:auto;
+#screen-menu.open{
+  display:block;
 }
-#pause-panel.open{display:block;}
-#pause-title{font-size:10px;letter-spacing:3px;margin-bottom:12px;color:#fff;}
-.pause-row{display:flex;align-items:center;gap:10px;margin:9px 0;}
-.pause-row label{font-size:9px;letter-spacing:2px;color:#888;width:65px;}
-.pause-row input[type=range]{flex:1;accent-color:#fff;}
-#pause-volume-value{font-size:9px;color:#fff;width:32px;text-align:right;}
-#pause-toggle{width:100%;height:34px;border:1px solid #555;background:#111;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;}
-#pause-toggle:hover{background:#fff;color:#000;}
-#pause-backdrop{position:absolute;inset:0;z-index:45;background:rgba(0,0,0,.45);display:none;pointer-events:auto;}
-#pause-backdrop.open{display:block;}
 
 #screen-menu-title{
   font-size:10px;
@@ -425,10 +417,14 @@ input:focus{
 .screen-btn{
   height:38px;
   padding:0 13px;
+
   border:1px solid #444;
+
   background:#111;
   color:#fff;
+
   cursor:pointer;
+
   font-size:10px;
   letter-spacing:1px;
 }
@@ -440,73 +436,205 @@ input:focus{
 
 #screen-status{
   margin-top:9px;
+
   color:#777;
+
   font-size:10px;
+
   line-height:1.4;
 }
 
+/* =========================================================
+   EXTERNAL SCREEN
+========================================================= */
+
 #media-screen{
   position:absolute;
+
   z-index:15;
+
   display:none;
+
   overflow:hidden;
+
   background:#000;
+
   border:1px solid #222;
+
   box-shadow:0 0 45px rgba(0,0,0,.9);
+
   pointer-events:auto;
 }
 
-#media-screen.active{display:block;}
+#media-screen.active{
+  display:block;
+}
 
 #media-screen iframe{
   width:100%;
   height:100%;
+
   border:0;
+
   display:block;
+
   background:#000;
 }
 
 #media-screen-close{
   position:absolute;
+
   top:7px;
   right:7px;
+
   z-index:2;
+
   width:28px;
   height:28px;
+
   border:1px solid #555;
+
   background:rgba(0,0,0,.85);
+
   color:#fff;
+
   cursor:pointer;
+
   font-size:14px;
   line-height:26px;
 }
 
-@media(max-width:700px){
-  #screen-menu-row{flex-wrap:wrap;}
-  #screen-url{flex-basis:100%;}
+/* =========================================================
+   PAUSE
+========================================================= */
+
+#pause-panel{
+  position:absolute;
+
+  left:18px;
+  bottom:18px;
+
+  z-index:50;
+
+  width:260px;
+
+  padding:14px;
+
+  background:rgba(0,0,0,.90);
+
+  border:1px solid #333;
+
+  box-shadow:0 15px 50px rgba(0,0,0,.65);
+
+  display:none;
+
+  pointer-events:auto;
+}
+
+#pause-panel.open{
+  display:block;
+}
+
+#pause-title{
+  font-size:10px;
+  letter-spacing:3px;
+  margin-bottom:12px;
+  color:#fff;
+}
+
+.pause-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:9px 0;
+}
+
+.pause-row label{
+  font-size:9px;
+  letter-spacing:2px;
+  color:#888;
+  width:65px;
+}
+
+.pause-row input[type=range]{
+  flex:1;
+  accent-color:#fff;
+}
+
+#pause-volume-value{
+  font-size:9px;
+  color:#fff;
+  width:32px;
+  text-align:right;
+}
+
+.pause-control-btn{
+  width:100%;
+  height:34px;
+
+  margin-top:8px;
+
+  border:1px solid #444;
+
+  background:#111;
+
+  color:#fff;
+
+  font-size:10px;
+
+  letter-spacing:2px;
+
+  cursor:pointer;
+}
+
+.pause-control-btn:hover{
+  background:#fff;
+  color:#000;
+}
+
+#pause-toggle{
+  width:100%;
+  height:34px;
+
+  border:1px solid #555;
+
+  background:#111;
+
+  color:#fff;
+
+  font-size:10px;
+
+  letter-spacing:2px;
+
+  cursor:pointer;
+}
+
+#pause-toggle:hover{
+  background:#fff;
+  color:#000;
+}
+
+#pause-backdrop{
+  position:absolute;
+
+  inset:0;
+
+  z-index:45;
+
+  background:rgba(0,0,0,.45);
+
+  display:none;
+
+  pointer-events:auto;
+}
+
+#pause-backdrop.open{
+  display:block;
 }
 
 /* =========================================================
-   OTHER HUD
+   AUDIO / STREAM
 ========================================================= */
-
-#hint{
-  position:absolute;
-
-  right:18px;
-  bottom:18px;
-
-  padding:9px 12px;
-
-  background:rgba(0,0,0,.65);
-
-  border:1px solid #292929;
-
-  color:#777;
-
-  font-size:10px;
-  letter-spacing:1px;
-}
 
 #stream-indicator{
   position:absolute;
@@ -527,6 +655,7 @@ input:focus{
   font-family:monospace;
 
   font-size:10px;
+
   letter-spacing:2px;
 }
 
@@ -540,44 +669,7 @@ input:focus{
   border-color:#ff5555;
 }
 
-#lang-bar{
-  position:absolute;
-
-  right:220px;
-  top:18px;
-
-  pointer-events:auto;
-}
-
-#lang{
-  background:#080808;
-
-  border:1px solid #333;
-
-  color:#aaa;
-
-  padding:7px 10px;
-}
-
-#zone-label{
-  position:absolute;
-
-  left:50%;
-  bottom:90px;
-
-  transform:translateX(-50%);
-
-  font-size:10px;
-
-  letter-spacing:5px;
-
-  color:rgba(255,255,255,.4);
-
-  pointer-events:none;
-}
-
 #audio-control{
-  display:none !important;
   position:absolute;
 
   top:58px;
@@ -616,6 +708,20 @@ input:focus{
   cursor:wait;
 }
 
+#ews-video{
+  position:absolute;
+
+  width:1px;
+  height:1px;
+
+  opacity:0;
+
+  pointer-events:none;
+
+  left:-10px;
+  top:-10px;
+}
+
 #ews-audio{
   position:absolute;
 
@@ -625,6 +731,69 @@ input:focus{
   opacity:0;
 
   pointer-events:none;
+}
+
+/* =========================================================
+   LANGUAGE
+========================================================= */
+
+#lang-bar{
+  position:absolute;
+
+  right:220px;
+  top:18px;
+
+  pointer-events:auto;
+}
+
+#lang{
+  background:#080808;
+
+  border:1px solid #333;
+
+  color:#aaa;
+
+  padding:7px 10px;
+}
+
+/* =========================================================
+   OTHER HUD
+========================================================= */
+
+#zone-label{
+  position:absolute;
+
+  left:50%;
+  bottom:90px;
+
+  transform:translateX(-50%);
+
+  font-size:10px;
+
+  letter-spacing:5px;
+
+  color:rgba(255,255,255,.4);
+
+  pointer-events:none;
+}
+
+#hint{
+  position:absolute;
+
+  right:18px;
+  bottom:18px;
+
+  padding:9px 12px;
+
+  background:rgba(0,0,0,.65);
+
+  border:1px solid #292929;
+
+  color:#777;
+
+  font-size:10px;
+
+  letter-spacing:1px;
 }
 
 /* =========================================================
@@ -759,6 +928,7 @@ input:focus{
 
     font-size:8px;
   }
+
 }
 
 @media(max-width:420px){
@@ -775,6 +945,7 @@ input:focus{
   #zone-label{
     bottom:calc(34vh + 20px);
   }
+
 }
 
 </style>
@@ -786,6 +957,15 @@ input:focus{
 
 <canvas id="canvas3d"></canvas>
 
+<!-- HLS VIDEO STREAM -->
+<video
+  id="ews-video"
+  crossorigin="anonymous"
+  playsinline
+  preload="none"
+></video>
+
+<!-- BACKUP AUDIO ELEMENT -->
 <audio
   id="ews-audio"
   crossorigin="anonymous"
@@ -863,9 +1043,17 @@ input:focus{
     <span>SESSIONS</span>
   </div>
 
-  <div id="stream-indicator" style="display:none">AUDIO: READY</div>
-  <button id="audio-control" style="display:none" onclick="startSSHAudio()">AUDIO</button>
+  <div id="stream-indicator">
+    STREAM: OFFLINE
+  </div>
 
+  <button
+    id="audio-control"
+    onclick="startSSHAudio()">
+    ▶ START STREAM
+  </button>
+
+  <!-- HOST SCREEN CONTROL -->
   <button
     id="screen-control"
     onclick="toggleScreenMenu()">
@@ -873,18 +1061,38 @@ input:focus{
   </button>
 
   <div id="screen-menu">
-    <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
+
+    <div id="screen-menu-title">
+      EWS SESSIONS / HOST CONTROL
+    </div>
+
     <div id="screen-menu-row">
+
       <input
         id="screen-url"
         type="url"
         placeholder="YouTube / Twitch / website URL"
         autocomplete="off"
       >
-      <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
-      <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
+
+      <button
+        class="screen-btn"
+        onclick="loadClubScreen()">
+        LOAD
+      </button>
+
+      <button
+        class="screen-btn"
+        onclick="clearClubScreen()">
+        CLEAR
+      </button>
+
     </div>
-    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
+
+    <div id="screen-status">
+      Только mvxtra может управлять этим экраном.
+    </div>
+
   </div>
 
   <div id="lang-bar">
@@ -947,21 +1155,76 @@ input:focus{
   <div id="pause-backdrop"></div>
 
   <div id="pause-panel">
-    <div id="pause-title">EWS SESSIONS / PAUSE</div>
-    <button id="pause-toggle" onclick="togglePause()">PAUSE</button>
-    <button id="pause-audio" onclick="startSSHAudio()" style="width:100%;height:34px;margin-top:8px;border:1px solid #444;background:#111;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;">▶ START AUDIO</button>
-    <button id="pause-mute" onclick="toggleMute()" style="width:100%;height:34px;margin-top:8px;border:1px solid #444;background:#111;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;">MUTE</button>
-    <div class="pause-row">
-      <label>VOLUME</label>
-      <input id="pause-volume" type="range" min="0" max="100" value="100">
-      <span id="pause-volume-value">100%</span>
+
+    <div id="pause-title">
+      EWS SESSIONS / PAUSE
     </div>
-    <div style="font-size:9px;color:#666;line-height:1.5;margin-top:10px;">ESC — pause/resume · SPACE — jump</div>
+
+    <button
+      id="pause-toggle"
+      onclick="togglePause()">
+      PAUSE
+    </button>
+
+    <button
+      id="pause-audio"
+      class="pause-control-btn"
+      onclick="startSSHAudio()">
+      ▶ START STREAM
+    </button>
+
+    <button
+      id="pause-mute"
+      class="pause-control-btn"
+      onclick="toggleMute()">
+      MUTE
+    </button>
+
+    <div class="pause-row">
+
+      <label>VOLUME</label>
+
+      <input
+        id="pause-volume"
+        type="range"
+        min="0"
+        max="100"
+        value="100"
+      >
+
+      <span id="pause-volume-value">
+        100%
+      </span>
+
+    </div>
+
+    <div
+      style="
+        font-size:9px;
+        color:#666;
+        line-height:1.5;
+        margin-top:10px;
+      ">
+      ESC — pause/resume · SPACE — jump
+    </div>
+
   </div>
 
+  <!-- EXTERNAL MEDIA -->
   <div id="media-screen">
-    <button id="media-screen-close" onclick="clearClubScreen()">×</button>
-    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+
+    <button
+      id="media-screen-close"
+      onclick="clearClubScreen()">
+      ×
+    </button>
+
+    <iframe
+      id="media-screen-frame"
+      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen>
+    </iframe>
+
   </div>
 
   <div id="zone-label">
@@ -978,9 +1241,14 @@ input:focus{
 
 <script>
 
+/* =========================================================
+   GLOBAL
+========================================================= */
+
 let mode='login';
 
 let socket=null;
+
 let currentUser=null;
 
 let scene;
@@ -991,9 +1259,11 @@ let keys={};
 
 let yaw=0;
 let pitch=0;
+
 let verticalVelocity=0;
+
 let grounded=true;
-let paused=false;
+
 let playerHeight=1.7;
 
 let pointerLocked=false;
@@ -1016,42 +1286,88 @@ let audioContext=null;
 let audioSource=null;
 
 let audioStarted=false;
+let audioMuted=false;
 
 let hls=null;
+
+let streamVideo=null;
+
+let streamVideoTexture=null;
+
+let streamVideoMaterial=null;
+
+let streamIsLive=false;
 
 let screenTexture;
 let screenCanvas;
 let screenCtx;
 let screenMesh;
+
 let screenMediaActive=false;
 let screenMediaUrl='';
+
 let onlineUserList=[];
+
 let remotePlayers=new Map();
+
 let lastPlayerBroadcast=0;
+
 let clubScreenHost=null;
 
 let playerBody;
 
+let paused=false;
+
 /* =========================================================
-   EWS TEXTURES
-   CC0 seamless textures from ShareTextures
+   TEXTURES
 ========================================================= */
 
-const EWS_TEXTURES = {
-  concrete: 'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
-  floor: 'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+const EWS_TEXTURES={
+
+  concrete:
+    'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
+
+  floor:
+    'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+
 };
 
-const ewsTextureLoader = new THREE.TextureLoader();
+const ewsTextureLoader=
+  new THREE.TextureLoader();
 
-function loadEWSTexture(url, repeatX=4, repeatY=4){
-  const texture = ewsTextureLoader.load(url);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeatX, repeatY);
-  texture.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 8);
-  texture.colorSpace = THREE.SRGBColorSpace;
+function loadEWSTexture(
+  url,
+  repeatX=4,
+  repeatY=4
+){
+
+  const texture=
+    ewsTextureLoader.load(url);
+
+  texture.wrapS=
+    THREE.RepeatWrapping;
+
+  texture.wrapT=
+    THREE.RepeatWrapping;
+
+  texture.repeat.set(
+    repeatX,
+    repeatY
+  );
+
+  texture.anisotropy=
+    Math.min(
+      8,
+      renderer
+        ? renderer.capabilities.getMaxAnisotropy()
+        : 8
+    );
+
+  texture.colorSpace=
+    THREE.SRGBColorSpace;
+
   return texture;
+
 }
 
 /* =========================================================
@@ -1098,18 +1414,18 @@ function switchTab(type){
 
 async function doLogin(){
 
-  const username =
+  const username=
     document
       .getElementById('f-username')
       .value
       .trim();
 
-  const password =
+  const password=
     document
       .getElementById('f-password')
       .value;
 
-  const error =
+  const error=
     document.getElementById('error');
 
   error.textContent='';
@@ -1120,11 +1436,12 @@ async function doLogin(){
       'Введите логин и пароль';
 
     return;
+
   }
 
   try{
 
-    const res =
+    const res=
       await fetch(
         '/api/'+mode,
         {
@@ -1142,25 +1459,44 @@ async function doLogin(){
         }
       );
 
-    const data =
+    const data=
       await res.json();
 
-    if(data.error){
+    /*
+      FIX:
+      server.js возвращает message,
+      а не error.
+    */
+
+    if(!data.ok){
 
       error.textContent=
-        data.error;
+        data.message ||
+        'Ошибка входа';
 
       return;
+
     }
 
-    startSession(username);
+    /*
+      Используем username, который
+      реально вернул сервер.
+    */
+
+    startSession(
+      data.username ||
+      username
+    );
 
   }catch(err){
 
-    console.error(err);
+    console.error(
+      '[LOGIN]',
+      err
+    );
 
     error.textContent=
-      'Ошибка соединения';
+      'Ошибка соединения с сервером';
 
   }
 
@@ -1172,7 +1508,14 @@ async function doLogin(){
 
 function startSession(username){
 
-  currentUser=username;
+  currentUser=
+    String(username||'').trim();
+
+  if(!currentUser){
+
+    return;
+
+  }
 
   document.getElementById(
     'login'
@@ -1183,172 +1526,415 @@ function startSession(username){
   ).style.display='block';
 
   init3D();
+
   setupPauseControls();
+
   updateHostUI();
 
-  socket=io();
+  connectSocket();
 
-  socket.on('connect',function(){
+}
+
+/* =========================================================
+   SOCKET
+========================================================= */
+
+function connectSocket(){
+
+  if(socket){
+
+    try{
+      socket.disconnect();
+    }catch(e){}
+
+  }
+
+  socket=
+    io({
+      transports:[
+        'websocket',
+        'polling'
+      ],
+      reconnection:true,
+      reconnectionAttempts:Infinity,
+      reconnectionDelay:1000
+    });
+
+  socket.on('connect',()=>{
+
+    console.log(
+      '[EWS] SOCKET CONNECTED',
+      socket.id
+    );
 
     socket.emit(
       'join',
       {
-        username: currentUser,
+        username:currentUser,
+
         language:
-          document.getElementById('lang').value
+          document.getElementById(
+            'lang'
+          ).value
       }
     );
 
   });
 
+  socket.on('connect_error',err=>{
+
+    console.error(
+      '[EWS SOCKET]',
+      err
+    );
+
+  });
+
+  socket.on('disconnect',reason=>{
+
+    console.warn(
+      '[EWS] DISCONNECTED',
+      reason
+    );
+
+  });
+
+  /* =======================================================
+     ONLINE USERS
+  ======================================================= */
+
   socket.on(
     'online-users',
     list=>{
 
-      onlineUserList=Array.isArray(list)?list:[];
-      clubScreenHost=onlineUserList.length? (typeof onlineUserList[0]==='string'?onlineUserList[0]:onlineUserList[0].username) : currentUser;
+      onlineUserList=
+        Array.isArray(list)
+          ? list
+          : [];
 
-      const ul =
-        document.getElementById('online-list');
-
-      ul.innerHTML='';
-
-      // SCREEN visibility is controlled by the server's host event, not by
-      // the order of the online list. This prevents the host button from vanishing.
-      updateHostUI();
-
-      if(!Array.isArray(list)) return;
-
-      list.forEach(user=>{
-
-        const li =
-          document.createElement('li');
-
-        const name =
-          typeof user === 'string'
-            ? user
-            : user.username;
-
-        li.textContent =
-          name === currentUser
-            ? name + ' (YOU)'
-            : name;
-
-        ul.appendChild(li);
-
-      });
+      renderOnlineUsers();
 
     }
   );
 
-  // Compatibility with an older server version.
-  socket.on('online',list=>{
+  /* =======================================================
+     PLAYERS STATE
+  ======================================================= */
 
-    if(socket.connected){
-      socket.emit('request-online');
+  socket.on(
+    'players-state',
+    list=>{
+
+      if(!Array.isArray(list))
+        return;
+
+      list.forEach(
+        player=>{
+
+          if(
+            player &&
+            player.id &&
+            player.id!==socket.id
+          ){
+
+            updateRemotePlayer(
+              player
+            );
+
+          }
+
+        }
+      );
+
     }
+  );
 
-  });
+  /*
+    Старые/новые варианты сервера.
+  */
+
+  socket.on(
+    'player-joined',
+    player=>{
+
+      if(
+        player &&
+        player.id &&
+        player.id!==socket.id
+      ){
+
+        updateRemotePlayer(
+          player
+        );
+
+      }
+
+    }
+  );
+
+  socket.on(
+    'player-state',
+    data=>{
+
+      if(
+        !data ||
+        !data.id ||
+        data.id===socket.id
+      ){
+
+        return;
+
+      }
+
+      updateRemotePlayer(
+        data
+      );
+
+    }
+  );
+
+  socket.on(
+    'player-left',
+    id=>{
+
+      removeRemotePlayer(id);
+
+    }
+  );
+
+  /* =======================================================
+     CHAT
+  ======================================================= */
 
   socket.on(
     'chat-message',
     message=>{
 
-      const el =
-        document.createElement(
-          'div'
-        );
+      if(!message)
+        return;
 
-      el.className='msg';
-
-      const time =
-        new Date(
-          message.ts
-        ).toLocaleTimeString();
-
-      const user =
-        document.createElement(
-          'span'
-        );
-
-      user.className='u';
-
-      user.textContent=
-        message.user;
-
-      const text =
-        document.createElement(
-          'span'
-        );
-
-      text.className='t';
-
-      text.textContent=
-        ' '+time+' '+message.text;
-
-      el.appendChild(user);
-
-      el.appendChild(
-        document.createTextNode(' ')
+      addChatMessage(
+        message
       );
-
-      el.appendChild(text);
-
-      const box =
-        document.getElementById(
-          'chat-messages'
-        );
-
-      box.appendChild(el);
-
-      box.scrollTop=
-        box.scrollHeight;
 
     }
   );
 
-  socket.on('screen-host', data=>{
-    const host = typeof data === 'string'
-      ? data
-      : (data && (data.username || data.host || data.owner));
-    if(host){
-      clubScreenHost=host;
+  /* =======================================================
+     SCREEN HOST
+  ======================================================= */
+
+  socket.on(
+    'screen-host',
+    data=>{
+
+      let host=null;
+
+      if(
+        typeof data==='string'
+      ){
+
+        host=data;
+
+      }else if(data){
+
+        host=
+          data.username ||
+          data.host ||
+          data.owner ||
+          null;
+
+      }
+
+      if(host){
+
+        clubScreenHost=
+          String(host);
+
+      }
+
       updateHostUI();
+
     }
-  });
+  );
 
-  socket.on('club-screen-state', state=>{
-    if(!state) return;
-    if(state.owner) clubScreenHost=state.owner;
-    updateHostUI();
+  /* =======================================================
+     CLUB SCREEN
+  ======================================================= */
 
-    if(!state.active || !state.src){
-      const frame=document.getElementById('media-screen-frame');
-      const panel=document.getElementById('media-screen');
-      if(frame) frame.src='about:blank';
-      if(panel) panel.classList.remove('active');
-      screenMediaActive=false;
-      screenMediaUrl='';
-      return;
+  socket.on(
+    'club-screen-state',
+    state=>{
+
+      if(!state)
+        return;
+
+      if(state.owner){
+
+        clubScreenHost=
+          String(state.owner);
+
+      }
+
+      updateHostUI();
+
+      if(
+        !state.active ||
+        !state.src
+      ){
+
+        const frame=
+          document.getElementById(
+            'media-screen-frame'
+          );
+
+        const panel=
+          document.getElementById(
+            'media-screen'
+          );
+
+        if(frame)
+          frame.src='about:blank';
+
+        if(panel)
+          panel.classList.remove(
+            'active'
+          );
+
+        screenMediaActive=false;
+
+        screenMediaUrl='';
+
+        return;
+
+      }
+
+      applyRemoteClubScreen(
+        state
+      );
+
     }
+  );
 
-    applyRemoteClubScreen(state);
-  });
+}
 
-  socket.on('player-state', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
+/* =========================================================
+   ONLINE UI
+========================================================= */
 
-  socket.on('player-left', id=>{
-    removeRemotePlayer(id);
-  });
+function renderOnlineUsers(){
+
+  const ul=
+    document.getElementById(
+      'online-list'
+    );
+
+  if(!ul)
+    return;
+
+  ul.innerHTML='';
+
+  onlineUserList.forEach(
+    user=>{
+
+      const name=
+        typeof user==='string'
+          ? user
+          : (
+              user &&
+              user.username
+            )
+              ? user.username
+              : 'PLAYER';
+
+      const li=
+        document.createElement(
+          'li'
+        );
+
+      li.textContent=
+        String(name).toLowerCase()===
+        String(currentUser).toLowerCase()
+          ? name+' (YOU)'
+          : name;
+
+      ul.appendChild(li);
+
+    }
+  );
 
 }
 
 /* =========================================================
    CHAT
 ========================================================= */
+
+function addChatMessage(message){
+
+  const box=
+    document.getElementById(
+      'chat-messages'
+    );
+
+  if(!box)
+    return;
+
+  const el=
+    document.createElement(
+      'div'
+    );
+
+  el.className='msg';
+
+  const time=
+    message.ts
+      ? new Date(
+          message.ts
+        ).toLocaleTimeString()
+      : new Date()
+          .toLocaleTimeString();
+
+  const user=
+    document.createElement(
+      'span'
+    );
+
+  user.className='u';
+
+  user.textContent=
+    message.user ||
+    'PLAYER';
+
+  const text=
+    document.createElement(
+      'span'
+    );
+
+  text.className='t';
+
+  text.textContent=
+    ' '+
+    time+
+    ' '+
+    (
+      message.text ||
+      ''
+    );
+
+  el.appendChild(user);
+
+  el.appendChild(
+    document.createTextNode(' ')
+  );
+
+  el.appendChild(text);
+
+  box.appendChild(el);
+
+  box.scrollTop=
+    box.scrollHeight;
+
+}
 
 document
   .getElementById('chat-form')
@@ -1358,24 +1944,31 @@ document
 
       e.preventDefault();
 
-      if(!socket)return;
+      if(
+        !socket ||
+        !socket.connected
+      ){
 
-      const input =
+        return;
+
+      }
+
+      const input=
         document.getElementById(
           'chat-input'
         );
 
-      const text =
+      const text=
         input.value.trim();
 
-      if(!text)return;
+      if(!text)
+        return;
 
       socket.emit(
         'chat-message',
         {
           user:currentUser,
           text:text,
-
           lang:
             document.getElementById(
               'lang'
@@ -1398,7 +1991,10 @@ document
     'change',
     function(){
 
-      if(socket){
+      if(
+        socket &&
+        socket.connected
+      ){
 
         socket.emit(
           'language-change',
@@ -1411,30 +2007,30 @@ document
   );
 
 /* =========================================================
-   THREE.JS
+   THREE INIT
 ========================================================= */
 
 function init3D(){
 
-  scene =
+  scene=
     new THREE.Scene();
 
-  scene.background =
+  scene.background=
     new THREE.Color(
       0x000000
     );
 
-  scene.fog =
+  scene.fog=
     new THREE.FogExp2(
       0x070707,
       0.065
     );
 
-  camera =
+  camera=
     new THREE.PerspectiveCamera(
       72,
       innerWidth/innerHeight,
-      0.1,
+      .1,
       150
     );
 
@@ -1444,13 +2040,12 @@ function init3D(){
     13
   );
 
-  renderer =
+  renderer=
     new THREE.WebGLRenderer({
       canvas:
         document.getElementById(
           'canvas3d'
         ),
-
       antialias:true
     });
 
@@ -1468,21 +2063,21 @@ function init3D(){
 
   renderer.shadowMap.enabled=true;
 
-  renderer.shadowMap.type =
+  renderer.shadowMap.type=
     THREE.PCFSoftShadowMap;
 
-  const ambient =
+  const ambient=
     new THREE.AmbientLight(
       0x4a0a0a,
-      0.025
+      .025
     );
 
   scene.add(ambient);
 
-  const ceilingLight =
+  const ceilingLight=
     new THREE.PointLight(
       0x4b0909,
-      0.22,
+      .22,
       32
     );
 
@@ -1517,26 +2112,33 @@ function init3D(){
   createLight(
     -8,2,5,
     0x666666,
-    0.8,
+    .8,
     14
   );
 
   createLight(
     8,2,5,
     0x666666,
-    0.8,
+    .8,
     14
   );
 
-  // Black underground club shell with walls + tables/chairs.
   createFloor();
+
   createCeiling();
+
   createWalls();
+
   createDanceFloor();
+
   createMainScreen();
+
   createTablesAndChairs();
+
   createSmoke();
+
   createRedMusicLights();
+
   createPlayer();
 
   setupAudio();
@@ -1548,7 +2150,7 @@ function init3D(){
 }
 
 /* =========================================================
-   OBJECTS
+   OBJECT HELPERS
 ========================================================= */
 
 function createBox(
@@ -1559,7 +2161,7 @@ function createBox(
   receive=true
 ){
 
-  const mesh =
+  const mesh=
     new THREE.Mesh(
       new THREE.BoxGeometry(
         w,h,d
@@ -1590,7 +2192,7 @@ function createLight(
   distance
 ){
 
-  const light =
+  const light=
     new THREE.PointLight(
       color,
       intensity,
@@ -1613,202 +2215,380 @@ function createLight(
 
 }
 
+/* =========================================================
+   CLUB
+========================================================= */
+
 function createFloor(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.floor,8,10);
+  const texture=
+    loadEWSTexture(
+      EWS_TEXTURES.floor,
+      8,
+      10
+    );
 
-  const mat = new THREE.MeshStandardMaterial({
-    map:texture,
-    color:0x121212,
-    metalness:.18,
-    roughness:.82
-  });
+  const mat=
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x121212,
+      metalness:.18,
+      roughness:.82
+    });
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(36,42),
-    mat
-  );
+  const floor=
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        36,
+        42
+      ),
+      mat
+    );
 
-  floor.rotation.x=-Math.PI/2;
+  floor.rotation.x=
+    -Math.PI/2;
+
   floor.receiveShadow=true;
+
   scene.add(floor);
+
 }
 
 function createCeiling(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.concrete,7,8);
+  const texture=
+    loadEWSTexture(
+      EWS_TEXTURES.concrete,
+      7,
+      8
+    );
 
-  const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(36,42),
-    new THREE.MeshStandardMaterial({
-      map:texture,
-      color:0x080808,
-      roughness:1
-    })
-  );
+  const ceiling=
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        36,
+        42
+      ),
+      new THREE.MeshStandardMaterial({
+        map:texture,
+        color:0x080808,
+        roughness:1
+      })
+    );
 
-  ceiling.rotation.x=Math.PI/2;
+  ceiling.rotation.x=
+    Math.PI/2;
+
   ceiling.position.y=6;
+
   scene.add(ceiling);
+
 }
 
 function createWalls(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.concrete,6,2);
+  const texture=
+    loadEWSTexture(
+      EWS_TEXTURES.concrete,
+      6,
+      2
+    );
 
-  const mat = new THREE.MeshStandardMaterial({
-    map:texture,
-    color:0x101010,
-    roughness:.93,
-    metalness:.04
-  });
+  const mat=
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x101010,
+      roughness:.93,
+      metalness:.04
+    });
 
-  createBox(36,6,.5,0,3,-17,mat);
-  createBox(36,6,.5,0,3,17,mat);
-  createBox(.5,6,34,-18,3,0,mat);
-  createBox(.5,6,34,18,3,0,mat);
+  createBox(
+    36,6,.5,
+    0,3,-17,
+    mat
+  );
 
-  // Subtle inner wall panels so the black walls remain visible in the smoke.
-  const trimMat=new THREE.MeshStandardMaterial({
-    color:0x242424,
-    metalness:.35,
-    roughness:.65
-  });
-  createBox(35.2,.12,.08,0,.65,-16.68,trimMat,false,false);
-  createBox(35.2,.12,.08,0,4.95,-16.68,trimMat,false,false);
-  createBox(35.2,.12,.08,0,.65,16.68,trimMat,false,false);
-  createBox(35.2,.12,.08,0,4.95,16.68,trimMat,false,false);
-  createBox(.08,.12,33.2,-17.68,.65,0,trimMat,false,false);
-  createBox(.08,.12,33.2,17.68,.65,0,trimMat,false,false);
+  createBox(
+    36,6,.5,
+    0,3,17,
+    mat
+  );
+
+  createBox(
+    .5,6,34,
+    -18,3,0,
+    mat
+  );
+
+  createBox(
+    .5,6,34,
+    18,3,0,
+    mat
+  );
+
+  const trimMat=
+    new THREE.MeshStandardMaterial({
+      color:0x242424,
+      metalness:.35,
+      roughness:.65
+    });
+
+  createBox(
+    35.2,.12,.08,
+    0,.65,-16.68,
+    trimMat,false,false
+  );
+
+  createBox(
+    35.2,.12,.08,
+    0,4.95,-16.68,
+    trimMat,false,false
+  );
+
+  createBox(
+    35.2,.12,.08,
+    0,.65,16.68,
+    trimMat,false,false
+  );
+
+  createBox(
+    35.2,.12,.08,
+    0,4.95,16.68,
+    trimMat,false,false
+  );
+
 }
 
 function createDanceFloor(){
 
-  const floor = new THREE.Mesh(
-    new THREE.BoxGeometry(18,.10,20),
-    new THREE.MeshStandardMaterial({
-      color:0x090909,
-      metalness:.15,
-      roughness:.9
-    })
+  const floor=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        18,.10,20
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0x090909,
+        metalness:.15,
+        roughness:.9
+      })
+    );
+
+  floor.position.set(
+    0,.05,-1
   );
 
-  floor.position.set(0,.05,-1);
   floor.receiveShadow=true;
+
   scene.add(floor);
+
 }
+
+/* =========================================================
+   TABLES / CHAIRS
+========================================================= */
 
 function createTablesAndChairs(){
 
-  const tableMat = new THREE.MeshStandardMaterial({
-    color:0x101010,
-    metalness:.55,
-    roughness:.45
-  });
-
-  const edgeMat = new THREE.MeshStandardMaterial({
-    color:0x202020,
-    metalness:.35,
-    roughness:.55
-  });
-
-  const chairMat = new THREE.MeshStandardMaterial({
-    color:0x090909,
-    metalness:.25,
-    roughness:.78
-  });
-
-  function chair(x,z,ry=0){
-    const g=new THREE.Group();
-
-    const seat=new THREE.Mesh(
-      new THREE.BoxGeometry(.75,.16,.75),
-      chairMat
-    );
-    seat.position.y=.72;
-    g.add(seat);
-
-    const back=new THREE.Mesh(
-      new THREE.BoxGeometry(.75,.9,.14),
-      chairMat
-    );
-    back.position.set(0,1.08,.31);
-    g.add(back);
-
-    const legGeo=new THREE.BoxGeometry(.10,.72,.10);
-    [[-.27,-.27],[.27,-.27],[-.27,.27],[.27,.27]].forEach(([lx,lz])=>{
-      const leg=new THREE.Mesh(legGeo,chairMat);
-      leg.position.set(lx,.36,lz);
-      g.add(leg);
+  const tableMat=
+    new THREE.MeshStandardMaterial({
+      color:0x101010,
+      metalness:.55,
+      roughness:.45
     });
 
-    g.position.set(x,0,z);
+  const edgeMat=
+    new THREE.MeshStandardMaterial({
+      color:0x202020,
+      metalness:.35,
+      roughness:.55
+    });
+
+  const chairMat=
+    new THREE.MeshStandardMaterial({
+      color:0x090909,
+      metalness:.25,
+      roughness:.78
+    });
+
+  function chair(
+    x,
+    z,
+    ry=0
+  ){
+
+    const g=
+      new THREE.Group();
+
+    const seat=
+      new THREE.Mesh(
+        new THREE.BoxGeometry(
+          .75,.16,.75
+        ),
+        chairMat
+      );
+
+    seat.position.y=.72;
+
+    g.add(seat);
+
+    const back=
+      new THREE.Mesh(
+        new THREE.BoxGeometry(
+          .75,.9,.14
+        ),
+        chairMat
+      );
+
+    back.position.set(
+      0,1.08,.31
+    );
+
+    g.add(back);
+
+    const legGeo=
+      new THREE.BoxGeometry(
+        .10,.72,.10
+      );
+
+    [
+      [-.27,-.27],
+      [.27,-.27],
+      [-.27,.27],
+      [.27,.27]
+    ].forEach(
+      ([lx,lz])=>{
+
+        const leg=
+          new THREE.Mesh(
+            legGeo,
+            chairMat
+          );
+
+        leg.position.set(
+          lx,.36,lz
+        );
+
+        g.add(leg);
+
+      }
+    );
+
+    g.position.set(
+      x,0,z
+    );
+
     g.rotation.y=ry;
+
     scene.add(g);
+
   }
 
   function table(x,z){
-    const g=new THREE.Group();
 
-    const top=new THREE.Mesh(
-      new THREE.CylinderGeometry(1.05,1.05,.16,32),
-      tableMat
-    );
+    const g=
+      new THREE.Group();
+
+    const top=
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          1.05,
+          1.05,
+          .16,
+          32
+        ),
+        tableMat
+      );
+
     top.position.y=1.35;
+
     g.add(top);
 
-    const rim=new THREE.Mesh(
-      new THREE.TorusGeometry(1.0,.045,8,32),
-      edgeMat
-    );
+    const rim=
+      new THREE.Mesh(
+        new THREE.TorusGeometry(
+          1,.045,8,32
+        ),
+        edgeMat
+      );
+
     rim.position.y=1.44;
+
     g.add(rim);
 
-    const stem=new THREE.Mesh(
-      new THREE.CylinderGeometry(.11,.16,1.22,16),
-      tableMat
-    );
+    const stem=
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .11,.16,1.22,16
+        ),
+        tableMat
+      );
+
     stem.position.y=.69;
+
     g.add(stem);
 
-    const base=new THREE.Mesh(
-      new THREE.CylinderGeometry(.62,.72,.10,24),
-      tableMat
-    );
+    const base=
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .62,.72,.10,24
+        ),
+        tableMat
+      );
+
     base.position.y=.08;
+
     g.add(base);
 
-    g.position.set(x,0,z);
+    g.position.set(
+      x,0,z
+    );
+
     scene.add(g);
 
-    chair(x-1.35,z,Math.PI/2);
-    chair(x+1.35,z,-Math.PI/2);
-    chair(x,z-1.25,0);
-    chair(x,z+1.25,Math.PI);
+    chair(
+      x-1.35,
+      z,
+      Math.PI/2
+    );
+
+    chair(
+      x+1.35,
+      z,
+      -Math.PI/2
+    );
+
+    chair(
+      x,
+      z-1.25,
+      0
+    );
+
+    chair(
+      x,
+      z+1.25,
+      Math.PI
+    );
+
   }
 
-  // Seating along the side walls, leaving the center free for dancing.
   table(-12,-1);
   table(12,-1);
+
   table(-12,7);
   table(12,7);
+
   table(-7,10);
   table(7,10);
 
-  // Low wall benches give the room a finished club interior without bringing back the old bar/lounge.
-  const benchMat=new THREE.MeshStandardMaterial({
-    color:0x0b0b0b,
-    roughness:.88,
-    metalness:.15
-  });
-
-  createBox(8,.75,1.05,-13,.42,-8.5,benchMat);
-  createBox(8,.75,1.05,13,.42,-8.5,benchMat);
 }
+
+/* =========================================================
+   MAIN 3D SCREEN
+========================================================= */
 
 function createMainScreen(){
 
-  screenCanvas =
+  screenCanvas=
     document.createElement(
       'canvas'
     );
@@ -1816,17 +2596,17 @@ function createMainScreen(){
   screenCanvas.width=1024;
   screenCanvas.height=512;
 
-  screenCtx =
+  screenCtx=
     screenCanvas.getContext(
       '2d'
     );
 
-  screenTexture =
+  screenTexture=
     new THREE.CanvasTexture(
       screenCanvas
     );
 
-  const frame =
+  const frame=
     new THREE.Mesh(
       new THREE.BoxGeometry(
         16,7,.35
@@ -1844,7 +2624,7 @@ function createMainScreen(){
 
   scene.add(frame);
 
-  screenMesh =
+  screenMesh=
     new THREE.Mesh(
       new THREE.PlaneGeometry(
         15.5,
@@ -1863,549 +2643,119 @@ function createMainScreen(){
 
 }
 
-function createStage(){
+/* =========================================================
+   SMOKE
+========================================================= */
 
-  const stageMat =
-    new THREE.MeshStandardMaterial({
-      color:0x111111,
-      metalness:.6,
-      roughness:.35
-    });
+function createSmoke(){
 
-  createBox(
-    17,.45,3,
-    0,.3,-12.5,
-    stageMat
-  );
+  const smokeGroup=
+    new THREE.Group();
 
-  const stripMat =
-    new THREE.MeshBasicMaterial({
-      color:0xffffff
-    });
-
-  const strip =
-    createBox(
-      16,.04,.08,
-      0,.54,-11,
-      stripMat,
-      false,
-      false
-    );
-
-  neonObjects.push(
-    strip
-  );
-
-}
-
-function createBar(){
-
-  const wood =
-    new THREE.MeshStandardMaterial({
-      color:0x141414,
-      metalness:.3,
-      roughness:.55
-    });
-
-  createBox(
-    8,1.1,2,
-    -12,.65,7,
-    wood
-  );
-
-  createBox(
-    8.5,.15,2.3,
-    -12,1.25,7,
-    new THREE.MeshStandardMaterial({
-      color:0xdddddd,
-      metalness:.7,
-      roughness:.25
-    })
-  );
-
-  for(
-    let i=0;
-    i<5;
-    i++
-  ){
-
-    const bottle =
-      new THREE.Mesh(
-        new THREE.CylinderGeometry(
-          .07,
-          .09,
-          .65,
-          12
-        ),
-        new THREE.MeshStandardMaterial({
-          color:0x888888,
-          metalness:.6,
-          roughness:.25
-        })
-      );
-
-    bottle.position.set(
-      -15+i*.8,
-      1.7,
-      6.5
-    );
-
-    scene.add(bottle);
-
-  }
-
-}
-
-function createLounge(){
-
-  const sofaMat =
-    new THREE.MeshStandardMaterial({
-      color:0x181818,
-      roughness:.9
-    });
-
-  createBox(
-    6,.8,1.6,
-    11,.7,8,
-    sofaMat
-  );
-
-  createBox(
-    1.6,1.4,5.5,
-    14,1.2,8,
-    sofaMat
-  );
-
-  for(
-    let i=0;
-    i<3;
-    i++
-  ){
-
-    const table =
-      new THREE.Mesh(
-        new THREE.CylinderGeometry(
-          .65,
-          .65,
-          .08,
-          32
-        ),
-        new THREE.MeshStandardMaterial({
-          color:0x101010,
-          metalness:.7
-        })
-      );
-
-    table.position.set(
-      8+i*3,
-      .75,
-      4
-    );
-
-    scene.add(table);
-
-  }
-
-}
-
-function createColumns(){
-
-  const mat =
-    new THREE.MeshStandardMaterial({
-      color:0x101010,
-      metalness:.55,
-      roughness:.35
-    });
-
-  const positions=[
-    [-15,5],
-    [15,5],
-    [-15,-5],
-    [15,-5]
-  ];
-
-  positions.forEach(
-    p=>{
-
-      createBox(
-        1,6,1,
-        p[0],
-        3,
-        p[1],
-        mat
-      );
-
-      const ring =
-        new THREE.Mesh(
-          new THREE.TorusGeometry(
-            .72,
-            .06,
-            8,
-            32
-          ),
-          new THREE.MeshBasicMaterial({
-            color:0xffffff
-          })
-        );
-
-      ring.position.set(
-        p[0],
-        2,
-        p[1]
-      );
-
-      scene.add(ring);
-
-      neonObjects.push(
-        ring
-      );
-
-    }
-  );
-
-}
-
-function createEntrance(){
-
-  const frameMat =
-    new THREE.MeshStandardMaterial({
-      color:0x191919,
-      metalness:.7
-    });
-
-  createBox(
-    7,5.5,.6,
-    0,2.75,16.3,
-    frameMat
-  );
-
-  createBox(
-    5.8,4.7,.1,
-    0,2.35,15.98,
-    new THREE.MeshBasicMaterial({
-      color:0x020202
-    }),
-    false,
-    false
-  );
-
-  const signCanvas =
+  const canvas=
     document.createElement(
       'canvas'
     );
 
-  signCanvas.width=600;
-  signCanvas.height=160;
+  canvas.width=128;
+  canvas.height=128;
 
-  const ctx =
-    signCanvas.getContext(
-      '2d'
+  const ctx=
+    canvas.getContext('2d');
+
+  const g=
+    ctx.createRadialGradient(
+      64,64,4,
+      64,64,62
     );
 
-  ctx.fillStyle='#050505';
+  g.addColorStop(
+    0,
+    'rgba(255,255,255,.16)'
+  );
+
+  g.addColorStop(
+    .35,
+    'rgba(210,210,210,.09)'
+  );
+
+  g.addColorStop(
+    1,
+    'rgba(0,0,0,0)'
+  );
+
+  ctx.fillStyle=g;
 
   ctx.fillRect(
-    0,
-    0,
-    600,
-    160
+    0,0,128,128
   );
 
-  ctx.fillStyle='#fff';
-
-  ctx.font=
-    'bold 58px Arial';
-
-  ctx.textAlign='center';
-
-  ctx.fillText(
-    'EWS SESSIONS',
-    300,
-    95
-  );
-
-  const tex =
+  const tex=
     new THREE.CanvasTexture(
-      signCanvas
-    );
-
-  const sign =
-    new THREE.Mesh(
-      new THREE.PlaneGeometry(
-        5,
-        1.35
-      ),
-      new THREE.MeshBasicMaterial({
-        map:tex
-      })
-    );
-
-  sign.position.set(
-    0,
-    5.4,
-    15.65
-  );
-
-  scene.add(sign);
-
-}
-
-function createNeonArchitecture(){
-
-  const mat =
-    new THREE.MeshBasicMaterial({
-      color:0xffffff
-    });
-
-  for(
-    let z=-14;
-    z<=14;
-    z+=4
-  ){
-
-    const left =
-      createBox(
-        .06,4,.06,
-        -17.5,
-        3,
-        z,
-        mat,
-        false,
-        false
-      );
-
-    const right =
-      createBox(
-        .06,4,.06,
-        17.5,
-        3,
-        z,
-        mat,
-        false,
-        false
-      );
-
-    neonObjects.push(
-      left,
-      right
-    );
-
-  }
-
-  for(
-    let z=-15;
-    z<=15;
-    z+=5
-  ){
-
-    const beam =
-      createBox(
-        34,.05,.05,
-        0,
-        5.4,
-        z,
-        mat,
-        false,
-        false
-      );
-
-    neonObjects.push(
-      beam
-    );
-
-  }
-
-}
-
-function createCeilingBeams(){
-
-  const mat =
-    new THREE.MeshStandardMaterial({
-      color:0x151515,
-      metalness:.8,
-      roughness:.3
-    });
-
-  for(
-    let x=-14;
-    x<=14;
-    x+=4
-  ){
-
-    createBox(
-      .3,.3,34,
-      x,5.7,0,
-      mat
-    );
-
-  }
-
-}
-
-function createSpeakers(){
-
-  const mat =
-    new THREE.MeshStandardMaterial({
-      color:0x050505,
-      metalness:.4,
-      roughness:.7
-    });
-
-  const positions=[
-    [-8,2,-11],
-    [8,2,-11],
-    [-11,2,-10],
-    [11,2,-10]
-  ];
-
-  positions.forEach(
-    p=>{
-
-      createBox(
-        1.2,2.5,.8,
-        p[0],
-        p[1],
-        p[2],
-        mat
-      );
-
-      for(
-        let i=0;
-        i<3;
-        i++
-      ){
-
-        const cone =
-          new THREE.Mesh(
-            new THREE.CylinderGeometry(
-              .23,
-              .23,
-              .12,
-              24
-            ),
-            new THREE.MeshBasicMaterial({
-              color:0xaaaaaa
-            })
-          );
-
-        cone.rotation.x=
-          Math.PI/2;
-
-        cone.position.set(
-          p[0],
-          1.3+i*.6,
-          p[2]-.45
-        );
-
-        scene.add(cone);
-
-      }
-
-    }
-  );
-
-}
-
-function createParticles(){
-
-  const count=900;
-
-  const geo =
-    new THREE.BufferGeometry();
-
-  const pos =
-    new Float32Array(
-      count*3
+      canvas
     );
 
   for(
     let i=0;
-    i<count;
+    i<38;
     i++
   ){
 
-    pos[i*3]=
-      (Math.random()-.5)*34;
-
-    pos[i*3+1]=
-      Math.random()*5.8;
-
-    pos[i*3+2]=
-      (Math.random()-.5)*34;
-
-  }
-
-  geo.setAttribute(
-    'position',
-    new THREE.BufferAttribute(
-      pos,
-      3
-    )
-  );
-
-  particles =
-    new THREE.Points(
-      geo,
-      new THREE.PointsMaterial({
-        color:0xffffff,
-        size:.035,
+    const mat=
+      new THREE.SpriteMaterial({
+        map:tex,
         transparent:true,
-        opacity:.28
-      })
-    );
+        opacity:.12+
+          Math.random()*.10,
+        depthWrite:false,
+        blending:
+          THREE.NormalBlending
+      });
 
-  scene.add(
-    particles
-  );
+    const sp=
+      new THREE.Sprite(mat);
 
-}
-
-function createSmoke(){
-
-  // Soft volumetric-looking smoke made from translucent radial sprites.
-  // It stays inside the club and slowly drifts instead of looking like dust.
-  const smokeGroup=new THREE.Group();
-  const canvas=document.createElement('canvas');
-  canvas.width=128;
-  canvas.height=128;
-  const ctx=canvas.getContext('2d');
-  const g=ctx.createRadialGradient(64,64,4,64,64,62);
-  g.addColorStop(0,'rgba(255,255,255,.16)');
-  g.addColorStop(.35,'rgba(210,210,210,.09)');
-  g.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle=g;
-  ctx.fillRect(0,0,128,128);
-  const tex=new THREE.CanvasTexture(canvas);
-
-  for(let i=0;i<38;i++){
-    const mat=new THREE.SpriteMaterial({
-      map:tex,
-      transparent:true,
-      opacity:.12+Math.random()*.10,
-      depthWrite:false,
-      blending:THREE.NormalBlending
-    });
-    const sp=new THREE.Sprite(mat);
     sp.position.set(
       (Math.random()-.5)*30,
       .8+Math.random()*3.8,
       (Math.random()-.5)*28
     );
-    const size=2.5+Math.random()*4.5;
-    sp.scale.set(size,size*.65,1);
+
+    const size=
+      2.5+
+      Math.random()*4.5;
+
+    sp.scale.set(
+      size,
+      size*.65,
+      1
+    );
+
     sp.userData={
       baseX:sp.position.x,
       baseY:sp.position.y,
       baseZ:sp.position.z,
       phase:Math.random()*Math.PI*2,
-      speed:.08+Math.random()*.12
+      speed:.08+
+        Math.random()*.12
     };
+
     smokeGroup.add(sp);
+
   }
-  smokeGroup.userData.isSmoke=true;
-  scene.add(smokeGroup);
-  window.ewsSmoke=smokeGroup;
+
+  scene.add(
+    smokeGroup
+  );
+
+  window.ewsSmoke=
+    smokeGroup;
+
 }
+
+/* =========================================================
+   RED LIGHTS
+========================================================= */
 
 function createRedMusicLights(){
 
@@ -2416,29 +2766,51 @@ function createRedMusicLights(){
     [6,2.1,3,1.25,15]
   ];
 
-  redLights.forEach(v=>{
-    const light=new THREE.PointLight(0x8b0000,v[3],v[4]);
-    light.position.set(v[0],v[1],v[2]);
-    light.castShadow=false;
-    scene.add(light);
-    lightObjects.push(light);
-    if(!window.ewsRedLights) window.ewsRedLights=[];
-    window.ewsRedLights.push(light);
-  });
+  redLights.forEach(
+    v=>{
+
+      const light=
+        new THREE.PointLight(
+          0x8b0000,
+          v[3],
+          v[4]
+        );
+
+      light.position.set(
+        v[0],
+        v[1],
+        v[2]
+      );
+
+      scene.add(light);
+
+      lightObjects.push(light);
+
+      if(!window.ewsRedLights)
+        window.ewsRedLights=[];
+
+      window.ewsRedLights.push(
+        light
+      );
+
+    }
+  );
+
 }
+
+/* =========================================================
+   PLAYER
+========================================================= */
 
 function createPlayer(){
 
-  playerBody =
+  playerBody=
     new THREE.Group();
 
-  const body =
+  const body=
     new THREE.Mesh(
       new THREE.CylinderGeometry(
-        .25,
-        .32,
-        1,
-        12
+        .25,.32,1,12
       ),
       new THREE.MeshStandardMaterial({
         color:0xffffff,
@@ -2448,16 +2820,12 @@ function createPlayer(){
 
   body.position.y=.5;
 
-  playerBody.add(
-    body
-  );
+  playerBody.add(body);
 
-  const head =
+  const head=
     new THREE.Mesh(
       new THREE.SphereGeometry(
-        .23,
-        16,
-        16
+        .23,16,16
       ),
       new THREE.MeshStandardMaterial({
         color:0xdddddd,
@@ -2467,14 +2835,10 @@ function createPlayer(){
 
   head.position.y=1.25;
 
-  playerBody.add(
-    head
-  );
+  playerBody.add(head);
 
   playerBody.position.set(
-    0,
-    0,
-    13
+    0,0,13
   );
 
   scene.add(
@@ -2484,23 +2848,31 @@ function createPlayer(){
 }
 
 /* =========================================================
-   AUDIO
+   AUDIO / HLS VIDEO
 ========================================================= */
 
 function setupAudio(){
 
-  const indicator =
+  streamVideo=
+    document.getElementById(
+      'ews-video'
+    );
+
+  const indicator=
     document.getElementById(
       'stream-indicator'
     );
 
-  const button =
+  const button=
     document.getElementById(
       'audio-control'
     );
 
+  if(!streamVideo)
+    return;
+
   indicator.textContent=
-    'AUDIO: READY';
+    'STREAM: OFFLINE';
 
   indicator.classList.remove(
     'live',
@@ -2508,43 +2880,72 @@ function setupAudio(){
   );
 
   button.textContent=
-    '▶ AUDIO: START';
+    '▶ START STREAM';
 
-  button.classList.remove(
-    'live'
+  button.disabled=false;
+
+  /*
+    Видео HLS становится текстурой
+    настоящего 3D-экрана.
+  */
+
+  streamVideoTexture=
+    new THREE.VideoTexture(
+      streamVideo
+    );
+
+  streamVideoTexture.minFilter=
+    THREE.LinearFilter;
+
+  streamVideoTexture.magFilter=
+    THREE.LinearFilter;
+
+  streamVideoTexture.format=
+    THREE.RGBAFormat;
+
+  streamVideoMaterial=
+    new THREE.MeshBasicMaterial({
+      map:streamVideoTexture
+    });
+
+  streamVideo.addEventListener(
+    'playing',
+    onStreamPlaying
+  );
+
+  streamVideo.addEventListener(
+    'pause',
+    onStreamPause
+  );
+
+  streamVideo.addEventListener(
+    'error',
+    onStreamError
   );
 
 }
 
 async function startSSHAudio(){
 
-  const audio =
+  const video=
     document.getElementById(
-      'ews-audio'
+      'ews-video'
     );
 
-  const indicator =
+  if(!video)
+    return;
+
+  const indicator=
     document.getElementById(
       'stream-indicator'
     );
 
-  const button =
+  const button=
     document.getElementById(
       'audio-control'
     );
 
-  if(!audio)return;
-
-  audioMuted=false;
-  audio.muted=false;
-  const range=document.getElementById('pause-volume');
-  if(range) audio.volume=Number(range.value)/100;
-  const muteButton=document.getElementById('pause-mute');
-  if(muteButton) muteButton.textContent='MUTE';
-  const pauseAudio=document.getElementById('pause-audio');
-  if(pauseAudio) pauseAudio.textContent='● AUDIO LIVE / RESTART';
-
-  const hlsUrl =
+  const hlsUrl=
     window.location.origin+
     '/hls/ews/index.m3u8';
 
@@ -2557,36 +2958,41 @@ async function startSSHAudio(){
   );
 
   indicator.textContent=
-    'AUDIO: CONNECTING...';
+    'STREAM: CONNECTING...';
 
   button.disabled=true;
 
   button.textContent=
-    '● AUDIO: CONNECTING';
+    '● CONNECTING...';
 
   try{
 
+    /*
+      AudioContext создаём только
+      после пользовательского клика.
+    */
+
     if(!audioContext){
 
-      audioContext =
+      audioContext=
         new(
           window.AudioContext ||
           window.webkitAudioContext
         )();
 
-      audioSource =
+      audioSource=
         audioContext.createMediaElementSource(
-          audio
+          video
         );
 
-      analyser =
+      analyser=
         audioContext.createAnalyser();
 
       analyser.fftSize=256;
 
       analyser.smoothingTimeConstant=.82;
 
-      freqData =
+      freqData=
         new Uint8Array(
           analyser.frequencyBinCount
         );
@@ -2625,7 +3031,7 @@ async function startSSHAudio(){
       Hls.isSupported()
     ){
 
-      hls =
+      hls=
         new Hls({
 
           enableWorker:true,
@@ -2649,47 +3055,31 @@ async function startSSHAudio(){
       );
 
       hls.attachMedia(
-        audio
+        video
       );
 
       hls.on(
         Hls.Events.MANIFEST_PARSED,
-        async function(){
-
-          indicator.textContent=
-            'AUDIO: LIVE';
-
-          button.textContent=
-            '● AUDIO: LIVE';
-
-          button.classList.add(
-            'live'
-          );
-
-          button.disabled=false;
-
-          audioStarted=true;
+        async()=>{
 
           try{
 
-            await audio.play();
+            await video.play();
 
           }catch(err){
 
             console.warn(
-              'Audio play blocked:',
+              '[EWS] PLAY BLOCKED',
               err
             );
 
             indicator.textContent=
-              'AUDIO: PRESS START';
+              'STREAM: PRESS START';
 
             button.textContent=
-              '▶ AUDIO: START';
+              '▶ START STREAM';
 
-            button.classList.remove(
-              'live'
-            );
+            button.disabled=false;
 
           }
 
@@ -2698,17 +3088,18 @@ async function startSSHAudio(){
 
       hls.on(
         Hls.Events.ERROR,
-        function(
+        (
           event,
           data
-        ){
+        )=>{
 
           console.error(
-            '[HLS]',
+            '[EWS HLS]',
             data
           );
 
-          if(!data.fatal)return;
+          if(!data.fatal)
+            return;
 
           if(
             data.type===
@@ -2716,13 +3107,13 @@ async function startSSHAudio(){
           ){
 
             indicator.textContent=
-              'AUDIO: RECONNECTING...';
+              'STREAM: RECONNECTING...';
 
             button.textContent=
-              '● AUDIO: RECONNECTING';
+              '● RECONNECTING...';
 
             setTimeout(
-              function(){
+              ()=>{
 
                 if(hls){
 
@@ -2736,15 +3127,10 @@ async function startSSHAudio(){
               1000
             );
 
-          }
-
-          else if(
+          }else if(
             data.type===
             Hls.ErrorTypes.MEDIA_ERROR
           ){
-
-            indicator.textContent=
-              'AUDIO: RECOVERING...';
 
             try{
 
@@ -2756,204 +3142,248 @@ async function startSSHAudio(){
 
             }
 
-          }
+          }else{
 
-          else{
-
-            indicator.textContent=
-              'AUDIO: NO STREAM';
-
-            indicator.classList.remove(
-              'live'
-            );
-
-            indicator.classList.add(
-              'error'
-            );
-
-            button.textContent=
-              '▶ AUDIO: RETRY';
-
-            button.classList.remove(
-              'live'
-            );
-
-            button.disabled=false;
+            onStreamError();
 
           }
 
         }
       );
 
-    }
-
-    else if(
-      audio.canPlayType(
+    }else if(
+      video.canPlayType(
         'application/vnd.apple.mpegurl'
       )
     ){
 
-      audio.src=
+      video.src=
         hlsUrl;
 
-      audio.addEventListener(
+      video.addEventListener(
         'loadedmetadata',
-        async function(){
+        async()=>{
 
           try{
 
-            await audio.play();
+            await video.play();
 
-          }catch(err){
+          }catch(e){
 
-            console.error(err);
+            console.error(e);
 
           }
 
         },
-        {
-          once:true
-        }
+        {once:true}
       );
 
-    }
-
-    else{
+    }else{
 
       throw new Error(
-        'HLS is not supported by this browser'
+        'HLS not supported'
       );
 
     }
-
-    audio.onplaying=function(){
-
-      indicator.textContent=
-        'AUDIO: LIVE';
-
-      indicator.classList.add(
-        'live'
-      );
-
-      indicator.classList.remove(
-        'error'
-      );
-
-      button.textContent=
-        '● AUDIO: LIVE';
-
-      button.classList.add(
-        'live'
-      );
-
-      button.disabled=false;
-
-      audioStarted=true;
-
-    };
-
-    audio.onpause=function(){
-
-      if(
-        audioStarted &&
-        !audio.ended
-      ){
-
-        indicator.textContent=
-          'AUDIO: PAUSED';
-
-        button.textContent=
-          '▶ AUDIO: RESUME';
-
-        button.classList.remove(
-          'live'
-        );
-
-      }
-
-    };
-
-    audio.onerror=function(){
-
-      console.error(
-        '[AUDIO]',
-        audio.error
-      );
-
-      indicator.textContent=
-        'AUDIO: ERROR';
-
-      indicator.classList.remove(
-        'live'
-      );
-
-      indicator.classList.add(
-        'error'
-      );
-
-      button.textContent=
-        '▶ AUDIO: RETRY';
-
-      button.classList.remove(
-        'live'
-      );
-
-      button.disabled=false;
-
-    };
 
   }catch(err){
 
     console.error(
-      '[EWS AUDIO ERROR]',
+      '[EWS STREAM]',
       err
     );
 
-    indicator.textContent=
-      'AUDIO: NO STREAM';
-
-    indicator.classList.remove(
-      'live'
-    );
-
-    indicator.classList.add(
-      'error'
-    );
-
-    button.textContent=
-      '▶ AUDIO: RETRY';
-
-    button.classList.remove(
-      'live'
-    );
-
-    button.disabled=false;
+    onStreamError();
 
   }
 
 }
 
-// CHAT KEYBOARD LOCK
-// While the chat field is focused, the game must not consume keyboard input.
-// In particular, Space remains a normal space character.
+function onStreamPlaying(){
+
+  const indicator=
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button=
+    document.getElementById(
+      'audio-control'
+    );
+
+  streamIsLive=true;
+
+  audioStarted=true;
+
+  indicator.textContent=
+    '● STREAM: LIVE';
+
+  indicator.classList.add(
+    'live'
+  );
+
+  indicator.classList.remove(
+    'error'
+  );
+
+  button.textContent=
+    '● STREAM: LIVE';
+
+  button.classList.add(
+    'live'
+  );
+
+  button.disabled=false;
+
+  if(
+    screenMesh &&
+    streamVideoMaterial
+  ){
+
+    screenMesh.material=
+      streamVideoMaterial;
+
+  }
+
+}
+
+function onStreamPause(){
+
+  const indicator=
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button=
+    document.getElementById(
+      'audio-control'
+    );
+
+  if(
+    audioStarted &&
+    !streamVideo.ended
+  ){
+
+    indicator.textContent=
+      'STREAM: PAUSED';
+
+    button.textContent=
+      '▶ RESUME STREAM';
+
+    button.classList.remove(
+      'live'
+    );
+
+  }
+
+}
+
+function onStreamError(){
+
+  streamIsLive=false;
+
+  const indicator=
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button=
+    document.getElementById(
+      'audio-control'
+    );
+
+  indicator.textContent=
+    'STREAM: OFFLINE';
+
+  indicator.classList.remove(
+    'live'
+  );
+
+  indicator.classList.add(
+    'error'
+  );
+
+  button.textContent=
+    '▶ START STREAM';
+
+  button.classList.remove(
+    'live'
+  );
+
+  button.disabled=false;
+
+  /*
+    Возвращаем обычный экран EWS.
+  */
+
+  if(
+    screenMesh &&
+    screenTexture
+  ){
+
+    screenMesh.material=
+      new THREE.MeshBasicMaterial({
+        map:screenTexture
+      });
+
+  }
+
+}
+
+/* =========================================================
+   CHAT KEYBOARD
+========================================================= */
+
 (function setupChatKeyboard(){
-  const input=document.getElementById('chat-input');
-  if(!input) return;
 
-  input.addEventListener('focus',()=>{
-    chatMode=true;
-    if(document.pointerLockElement) document.exitPointerLock();
-  });
+  const input=
+    document.getElementById(
+      'chat-input'
+    );
 
-  input.addEventListener('blur',()=>{
-    chatMode=false;
-    Object.keys(keys).forEach(k=>keys[k]=false);
-  });
+  if(!input)
+    return;
 
-  input.addEventListener('keydown',(e)=>{
-    e.stopPropagation();
-    // IMPORTANT: do not preventDefault Space here.
-  });
+  input.addEventListener(
+    'focus',
+    ()=>{
+
+      chatMode=true;
+
+      if(
+        document.pointerLockElement
+      ){
+
+        document.exitPointerLock();
+
+      }
+
+    }
+  );
+
+  input.addEventListener(
+    'blur',
+    ()=>{
+
+      chatMode=false;
+
+      Object.keys(keys)
+        .forEach(
+          k=>keys[k]=false
+        );
+
+    }
+  );
+
+  input.addEventListener(
+    'keydown',
+    e=>{
+
+      e.stopPropagation();
+
+    }
+  );
+
 })();
 
 /* =========================================================
@@ -2964,14 +3394,13 @@ function setupControls(){
 
   window.addEventListener(
     'resize',
-    function(){
+    ()=>{
 
       if(
         !camera ||
         !renderer
-      ){
+      )
         return;
-      }
 
       camera.aspect=
         innerWidth/
@@ -2989,37 +3418,56 @@ function setupControls(){
 
   window.addEventListener(
     'keydown',
-    function(e){
+    e=>{
 
-      const active=document.activeElement;
-      const typing=active && (
-        active.tagName==='INPUT' ||
-        active.tagName==='TEXTAREA' ||
-        active.isContentEditable
-      );
+      const active=
+        document.activeElement;
 
-      if(typing) return;
+      const typing=
+        active &&
+        (
+          active.tagName==='INPUT' ||
+          active.tagName==='TEXTAREA' ||
+          active.isContentEditable
+        );
+
+      if(typing)
+        return;
 
       if(e.code==='Escape'){
+
         e.preventDefault();
+
         togglePause();
+
         return;
+
       }
 
       if(e.code==='Space'){
+
         e.preventDefault();
-        if(!paused && !chatMode && grounded){
+
+        if(
+          !paused &&
+          !chatMode &&
+          grounded
+        ){
+
           verticalVelocity=5.2;
+
           grounded=false;
+
         }
+
         return;
+
       }
 
-      if(!paused) keys[e.code]=true;
+      if(!paused)
+        keys[e.code]=true;
 
-      if(
-        e.code==='KeyC'
-      ){
+      if(e.code==='KeyC'){
 
         chatMode=
           !chatMode;
@@ -3033,21 +3481,21 @@ function setupControls(){
 
   window.addEventListener(
     'keyup',
-    function(e){
+    e=>{
 
       keys[e.code]=false;
 
     }
   );
 
-  const canvas =
+  const canvas=
     document.getElementById(
       'canvas3d'
     );
 
   canvas.addEventListener(
     'click',
-    function(){
+    ()=>{
 
       if(!chatMode){
 
@@ -3060,7 +3508,7 @@ function setupControls(){
 
   document.addEventListener(
     'pointerlockchange',
-    function(){
+    ()=>{
 
       pointerLocked=
         document.pointerLockElement===
@@ -3071,9 +3519,10 @@ function setupControls(){
 
   document.addEventListener(
     'mousemove',
-    function(e){
+    e=>{
 
-      if(!pointerLocked)return;
+      if(!pointerLocked)
+        return;
 
       yaw-=
         e.movementX*.002;
@@ -3097,14 +3546,15 @@ function setupControls(){
 
 function toggleChat(){
 
-  const input =
+  const input=
     document.getElementById(
       'chat-input'
     );
 
   if(chatMode){
 
-    document.exitPointerLock();
+    if(document.pointerLockElement)
+      document.exitPointerLock();
 
     input.focus();
 
@@ -3116,201 +3566,1329 @@ function toggleChat(){
 
 }
 
-
 /* =========================================================
-   CLUB SCREEN MEDIA
+   SCREEN HOST
 ========================================================= */
 
-function toggleScreenMenu(){
-  if(!isClubHost()) return;
-  const menu=document.getElementById('screen-menu');
-  if(!menu) return;
-  menu.classList.toggle('open');
-  if(menu.classList.contains('open')){
-    const input=document.getElementById('screen-url');
-    setTimeout(()=>input && input.focus(),40);
-  }
-}
-
-function setScreenStatus(text){
-  const el=document.getElementById('screen-status');
-  if(el) el.textContent=text;
-}
-
-function youtubeEmbed(url){
-  try{
-    const u=new URL(url);
-    let id='';
-    if(u.hostname.includes('youtu.be')){
-      id=u.pathname.split('/').filter(Boolean)[0]||'';
-    }else if(u.hostname.includes('youtube.com')){
-      id=u.searchParams.get('v')||'';
-      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
-      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
-    }
-    if(!id) return null;
-    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
-  }catch(e){ return null; }
-}
-
-function twitchEmbed(url){
-  try{
-    const u=new URL(url);
-    if(!u.hostname.includes('twitch.tv')) return null;
-    const parts=u.pathname.split('/').filter(Boolean);
-    if(!parts.length) return null;
-    const parent=location.hostname || 'ews-sessions.onrender.com';
-    if(parts[0]==='videos' && parts[1]){
-      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-    }
-    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-  }catch(e){ return null; }
-}
-
-function normalizeClubScreenUrl(raw){
-  const value=String(raw||'').trim();
-  if(!value) return null;
-
-  const yt=youtubeEmbed(value);
-  if(yt) return {src:yt,name:'YOUTUBE'};
-
-  const tw=twitchEmbed(value);
-  if(tw) return {src:tw,name:'TWITCH'};
-
-  try{
-    const u=new URL(value);
-    if(u.protocol!=='http:' && u.protocol!=='https:') return null;
-    return {src:u.href,name:'WEBSITE'};
-  }catch(e){
-    return null;
-  }
-}
-
 function isClubHost(){
-  return !clubScreenHost || clubScreenHost===currentUser;
+
+  /*
+    ВАЖНО:
+    Только аккаунт mvxtra.
+  */
+
+  return String(
+    currentUser || ''
+  )
+    .trim()
+    .toLowerCase()==='mvxtra';
+
 }
 
 function updateHostUI(){
-  const button=document.getElementById('screen-control');
-  const menu=document.getElementById('screen-menu');
-  const title=document.getElementById('screen-menu-title');
-  if(!button) return;
 
-  const host=isClubHost();
-  button.style.display='block';
-  button.disabled=!host;
-  button.style.opacity=host?'1':'.35';
-  button.title=host?'HOST CONTROL':'Only the club host can control the screen';
+  const button=
+    document.getElementById(
+      'screen-control'
+    );
+
+  const menu=
+    document.getElementById(
+      'screen-menu'
+    );
+
+  const title=
+    document.getElementById(
+      'screen-menu-title'
+    );
+
+  if(!button)
+    return;
+
+  const host=
+    isClubHost();
+
+  /*
+    Никаких условий по online-списку.
+    mvxtra всегда видит SCREEN.
+  */
+
+  button.style.display=
+    host
+      ? 'block'
+      : 'none';
 
   if(title){
-    title.textContent=host
-      ? 'EWS SESSIONS / HOST CONTROL'
-      : 'EWS SESSIONS / SCREEN';
+
+    title.textContent=
+      host
+        ? 'EWS SESSIONS / HOST CONTROL'
+        : 'EWS SESSIONS / SCREEN';
+
   }
 
-  if(!host && menu) menu.classList.remove('open');
+  if(!host && menu){
+
+    menu.classList.remove(
+      'open'
+    );
+
+  }
+
 }
+
+function toggleScreenMenu(){
+
+  if(!isClubHost())
+    return;
+
+  const menu=
+    document.getElementById(
+      'screen-menu'
+    );
+
+  if(!menu)
+    return;
+
+  menu.classList.toggle(
+    'open'
+  );
+
+  if(menu.classList.contains('open')){
+
+    const input=
+      document.getElementById(
+        'screen-url'
+      );
+
+    setTimeout(
+      ()=>{
+        if(input)
+          input.focus();
+      },
+      40
+    );
+
+  }
+
+}
+
+function setScreenStatus(text){
+
+  const el=
+    document.getElementById(
+      'screen-status'
+    );
+
+  if(el)
+    el.textContent=text;
+
+}
+
+/* =========================================================
+   YOUTUBE
+========================================================= */
+
+function youtubeEmbed(url){
+
+  try{
+
+    const u=
+      new URL(url);
+
+    let id='';
+
+    if(
+      u.hostname.includes(
+        'youtu.be'
+      )
+    ){
+
+      id=
+        u.pathname
+          .split('/')
+          .filter(Boolean)[0] ||
+        '';
+
+    }else if(
+      u.hostname.includes(
+        'youtube.com'
+      )
+    ){
+
+      id=
+        u.searchParams.get(
+          'v'
+        ) ||
+        '';
+
+      if(
+        !id &&
+        u.pathname.startsWith(
+          '/shorts/'
+        )
+      ){
+
+        id=
+          u.pathname
+            .split('/')[2] ||
+          '';
+
+      }
+
+      if(
+        !id &&
+        u.pathname.startsWith(
+          '/embed/'
+        )
+      ){
+
+        id=
+          u.pathname
+            .split('/')[2] ||
+          '';
+
+      }
+
+    }
+
+    if(!id)
+      return null;
+
+    return (
+      'https://www.youtube.com/embed/' +
+      encodeURIComponent(id) +
+      '?autoplay=1&rel=0&playsinline=1'
+    );
+
+  }catch(e){
+
+    return null;
+
+  }
+
+}
+
+/* =========================================================
+   TWITCH
+========================================================= */
+
+function twitchEmbed(url){
+
+  try{
+
+    const u=
+      new URL(url);
+
+    if(
+      !u.hostname.includes(
+        'twitch.tv'
+      )
+    )
+      return null;
+
+    const parts=
+      u.pathname
+        .split('/')
+        .filter(Boolean);
+
+    if(!parts.length)
+      return null;
+
+    const parent=
+      location.hostname ||
+      'ews-sessions.onrender.com';
+
+    if(
+      parts[0]==='videos' &&
+      parts[1]
+    ){
+
+      return (
+        'https://player.twitch.tv/?video=' +
+        encodeURIComponent(parts[1]) +
+        '&parent=' +
+        encodeURIComponent(parent) +
+        '&autoplay=true'
+      );
+
+    }
+
+    return (
+      'https://player.twitch.tv/?channel=' +
+      encodeURIComponent(parts[0]) +
+      '&parent=' +
+      encodeURIComponent(parent) +
+      '&autoplay=true'
+    );
+
+  }catch(e){
+
+    return null;
+
+  }
+
+}
+
+/* =========================================================
+   SCREEN URL
+========================================================= */
+
+function normalizeClubScreenUrl(raw){
+
+  const value=
+    String(raw||'').trim();
+
+  if(!value)
+    return null;
+
+  const yt=
+    youtubeEmbed(value);
+
+  if(yt){
+
+    return {
+      src:yt,
+      name:'YOUTUBE'
+    };
+
+  }
+
+  const tw=
+    twitchEmbed(value);
+
+  if(tw){
+
+    return {
+      src:tw,
+      name:'TWITCH'
+    };
+
+  }
+
+  try{
+
+    const u=
+      new URL(value);
+
+    if(
+      u.protocol!=='http:' &&
+      u.protocol!=='https:'
+    ){
+
+      return null;
+
+    }
+
+    return {
+      src:u.href,
+      name:'WEBSITE'
+    };
+
+  }catch(e){
+
+    return null;
+
+  }
+
+}
+
+/* =========================================================
+   LOAD CLUB SCREEN
+========================================================= */
 
 function loadClubScreen(){
+
   if(!isClubHost()){
-    setScreenStatus('Только главный пользователь клуба может включать экран.');
-    return;
-  }
-  const input=document.getElementById('screen-url');
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(!input || !frame || !panel) return;
 
-  const result=normalizeClubScreenUrl(input.value);
+    setScreenStatus(
+      'Только mvxtra может включать экран.'
+    );
+
+    return;
+
+  }
+
+  const input=
+    document.getElementById(
+      'screen-url'
+    );
+
+  const frame=
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel=
+    document.getElementById(
+      'media-screen'
+    );
+
+  if(
+    !input ||
+    !frame ||
+    !panel
+  )
+    return;
+
+  const result=
+    normalizeClubScreenUrl(
+      input.value
+    );
+
   if(!result){
-    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');
+
+    setScreenStatus(
+      'Неверная ссылка.'
+    );
+
     return;
+
   }
 
-  frame.src=result.src;
-  panel.classList.add('active');
-  screenMediaActive=true;
-  screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — звук управляется плеером на экране.');
-  if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
+  frame.src=
+    result.src;
 
-  const menu=document.getElementById('screen-menu');
-  if(menu) menu.classList.remove('open');
+  panel.classList.add(
+    'active'
+  );
+
+  screenMediaActive=true;
+
+  screenMediaUrl=
+    result.src;
+
+  setScreenStatus(
+    result.name+
+    ' LOADED'
+  );
+
+  if(
+    socket &&
+    socket.connected
+  ){
+
+    socket.emit(
+      'club-screen-state',
+      {
+        src:result.src,
+        name:result.name,
+        active:true,
+        owner:currentUser
+      }
+    );
+
+  }
+
+  const menu=
+    document.getElementById(
+      'screen-menu'
+    );
+
+  if(menu)
+    menu.classList.remove(
+      'open'
+    );
+
 }
+
+/* =========================================================
+   CLEAR CLUB SCREEN
+========================================================= */
 
 function clearClubScreen(){
-  if(!isClubHost()) return;
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(frame) frame.src='about:blank';
-  if(panel) panel.classList.remove('active');
+
+  if(!isClubHost())
+    return;
+
+  const frame=
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel=
+    document.getElementById(
+      'media-screen'
+    );
+
+  if(frame)
+    frame.src='about:blank';
+
+  if(panel)
+    panel.classList.remove(
+      'active'
+    );
+
   screenMediaActive=false;
+
   screenMediaUrl='';
-  if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
-  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
+
+  if(
+    socket &&
+    socket.connected
+  ){
+
+    socket.emit(
+      'club-screen-state',
+      {
+        active:false,
+        owner:currentUser
+      }
+    );
+
+  }
+
+  setScreenStatus(
+    'Экран очищен.'
+  );
+
 }
 
-function solveHomography(src, dst){
-  const A=[], b=[];
-  for(let i=0;i<4;i++){
-    const x=src[i][0], y=src[i][1], X=dst[i][0], Y=dst[i][1];
-    A.push([x,y,1,0,0,0,-X*x,-X*y]); b.push(X);
-    A.push([0,0,0,x,y,1,-Y*x,-Y*y]); b.push(Y);
+/* =========================================================
+   REMOTE CLUB SCREEN
+========================================================= */
+
+function applyRemoteClubScreen(
+  state
+){
+
+  const frame=
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel=
+    document.getElementById(
+      'media-screen'
+    );
+
+  if(
+    !frame ||
+    !panel
+  )
+    return;
+
+  if(!state.active){
+
+    frame.src='about:blank';
+
+    panel.classList.remove(
+      'active'
+    );
+
+    screenMediaActive=false;
+
+    screenMediaUrl='';
+
+    return;
+
   }
-  for(let i=0;i<8;i++){
+
+  if(
+    state.src &&
+    state.src!==screenMediaUrl
+  ){
+
+    frame.src=
+      state.src;
+
+    screenMediaUrl=
+      state.src;
+
+    screenMediaActive=true;
+
+    panel.classList.add(
+      'active'
+    );
+
+  }
+
+}
+
+/* =========================================================
+   HOMOGRAPHY
+========================================================= */
+
+function solveHomography(
+  src,
+  dst
+){
+
+  const A=[];
+  const b=[];
+
+  for(
+    let i=0;
+    i<4;
+    i++
+  ){
+
+    const x=
+      src[i][0];
+
+    const y=
+      src[i][1];
+
+    const X=
+      dst[i][0];
+
+    const Y=
+      dst[i][1];
+
+    A.push([
+      x,y,1,
+      0,0,0,
+      -X*x,
+      -X*y
+    ]);
+
+    b.push(X);
+
+    A.push([
+      0,0,0,
+      x,y,1,
+      -Y*x,
+      -Y*y
+    ]);
+
+    b.push(Y);
+
+  }
+
+  for(
+    let i=0;
+    i<8;
+    i++
+  ){
+
     let max=i;
-    for(let r=i+1;r<8;r++) if(Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
-    [A[i],A[max]]=[A[max],A[i]]; [b[i],b[max]]=[b[max],b[i]];
-    const pivot=A[i][i] || 1e-12;
-    for(let c=i;c<8;c++) A[i][c]/=pivot;
-    b[i]/=pivot;
-    for(let r=0;r<8;r++) if(r!==i){
-      const f=A[r][i];
-      if(!f) continue;
-      for(let c=i;c<8;c++) A[r][c]-=f*A[i][c];
-      b[r]-=f*b[i];
+
+    for(
+      let r=i+1;
+      r<8;
+      r++
+    ){
+
+      if(
+        Math.abs(
+          A[r][i]
+        )>
+        Math.abs(
+          A[max][i]
+        )
+      ){
+
+        max=r;
+
+      }
+
     }
+
+    [
+      A[i],
+      A[max]
+    ]=[
+      A[max],
+      A[i]
+    ];
+
+    [
+      b[i],
+      b[max]
+    ]=[
+      b[max],
+      b[i]
+    ];
+
+    const pivot=
+      A[i][i] ||
+      1e-12;
+
+    for(
+      let c=i;
+      c<8;
+      c++
+    ){
+
+      A[i][c]/=pivot;
+
+    }
+
+    b[i]/=pivot;
+
+    for(
+      let r=0;
+      r<8;
+      r++
+    ){
+
+      if(r===i)
+        continue;
+
+      const f=
+        A[r][i];
+
+      if(!f)
+        continue;
+
+      for(
+        let c=i;
+        c<8;
+        c++
+      ){
+
+        A[r][c]-=
+          f*A[i][c];
+
+      }
+
+      b[r]-=
+        f*b[i];
+
+    }
+
   }
-  return [b[0],b[3],0,b[6], b[1],b[4],0,b[7], 0,0,1,0, b[2],b[5],0,1];
+
+  return [
+    b[0],b[3],0,b[6],
+    b[1],b[4],0,b[7],
+    0,0,1,0,
+    b[2],b[5],0,1
+  ];
+
 }
 
 function updateClubScreenOverlay(){
-  const panel=document.getElementById('media-screen');
-  if(!panel || !screenMesh || !camera || !renderer) return;
-  const w=renderer.domElement.clientWidth;
-  const h=renderer.domElement.clientHeight;
-  if(!w || !h) return;
+
+  const panel=
+    document.getElementById(
+      'media-screen'
+    );
+
+  if(
+    !panel ||
+    !screenMesh ||
+    !camera ||
+    !renderer
+  )
+    return;
+
+  const w=
+    renderer.domElement.clientWidth;
+
+  const h=
+    renderer.domElement.clientHeight;
+
+  if(!w || !h)
+    return;
 
   const corners=[
-    new THREE.Vector3(-7.75, 3.25, 0),
-    new THREE.Vector3( 7.75, 3.25, 0),
-    new THREE.Vector3( 7.75,-3.25, 0),
-    new THREE.Vector3(-7.75,-3.25, 0)
-  ].map(v=>screenMesh.localToWorld(v).project(camera));
+    new THREE.Vector3(
+      -7.75,3.25,0
+    ),
+    new THREE.Vector3(
+      7.75,3.25,0
+    ),
+    new THREE.Vector3(
+      7.75,-3.25,0
+    ),
+    new THREE.Vector3(
+      -7.75,-3.25,0
+    )
+  ].map(
+    v=>
+      screenMesh
+        .localToWorld(v)
+        .project(camera)
+  );
 
-  const pts=corners.map(p=>[(p.x*.5+.5)*w,(-p.y*.5+.5)*h]);
-  const minX=Math.min(...pts.map(p=>p[0])), maxX=Math.max(...pts.map(p=>p[0]));
-  const minY=Math.min(...pts.map(p=>p[1])), maxY=Math.max(...pts.map(p=>p[1]));
+  const pts=
+    corners.map(
+      p=>[
+        (p.x*.5+.5)*w,
+        (-p.y*.5+.5)*h
+      ]
+    );
 
-  const allBehind=corners.every(p=>p.z>1);
-  const tooSmall=(maxX-minX<10 || maxY-minY<10);
-  const wildlyOff=(maxX < -w || minX > 2*w || maxY < -h || minY > 2*h);
-  if(allBehind || tooSmall || wildlyOff){
+  const minX=
+    Math.min(
+      ...pts.map(
+        p=>p[0]
+      )
+    );
+
+  const maxX=
+    Math.max(
+      ...pts.map(
+        p=>p[0]
+      )
+    );
+
+  const minY=
+    Math.min(
+      ...pts.map(
+        p=>p[1]
+      )
+    );
+
+  const maxY=
+    Math.max(
+      ...pts.map(
+        p=>p[1]
+      )
+    );
+
+  const allBehind=
+    corners.every(
+      p=>p.z>1
+    );
+
+  const tooSmall=
+    maxX-minX<10 ||
+    maxY-minY<10;
+
+  const wildlyOff=
+    maxX<-w ||
+    minX>2*w ||
+    maxY<-h ||
+    minY>2*h;
+
+  if(
+    allBehind ||
+    tooSmall ||
+    wildlyOff
+  ){
+
     panel.style.display='none';
+
     return;
+
   }
 
-  // Render the HTML player through a real projective transform.
-  // This keeps it locked to the physical 3D screen plane instead of
-  // approximating it with a moving axis-aligned rectangle.
   panel.style.display='block';
+
   panel.style.left='0px';
+
   panel.style.top='0px';
-  panel.style.width=w+'px';
-  panel.style.height=h+'px';
-  panel.style.transformOrigin='0 0';
-  panel.style.transform='matrix3d('+solveHomography([[0,0],[w,0],[w,h],[0,h]],pts).join(',')+')';
+
+  panel.style.width=
+    w+'px';
+
+  panel.style.height=
+    h+'px';
+
+  panel.style.transformOrigin=
+    '0 0';
+
+  panel.style.transform=
+    'matrix3d('+
+    solveHomography(
+      [
+        [0,0],
+        [w,0],
+        [w,h],
+        [0,h]
+      ],
+      pts
+    ).join(',')+
+    ')';
+
 }
+
+/* =========================================================
+   REMOTE PLAYERS
+========================================================= */
+
+function createRemotePlayer(
+  data
+){
+
+  if(
+    !data ||
+    !data.id ||
+    !scene
+  )
+    return;
+
+  if(
+    remotePlayers.has(
+      data.id
+    )
+  )
+    return;
+
+  const g=
+    new THREE.Group();
+
+  g.userData.username=
+    data.username ||
+    'PLAYER';
+
+  const mat=
+    new THREE.MeshStandardMaterial({
+      color:0x777777,
+      roughness:1,
+      metalness:0
+    });
+
+  const dark=
+    new THREE.MeshStandardMaterial({
+      color:0x151515,
+      roughness:1
+    });
+
+  const torso=
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        .22,.30,.85,8
+      ),
+      mat
+    );
+
+  torso.position.y=.78;
+
+  g.add(torso);
+
+  const head=
+    new THREE.Mesh(
+      new THREE.SphereGeometry(
+        .23,12,12
+      ),
+      mat
+    );
+
+  head.position.y=1.42;
+
+  g.add(head);
+
+  const armGeo=
+    new THREE.CylinderGeometry(
+      .075,.09,.72,6
+    );
+
+  const legGeo=
+    new THREE.CylinderGeometry(
+      .09,.11,.82,6
+    );
+
+  const leftArm=
+    new THREE.Mesh(
+      armGeo,
+      dark
+    );
+
+  leftArm.position.set(
+    -.34,.80,0
+  );
+
+  leftArm.rotation.z=-.12;
+
+  g.add(leftArm);
+
+  const rightArm=
+    new THREE.Mesh(
+      armGeo,
+      dark
+    );
+
+  rightArm.position.set(
+    .34,.80,0
+  );
+
+  rightArm.rotation.z=.12;
+
+  g.add(rightArm);
+
+  const leftLeg=
+    new THREE.Mesh(
+      legGeo,
+      dark
+    );
+
+  leftLeg.position.set(
+    -.13,.30,0
+  );
+
+  g.add(leftLeg);
+
+  const rightLeg=
+    new THREE.Mesh(
+      legGeo,
+      dark
+    );
+
+  rightLeg.position.set(
+    .13,.30,0
+  );
+
+  g.add(rightLeg);
+
+  const labelCanvas=
+    document.createElement(
+      'canvas'
+    );
+
+  labelCanvas.width=256;
+  labelCanvas.height=64;
+
+  const ctx=
+    labelCanvas.getContext(
+      '2d'
+    );
+
+  ctx.clearRect(
+    0,0,256,64
+  );
+
+  ctx.font=
+    'bold 24px Arial';
+
+  ctx.textAlign='center';
+
+  ctx.fillStyle='#ffffff';
+
+  ctx.fillText(
+    g.userData.username,
+    128,
+    32
+  );
+
+  const tex=
+    new THREE.CanvasTexture(
+      labelCanvas
+    );
+
+  const label=
+    new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map:tex,
+        transparent:true,
+        depthTest:false
+      })
+    );
+
+  label.scale.set(
+    1.7,.42,1
+  );
+
+  label.position.y=1.95;
+
+  g.add(label);
+
+  g.position.set(
+    Number(data.x)||0,
+    0,
+    Number(data.z)||0
+  );
+
+  g.rotation.y=
+    Number(data.yaw)||0;
+
+  scene.add(g);
+
+  remotePlayers.set(
+    data.id,
+    {
+      group:g,
+      last:{
+        x:g.position.x,
+        z:g.position.z,
+        yaw:g.rotation.y
+      },
+      moving:false
+    }
+  );
+
+}
+
+function updateRemotePlayer(
+  data
+){
+
+  if(
+    !data ||
+    !data.id ||
+    !socket ||
+    data.id===socket.id
+  )
+    return;
+
+  if(
+    !remotePlayers.has(
+      data.id
+    )
+  ){
+
+    createRemotePlayer(
+      data
+    );
+
+  }
+
+  const p=
+    remotePlayers.get(
+      data.id
+    );
+
+  if(!p)
+    return;
+
+  const nx=
+    Number(data.x)||0;
+
+  const nz=
+    Number(data.z)||0;
+
+  const dx=
+    nx-
+    p.group.position.x;
+
+  const dz=
+    nz-
+    p.group.position.z;
+
+  p.moving=
+    Math.hypot(
+      dx,
+      dz
+    )>.002;
+
+  p.group.position.x=
+    nx;
+
+  p.group.position.z=
+    nz;
+
+  p.group.rotation.y=
+    Number(data.yaw)||0;
+
+}
+
+function removeRemotePlayer(
+  id
+){
+
+  if(!id)
+    return;
+
+  const p=
+    remotePlayers.get(id);
+
+  if(!p)
+    return;
+
+  scene.remove(
+    p.group
+  );
+
+  p.group.traverse(
+    o=>{
+
+      if(o.geometry)
+        o.geometry.dispose();
+
+      if(o.material){
+
+        if(o.material.map)
+          o.material.map.dispose();
+
+        o.material.dispose();
+
+      }
+
+    }
+  );
+
+  remotePlayers.delete(
+    id
+  );
+
+}
+
+/* =========================================================
+   PLAYER BROADCAST
+========================================================= */
+
+function broadcastPlayerState(
+  now
+){
+
+  if(
+    !socket ||
+    !socket.connected ||
+    !camera
+  )
+    return;
+
+  if(
+    now-lastPlayerBroadcast<
+    50
+  )
+    return;
+
+  lastPlayerBroadcast=
+    now;
+
+  socket.emit(
+    'player-state',
+    {
+      x:camera.position.x,
+      z:camera.position.z,
+      yaw:yaw,
+      pitch:pitch,
+      username:currentUser
+    }
+  );
+
+}
+
+/* =========================================================
+   PAUSE
+========================================================= */
+
+function togglePause(){
+
+  paused=
+    !paused;
+
+  const panel=
+    document.getElementById(
+      'pause-panel'
+    );
+
+  const backdrop=
+    document.getElementById(
+      'pause-backdrop'
+    );
+
+  const button=
+    document.getElementById(
+      'pause-toggle'
+    );
+
+  if(panel){
+
+    panel.classList.toggle(
+      'open',
+      paused
+    );
+
+  }
+
+  if(backdrop){
+
+    backdrop.classList.toggle(
+      'open',
+      paused
+    );
+
+  }
+
+  if(button){
+
+    button.textContent=
+      paused
+        ? 'RESUME'
+        : 'PAUSE';
+
+  }
+
+  if(paused){
+
+    Object.keys(keys)
+      .forEach(
+        k=>keys[k]=false
+      );
+
+    if(
+      document.pointerLockElement
+    ){
+
+      document.exitPointerLock();
+
+    }
+
+  }
+
+}
+
+function toggleMute(){
+
+  const video=
+    document.getElementById(
+      'ews-video'
+    );
+
+  const button=
+    document.getElementById(
+      'pause-mute'
+    );
+
+  if(!video)
+    return;
+
+  audioMuted=
+    !audioMuted;
+
+  video.muted=
+    audioMuted;
+
+  if(button){
+
+    button.textContent=
+      audioMuted
+        ? 'UNMUTE'
+        : 'MUTE';
+
+  }
+
+}
+
+function setupPauseControls(){
+
+  const range=
+    document.getElementById(
+      'pause-volume'
+    );
+
+  const value=
+    document.getElementById(
+      'pause-volume-value'
+    );
+
+  const video=
+    document.getElementById(
+      'ews-video'
+    );
+
+  if(!range)
+    return;
+
+  const apply=()=>{
+
+    const v=
+      Number(
+        range.value
+      )/100;
+
+    if(video)
+      video.volume=v;
+
+    if(value)
+      value.textContent=
+        range.value+'%';
+
+  };
+
+  range.addEventListener(
+    'input',
+    apply
+  );
+
+  apply();
+
+}
+
 /* =========================================================
    ANIMATION
 ========================================================= */
@@ -3321,15 +4899,16 @@ function animate(){
     animate
   );
 
-  if(!scene)return;
+  if(!scene)
+    return;
 
-  const dt =
+  const dt=
     Math.min(
       clock.getDelta(),
       .05
     );
 
-  const time =
+  const time=
     performance.now()/1000;
 
   let bass=.2;
@@ -3385,9 +4964,7 @@ function animate(){
         freqData.length*255
       );
 
-  }
-
-  else{
+  }else{
 
     bass=
       .25+
@@ -3408,36 +4985,27 @@ function animate(){
     level*.12;
 
   const speed=
-    (chatMode || paused)
+    (
+      chatMode ||
+      paused
+    )
       ?0
       :5*dt;
 
   let forward=0;
   let side=0;
 
-  if(
-    keys['KeyW']
-  ){
+  if(keys['KeyW'])
     forward+=1;
-  }
 
-  if(
-    keys['KeyS']
-  ){
+  if(keys['KeyS'])
     forward-=1;
-  }
 
-  if(
-    keys['KeyA']
-  ){
+  if(keys['KeyA'])
     side-=1;
-  }
 
-  if(
-    keys['KeyD']
-  ){
+  if(keys['KeyD'])
     side+=1;
-  }
 
   if(
     pointerLocked &&
@@ -3484,14 +5052,30 @@ function animate(){
       15.5
     );
 
-  if(!paused && !chatMode){
-    verticalVelocity -= 14 * dt;
-    camera.position.y += verticalVelocity * dt;
-    if(camera.position.y <= playerHeight){
-      camera.position.y = playerHeight;
-      verticalVelocity = 0;
-      grounded = true;
+  if(
+    !paused &&
+    !chatMode
+  ){
+
+    verticalVelocity-=14*dt;
+
+    camera.position.y+=
+      verticalVelocity*dt;
+
+    if(
+      camera.position.y<=
+      playerHeight
+    ){
+
+      camera.position.y=
+        playerHeight;
+
+      verticalVelocity=0;
+
+      grounded=true;
+
     }
+
   }
 
   camera.rotation.order=
@@ -3515,7 +5099,50 @@ function animate(){
 
   }
 
-  broadcastPlayerState(performance.now());
+  broadcastPlayerState(
+    performance.now()
+  );
+
+  /* =======================================================
+     REMOTE PLAYER ANIMATION
+  ======================================================= */
+
+  remotePlayers.forEach(
+    p=>{
+
+      const t=
+        performance.now()/1000;
+
+      const swing=
+        p.moving
+          ? Math.sin(t*8)*.35
+          : 0;
+
+      const limbs=
+        p.group.children
+          .filter(
+            o=>o.isMesh
+          );
+
+      if(limbs.length>=5){
+
+        limbs[2].rotation.x=
+          swing;
+
+        limbs[3].rotation.x=
+          -swing;
+
+        limbs[4].rotation.x=
+          -swing;
+
+      }
+
+    }
+  );
+
+  /* =======================================================
+     PARTICLES
+  ======================================================= */
 
   if(particles){
 
@@ -3528,56 +5155,79 @@ function animate(){
 
   }
 
-  remotePlayers.forEach(p=>{
-    const t=performance.now()/1000;
-    const swing=p.moving?Math.sin(t*8)*.35:0;
-    const limbs=p.group.children.filter(o=>o.isMesh);
-    if(limbs.length>=5){ limbs[2].rotation.x=swing; limbs[3].rotation.x=-swing; limbs[4].rotation.x=-swing; }
-  });
+  /* =======================================================
+     SMOKE
+  ======================================================= */
 
   if(window.ewsSmoke){
-    window.ewsSmoke.children.forEach(sp=>{
-      const u=sp.userData;
-      sp.position.x=u.baseX+Math.sin(time*u.speed+u.phase)*.45;
-      sp.position.y=u.baseY+Math.sin(time*u.speed*.7+u.phase)*.18;
-      sp.position.z=u.baseZ+Math.cos(time*u.speed*.8+u.phase)*.35;
-      sp.material.opacity=.07+audioLevel*.11;
-    });
+
+    window.ewsSmoke.children.forEach(
+      sp=>{
+
+        const u=
+          sp.userData;
+
+        sp.position.x=
+          u.baseX+
+          Math.sin(
+            time*u.speed+
+            u.phase
+          )*.45;
+
+        sp.position.y=
+          u.baseY+
+          Math.sin(
+            time*u.speed*.7+
+            u.phase
+          )*.18;
+
+        sp.position.z=
+          u.baseZ+
+          Math.cos(
+            time*u.speed*.8+
+            u.phase
+          )*.35;
+
+        sp.material.opacity=
+          .07+
+          audioLevel*.11;
+
+      }
+    );
+
   }
+
+  /* =======================================================
+     LIGHTS
+  ======================================================= */
 
   if(window.ewsRedLights){
-    window.ewsRedLights.forEach((light,i)=>{
-      const pulse=.55 + bassLevel*2.2 + Math.sin(time*1.4+i*.8)*.08;
-      light.intensity=pulse;
-      light.color.setHSL(0,1,.16+.035*bassLevel);
-    });
-  }
 
-  neonObjects.forEach(
-    (obj,index)=>{
+    window.ewsRedLights.forEach(
+      (light,i)=>{
 
-      const pulse=
-        .5+
-        Math.sin(
-          time*3+
-          index*.4
-        )*.25+
-        bassLevel*.7;
+        const pulse=
+          .55+
+          bassLevel*2.2+
+          Math.sin(
+            time*1.4+
+            i*.8
+          )*.08;
 
-      const value=
-        Math.min(
+        light.intensity=
+          pulse;
+
+        light.color.setHSL(
+          0,
           1,
-          pulse
+          .16+
+          .035*bassLevel
         );
 
-      obj.material.color.setRGB(
-        value,
-        value,
-        value
-      );
+      }
+    );
 
-    }
-  );
+  }
 
   lightObjects.forEach(
     (light,index)=>{
@@ -3593,7 +5243,38 @@ function animate(){
     }
   );
 
-  if(screenCtx){
+  /* =======================================================
+     3D SCREEN
+  ======================================================= */
+
+  if(
+    streamIsLive &&
+    streamVideo &&
+    streamVideo.readyState>=2 &&
+    screenMesh &&
+    streamVideoTexture
+  ){
+
+    if(
+      screenMesh.material.map!==
+      streamVideoTexture
+    ){
+
+      screenMesh.material=
+        streamVideoMaterial;
+
+    }
+
+    streamVideoTexture.needsUpdate=true;
+
+  }else if(
+    screenCtx
+  ){
+
+    /*
+      OFFLINE / NO STREAM:
+      обычный EWS экран.
+    */
 
     screenCtx.fillStyle=
       '#050505';
@@ -3605,7 +5286,7 @@ function animate(){
       512
     );
 
-    const grd =
+    const grd=
       screenCtx.createLinearGradient(
         0,
         0,
@@ -3726,6 +5407,18 @@ function animate(){
 
     screenTexture.needsUpdate=true;
 
+    if(
+      screenMesh.material.map!==
+      screenTexture
+    ){
+
+      screenMesh.material=
+        new THREE.MeshBasicMaterial({
+          map:screenTexture
+        });
+
+    }
+
   }
 
   updateClubScreenOverlay();
@@ -3738,143 +5431,24 @@ function animate(){
 }
 
 /* =========================================================
-   REMOTE PLAYERS / SILHOUETTES
-========================================================= */
-function createRemotePlayer(data){
-  const g=new THREE.Group();
-  g.userData.username=data.username||'PLAYER';
-
-  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
-  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
-
-  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
-  torso.position.y=.78;
-  g.add(torso);
-
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
-  head.position.y=1.42;
-  g.add(head);
-
-  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
-  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
-  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
-  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
-  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
-  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
-
-  const labelCanvas=document.createElement('canvas');
-  labelCanvas.width=256; labelCanvas.height=64;
-  const ctx=labelCanvas.getContext('2d');
-  ctx.clearRect(0,0,256,64);
-  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
-  ctx.fillText(g.userData.username,128,32);
-  const tex=new THREE.CanvasTexture(labelCanvas);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
-
-  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y=Number(data.yaw)||0;
-  scene.add(g);
-  remotePlayers.set(data.id,{group:g,last:{x:g.position.x,z:g.position.z,yaw:g.rotation.y},moving:false});
-}
-
-function updateRemotePlayer(data){
-  if(!data.id || data.id===socket?.id) return;
-  if(!remotePlayers.has(data.id)) createRemotePlayer(data);
-  const p=remotePlayers.get(data.id);
-  const nx=Number(data.x)||0, nz=Number(data.z)||0;
-  const dx=nx-p.group.position.x, dz=nz-p.group.position.z;
-  p.moving=Math.hypot(dx,dz)>.002;
-  p.group.position.x=nx; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
-}
-
-function removeRemotePlayer(id){
-  const p=remotePlayers.get(id);
-  if(!p) return;
-  scene.remove(p.group);
-  p.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }});
-  remotePlayers.delete(id);
-}
-
-function broadcastPlayerState(now){
-  if(!socket || !socket.connected || !camera) return;
-  if(now-lastPlayerBroadcast<50) return;
-  lastPlayerBroadcast=now;
-  socket.emit('player-state',{x:camera.position.x,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser});
-}
-
-function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(!frame || !panel) return;
-  if(!state.active){
-    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl=''; return;
-  }
-  if(state.src && state.src!==screenMediaUrl){
-    frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
-  }
-}
-
-function togglePause(){
-  paused=!paused;
-  const panel=document.getElementById('pause-panel');
-  const backdrop=document.getElementById('pause-backdrop');
-  const button=document.getElementById('pause-toggle');
-  if(panel) panel.classList.toggle('open',paused);
-  if(backdrop) backdrop.classList.toggle('open',paused);
-  if(button) button.textContent=paused?'RESUME':'PAUSE';
-  if(paused){
-    Object.keys(keys).forEach(k=>keys[k]=false);
-    if(document.pointerLockElement) document.exitPointerLock();
-  }
-}
-
-let audioMuted=false;
-
-function toggleMute(){
-  const audio=document.getElementById('ews-audio');
-  const button=document.getElementById('pause-mute');
-  if(!audio) return;
-  audioMuted=!audioMuted;
-  audio.muted=audioMuted;
-  if(button) button.textContent=audioMuted?'UNMUTE':'MUTE';
-}
-
-function setupPauseControls(){
-  const range=document.getElementById('pause-volume');
-  const value=document.getElementById('pause-volume-value');
-  const audio=document.getElementById('ews-audio');
-  if(!range) return;
-  const apply=()=>{
-    const v=Number(range.value)/100;
-    if(audio){ audio.volume=v; audio.muted=audioMuted; }
-    if(value) value.textContent=range.value+'%';
-  };
-  range.addEventListener('input',apply);
-  apply();
-}
-
-/* =========================================================
    CLEANUP
 ========================================================= */
 
 window.addEventListener(
   'beforeunload',
-  function(){
+  ()=>{
 
     try{
 
-      if(hls){
+      if(hls)
         hls.destroy();
-      }
 
     }catch(e){}
 
     try{
 
-      if(audioContext){
+      if(audioContext)
         audioContext.close();
-      }
 
     }catch(e){}
 
