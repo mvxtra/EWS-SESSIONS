@@ -1671,60 +1671,35 @@ function createDanceFloor(){
 }
 
 function createMainScreen(){
-
-  screenCanvas =
-    document.createElement(
-      'canvas'
-    );
-
+  screenCanvas=document.createElement('canvas');
   screenCanvas.width=1024;
   screenCanvas.height=512;
+  screenCtx=screenCanvas.getContext('2d');
+  screenCtx.fillStyle='#050505';
+  screenCtx.fillRect(0,0,1024,512);
+  screenTexture=new THREE.CanvasTexture(screenCanvas);
+  screenTexture.needsUpdate=true;
 
-  screenCtx =
-    screenCanvas.getContext(
-      '2d'
-    );
-
-  screenTexture =
-    new THREE.CanvasTexture(
-      screenCanvas
-    );
-
-  const frame =
-    new THREE.Mesh(
-      new THREE.BoxGeometry(
-        16,7,.35
-      ),
-      new THREE.MeshStandardMaterial({
-        color:0x151515,
-        metalness:.7,
-        roughness:.3
-      })
-    );
-
-  frame.position.set(
-    0,3.6,-16.5
+  const frame=new THREE.Mesh(
+    new THREE.BoxGeometry(14.6,6.6,.42),
+    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
   );
-
+  frame.position.set(0,3.65,-16.72);
   scene.add(frame);
 
-  screenMesh =
-    new THREE.Mesh(
-      new THREE.PlaneGeometry(
-        15.5,
-        6.5
-      ),
-      new THREE.MeshBasicMaterial({
-        map:screenTexture
-      })
-    );
-
-  screenMesh.position.set(
-    0,3.6,-16.28
+  screenMesh=new THREE.Mesh(
+    new THREE.PlaneGeometry(14,6),
+    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
   );
-
+  screenMesh.position.set(0,3.65,-16.48);
   scene.add(screenMesh);
 
+  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
+  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
+    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
+    m.position.set(a[3],a[4],a[5]);
+    scene.add(m);
+  });
 }
 
 function createStage(){
@@ -2972,32 +2947,33 @@ function clearClubScreen(){
 function updateClubScreenOverlay(){
   const panel=document.getElementById('media-screen');
   if(!panel || !screenMesh || !camera || !renderer) return;
-
+  if(!screenMediaActive){
+    panel.style.display='none';
+    return;
+  }
   const w=renderer.domElement.clientWidth;
   const h=renderer.domElement.clientHeight;
-  if(!w || !h) return;
+  if(!w || !h){ panel.style.display='none'; return; }
 
-  const center=screenMesh.position.clone().project(camera);
-  const leftPoint=new THREE.Vector3(-7.75,3.25,-16.28).project(camera);
-  const rightPoint=new THREE.Vector3(7.75,3.25,-16.28).project(camera);
-  const topPoint=new THREE.Vector3(0,6.85,-16.28).project(camera);
-  const bottomPoint=new THREE.Vector3(0,.35,-16.28).project(camera);
+  const leftPoint=new THREE.Vector3(-7,3.65,-16.47).project(camera);
+  const rightPoint=new THREE.Vector3(7,3.65,-16.47).project(camera);
+  const topPoint=new THREE.Vector3(0,6.65,-16.47).project(camera);
+  const bottomPoint=new THREE.Vector3(0,.65,-16.47).project(camera);
+  const center=new THREE.Vector3(0,3.65,-16.47).project(camera);
 
-  const cx=(center.x*.5+.5)*w;
-  const cy=(-center.y*.5+.5)*h;
   const left=(leftPoint.x*.5+.5)*w;
   const right=(rightPoint.x*.5+.5)*w;
   const top=(-topPoint.y*.5+.5)*h;
   const bottom=(-bottomPoint.y*.5+.5)*h;
-
+  const cx=(center.x*.5+.5)*w;
+  const cy=(-center.y*.5+.5)*h;
   const width=Math.abs(right-left);
   const height=Math.abs(bottom-top);
 
-  if(center.z>1 || width<10 || height<10){
+  if(center.z>1 || width<5 || height<5){
     panel.style.display='none';
     return;
   }
-
   panel.style.display='block';
   panel.style.left=(cx-width/2)+'px';
   panel.style.top=(cy-height/2)+'px';
