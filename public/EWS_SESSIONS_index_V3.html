@@ -1,0 +1,3774 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0"
+>
+
+<title>EWS SESSIONS</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+html,
+body{
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#050505;
+  color:#fff;
+  font-family:Arial,Helvetica,sans-serif;
+}
+
+#app{
+  position:relative;
+  width:100vw;
+  height:100vh;
+}
+
+#canvas3d{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+#login{
+  position:absolute;
+  inset:0;
+  z-index:1000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(255,255,255,.08),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      #171717,
+      #030303 70%
+    );
+}
+
+.login-box{
+  width:380px;
+  padding:42px;
+
+  background:rgba(5,5,5,.88);
+
+  border:1px solid #444;
+
+  box-shadow:
+    0 0 80px rgba(255,255,255,.06),
+    inset 0 0 40px rgba(255,255,255,.02);
+
+  text-align:center;
+}
+
+.login-box h1{
+  font-size:31px;
+  letter-spacing:8px;
+  font-weight:900;
+  color:#fff;
+  margin-bottom:8px;
+}
+
+.login-box p{
+  font-size:10px;
+  letter-spacing:5px;
+  color:#777;
+  margin-bottom:30px;
+}
+
+.tabs{
+  display:flex;
+  margin-bottom:20px;
+  border:1px solid #333;
+}
+
+.tab{
+  flex:1;
+  padding:11px;
+  border:0;
+  background:#0c0c0c;
+  color:#666;
+  cursor:pointer;
+  letter-spacing:2px;
+}
+
+.tab.active{
+  background:#fff;
+  color:#000;
+}
+
+input{
+  width:100%;
+  height:45px;
+  margin-bottom:12px;
+  padding:0 14px;
+
+  border:1px solid #333;
+  background:#080808;
+  color:#fff;
+
+  outline:none;
+}
+
+input:focus{
+  border-color:#aaa;
+}
+
+.btn{
+  width:100%;
+  height:45px;
+
+  border:0;
+
+  background:#fff;
+  color:#000;
+
+  font-weight:bold;
+  letter-spacing:2px;
+
+  cursor:pointer;
+}
+
+.btn:hover{
+  background:#ddd;
+}
+
+.error{
+  min-height:20px;
+  margin-top:12px;
+  color:#ff5555;
+  font-size:12px;
+}
+
+/* =========================================================
+   HUD
+========================================================= */
+
+#hud{
+  position:absolute;
+  inset:0;
+  z-index:20;
+
+  display:none;
+
+  pointer-events:none;
+}
+
+#top-logo{
+  position:absolute;
+
+  top:18px;
+  left:20px;
+
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:5px;
+
+  text-shadow:0 0 20px #fff;
+}
+
+#top-logo span{
+  display:block;
+
+  margin-top:4px;
+
+  font-size:8px;
+  letter-spacing:3px;
+  color:#777;
+}
+
+#online-box{
+  position:absolute;
+
+  top:18px;
+  right:18px;
+
+  width:190px;
+
+  padding:13px;
+
+  background:rgba(0,0,0,.72);
+
+  border:1px solid #333;
+
+  pointer-events:auto;
+}
+
+#online-box h3{
+  font-size:10px;
+  letter-spacing:3px;
+  color:#aaa;
+  margin-bottom:9px;
+}
+
+#online-list{
+  list-style:none;
+
+  max-height:180px;
+  overflow:auto;
+
+  color:#ddd;
+  font-size:12px;
+}
+
+#online-list li{
+  padding:4px 0;
+
+  border-bottom:1px solid #161616;
+}
+
+#online-list li::before{
+  content:"●";
+
+  color:#fff;
+
+  margin-right:7px;
+
+  font-size:8px;
+}
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+#chat{
+  position:absolute;
+
+  left:18px;
+  bottom:18px;
+
+  width:390px;
+  height:250px;
+
+  padding:12px;
+
+  display:flex;
+  flex-direction:column;
+
+  background:rgba(0,0,0,.75);
+
+  border:1px solid #333;
+
+  pointer-events:auto;
+}
+
+#chat-title{
+  font-size:9px;
+  letter-spacing:3px;
+  color:#777;
+
+  margin-bottom:8px;
+}
+
+#chat-messages{
+  flex:1;
+
+  overflow-y:auto;
+
+  margin-bottom:8px;
+}
+
+.msg{
+  margin-bottom:7px;
+
+  font-size:12px;
+  line-height:1.4;
+}
+
+.msg .u{
+  color:#fff;
+  font-weight:bold;
+}
+
+.msg .t{
+  color:#aaa;
+}
+
+#chat-form{
+  display:flex;
+  gap:6px;
+}
+
+#chat-input{
+  flex:1;
+  height:35px;
+  margin:0;
+}
+
+#chat-send{
+  width:45px;
+
+  border:0;
+
+  background:#fff;
+  color:#000;
+
+  cursor:pointer;
+}
+
+
+/* =========================================================
+   CLUB SCREEN / MEDIA
+========================================================= */
+
+#screen-control{
+  position:absolute;
+  top:18px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:31;
+  pointer-events:auto;
+  height:34px;
+  padding:0 18px;
+  border:1px solid #444;
+  background:rgba(0,0,0,.78);
+  color:#fff;
+  font-size:10px;
+  font-weight:bold;
+  letter-spacing:3px;
+  cursor:pointer;
+}
+
+#screen-control:hover{
+  background:#fff;
+  color:#000;
+}
+
+#screen-menu{
+  position:absolute;
+  top:62px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:40;
+  width:min(560px,calc(100vw - 30px));
+  padding:16px;
+  background:rgba(4,4,4,.96);
+  border:1px solid #444;
+  box-shadow:0 20px 70px rgba(0,0,0,.7);
+  display:none;
+  pointer-events:auto;
+}
+
+#screen-menu.open{display:block;}
+
+#screen-menu-title{
+  font-size:10px;
+  letter-spacing:3px;
+  color:#fff;
+  margin-bottom:10px;
+}
+
+#screen-menu-row{
+  display:flex;
+  gap:7px;
+}
+
+#screen-url{
+  flex:1;
+  margin:0;
+  height:38px;
+}
+
+.screen-btn{
+  height:38px;
+  padding:0 13px;
+  border:1px solid #444;
+  background:#111;
+  color:#fff;
+  cursor:pointer;
+  font-size:10px;
+  letter-spacing:1px;
+}
+
+.screen-btn:hover{
+  background:#fff;
+  color:#000;
+}
+
+#screen-status{
+  margin-top:9px;
+  color:#777;
+  font-size:10px;
+  line-height:1.4;
+}
+
+#media-screen{
+  position:absolute;
+  z-index:15;
+  display:none;
+  overflow:hidden;
+  background:#000;
+  border:1px solid #222;
+  box-shadow:0 0 45px rgba(0,0,0,.9);
+  pointer-events:auto;
+}
+
+#media-screen.active{display:block;}
+
+#media-screen iframe{
+  width:100%;
+  height:100%;
+  border:0;
+  display:block;
+  background:#000;
+}
+
+#media-screen-close{
+  position:absolute;
+  top:7px;
+  right:7px;
+  z-index:2;
+  width:28px;
+  height:28px;
+  border:1px solid #555;
+  background:rgba(0,0,0,.85);
+  color:#fff;
+  cursor:pointer;
+  font-size:14px;
+  line-height:26px;
+}
+
+@media(max-width:700px){
+  #screen-menu-row{flex-wrap:wrap;}
+  #screen-url{flex-basis:100%;}
+}
+
+/* =========================================================
+   OTHER HUD
+========================================================= */
+
+#hint{
+  position:absolute;
+
+  right:18px;
+  bottom:18px;
+
+  padding:9px 12px;
+
+  background:rgba(0,0,0,.65);
+
+  border:1px solid #292929;
+
+  color:#777;
+
+  font-size:10px;
+  letter-spacing:1px;
+}
+
+#stream-indicator{
+  position:absolute;
+
+  top:18px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  padding:6px 12px;
+
+  background:rgba(0,0,0,.75);
+
+  border:1px solid #333;
+
+  color:#777;
+
+  font-family:monospace;
+
+  font-size:10px;
+  letter-spacing:2px;
+}
+
+#stream-indicator.live{
+  color:#fff;
+  border-color:#aaa;
+}
+
+#stream-indicator.error{
+  color:#ff5555;
+  border-color:#ff5555;
+}
+
+#lang-bar{
+  position:absolute;
+
+  right:220px;
+  top:18px;
+
+  pointer-events:auto;
+}
+
+#lang{
+  background:#080808;
+
+  border:1px solid #333;
+
+  color:#aaa;
+
+  padding:7px 10px;
+}
+
+#zone-label{
+  position:absolute;
+
+  left:50%;
+  bottom:90px;
+
+  transform:translateX(-50%);
+
+  font-size:10px;
+
+  letter-spacing:5px;
+
+  color:rgba(255,255,255,.4);
+
+  pointer-events:none;
+}
+
+#audio-control{
+  position:absolute;
+
+  top:58px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  z-index:100;
+
+  pointer-events:auto;
+
+  padding:9px 14px;
+
+  border:1px solid #444;
+
+  background:rgba(0,0,0,.78);
+
+  color:#aaa;
+
+  font-family:monospace;
+
+  font-size:10px;
+
+  letter-spacing:2px;
+
+  cursor:pointer;
+}
+
+#audio-control.live{
+  color:#fff;
+  border-color:#aaa;
+}
+
+#audio-control:disabled{
+  opacity:.7;
+  cursor:wait;
+}
+
+#ews-audio{
+  position:absolute;
+
+  width:1px;
+  height:1px;
+
+  opacity:0;
+
+  pointer-events:none;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media(max-width:700px){
+
+  #top-logo{
+    top:12px;
+    left:12px;
+    font-size:22px;
+  }
+
+  #top-logo span{
+    font-size:9px;
+  }
+
+  #lang-bar{
+    right:12px;
+    top:12px;
+  }
+
+  #lang{
+    padding:6px 7px;
+    font-size:11px;
+  }
+
+  #online-box{
+    top:52px;
+    right:12px;
+
+    width:145px;
+
+    padding:9px;
+
+    max-height:105px;
+  }
+
+  #online-list{
+    max-height:62px;
+    font-size:10px;
+  }
+
+  #online-box h3{
+    font-size:8px;
+    margin-bottom:5px;
+  }
+
+  #online-list li{
+    padding:2px 0;
+  }
+
+  #stream-indicator{
+    top:52px;
+    left:12px;
+
+    transform:none;
+
+    padding:5px 8px;
+
+    font-size:8px;
+  }
+
+  #audio-control{
+    top:84px;
+    left:12px;
+
+    transform:none;
+
+    padding:8px 10px;
+
+    font-size:8px;
+
+    z-index:150;
+  }
+
+  #chat{
+    left:10px;
+    right:10px;
+    bottom:10px;
+
+    width:auto;
+
+    height:31vh;
+
+    min-height:190px;
+    max-height:270px;
+
+    padding:9px;
+
+    z-index:200;
+
+    background:rgba(0,0,0,.86);
+  }
+
+  #chat-title{
+    font-size:8px;
+    margin-bottom:6px;
+  }
+
+  #chat-messages{
+    font-size:11px;
+    margin-bottom:6px;
+  }
+
+  .msg{
+    font-size:11px;
+    margin-bottom:5px;
+  }
+
+  #chat-input{
+    height:38px;
+
+    font-size:14px;
+
+    padding:0 9px;
+  }
+
+  #chat-send{
+    width:44px;
+
+    font-size:18px;
+  }
+
+  #hint{
+    display:none;
+  }
+
+  #zone-label{
+    bottom:calc(31vh + 20px);
+
+    font-size:8px;
+  }
+}
+
+@media(max-width:420px){
+
+  #online-box{
+    width:125px;
+  }
+
+  #chat{
+    height:34vh;
+    min-height:185px;
+  }
+
+  #zone-label{
+    bottom:calc(34vh + 20px);
+  }
+}
+
+
+
+/* =========================================================
+   EWS SESSIONS V3 — VISUAL ONLY
+   IMPORTANT: CSS ONLY. JavaScript is untouched.
+========================================================= */
+
+:root{
+  --ews-white:#f4f4f4;
+  --ews-soft:rgba(255,255,255,.72);
+  --ews-dim:rgba(255,255,255,.42);
+  --ews-line:rgba(255,255,255,.16);
+  --ews-glass:rgba(7,7,7,.72);
+}
+
+html,body{
+  background:#000;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:5;
+  pointer-events:none;
+  background:
+    linear-gradient(to bottom,rgba(255,255,255,.025),transparent 16%,transparent 84%,rgba(255,255,255,.025)),
+    radial-gradient(ellipse at center,transparent 42%,rgba(0,0,0,.46) 100%);
+  mix-blend-mode:screen;
+}
+
+#app::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:6;
+  pointer-events:none;
+  border:1px solid rgba(255,255,255,.055);
+  box-shadow:inset 0 0 90px rgba(0,0,0,.72);
+}
+
+#top-logo{
+  top:20px;
+  left:22px;
+  padding:10px 15px 9px;
+  border:1px solid var(--ews-line);
+  background:linear-gradient(135deg,rgba(0,0,0,.78),rgba(255,255,255,.045));
+  box-shadow:0 12px 35px rgba(0,0,0,.35),inset 0 0 22px rgba(255,255,255,.025);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  letter-spacing:7px;
+  text-shadow:0 0 18px rgba(255,255,255,.22);
+}
+
+#top-logo span{
+  opacity:.48;
+  letter-spacing:4px;
+}
+
+#stream-indicator,
+#audio-control,
+#screen-control,
+#lang,
+#online-box,
+#chat,
+#screen-menu,
+#hint{
+  border-color:rgba(255,255,255,.15)!important;
+  background:rgba(5,5,5,.70)!important;
+  box-shadow:0 12px 40px rgba(0,0,0,.38),inset 0 0 24px rgba(255,255,255,.025);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+
+#stream-indicator{
+  top:20px;
+  padding:8px 15px;
+  border-radius:2px;
+  color:rgba(255,255,255,.48);
+  letter-spacing:3px;
+}
+
+#stream-indicator::before{
+  content:"●";
+  margin-right:8px;
+  font-size:7px;
+  opacity:.65;
+}
+
+#stream-indicator.live{
+  color:#fff;
+  border-color:rgba(255,255,255,.34)!important;
+  box-shadow:0 0 25px rgba(255,255,255,.06),inset 0 0 20px rgba(255,255,255,.03);
+}
+
+#audio-control{
+  top:62px;
+  padding:10px 16px;
+  border-radius:2px;
+  transition:all .2s ease;
+}
+
+#audio-control:hover,
+#screen-control:hover,
+#lang:hover{
+  color:#fff;
+  border-color:rgba(255,255,255,.42)!important;
+  background:rgba(255,255,255,.08)!important;
+  box-shadow:0 0 24px rgba(255,255,255,.07),inset 0 0 20px rgba(255,255,255,.04);
+}
+
+#lang-bar{
+  top:20px;
+}
+
+#lang{
+  padding:8px 11px;
+  color:#aaa;
+  border-radius:2px;
+}
+
+#online-box{
+  top:70px;
+  right:20px;
+  width:205px;
+  padding:13px 14px;
+  border-radius:2px;
+}
+
+#online-box h3{
+  color:#fff;
+  font-size:9px;
+  letter-spacing:4px;
+  padding-bottom:9px;
+  margin-bottom:7px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+
+#online-box h3::after{
+  content:" / LIVE ROOM";
+  color:rgba(255,255,255,.28);
+  letter-spacing:2px;
+}
+
+#online-list li{
+  border-bottom:1px solid rgba(255,255,255,.055);
+  padding:5px 2px;
+  color:rgba(255,255,255,.65);
+  transition:background .2s ease,color .2s ease;
+}
+
+#online-list li:hover{
+  background:rgba(255,255,255,.045);
+  color:#fff;
+}
+
+#chat{
+  left:20px;
+  bottom:20px;
+  width:350px;
+  height:285px;
+  padding:13px;
+  border-radius:2px;
+}
+
+#chat-title{
+  color:#fff;
+  letter-spacing:4px;
+  padding-bottom:9px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+
+#chat-title::after{
+  content:"  EWS SESSIONS";
+  color:rgba(255,255,255,.25);
+  letter-spacing:2px;
+}
+
+#chat-messages{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.25) transparent;
+}
+
+#chat-messages::-webkit-scrollbar{width:3px}
+#chat-messages::-webkit-scrollbar-track{background:transparent}
+#chat-messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22)}
+
+#chat-input{
+  background:rgba(255,255,255,.035)!important;
+  border-color:rgba(255,255,255,.12)!important;
+  color:#fff;
+  transition:border-color .2s ease,background .2s ease;
+}
+
+#chat-input:focus{
+  background:rgba(255,255,255,.06)!important;
+  border-color:rgba(255,255,255,.35)!important;
+  outline:none;
+}
+
+#chat-send{
+  border-color:rgba(255,255,255,.15)!important;
+  background:rgba(255,255,255,.055)!important;
+  transition:all .2s ease;
+}
+
+#chat-send:hover{
+  background:#fff!important;
+  color:#000!important;
+}
+
+#screen-control{
+  border-radius:2px;
+  transition:all .2s ease;
+}
+
+#screen-menu{
+  border-radius:2px;
+  box-shadow:0 18px 60px rgba(0,0,0,.55),inset 0 0 30px rgba(255,255,255,.025);
+}
+
+#media-screen{
+  filter:contrast(1.04);
+}
+
+#zone-label{
+  bottom:92px;
+  padding:7px 13px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(0,0,0,.38);
+  letter-spacing:6px;
+  text-shadow:0 0 18px rgba(255,255,255,.18);
+}
+
+#hint{
+  right:20px;
+  bottom:20px;
+  color:rgba(255,255,255,.42);
+  letter-spacing:2px;
+}
+
+/* Subtle cinematic scanlines over the interface only. */
+#hud::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:.035;
+  background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,.7) 4px);
+  mix-blend-mode:screen;
+}
+
+@media(max-width:700px){
+  #top-logo{top:12px;left:12px}
+  #online-box{top:52px;right:12px}
+  #chat{left:10px;right:10px;bottom:10px}
+  #zone-label{padding:5px 9px}
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+
+<canvas id="canvas3d"></canvas>
+
+<audio
+  id="ews-audio"
+  crossorigin="anonymous"
+  playsinline
+  preload="none">
+</audio>
+
+<!-- =====================================================
+     LOGIN
+===================================================== -->
+
+<div id="login">
+
+  <div class="login-box">
+
+    <h1>EWS</h1>
+
+    <p>
+      SESSIONS / UNDERGROUND CLUB
+    </p>
+
+    <div class="tabs">
+
+      <button
+        class="tab active"
+        onclick="switchTab('login')">
+        ВХОД
+      </button>
+
+      <button
+        class="tab"
+        onclick="switchTab('register')">
+        РЕГИСТРАЦИЯ
+      </button>
+
+    </div>
+
+    <input
+      id="f-username"
+      placeholder="USERNAME"
+      autocomplete="username"
+    >
+
+    <input
+      id="f-password"
+      type="password"
+      placeholder="PASSWORD"
+      autocomplete="current-password"
+    >
+
+    <button
+      class="btn"
+      id="submitBtn"
+      onclick="doLogin()">
+      ВОЙТИ
+    </button>
+
+    <div
+      id="error"
+      class="error">
+    </div>
+
+  </div>
+
+</div>
+
+<!-- =====================================================
+     HUD
+===================================================== -->
+
+<div id="hud">
+
+  <div id="top-logo">
+    EWS
+    <span>SESSIONS</span>
+  </div>
+
+  <div id="stream-indicator">
+    AUDIO: READY
+  </div>
+
+  <button
+    id="audio-control"
+    onclick="startSSHAudio()">
+    ▶ AUDIO: START
+  </button>
+
+  <button
+    id="screen-control"
+    onclick="toggleScreenMenu()">
+    SCREEN
+  </button>
+
+  <div id="screen-menu">
+    <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
+    <div id="screen-menu-row">
+      <input
+        id="screen-url"
+        type="url"
+        placeholder="YouTube / Twitch / website URL"
+        autocomplete="off"
+      >
+      <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
+      <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
+    </div>
+    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
+  </div>
+
+  <div id="lang-bar">
+
+    <select id="lang">
+
+      <option value="ru">RU</option>
+      <option value="en">EN</option>
+      <option value="es">ES</option>
+      <option value="de">DE</option>
+      <option value="fr">FR</option>
+      <option value="zh">中文</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="ar">AR</option>
+      <option value="hi">HI</option>
+      <option value="pt">PT</option>
+      <option value="it">IT</option>
+      <option value="tr">TR</option>
+      <option value="uk">UA</option>
+
+    </select>
+
+  </div>
+
+  <div id="online-box">
+
+    <h3>
+      ONLINE
+    </h3>
+
+    <ul id="online-list"></ul>
+
+  </div>
+
+  <div id="chat">
+
+    <div id="chat-title">
+      EWS SESSIONS / CHAT
+    </div>
+
+    <div id="chat-messages"></div>
+
+    <form id="chat-form">
+
+      <input
+        id="chat-input"
+        autocomplete="off"
+        placeholder="write something..."
+      >
+
+      <button id="chat-send">
+        →
+      </button>
+
+    </form>
+
+  </div>
+
+  <div id="media-screen">
+    <button id="media-screen-close" onclick="clearClubScreen()">×</button>
+    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </div>
+
+  <div id="zone-label">
+    MAIN FLOOR
+  </div>
+
+  <div id="hint">
+    WASD MOVE · MOUSE LOOK · C CHAT
+  </div>
+
+</div>
+
+</div>
+
+<script>
+
+let mode='login';
+
+let socket=null;
+let currentUser=null;
+
+let scene;
+let camera;
+let renderer;
+
+let keys={};
+
+let yaw=0;
+let pitch=0;
+
+let pointerLocked=false;
+let chatMode=false;
+
+let clock=new THREE.Clock();
+
+let neonObjects=[];
+let lightObjects=[];
+
+let particles;
+
+let analyser=null;
+let freqData=null;
+
+let audioLevel=0;
+let bassLevel=0;
+
+let audioContext=null;
+let audioSource=null;
+
+let audioStarted=false;
+
+let hls=null;
+
+let screenTexture;
+let screenCanvas;
+let screenCtx;
+let screenMesh;
+let screenMediaActive=false;
+let screenMediaUrl='';
+let onlineUserList=[];
+let remotePlayers=new Map();
+let lastPlayerBroadcast=0;
+let clubScreenHost=null;
+
+let playerBody;
+
+/* =========================================================
+   EWS TEXTURES
+   CC0 seamless textures from ShareTextures
+========================================================= */
+
+const EWS_TEXTURES = {
+  concrete: 'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
+  floor: 'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+};
+
+const ewsTextureLoader = new THREE.TextureLoader();
+
+function loadEWSTexture(url, repeatX=4, repeatY=4){
+  const texture = ewsTextureLoader.load(url);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 8);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+function switchTab(type){
+
+  mode=type;
+
+  document
+    .querySelectorAll('.tab')
+    .forEach(
+      t=>t.classList.remove('active')
+    );
+
+  if(type==='login'){
+
+    document
+      .querySelectorAll('.tab')[0]
+      .classList.add('active');
+
+    document.getElementById(
+      'submitBtn'
+    ).textContent='ВОЙТИ';
+
+  }else{
+
+    document
+      .querySelectorAll('.tab')[1]
+      .classList.add('active');
+
+    document.getElementById(
+      'submitBtn'
+    ).textContent='СОЗДАТЬ АККАУНТ';
+
+  }
+
+  document.getElementById(
+    'error'
+  ).textContent='';
+
+}
+
+async function doLogin(){
+
+  const username =
+    document
+      .getElementById('f-username')
+      .value
+      .trim();
+
+  const password =
+    document
+      .getElementById('f-password')
+      .value;
+
+  const error =
+    document.getElementById('error');
+
+  error.textContent='';
+
+  if(!username || !password){
+
+    error.textContent=
+      'Введите логин и пароль';
+
+    return;
+  }
+
+  try{
+
+    const res =
+      await fetch(
+        '/api/'+mode,
+        {
+          method:'POST',
+
+          headers:{
+            'Content-Type':
+              'application/json'
+          },
+
+          body:JSON.stringify({
+            username,
+            password
+          })
+        }
+      );
+
+    const data =
+      await res.json();
+
+    if(data.error){
+
+      error.textContent=
+        data.error;
+
+      return;
+    }
+
+    startSession(username);
+
+  }catch(err){
+
+    console.error(err);
+
+    error.textContent=
+      'Ошибка соединения';
+
+  }
+
+}
+
+/* =========================================================
+   SESSION
+========================================================= */
+
+function startSession(username){
+
+  currentUser=username;
+
+  document.getElementById(
+    'login'
+  ).style.display='none';
+
+  document.getElementById(
+    'hud'
+  ).style.display='block';
+
+  init3D();
+
+  socket=io();
+
+  socket.on('connect',function(){
+
+    socket.emit(
+      'join',
+      {
+        username: currentUser,
+        language:
+          document.getElementById('lang').value
+      }
+    );
+
+  });
+
+  socket.on(
+    'online-users',
+    list=>{
+
+      onlineUserList=Array.isArray(list)?list:[];
+      clubScreenHost=onlineUserList.length? (typeof onlineUserList[0]==='string'?onlineUserList[0]:onlineUserList[0].username) : currentUser;
+
+      const ul =
+        document.getElementById('online-list');
+
+      ul.innerHTML='';
+
+      const screenButton=document.getElementById('screen-control');
+      if(screenButton){ screenButton.style.display=isClubHost()?'block':'none'; }
+
+      if(!Array.isArray(list)) return;
+
+      list.forEach(user=>{
+
+        const li =
+          document.createElement('li');
+
+        const name =
+          typeof user === 'string'
+            ? user
+            : user.username;
+
+        li.textContent =
+          name === currentUser
+            ? name + ' (YOU)'
+            : name;
+
+        ul.appendChild(li);
+
+      });
+
+    }
+  );
+
+  // Compatibility with an older server version.
+  socket.on('online',list=>{
+
+    if(socket.connected){
+      socket.emit('request-online');
+    }
+
+  });
+
+  socket.on(
+    'chat-message',
+    message=>{
+
+      const el =
+        document.createElement(
+          'div'
+        );
+
+      el.className='msg';
+
+      const time =
+        new Date(
+          message.ts
+        ).toLocaleTimeString();
+
+      const user =
+        document.createElement(
+          'span'
+        );
+
+      user.className='u';
+
+      user.textContent=
+        message.user;
+
+      const text =
+        document.createElement(
+          'span'
+        );
+
+      text.className='t';
+
+      text.textContent=
+        ' '+time+' '+message.text;
+
+      el.appendChild(user);
+
+      el.appendChild(
+        document.createTextNode(' ')
+      );
+
+      el.appendChild(text);
+
+      const box =
+        document.getElementById(
+          'chat-messages'
+        );
+
+      box.appendChild(el);
+
+      box.scrollTop=
+        box.scrollHeight;
+
+    }
+  );
+
+  socket.on('club-screen-state', state=>{
+    if(!state || !state.src) return;
+    applyRemoteClubScreen(state);
+  });
+
+  socket.on('player-state', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
+  socket.on('player-left', id=>{
+    removeRemotePlayer(id);
+  });
+
+}
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+document
+  .getElementById('chat-form')
+  .addEventListener(
+    'submit',
+    function(e){
+
+      e.preventDefault();
+
+      if(!socket)return;
+
+      const input =
+        document.getElementById(
+          'chat-input'
+        );
+
+      const text =
+        input.value.trim();
+
+      if(!text)return;
+
+      socket.emit(
+        'chat-message',
+        {
+          user:currentUser,
+          text:text,
+
+          lang:
+            document.getElementById(
+              'lang'
+            ).value
+        }
+      );
+
+      input.value='';
+
+    }
+  );
+
+/* =========================================================
+   LANGUAGE
+========================================================= */
+
+document
+  .getElementById('lang')
+  .addEventListener(
+    'change',
+    function(){
+
+      if(socket){
+
+        socket.emit(
+          'language-change',
+          this.value
+        );
+
+      }
+
+    }
+  );
+
+/* =========================================================
+   THREE.JS
+========================================================= */
+
+function init3D(){
+
+  scene =
+    new THREE.Scene();
+
+  scene.background =
+    new THREE.Color(
+      0x000000
+    );
+
+  scene.fog =
+    new THREE.FogExp2(
+      0x000000,
+      0.045
+    );
+
+  camera =
+    new THREE.PerspectiveCamera(
+      72,
+      innerWidth/innerHeight,
+      0.1,
+      150
+    );
+
+  camera.position.set(
+    0,
+    1.7,
+    13
+  );
+
+  renderer =
+    new THREE.WebGLRenderer({
+      canvas:
+        document.getElementById(
+          'canvas3d'
+        ),
+
+      antialias:true
+    });
+
+  renderer.setSize(
+    innerWidth,
+    innerHeight
+  );
+
+  renderer.setPixelRatio(
+    Math.min(
+      devicePixelRatio,
+      2
+    )
+  );
+
+  renderer.shadowMap.enabled=true;
+
+  renderer.shadowMap.type =
+    THREE.PCFSoftShadowMap;
+
+  const ambient =
+    new THREE.AmbientLight(
+      0xffffff,
+      0.045
+    );
+
+  scene.add(ambient);
+
+  const ceilingLight =
+    new THREE.PointLight(
+      0xffffff,
+      0.65,
+      40
+    );
+
+  ceilingLight.position.set(
+    0,
+    5.5,
+    -5
+  );
+
+  scene.add(
+    ceilingLight
+  );
+
+  lightObjects.push(
+    ceilingLight
+  );
+
+  createLight(
+    -7,3,-7,
+    0xffffff,
+    1.6,
+    16
+  );
+
+  createLight(
+    7,3,-7,
+    0xffffff,
+    1.6,
+    16
+  );
+
+  createLight(
+    -8,2,5,
+    0x666666,
+    0.8,
+    14
+  );
+
+  createLight(
+    8,2,5,
+    0x666666,
+    0.8,
+    14
+  );
+
+  createFloor();
+  createCeiling();
+  createWalls();
+  createDanceFloor();
+  createMainScreen();
+  createStage();
+  createBar();
+  createLounge();
+  createColumns();
+  createEntrance();
+  createNeonArchitecture();
+  createCeilingBeams();
+  createSpeakers();
+  createParticles();
+  createPlayer();
+
+  setupAudio();
+
+  setupControls();
+
+  animate();
+
+}
+
+/* =========================================================
+   OBJECTS
+========================================================= */
+
+function createBox(
+  w,h,d,
+  x,y,z,
+  material,
+  cast=true,
+  receive=true
+){
+
+  const mesh =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        w,h,d
+      ),
+      material
+    );
+
+  mesh.position.set(
+    x,y,z
+  );
+
+  mesh.castShadow=
+    cast;
+
+  mesh.receiveShadow=
+    receive;
+
+  scene.add(mesh);
+
+  return mesh;
+
+}
+
+function createLight(
+  x,y,z,
+  color,
+  intensity,
+  distance
+){
+
+  const light =
+    new THREE.PointLight(
+      color,
+      intensity,
+      distance
+    );
+
+  light.position.set(
+    x,y,z
+  );
+
+  light.castShadow=true;
+
+  scene.add(light);
+
+  lightObjects.push(
+    light
+  );
+
+  return light;
+
+}
+
+function createFloor(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.floor,8,10);
+
+  const mat = new THREE.MeshStandardMaterial({
+    map:texture,
+    color:0x121212,
+    metalness:.18,
+    roughness:.82
+  });
+
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(36,42),
+    mat
+  );
+
+  floor.rotation.x=-Math.PI/2;
+  floor.receiveShadow=true;
+  scene.add(floor);
+}
+
+function createCeiling(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.concrete,7,8);
+
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(36,42),
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x080808,
+      roughness:1
+    })
+  );
+
+  ceiling.rotation.x=Math.PI/2;
+  ceiling.position.y=6;
+  scene.add(ceiling);
+}
+
+function createWalls(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.concrete,6,2);
+
+  const mat = new THREE.MeshStandardMaterial({
+    map:texture,
+    color:0x101010,
+    roughness:.93,
+    metalness:.04
+  });
+
+  createBox(36,6,.5,0,3,-17,mat);
+  createBox(36,6,.5,0,3,17,mat);
+  createBox(.5,6,34,-18,3,0,mat);
+  createBox(.5,6,34,18,3,0,mat);
+}
+
+function createDanceFloor(){
+
+  const floor =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        14,.12,14
+      ),
+      new THREE.MeshStandardMaterial({
+        map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
+        color:0x151515,
+        metalness:.35,
+        roughness:.58
+      })
+    );
+
+  floor.position.set(
+    0,.08,-1
+  );
+
+  floor.receiveShadow=true;
+
+  scene.add(floor);
+
+  const frameMat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  const lines=[
+    [-7,.16,-1,14,.04,.04],
+    [7,.16,-1,14,.04,.04],
+    [0,.16,-8,.04,.04,14],
+    [0,.16,6,.04,.04,14]
+  ];
+
+  lines.forEach(
+    l=>{
+
+      const mesh =
+        createBox(
+          l[3],
+          l[4],
+          l[5],
+          l[0],
+          l[1],
+          l[2],
+          frameMat,
+          false,
+          false
+        );
+
+      neonObjects.push(
+        mesh
+      );
+
+    }
+  );
+
+}
+
+function createMainScreen(){
+
+  screenCanvas =
+    document.createElement(
+      'canvas'
+    );
+
+  screenCanvas.width=1024;
+  screenCanvas.height=512;
+
+  screenCtx =
+    screenCanvas.getContext(
+      '2d'
+    );
+
+  screenTexture =
+    new THREE.CanvasTexture(
+      screenCanvas
+    );
+
+  const frame =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        16,7,.35
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0x151515,
+        metalness:.7,
+        roughness:.3
+      })
+    );
+
+  frame.position.set(
+    0,3.6,-16.5
+  );
+
+  scene.add(frame);
+
+  screenMesh =
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        15.5,
+        6.5
+      ),
+      new THREE.MeshBasicMaterial({
+        map:screenTexture
+      })
+    );
+
+  screenMesh.position.set(
+    0,3.6,-16.28
+  );
+
+  scene.add(screenMesh);
+
+}
+
+function createStage(){
+
+  const stageMat =
+    new THREE.MeshStandardMaterial({
+      color:0x111111,
+      metalness:.6,
+      roughness:.35
+    });
+
+  createBox(
+    17,.45,3,
+    0,.3,-12.5,
+    stageMat
+  );
+
+  const stripMat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  const strip =
+    createBox(
+      16,.04,.08,
+      0,.54,-11,
+      stripMat,
+      false,
+      false
+    );
+
+  neonObjects.push(
+    strip
+  );
+
+}
+
+function createBar(){
+
+  const wood =
+    new THREE.MeshStandardMaterial({
+      color:0x141414,
+      metalness:.3,
+      roughness:.55
+    });
+
+  createBox(
+    8,1.1,2,
+    -12,.65,7,
+    wood
+  );
+
+  createBox(
+    8.5,.15,2.3,
+    -12,1.25,7,
+    new THREE.MeshStandardMaterial({
+      color:0xdddddd,
+      metalness:.7,
+      roughness:.25
+    })
+  );
+
+  for(
+    let i=0;
+    i<5;
+    i++
+  ){
+
+    const bottle =
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .07,
+          .09,
+          .65,
+          12
+        ),
+        new THREE.MeshStandardMaterial({
+          color:0x888888,
+          metalness:.6,
+          roughness:.25
+        })
+      );
+
+    bottle.position.set(
+      -15+i*.8,
+      1.7,
+      6.5
+    );
+
+    scene.add(bottle);
+
+  }
+
+}
+
+function createLounge(){
+
+  const sofaMat =
+    new THREE.MeshStandardMaterial({
+      color:0x181818,
+      roughness:.9
+    });
+
+  createBox(
+    6,.8,1.6,
+    11,.7,8,
+    sofaMat
+  );
+
+  createBox(
+    1.6,1.4,5.5,
+    14,1.2,8,
+    sofaMat
+  );
+
+  for(
+    let i=0;
+    i<3;
+    i++
+  ){
+
+    const table =
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .65,
+          .65,
+          .08,
+          32
+        ),
+        new THREE.MeshStandardMaterial({
+          color:0x101010,
+          metalness:.7
+        })
+      );
+
+    table.position.set(
+      8+i*3,
+      .75,
+      4
+    );
+
+    scene.add(table);
+
+  }
+
+}
+
+function createColumns(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x101010,
+      metalness:.55,
+      roughness:.35
+    });
+
+  const positions=[
+    [-15,5],
+    [15,5],
+    [-15,-5],
+    [15,-5]
+  ];
+
+  positions.forEach(
+    p=>{
+
+      createBox(
+        1,6,1,
+        p[0],
+        3,
+        p[1],
+        mat
+      );
+
+      const ring =
+        new THREE.Mesh(
+          new THREE.TorusGeometry(
+            .72,
+            .06,
+            8,
+            32
+          ),
+          new THREE.MeshBasicMaterial({
+            color:0xffffff
+          })
+        );
+
+      ring.position.set(
+        p[0],
+        2,
+        p[1]
+      );
+
+      scene.add(ring);
+
+      neonObjects.push(
+        ring
+      );
+
+    }
+  );
+
+}
+
+function createEntrance(){
+
+  const frameMat =
+    new THREE.MeshStandardMaterial({
+      color:0x191919,
+      metalness:.7
+    });
+
+  createBox(
+    7,5.5,.6,
+    0,2.75,16.3,
+    frameMat
+  );
+
+  createBox(
+    5.8,4.7,.1,
+    0,2.35,15.98,
+    new THREE.MeshBasicMaterial({
+      color:0x020202
+    }),
+    false,
+    false
+  );
+
+  const signCanvas =
+    document.createElement(
+      'canvas'
+    );
+
+  signCanvas.width=600;
+  signCanvas.height=160;
+
+  const ctx =
+    signCanvas.getContext(
+      '2d'
+    );
+
+  ctx.fillStyle='#050505';
+
+  ctx.fillRect(
+    0,
+    0,
+    600,
+    160
+  );
+
+  ctx.fillStyle='#fff';
+
+  ctx.font=
+    'bold 58px Arial';
+
+  ctx.textAlign='center';
+
+  ctx.fillText(
+    'EWS SESSIONS',
+    300,
+    95
+  );
+
+  const tex =
+    new THREE.CanvasTexture(
+      signCanvas
+    );
+
+  const sign =
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        5,
+        1.35
+      ),
+      new THREE.MeshBasicMaterial({
+        map:tex
+      })
+    );
+
+  sign.position.set(
+    0,
+    5.4,
+    15.65
+  );
+
+  scene.add(sign);
+
+}
+
+function createNeonArchitecture(){
+
+  const mat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  for(
+    let z=-14;
+    z<=14;
+    z+=4
+  ){
+
+    const left =
+      createBox(
+        .06,4,.06,
+        -17.5,
+        3,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    const right =
+      createBox(
+        .06,4,.06,
+        17.5,
+        3,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    neonObjects.push(
+      left,
+      right
+    );
+
+  }
+
+  for(
+    let z=-15;
+    z<=15;
+    z+=5
+  ){
+
+    const beam =
+      createBox(
+        34,.05,.05,
+        0,
+        5.4,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    neonObjects.push(
+      beam
+    );
+
+  }
+
+}
+
+function createCeilingBeams(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x151515,
+      metalness:.8,
+      roughness:.3
+    });
+
+  for(
+    let x=-14;
+    x<=14;
+    x+=4
+  ){
+
+    createBox(
+      .3,.3,34,
+      x,5.7,0,
+      mat
+    );
+
+  }
+
+}
+
+function createSpeakers(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x050505,
+      metalness:.4,
+      roughness:.7
+    });
+
+  const positions=[
+    [-8,2,-11],
+    [8,2,-11],
+    [-11,2,-10],
+    [11,2,-10]
+  ];
+
+  positions.forEach(
+    p=>{
+
+      createBox(
+        1.2,2.5,.8,
+        p[0],
+        p[1],
+        p[2],
+        mat
+      );
+
+      for(
+        let i=0;
+        i<3;
+        i++
+      ){
+
+        const cone =
+          new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              .23,
+              .23,
+              .12,
+              24
+            ),
+            new THREE.MeshBasicMaterial({
+              color:0xaaaaaa
+            })
+          );
+
+        cone.rotation.x=
+          Math.PI/2;
+
+        cone.position.set(
+          p[0],
+          1.3+i*.6,
+          p[2]-.45
+        );
+
+        scene.add(cone);
+
+      }
+
+    }
+  );
+
+}
+
+function createParticles(){
+
+  const count=900;
+
+  const geo =
+    new THREE.BufferGeometry();
+
+  const pos =
+    new Float32Array(
+      count*3
+    );
+
+  for(
+    let i=0;
+    i<count;
+    i++
+  ){
+
+    pos[i*3]=
+      (Math.random()-.5)*34;
+
+    pos[i*3+1]=
+      Math.random()*5.8;
+
+    pos[i*3+2]=
+      (Math.random()-.5)*34;
+
+  }
+
+  geo.setAttribute(
+    'position',
+    new THREE.BufferAttribute(
+      pos,
+      3
+    )
+  );
+
+  particles =
+    new THREE.Points(
+      geo,
+      new THREE.PointsMaterial({
+        color:0xffffff,
+        size:.035,
+        transparent:true,
+        opacity:.28
+      })
+    );
+
+  scene.add(
+    particles
+  );
+
+}
+
+function createPlayer(){
+
+  playerBody =
+    new THREE.Group();
+
+  const body =
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        .25,
+        .32,
+        1,
+        12
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xffffff,
+        roughness:.7
+      })
+    );
+
+  body.position.y=.5;
+
+  playerBody.add(
+    body
+  );
+
+  const head =
+    new THREE.Mesh(
+      new THREE.SphereGeometry(
+        .23,
+        16,
+        16
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xdddddd,
+        roughness:.7
+      })
+    );
+
+  head.position.y=1.25;
+
+  playerBody.add(
+    head
+  );
+
+  playerBody.position.set(
+    0,
+    0,
+    13
+  );
+
+  scene.add(
+    playerBody
+  );
+
+}
+
+/* =========================================================
+   AUDIO
+========================================================= */
+
+function setupAudio(){
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  indicator.textContent=
+    'AUDIO: READY';
+
+  indicator.classList.remove(
+    'live',
+    'error'
+  );
+
+  button.textContent=
+    '▶ AUDIO: START';
+
+  button.classList.remove(
+    'live'
+  );
+
+}
+
+async function startSSHAudio(){
+
+  const audio =
+    document.getElementById(
+      'ews-audio'
+    );
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  if(!audio)return;
+
+  const hlsUrl =
+    window.location.origin+
+    '/hls/ews/index.m3u8';
+
+  indicator.classList.remove(
+    'error'
+  );
+
+  indicator.classList.add(
+    'live'
+  );
+
+  indicator.textContent=
+    'AUDIO: CONNECTING...';
+
+  button.disabled=true;
+
+  button.textContent=
+    '● AUDIO: CONNECTING';
+
+  try{
+
+    if(!audioContext){
+
+      audioContext =
+        new(
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+      audioSource =
+        audioContext.createMediaElementSource(
+          audio
+        );
+
+      analyser =
+        audioContext.createAnalyser();
+
+      analyser.fftSize=256;
+
+      analyser.smoothingTimeConstant=.82;
+
+      freqData =
+        new Uint8Array(
+          analyser.frequencyBinCount
+        );
+
+      audioSource.connect(
+        analyser
+      );
+
+      analyser.connect(
+        audioContext.destination
+      );
+
+    }
+
+    if(
+      audioContext.state===
+      'suspended'
+    ){
+
+      await audioContext.resume();
+
+    }
+
+    if(hls){
+
+      try{
+        hls.destroy();
+      }catch(e){}
+
+      hls=null;
+
+    }
+
+    if(
+      window.Hls &&
+      Hls.isSupported()
+    ){
+
+      hls =
+        new Hls({
+
+          enableWorker:true,
+
+          lowLatencyMode:true,
+
+          backBufferLength:30,
+
+          maxBufferLength:10,
+
+          maxMaxBufferLength:20,
+
+          liveSyncDurationCount:3,
+
+          liveMaxLatencyDurationCount:6
+
+        });
+
+      hls.loadSource(
+        hlsUrl
+      );
+
+      hls.attachMedia(
+        audio
+      );
+
+      hls.on(
+        Hls.Events.MANIFEST_PARSED,
+        async function(){
+
+          indicator.textContent=
+            'AUDIO: LIVE';
+
+          button.textContent=
+            '● AUDIO: LIVE';
+
+          button.classList.add(
+            'live'
+          );
+
+          button.disabled=false;
+
+          audioStarted=true;
+
+          try{
+
+            await audio.play();
+
+          }catch(err){
+
+            console.warn(
+              'Audio play blocked:',
+              err
+            );
+
+            indicator.textContent=
+              'AUDIO: PRESS START';
+
+            button.textContent=
+              '▶ AUDIO: START';
+
+            button.classList.remove(
+              'live'
+            );
+
+          }
+
+        }
+      );
+
+      hls.on(
+        Hls.Events.ERROR,
+        function(
+          event,
+          data
+        ){
+
+          console.error(
+            '[HLS]',
+            data
+          );
+
+          if(!data.fatal)return;
+
+          if(
+            data.type===
+            Hls.ErrorTypes.NETWORK_ERROR
+          ){
+
+            indicator.textContent=
+              'AUDIO: RECONNECTING...';
+
+            button.textContent=
+              '● AUDIO: RECONNECTING';
+
+            setTimeout(
+              function(){
+
+                if(hls){
+
+                  try{
+                    hls.startLoad();
+                  }catch(e){}
+
+                }
+
+              },
+              1000
+            );
+
+          }
+
+          else if(
+            data.type===
+            Hls.ErrorTypes.MEDIA_ERROR
+          ){
+
+            indicator.textContent=
+              'AUDIO: RECOVERING...';
+
+            try{
+
+              hls.recoverMediaError();
+
+            }catch(e){
+
+              console.error(e);
+
+            }
+
+          }
+
+          else{
+
+            indicator.textContent=
+              'AUDIO: NO STREAM';
+
+            indicator.classList.remove(
+              'live'
+            );
+
+            indicator.classList.add(
+              'error'
+            );
+
+            button.textContent=
+              '▶ AUDIO: RETRY';
+
+            button.classList.remove(
+              'live'
+            );
+
+            button.disabled=false;
+
+          }
+
+        }
+      );
+
+    }
+
+    else if(
+      audio.canPlayType(
+        'application/vnd.apple.mpegurl'
+      )
+    ){
+
+      audio.src=
+        hlsUrl;
+
+      audio.addEventListener(
+        'loadedmetadata',
+        async function(){
+
+          try{
+
+            await audio.play();
+
+          }catch(err){
+
+            console.error(err);
+
+          }
+
+        },
+        {
+          once:true
+        }
+      );
+
+    }
+
+    else{
+
+      throw new Error(
+        'HLS is not supported by this browser'
+      );
+
+    }
+
+    audio.onplaying=function(){
+
+      indicator.textContent=
+        'AUDIO: LIVE';
+
+      indicator.classList.add(
+        'live'
+      );
+
+      indicator.classList.remove(
+        'error'
+      );
+
+      button.textContent=
+        '● AUDIO: LIVE';
+
+      button.classList.add(
+        'live'
+      );
+
+      button.disabled=false;
+
+      audioStarted=true;
+
+    };
+
+    audio.onpause=function(){
+
+      if(
+        audioStarted &&
+        !audio.ended
+      ){
+
+        indicator.textContent=
+          'AUDIO: PAUSED';
+
+        button.textContent=
+          '▶ AUDIO: RESUME';
+
+        button.classList.remove(
+          'live'
+        );
+
+      }
+
+    };
+
+    audio.onerror=function(){
+
+      console.error(
+        '[AUDIO]',
+        audio.error
+      );
+
+      indicator.textContent=
+        'AUDIO: ERROR';
+
+      indicator.classList.remove(
+        'live'
+      );
+
+      indicator.classList.add(
+        'error'
+      );
+
+      button.textContent=
+        '▶ AUDIO: RETRY';
+
+      button.classList.remove(
+        'live'
+      );
+
+      button.disabled=false;
+
+    };
+
+  }catch(err){
+
+    console.error(
+      '[EWS AUDIO ERROR]',
+      err
+    );
+
+    indicator.textContent=
+      'AUDIO: NO STREAM';
+
+    indicator.classList.remove(
+      'live'
+    );
+
+    indicator.classList.add(
+      'error'
+    );
+
+    button.textContent=
+      '▶ AUDIO: RETRY';
+
+    button.classList.remove(
+      'live'
+    );
+
+    button.disabled=false;
+
+  }
+
+}
+
+/* =========================================================
+   CONTROLS
+========================================================= */
+
+function setupControls(){
+
+  window.addEventListener(
+    'resize',
+    function(){
+
+      if(
+        !camera ||
+        !renderer
+      ){
+        return;
+      }
+
+      camera.aspect=
+        innerWidth/
+        innerHeight;
+
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(
+        innerWidth,
+        innerHeight
+      );
+
+    }
+  );
+
+  window.addEventListener(
+    'keydown',
+    function(e){
+
+      keys[e.code]=true;
+
+      if(
+        e.code==='KeyC'
+      ){
+
+        chatMode=
+          !chatMode;
+
+        toggleChat();
+
+      }
+
+    }
+  );
+
+  window.addEventListener(
+    'keyup',
+    function(e){
+
+      keys[e.code]=false;
+
+    }
+  );
+
+  const canvas =
+    document.getElementById(
+      'canvas3d'
+    );
+
+  canvas.addEventListener(
+    'click',
+    function(){
+
+      if(!chatMode){
+
+        canvas.requestPointerLock();
+
+      }
+
+    }
+  );
+
+  document.addEventListener(
+    'pointerlockchange',
+    function(){
+
+      pointerLocked=
+        document.pointerLockElement===
+        canvas;
+
+    }
+  );
+
+  document.addEventListener(
+    'mousemove',
+    function(e){
+
+      if(!pointerLocked)return;
+
+      yaw-=
+        e.movementX*.002;
+
+      pitch-=
+        e.movementY*.002;
+
+      pitch=
+        Math.max(
+          -1.45,
+          Math.min(
+            1.45,
+            pitch
+          )
+        );
+
+    }
+  );
+
+}
+
+function toggleChat(){
+
+  const input =
+    document.getElementById(
+      'chat-input'
+    );
+
+  if(chatMode){
+
+    document.exitPointerLock();
+
+    input.focus();
+
+  }else{
+
+    input.blur();
+
+  }
+
+}
+
+
+/* =========================================================
+   CLUB SCREEN MEDIA
+========================================================= */
+
+function toggleScreenMenu(){
+  const menu=document.getElementById('screen-menu');
+  if(!menu) return;
+  menu.classList.toggle('open');
+  if(menu.classList.contains('open')){
+    const input=document.getElementById('screen-url');
+    setTimeout(()=>input && input.focus(),40);
+  }
+}
+
+function setScreenStatus(text){
+  const el=document.getElementById('screen-status');
+  if(el) el.textContent=text;
+}
+
+function youtubeEmbed(url){
+  try{
+    const u=new URL(url);
+    let id='';
+    if(u.hostname.includes('youtu.be')){
+      id=u.pathname.split('/').filter(Boolean)[0]||'';
+    }else if(u.hostname.includes('youtube.com')){
+      id=u.searchParams.get('v')||'';
+      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
+      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
+    }
+    if(!id) return null;
+    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
+  }catch(e){ return null; }
+}
+
+function twitchEmbed(url){
+  try{
+    const u=new URL(url);
+    if(!u.hostname.includes('twitch.tv')) return null;
+    const parts=u.pathname.split('/').filter(Boolean);
+    if(!parts.length) return null;
+    const parent=location.hostname || 'ews-sessions.onrender.com';
+    if(parts[0]==='videos' && parts[1]){
+      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+    }
+    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+  }catch(e){ return null; }
+}
+
+function normalizeClubScreenUrl(raw){
+  const value=String(raw||'').trim();
+  if(!value) return null;
+
+  const yt=youtubeEmbed(value);
+  if(yt) return {src:yt,name:'YOUTUBE'};
+
+  const tw=twitchEmbed(value);
+  if(tw) return {src:tw,name:'TWITCH'};
+
+  try{
+    const u=new URL(value);
+    if(u.protocol!=='http:' && u.protocol!=='https:') return null;
+    return {src:u.href,name:'WEBSITE'};
+  }catch(e){
+    return null;
+  }
+}
+
+function isClubHost(){
+  return !clubScreenHost || clubScreenHost===currentUser;
+}
+
+function loadClubScreen(){
+  if(!isClubHost()){
+    setScreenStatus('Только главный пользователь клуба может включать экран.');
+    return;
+  }
+  const input=document.getElementById('screen-url');
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('media-screen');
+  if(!input || !frame || !panel) return;
+
+  const result=normalizeClubScreenUrl(input.value);
+  if(!result){
+    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');
+    return;
+  }
+
+  frame.src=result.src;
+  panel.classList.add('active');
+  screenMediaActive=true;
+  screenMediaUrl=result.src;
+  setScreenStatus(result.name+' LOADED — звук управляется плеером на экране.');
+  if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
+
+  const menu=document.getElementById('screen-menu');
+  if(menu) menu.classList.remove('open');
+}
+
+function clearClubScreen(){
+  if(!isClubHost()) return;
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('media-screen');
+  if(frame) frame.src='about:blank';
+  if(panel) panel.classList.remove('active');
+  screenMediaActive=false;
+  screenMediaUrl='';
+  if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
+  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
+}
+
+function updateClubScreenOverlay(){
+  const panel=document.getElementById('media-screen');
+  if(!panel || !screenMesh || !camera || !renderer) return;
+
+  const w=renderer.domElement.clientWidth;
+  const h=renderer.domElement.clientHeight;
+  if(!w || !h) return;
+
+  const center=screenMesh.position.clone().project(camera);
+  const leftPoint=new THREE.Vector3(-7.75,3.25,-16.28).project(camera);
+  const rightPoint=new THREE.Vector3(7.75,3.25,-16.28).project(camera);
+  const topPoint=new THREE.Vector3(0,6.85,-16.28).project(camera);
+  const bottomPoint=new THREE.Vector3(0,.35,-16.28).project(camera);
+
+  const cx=(center.x*.5+.5)*w;
+  const cy=(-center.y*.5+.5)*h;
+  const left=(leftPoint.x*.5+.5)*w;
+  const right=(rightPoint.x*.5+.5)*w;
+  const top=(-topPoint.y*.5+.5)*h;
+  const bottom=(-bottomPoint.y*.5+.5)*h;
+
+  const width=Math.abs(right-left);
+  const height=Math.abs(bottom-top);
+
+  if(center.z>1 || width<10 || height<10){
+    panel.style.display='none';
+    return;
+  }
+
+  panel.style.display='block';
+  panel.style.left=(cx-width/2)+'px';
+  panel.style.top=(cy-height/2)+'px';
+  panel.style.width=width+'px';
+  panel.style.height=height+'px';
+}
+
+/* =========================================================
+   ANIMATION
+========================================================= */
+
+function animate(){
+
+  requestAnimationFrame(
+    animate
+  );
+
+  if(!scene)return;
+
+  const dt =
+    Math.min(
+      clock.getDelta(),
+      .05
+    );
+
+  const time =
+    performance.now()/1000;
+
+  let bass=.2;
+  let level=.2;
+
+  if(
+    analyser &&
+    freqData &&
+    audioStarted
+  ){
+
+    analyser.getByteFrequencyData(
+      freqData
+    );
+
+    let b=0;
+
+    for(
+      let i=0;
+      i<10 &&
+      i<freqData.length;
+      i++
+    ){
+
+      b+=freqData[i];
+
+    }
+
+    bass=
+      b/
+      (
+        Math.min(
+          10,
+          freqData.length
+        )*255
+      );
+
+    let total=0;
+
+    for(
+      let i=0;
+      i<freqData.length;
+      i++
+    ){
+
+      total+=freqData[i];
+
+    }
+
+    level=
+      total/
+      (
+        freqData.length*255
+      );
+
+  }
+
+  else{
+
+    bass=
+      .25+
+      Math.sin(time*3)*.12;
+
+    level=
+      .25+
+      Math.sin(time*1.5)*.08;
+
+  }
+
+  bassLevel=
+    bassLevel*.82+
+    bass*.18;
+
+  audioLevel=
+    audioLevel*.88+
+    level*.12;
+
+  const speed=
+    chatMode
+      ?0
+      :5*dt;
+
+  let forward=0;
+  let side=0;
+
+  if(
+    keys['KeyW']
+  ){
+    forward+=1;
+  }
+
+  if(
+    keys['KeyS']
+  ){
+    forward-=1;
+  }
+
+  if(
+    keys['KeyA']
+  ){
+    side-=1;
+  }
+
+  if(
+    keys['KeyD']
+  ){
+    side+=1;
+  }
+
+  if(
+    pointerLocked &&
+    !chatMode
+  ){
+
+    const fx=
+      -Math.sin(yaw);
+
+    const fz=
+      -Math.cos(yaw);
+
+    const rx=
+      Math.cos(yaw);
+
+    const rz=
+      -Math.sin(yaw);
+
+    camera.position.x+=
+      (
+        fx*forward+
+        rx*side
+      )*speed;
+
+    camera.position.z+=
+      (
+        fz*forward+
+        rz*side
+      )*speed;
+
+  }
+
+  camera.position.x=
+    THREE.MathUtils.clamp(
+      camera.position.x,
+      -16,
+      16
+    );
+
+  camera.position.z=
+    THREE.MathUtils.clamp(
+      camera.position.z,
+      -15.5,
+      15.5
+    );
+
+  camera.position.y=1.7;
+
+  camera.rotation.order=
+    'YXZ';
+
+  camera.rotation.y=
+    yaw;
+
+  camera.rotation.x=
+    pitch;
+
+  if(playerBody){
+
+    playerBody.position.x=
+      camera.position.x;
+
+    playerBody.position.z=
+      camera.position.z;
+
+    playerBody.visible=false;
+
+  }
+
+  broadcastPlayerState(performance.now());
+
+  if(particles){
+
+    particles.rotation.y+=
+      .00015;
+
+    particles.material.opacity=
+      .22+
+      audioLevel*.18;
+
+  }
+
+  remotePlayers.forEach(p=>{
+    const t=performance.now()/1000;
+    const swing=p.moving?Math.sin(t*8)*.35:0;
+    const limbs=p.group.children.filter(o=>o.isMesh);
+    if(limbs.length>=5){ limbs[2].rotation.x=swing; limbs[3].rotation.x=-swing; limbs[4].rotation.x=-swing; }
+  });
+
+  neonObjects.forEach(
+    (obj,index)=>{
+
+      const pulse=
+        .5+
+        Math.sin(
+          time*3+
+          index*.4
+        )*.25+
+        bassLevel*.7;
+
+      const value=
+        Math.min(
+          1,
+          pulse
+        );
+
+      obj.material.color.setRGB(
+        value,
+        value,
+        value
+      );
+
+    }
+  );
+
+  lightObjects.forEach(
+    (light,index)=>{
+
+      light.intensity=
+        1+
+        bassLevel*2+
+        Math.sin(
+          time*2+
+          index
+        )*.15;
+
+    }
+  );
+
+  if(screenCtx){
+
+    screenCtx.fillStyle=
+      '#050505';
+
+    screenCtx.fillRect(
+      0,
+      0,
+      1024,
+      512
+    );
+
+    const grd =
+      screenCtx.createLinearGradient(
+        0,
+        0,
+        1024,
+        0
+      );
+
+    const intensity=
+      40+
+      Math.floor(
+        bassLevel*120
+      );
+
+    grd.addColorStop(
+      0,
+      `rgb(${intensity},${intensity},${intensity})`
+    );
+
+    grd.addColorStop(
+      .5,
+      '#050505'
+    );
+
+    grd.addColorStop(
+      1,
+      `rgb(${intensity},${intensity},${intensity})`
+    );
+
+    screenCtx.fillStyle=
+      grd;
+
+    screenCtx.fillRect(
+      0,
+      0,
+      1024,
+      512
+    );
+
+    screenCtx.fillStyle=
+      '#fff';
+
+    screenCtx.font=
+      'bold 80px Arial';
+
+    screenCtx.textAlign=
+      'center';
+
+    screenCtx.fillText(
+      'EWS SESSIONS',
+      512,
+      200
+    );
+
+    screenCtx.font=
+      '22px Arial';
+
+    screenCtx.fillStyle=
+      '#777';
+
+    screenCtx.fillText(
+      'UNDERGROUND CLUB',
+      512,
+      245
+    );
+
+    const bars=48;
+
+    const bw=
+      800/bars;
+
+    for(
+      let i=0;
+      i<bars;
+      i++
+    ){
+
+      let value;
+
+      if(
+        freqData &&
+        audioStarted
+      ){
+
+        value=
+          freqData[
+            Math.floor(
+              i*
+              freqData.length/
+              bars
+            )
+          ]/255;
+
+      }else{
+
+        value=
+          .2+
+          Math.sin(
+            time*4+
+            i*.5
+          )*.15;
+
+      }
+
+      const h=
+        value*180;
+
+      screenCtx.fillStyle=
+        '#fff';
+
+      screenCtx.fillRect(
+        112+i*bw,
+        450-h,
+        bw-3,
+        h
+      );
+
+    }
+
+    screenTexture.needsUpdate=true;
+
+  }
+
+  updateClubScreenOverlay();
+
+  renderer.render(
+    scene,
+    camera
+  );
+
+}
+
+/* =========================================================
+   REMOTE PLAYERS / SILHOUETTES
+========================================================= */
+function createRemotePlayer(data){
+  const g=new THREE.Group();
+  g.userData.username=data.username||'PLAYER';
+
+  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
+  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
+
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
+  torso.position.y=.78;
+  g.add(torso);
+
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
+  head.position.y=1.42;
+  g.add(head);
+
+  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
+  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
+  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
+  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
+  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
+  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
+
+  const labelCanvas=document.createElement('canvas');
+  labelCanvas.width=256; labelCanvas.height=64;
+  const ctx=labelCanvas.getContext('2d');
+  ctx.clearRect(0,0,256,64);
+  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
+  ctx.fillText(g.userData.username,128,32);
+  const tex=new THREE.CanvasTexture(labelCanvas);
+  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+
+  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
+  g.rotation.y=Number(data.yaw)||0;
+  scene.add(g);
+  remotePlayers.set(data.id,{group:g,last:{x:g.position.x,z:g.position.z,yaw:g.rotation.y},moving:false});
+}
+
+function updateRemotePlayer(data){
+  if(!data.id || data.id===socket?.id) return;
+  if(!remotePlayers.has(data.id)) createRemotePlayer(data);
+  const p=remotePlayers.get(data.id);
+  const nx=Number(data.x)||0, nz=Number(data.z)||0;
+  const dx=nx-p.group.position.x, dz=nz-p.group.position.z;
+  p.moving=Math.hypot(dx,dz)>.002;
+  p.group.position.x=nx; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
+}
+
+function removeRemotePlayer(id){
+  const p=remotePlayers.get(id);
+  if(!p) return;
+  scene.remove(p.group);
+  p.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }});
+  remotePlayers.delete(id);
+}
+
+function broadcastPlayerState(now){
+  if(!socket || !socket.connected || !camera) return;
+  if(now-lastPlayerBroadcast<50) return;
+  lastPlayerBroadcast=now;
+  socket.emit('player-state',{x:camera.position.x,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser});
+}
+
+function applyRemoteClubScreen(state){
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('media-screen');
+  if(!frame || !panel) return;
+  if(!state.active){
+    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl=''; return;
+  }
+  if(state.src && state.src!==screenMediaUrl){
+    frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
+  }
+}
+
+/* =========================================================
+   CLEANUP
+========================================================= */
+
+window.addEventListener(
+  'beforeunload',
+  function(){
+
+    try{
+
+      if(hls){
+        hls.destroy();
+      }
+
+    }catch(e){}
+
+    try{
+
+      if(audioContext){
+        audioContext.close();
+      }
+
+    }catch(e){}
+
+  }
+);
+
+</script>
+
+</body>
+</html>
