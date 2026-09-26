@@ -751,6 +751,7 @@ input:focus{
   }
 }
 
+#audio-control{display:none !important;}
 </style>
 </head>
 
@@ -993,6 +994,8 @@ let lastPlayerBroadcast=0;
 let clubScreenHost=null;
 
 let playerBody;
+let jumpVelocity=0;
+let onGround=true;
 
 /* =========================================================
    EWS TEXTURES
@@ -1269,6 +1272,19 @@ function startSession(username){
   socket.on('club-screen-state', state=>{
     if(!state || !state.src) return;
     applyRemoteClubScreen(state);
+  });
+
+  socket.on('players-state', list=>{
+    if(!Array.isArray(list)) return;
+    const ids=new Set();
+    list.forEach(data=>{
+      if(!data || !data.id || data.id===socket.id) return;
+      ids.add(data.id);
+      updateRemotePlayer(data);
+    });
+    Array.from(remotePlayers.keys()).forEach(id=>{
+      if(!ids.has(id)) removeRemotePlayer(id);
+    });
   });
 
   socket.on('player-state', data=>{
@@ -1672,61 +1688,36 @@ function createDanceFloor(){
 
 function createMainScreen(){
 
-  screenCanvas =
-    document.createElement(
-      'canvas'
-    );
-
+  screenCanvas=document.createElement('canvas');
   screenCanvas.width=1024;
   screenCanvas.height=512;
+  screenCtx=screenCanvas.getContext('2d');
+  screenTexture=new THREE.CanvasTexture(screenCanvas);
 
-  screenCtx =
-    screenCanvas.getContext(
-      '2d'
-    );
+  // Единая неподвижная группа: экран намертво закреплён на передней стене.
+  const wallScreen=new THREE.Group();
+  wallScreen.position.set(0,3.6,-16.70);
+  wallScreen.rotation.set(0,0,0);
+  wallScreen.quaternion.set(0,0,0,1);
+  scene.add(wallScreen);
 
-  screenTexture =
-    new THREE.CanvasTexture(
-      screenCanvas
-    );
-
-  const frame =
-    new THREE.Mesh(
-      new THREE.BoxGeometry(
-        16,7,.35
-      ),
-      new THREE.MeshStandardMaterial({
-        color:0x151515,
-        metalness:.7,
-        roughness:.3
-      })
-    );
-
-  // Экран физически закреплён на внутренней поверхности передней стены.
-  // Стена находится на z=-17, её внутренняя плоскость примерно z=-16.75.
-  frame.position.set(
-    0,3.6,-16.72
+  const frame=new THREE.Mesh(
+    new THREE.BoxGeometry(16,7,.35),
+    new THREE.MeshStandardMaterial({color:0x151515,metalness:.7,roughness:.3})
   );
+  frame.position.set(0,0,0);
+  wallScreen.add(frame);
 
-  scene.add(frame);
-
-  screenMesh =
-    new THREE.Mesh(
-      new THREE.PlaneGeometry(
-        15.5,
-        6.5
-      ),
-      new THREE.MeshBasicMaterial({
-        map:screenTexture
-      })
-    );
-
-  screenMesh.position.set(
-    0,3.6,-16.50
+  screenMesh=new THREE.Mesh(
+    new THREE.PlaneGeometry(15.5,6.5),
+    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
   );
+  screenMesh.position.set(0,0,.20);
+  screenMesh.rotation.set(0,0,0);
+  wallScreen.add(screenMesh);
 
-  scene.add(screenMesh);
-
+  screenMesh.userData.wallLocked=true;
+  screenMesh.userData.wallPosition=wallScreen.position.clone();
 }
 
 function createStage(){
@@ -3164,6 +3155,22 @@ function animate(){
         rz*side
       )*speed;
 
+  }
+
+  // Прыжок: SPACE.
+  if(keys['Space'] && onGround && !chatMode && pointerLocked){
+    jumpVelocity=6.2;
+    onGround=false;
+    keys['Space']=false;
+  }
+  if(!onGround || camera.position.y>1.7){
+    jumpVelocity-=18*dt;
+    camera.position.y+=jumpVelocity*dt;
+    if(camera.position.y<=1.7){
+      camera.position.y=1.7;
+      jumpVelocity=0;
+      onGround=true;
+    }
   }
 
   camera.position.x=
