@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -15,13 +14,14 @@
     box-sizing:border-box;
 }
 
-html,body{
-    margin:0;
+html,
+body{
     width:100%;
     height:100%;
+    margin:0;
     overflow:hidden;
-    background:#050505;
-    color:#eee;
+    background:#000;
+    color:#fff;
     font-family:Arial,Helvetica,sans-serif;
 }
 
@@ -45,87 +45,141 @@ canvas{
 #login{
     position:fixed;
     inset:0;
-    z-index:100;
+    z-index:1000;
+
     display:flex;
     align-items:center;
     justify-content:center;
+
     background:
-        radial-gradient(circle at center,#151515 0%,#090909 42%,#020202 100%);
+        radial-gradient(
+            ellipse at center,
+            #111 0%,
+            #050505 38%,
+            #000 78%
+        );
 }
 
-.login-box{
-    width:340px;
-    padding:34px;
-    border:1px solid #333;
-    background:rgba(5,5,5,.94);
+.login{
+    width:350px;
+    padding:38px 34px;
+
+    background:rgba(0,0,0,.88);
+
+    border:1px solid #292929;
+
     box-shadow:
-        0 30px 100px rgba(0,0,0,.8),
-        inset 0 0 40px rgba(255,255,255,.025);
+        0 0 80px rgba(255,255,255,.025),
+        0 30px 100px rgba(0,0,0,.95);
 }
 
 .logo{
     text-align:center;
-    font-size:32px;
+
+    font-size:42px;
+    line-height:1;
+
     font-weight:900;
-    letter-spacing:8px;
-    margin-bottom:5px;
+    letter-spacing:13px;
+
+    margin-left:13px;
 }
 
-.logo-sub{
+.logoLine{
+    width:100%;
+    height:1px;
+
+    margin:18px 0;
+
+    background:#252525;
+}
+
+.subtitle{
     text-align:center;
-    font-size:9px;
+
+    color:#666;
+
+    font-size:8px;
     letter-spacing:5px;
-    color:#777;
-    margin-bottom:32px;
+
+    margin-bottom:28px;
 }
 
-.login-box input,
-.login-box button{
+.login input{
     width:100%;
     height:44px;
-    margin-top:10px;
-    border:1px solid #333;
-    background:#0b0b0b;
-    color:#eee;
+
+    margin-top:9px;
+
     padding:0 13px;
+
     outline:none;
+
+    border:1px solid #222;
+
+    background:#080808;
+
+    color:#eee;
+
+    font-size:11px;
+
+    letter-spacing:1px;
 }
 
-.login-box input:focus{
-    border-color:#777;
+.login input:focus{
+    border-color:#555;
 }
 
-.login-box button{
-    cursor:pointer;
+.login button{
+    width:100%;
+    height:44px;
+
+    margin-top:14px;
+
+    border:0;
+
     background:#eee;
     color:#050505;
-    font-weight:800;
-    letter-spacing:2px;
-    transition:.15s;
+
+    font-size:10px;
+    font-weight:bold;
+
+    letter-spacing:3px;
+
+    cursor:pointer;
 }
 
-.login-box button:hover{
+.login button:hover{
     background:#fff;
 }
 
-.login-switch{
+#switch{
     margin-top:18px;
+
     text-align:center;
-    color:#777;
-    font-size:11px;
+
+    color:#555;
+
+    font-size:9px;
+    letter-spacing:2px;
+
     cursor:pointer;
 }
 
-.login-switch:hover{
-    color:#fff;
+#switch:hover{
+    color:#aaa;
 }
 
 #loginMessage{
-    min-height:18px;
+    min-height:16px;
+
     margin-top:12px;
+
     text-align:center;
-    font-size:11px;
-    color:#aaa;
+
+    color:#777;
+
+    font-size:10px;
 }
 
 /* =========================
@@ -135,113 +189,115 @@ canvas{
 #hud{
     position:fixed;
     inset:0;
+
+    z-index:50;
+
     pointer-events:none;
-    z-index:20;
 }
 
-.corner{
+.hidden{
+    display:none!important;
+}
+
+#logoHud{
     position:absolute;
-    font-size:9px;
-    letter-spacing:3px;
-    color:#aaa;
-    text-transform:uppercase;
+
+    top:24px;
+    left:27px;
 }
 
-#brand{
-    left:25px;
-    top:22px;
-}
-
-#brand strong{
-    display:block;
-    color:#fff;
-    font-size:16px;
+#logoHud .big{
+    font-size:17px;
+    font-weight:900;
     letter-spacing:5px;
 }
 
-#brand span{
-    color:#666;
+#logoHud .small{
+    margin-top:3px;
+
+    color:#555;
+
+    font-size:7px;
+    letter-spacing:4px;
+}
+
+#online{
+    position:absolute;
+
+    top:25px;
+    right:27px;
+
+    text-align:right;
+
+    color:#777;
+
     font-size:8px;
-}
-
-#status{
-    right:25px;
-    top:22px;
-    text-align:right;
-}
-
-.status-dot{
-    display:inline-block;
-    width:6px;
-    height:6px;
-    margin-right:7px;
-    border-radius:50%;
-    background:#aaa;
-}
-
-#controls{
-    left:25px;
-    bottom:23px;
-    color:#666;
-    line-height:1.7;
-}
-
-#controls b{
-    color:#bbb;
-}
-
-#zone{
-    right:25px;
-    bottom:23px;
-    text-align:right;
-    color:#666;
-}
-
-#zone strong{
-    color:#ddd;
-    display:block;
     letter-spacing:3px;
 }
 
+#online strong{
+    color:#ddd;
+}
+
 /* =========================
-   ONLINE
+   ONLINE PANEL
 ========================= */
 
 #onlinePanel{
     position:absolute;
-    top:65px;
-    right:25px;
-    width:170px;
-    max-height:220px;
-    overflow:hidden;
-    padding:12px;
-    border:1px solid rgba(255,255,255,.1);
-    background:rgba(0,0,0,.35);
-    backdrop-filter:blur(8px);
+
+    right:27px;
+    top:57px;
+
+    width:175px;
+
+    padding:13px;
+
+    pointer-events:none;
+
+    background:rgba(0,0,0,.48);
+
+    border:1px solid rgba(255,255,255,.07);
+
+    backdrop-filter:blur(12px);
 }
 
-.panel-title{
-    font-size:8px;
+.panelTitle{
+    color:#444;
+
+    font-size:7px;
     letter-spacing:3px;
-    color:#777;
-    margin-bottom:10px;
+
+    margin-bottom:9px;
 }
 
-.online-user{
-    font-size:11px;
+.user{
     padding:5px 0;
-    border-bottom:1px solid rgba(255,255,255,.05);
-    color:#bbb;
+
+    border-bottom:1px solid rgba(255,255,255,.04);
+
+    color:#aaa;
+
+    font-size:10px;
 }
 
-.online-user::before{
+.user:last-child{
+    border-bottom:0;
+}
+
+.user::before{
     content:"";
+
     display:inline-block;
-    width:5px;
-    height:5px;
+
+    width:4px;
+    height:4px;
+
     margin-right:7px;
+
     border-radius:50%;
-    background:#aaa;
+
+    background:#888;
 }
 
 /* =========================
@@ -249,23 +305,33 @@ canvas{
 ========================= */
 
 #chat{
-    pointer-events:auto;
     position:absolute;
-    left:25px;
-    bottom:72px;
-    width:310px;
-    height:190px;
+
+    left:27px;
+    bottom:27px;
+
+    width:330px;
+    height:205px;
+
+    pointer-events:auto;
+
     display:flex;
     flex-direction:column;
-    border:1px solid rgba(255,255,255,.1);
-    background:rgba(0,0,0,.42);
-    backdrop-filter:blur(9px);
+
+    background:rgba(0,0,0,.45);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    backdrop-filter:blur(12px);
 }
 
 #messages{
     flex:1;
-    overflow-y:auto;
+
     padding:12px;
+
+    overflow-y:auto;
+
     scrollbar-width:none;
 }
 
@@ -273,108 +339,109 @@ canvas{
     display:none;
 }
 
-.message{
-    margin-bottom:7px;
-    font-size:11px;
-    line-height:1.35;
-    color:#aaa;
+.msg{
+    margin-bottom:8px;
+
+    font-size:10px;
+    line-height:1.4;
+
+    color:#999;
 }
 
-.message b{
-    color:#eee;
+.msg b{
     margin-right:5px;
+
+    color:#ddd;
+
+    font-weight:600;
 }
 
-.system{
-    color:#555;
-    font-style:italic;
+.msg.system{
+    color:#444;
+
+    font-size:9px;
 }
 
 #chatForm{
+    height:38px;
+
     display:flex;
-    border-top:1px solid rgba(255,255,255,.08);
+
+    border-top:1px solid rgba(255,255,255,.07);
 }
 
 #chatInput{
     flex:1;
-    height:35px;
+
+    min-width:0;
+
     border:0;
     outline:0;
-    background:rgba(255,255,255,.025);
+
+    padding:0 12px;
+
+    background:#050505;
+
     color:#ddd;
-    padding:0 10px;
-    font-size:11px;
+
+    font-size:10px;
 }
 
-#chatSend{
-    width:55px;
+#chatInput::placeholder{
+    color:#444;
+}
+
+#send{
+    width:60px;
+
     border:0;
-    background:#eee;
+
+    background:#ddd;
     color:#050505;
-    cursor:pointer;
-    font-size:9px;
+
+    font-size:8px;
     font-weight:bold;
-}
 
-/* =========================
-   STREAM
-========================= */
+    letter-spacing:1px;
 
-#stream{
-    display:none;
-}
-
-#audioButton{
-    pointer-events:auto;
-    position:absolute;
-    right:25px;
-    bottom:70px;
-    width:170px;
-    height:34px;
-    border:1px solid rgba(255,255,255,.18);
-    background:rgba(0,0,0,.5);
-    color:#aaa;
-    font-size:9px;
-    letter-spacing:2px;
     cursor:pointer;
 }
 
-#audioButton:hover{
-    color:#fff;
-    border-color:#555;
-}
-
-/* =========================
-   CROSSHAIR
-========================= */
-
-#crosshair{
-    position:absolute;
-    left:50%;
-    top:50%;
-    width:12px;
-    height:12px;
-    transform:translate(-50%,-50%);
-    opacity:.3;
-}
-
-#crosshair::before,
-#crosshair::after{
-    content:"";
-    position:absolute;
+#send:hover{
     background:#fff;
 }
 
-#crosshair::before{
-    width:1px;
-    height:12px;
-    left:5px;
+/* =========================
+   AUDIO
+========================= */
+
+#audio{
+    position:absolute;
+
+    right:27px;
+    bottom:27px;
+
+    width:145px;
+    height:32px;
+
+    pointer-events:auto;
+
+    border:1px solid rgba(255,255,255,.12);
+
+    background:rgba(0,0,0,.55);
+
+    color:#888;
+
+    font-size:8px;
+    letter-spacing:2px;
+
+    cursor:pointer;
 }
 
-#crosshair::after{
-    width:12px;
-    height:1px;
-    top:5px;
+#audio:hover{
+    color:#fff;
+
+    border-color:#444;
 }
 
 /* =========================
@@ -384,15 +451,53 @@ canvas{
 #fade{
     position:fixed;
     inset:0;
-    z-index:90;
+
+    z-index:900;
+
     background:#000;
+
     pointer-events:none;
+
     opacity:1;
+
     transition:opacity 1.2s ease;
 }
 
-.hidden{
-    display:none!important;
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width:700px){
+
+    #chat{
+        left:12px;
+        bottom:12px;
+
+        width:calc(100% - 24px);
+    }
+
+    #onlinePanel{
+        right:12px;
+        top:55px;
+
+        width:145px;
+    }
+
+    #audio{
+        right:12px;
+        bottom:230px;
+    }
+
+    #logoHud{
+        left:14px;
+        top:14px;
+    }
+
+    #online{
+        right:14px;
+        top:16px;
+    }
+
 }
 </style>
 </head>
@@ -407,17 +512,34 @@ canvas{
 
 <div id="login">
 
-    <div class="login-box">
+    <div class="login">
 
         <div class="logo">EWS</div>
-        <div class="logo-sub">SESSIONS / UNDERGROUND CLUB</div>
 
-        <input id="username" placeholder="USERNAME" autocomplete="username">
-        <input id="password" type="password" placeholder="PASSWORD" autocomplete="current-password">
+        <div class="logoLine"></div>
 
-        <button id="loginButton">ENTER</button>
+        <div class="subtitle">
+            SESSIONS / UNDERGROUND CLUB
+        </div>
 
-        <div class="login-switch" id="registerSwitch">
+        <input
+            id="username"
+            placeholder="USERNAME"
+            autocomplete="username"
+        >
+
+        <input
+            id="password"
+            type="password"
+            placeholder="PASSWORD"
+            autocomplete="current-password"
+        >
+
+        <button id="loginButton">
+            ENTER
+        </button>
+
+        <div id="switch">
             CREATE ACCOUNT
         </div>
 
@@ -431,30 +553,31 @@ canvas{
 
 <div id="hud" class="hidden">
 
-    <div id="brand" class="corner">
-        <strong>EWS</strong>
-        <span>SESSIONS / UNDERGROUND</span>
+    <div id="logoHud">
+
+        <div class="big">EWS</div>
+
+        <div class="small">
+            SESSIONS
+        </div>
+
     </div>
 
-    <div id="status" class="corner">
-        <span class="status-dot"></span>
-        <span id="onlineCount">0</span> ONLINE
+    <div id="online">
+
+        <strong id="onlineCount">0</strong>
+        ONLINE
+
     </div>
 
     <div id="onlinePanel">
-        <div class="panel-title">IN THE CLUB</div>
+
+        <div class="panelTitle">
+            IN THE CLUB
+        </div>
+
         <div id="onlineUsers"></div>
-    </div>
 
-    <div id="controls" class="corner">
-        <b>W A S D</b> MOVE<br>
-        <b>SPACE</b> JUMP<br>
-        <b>MOUSE</b> LOOK
-    </div>
-
-    <div id="zone" class="corner">
-        <strong>MAIN FLOOR</strong>
-        EWS SESSIONS
     </div>
 
     <div id="chat">
@@ -462,93 +585,168 @@ canvas{
         <div id="messages"></div>
 
         <form id="chatForm">
+
             <input
                 id="chatInput"
                 autocomplete="off"
                 maxlength="500"
-                placeholder="say something..."
+                placeholder="message..."
             >
-            <button id="chatSend" type="submit">SEND</button>
+
+            <button id="send">
+                SEND
+            </button>
+
         </form>
 
     </div>
 
-    <button id="audioButton">
-        AUDIO / STREAM OFF
+    <button id="audio">
+        STREAM / OFF
     </button>
-
-    <div id="crosshair"></div>
 
 </div>
 
-<audio id="stream" playsinline></audio>
+<audio
+    id="stream"
+    playsinline
+></audio>
 
 <script>
 
 /* ============================================================
-   EWS SESSIONS
-   CLIENT
+   CONNECTION
 ============================================================ */
 
 const socket = io({
-    transports:['websocket','polling']
+    transports:[
+        'websocket',
+        'polling'
+    ]
 });
 
+/* ============================================================
+   STATE
+============================================================ */
+
 let username = '';
-let language = localStorage.getItem('ews-language') || (
-    navigator.language || 'en'
-).slice(0,2);
+let language =
+    (navigator.language || 'en')
+    .toLowerCase()
+    .split('-')[0];
 
 let loggedIn = false;
+let registerMode = false;
+
+let gameStarted = false;
+
+let scene;
+let camera;
+let renderer;
+let clock;
+
+let player;
+let playerGroup;
+
+const remotePlayers = new Map();
+
+const keys = {};
+
+let yaw = 0;
+let pitch = 0.25;
+
+let pointerLocked = false;
+
+let velocity =
+    new THREE.Vector3();
+
+let grounded = true;
+
+let walkingTime = 0;
+
+let sendTimer = 0;
+
+const colliders = [];
 
 /* ============================================================
    DOM
 ============================================================ */
 
-const loginScreen = document.getElementById('login');
+const login = document.getElementById('login');
 const hud = document.getElementById('hud');
-const loginButton = document.getElementById('loginButton');
-const registerSwitch = document.getElementById('registerSwitch');
-const loginMessage = document.getElementById('loginMessage');
 
-const usernameInput = document.getElementById('username');
-const passwordInput = document.getElementById('password');
+const usernameInput =
+    document.getElementById('username');
 
-const messages = document.getElementById('messages');
-const onlineUsers = document.getElementById('onlineUsers');
-const onlineCount = document.getElementById('onlineCount');
+const passwordInput =
+    document.getElementById('password');
 
-const chatForm = document.getElementById('chatForm');
-const chatInput = document.getElementById('chatInput');
+const loginButton =
+    document.getElementById('loginButton');
 
-const audioButton = document.getElementById('audioButton');
-const stream = document.getElementById('stream');
+const switchButton =
+    document.getElementById('switch');
+
+const loginMessage =
+    document.getElementById('loginMessage');
+
+const messages =
+    document.getElementById('messages');
+
+const onlineUsers =
+    document.getElementById('onlineUsers');
+
+const onlineCount =
+    document.getElementById('onlineCount');
+
+const chatForm =
+    document.getElementById('chatForm');
+
+const chatInput =
+    document.getElementById('chatInput');
+
+const audioButton =
+    document.getElementById('audio');
+
+const stream =
+    document.getElementById('stream');
 
 /* ============================================================
-   LOGIN / REGISTER
+   LOGIN
 ============================================================ */
 
-let registerMode = false;
+switchButton.onclick = ()=>{
 
-registerSwitch.addEventListener('click',()=>{
-    registerMode = !registerMode;
+    registerMode =
+        !registerMode;
 
     loginButton.textContent =
-        registerMode ? 'CREATE ACCOUNT' : 'ENTER';
+        registerMode
+            ? 'CREATE ACCOUNT'
+            : 'ENTER';
 
-    registerSwitch.textContent =
-        registerMode ? 'BACK TO LOGIN' : 'CREATE ACCOUNT';
+    switchButton.textContent =
+        registerMode
+            ? 'BACK TO LOGIN'
+            : 'CREATE ACCOUNT';
 
     loginMessage.textContent = '';
-});
 
-loginButton.addEventListener('click',async()=>{
+};
 
-    const user = usernameInput.value.trim();
-    const pass = passwordInput.value;
+loginButton.onclick = async ()=>{
+
+    const user =
+        usernameInput.value.trim();
+
+    const pass =
+        passwordInput.value;
 
     if(!user || !pass){
-        loginMessage.textContent = 'ENTER USERNAME AND PASSWORD';
+
+        loginMessage.textContent =
+            'ENTER USERNAME AND PASSWORD';
+
         return;
     }
 
@@ -556,29 +754,40 @@ loginButton.addEventListener('click',async()=>{
 
     try{
 
-        const endpoint = registerMode
-            ? '/api/register'
-            : '/api/login';
+        const endpoint =
+            registerMode
+                ? '/api/register'
+                : '/api/login';
 
-        const response = await fetch(endpoint,{
-            method:'POST',
-            headers:{
-                'Content-Type':'application/json'
-            },
-            body:JSON.stringify({
-                username:user,
-                password:pass
-            })
-        });
+        const response =
+            await fetch(
+                endpoint,
+                {
+                    method:'POST',
 
-        const result = await response.json();
+                    headers:{
+                        'Content-Type':
+                            'application/json'
+                    },
 
-        if(!result.ok){
+                    body:JSON.stringify({
+                        username:user,
+                        password:pass
+                    })
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if(!data.ok){
 
             loginMessage.textContent =
-                result.message || 'ERROR';
+                data.message ||
+                'ERROR';
 
             loginButton.disabled = false;
+
             return;
         }
 
@@ -586,73 +795,92 @@ loginButton.addEventListener('click',async()=>{
 
             registerMode = false;
 
-            loginButton.textContent = 'ENTER';
-            registerSwitch.textContent = 'CREATE ACCOUNT';
+            loginButton.textContent =
+                'ENTER';
+
+            switchButton.textContent =
+                'CREATE ACCOUNT';
 
             loginMessage.textContent =
                 'ACCOUNT CREATED';
 
             loginButton.disabled = false;
+
             return;
         }
 
-        enterClub(result.username || user);
+        enterClub(
+            data.username || user
+        );
 
     }catch(error){
 
         console.error(error);
 
         loginMessage.textContent =
-            'SERVER CONNECTION ERROR';
+            'SERVER ERROR';
 
     }
 
     loginButton.disabled = false;
-});
 
-passwordInput.addEventListener('keydown',e=>{
+};
+
+passwordInput.onkeydown = e=>{
+
     if(e.key === 'Enter'){
         loginButton.click();
     }
-});
 
-usernameInput.addEventListener('keydown',e=>{
+};
+
+usernameInput.onkeydown = e=>{
+
     if(e.key === 'Enter'){
         passwordInput.focus();
     }
-});
+
+};
+
+/* ============================================================
+   ENTER CLUB
+============================================================ */
 
 function enterClub(name){
 
     username = name;
 
-    localStorage.setItem(
-        'ews-username',
-        username
-    );
-
     loggedIn = true;
 
-    loginScreen.classList.add('hidden');
+    login.classList.add('hidden');
+
     hud.classList.remove('hidden');
 
-    setTimeout(()=>{
-        document.getElementById('fade').style.opacity = '0';
-    },100);
+    document.getElementById('fade')
+        .style.opacity = '0';
 
-    initGame();
+    init();
 
-    socket.emit('join',{
-        username,
-        language
-    });
-
-    socket.emit('request-online');
-    socket.emit('request-players');
-
-    addSystemMessage(
-        `WELCOME TO EWS SESSIONS, ${username}`
+    socket.emit(
+        'join',
+        {
+            username,
+            language
+        }
     );
+
+    socket.emit(
+        'request-online'
+    );
+
+    socket.emit(
+        'request-players'
+    );
+
+    addSystem(
+        `WELCOME TO EWS SESSIONS`
+    );
+
 }
 
 /* ============================================================
@@ -661,277 +889,339 @@ function enterClub(name){
 
 socket.on('connect',()=>{
 
-    console.log('[EWS] socket connected');
-
     if(loggedIn){
 
-        socket.emit('join',{
-            username,
-            language
+        socket.emit(
+            'join',
+            {
+                username,
+                language
+            }
+        );
+
+        socket.emit(
+            'request-online'
+        );
+
+        socket.emit(
+            'request-players'
+        );
+
+    }
+
+});
+
+/* ONLINE */
+
+socket.on(
+    'online-users',
+    users=>{
+
+        if(!Array.isArray(users)){
+            return;
+        }
+
+        onlineCount.textContent =
+            users.length;
+
+        onlineUsers.innerHTML = '';
+
+        users.forEach(user=>{
+
+            const el =
+                document.createElement('div');
+
+            el.className =
+                'user';
+
+            el.textContent =
+                user.username ||
+                user.user ||
+                'Guest';
+
+            onlineUsers.appendChild(el);
+
         });
 
     }
+);
 
-});
+/* SYSTEM */
 
-socket.on('online-users',users=>{
+socket.on(
+    'system-message',
+    data=>{
 
-    onlineUsers.innerHTML = '';
+        if(data && data.text){
+            addSystem(data.text);
+        }
 
-    const list = Array.isArray(users) ? users : [];
-
-    onlineCount.textContent = list.length;
-
-    list.forEach(user=>{
-
-        const div = document.createElement('div');
-
-        div.className = 'online-user';
-
-        div.textContent =
-            user.username || user.user || 'Guest';
-
-        onlineUsers.appendChild(div);
-
-    });
-
-});
-
-socket.on('system-message',data=>{
-
-    if(data && data.text){
-        addSystemMessage(data.text);
     }
+);
 
-});
+/* CHAT */
 
-socket.on('chat-message',data=>{
+socket.on(
+    'chat-message',
+    data=>{
 
-    if(!data) return;
+        if(!data) return;
 
-    addMessage(
-        data.username || data.user || 'Guest',
-        data.text || ''
-    );
+        /*
+         * ВАЖНО:
+         * server.js уже отправляет каждому
+         * пользователю его перевод.
+         *
+         * Поэтому здесь показываем
+         * только data.text.
+         *
+         * original НЕ выводим.
+         */
 
-});
+        addMessage(
+            data.username ||
+            data.user ||
+            'Guest',
 
-socket.on('players-state',list=>{
+            data.text || ''
+        );
 
-    if(!Array.isArray(list)) return;
+    }
+);
 
-    list.forEach(data=>{
-        createRemotePlayer(data);
-        updateRemotePlayer(data);
-    });
+/* PLAYERS */
 
-});
+socket.on(
+    'players-state',
+    players=>{
 
-socket.on('player-joined',data=>{
+        if(!Array.isArray(players)){
+            return;
+        }
 
-    if(!data || data.id === socket.id) return;
+        players.forEach(data=>{
 
-    createRemotePlayer(data);
+            if(
+                data.id === socket.id
+            ){
+                return;
+            }
 
-});
+            createRemote(data);
 
-socket.on('player-move',data=>{
+        });
 
-    if(!data || data.id === socket.id) return;
+    }
+);
 
-    updateRemotePlayer(data);
+socket.on(
+    'player-joined',
+    data=>{
 
-});
+        if(!data) return;
 
-socket.on('player-left',id=>{
+        if(
+            data.id === socket.id
+        ){
+            return;
+        }
 
-    removeRemotePlayer(id);
+        createRemote(data);
 
-});
+    }
+);
+
+socket.on(
+    'player-move',
+    data=>{
+
+        if(!data) return;
+
+        if(
+            data.id === socket.id
+        ){
+            return;
+        }
+
+        updateRemoteTarget(data);
+
+    }
+);
+
+socket.on(
+    'player-left',
+    id=>{
+
+        removeRemote(id);
+
+    }
+);
 
 /* ============================================================
-   CHAT
+   CHAT UI
 ============================================================ */
 
-chatForm.addEventListener('submit',e=>{
+chatForm.onsubmit = e=>{
 
     e.preventDefault();
 
-    const text = chatInput.value.trim();
+    const text =
+        chatInput.value.trim();
 
     if(!text) return;
 
-    socket.emit('chat-message',{
-        text
-    });
+    socket.emit(
+        'chat-message',
+        {
+            text
+        }
+    );
 
     chatInput.value = '';
 
-});
+};
 
-function addMessage(user,text){
+function addMessage(
+    user,
+    text
+){
 
-    const div = document.createElement('div');
+    const row =
+        document.createElement('div');
 
-    div.className = 'message';
+    row.className =
+        'msg';
 
-    const name = document.createElement('b');
+    const name =
+        document.createElement('b');
 
-    name.textContent = user;
+    name.textContent =
+        user + ':';
 
-    const body = document.createElement('span');
+    const body =
+        document.createElement('span');
 
-    body.textContent = text;
+    body.textContent =
+        text;
 
-    div.appendChild(name);
-    div.appendChild(body);
+    row.appendChild(name);
+    row.appendChild(body);
 
-    messages.appendChild(div);
+    messages.appendChild(row);
 
-    messages.scrollTop = messages.scrollHeight;
+    while(
+        messages.children.length > 100
+    ){
+        messages.removeChild(
+            messages.firstChild
+        );
+    }
 
-}
-
-function addSystemMessage(text){
-
-    const div = document.createElement('div');
-
-    div.className = 'message system';
-
-    div.textContent = text;
-
-    messages.appendChild(div);
-
-    messages.scrollTop = messages.scrollHeight;
-
-}
-
-/* ============================================================
-   THREE.JS
-============================================================ */
-
-let scene;
-let camera;
-let renderer;
-
-let player;
-let playerGroup;
-
-let clock;
-
-let gameStarted = false;
-
-/* player physics */
-
-const velocity = new THREE.Vector3();
-
-let onGround = true;
-
-const moveSpeed = 5.4;
-const jumpPower = 7.5;
-const gravity = 20;
-
-const keys = {};
-
-let cameraYaw = 0;
-let cameraPitch = 0.22;
-
-let mouseLocked = false;
-
-/* ============================================================
-   REMOTE PLAYERS
-============================================================ */
-
-const remotePlayers = new Map();
-
-/* ============================================================
-   WORLD COLLIDERS
-============================================================ */
-
-const colliders = [];
-
-/* ============================================================
-   MATERIALS
-============================================================ */
-
-function mat(color,roughness=.9){
-
-    return new THREE.MeshStandardMaterial({
-        color,
-        roughness,
-        metalness:0
-    });
+    messages.scrollTop =
+        messages.scrollHeight;
 
 }
 
-const blackMat = mat(0x080808);
-const darkMat = mat(0x111111);
-const grayMat = mat(0x292929);
-const whiteMat = mat(0xd8d8d8);
-const softWhiteMat = mat(0x777777);
+function addSystem(text){
+
+    const row =
+        document.createElement('div');
+
+    row.className =
+        'msg system';
+
+    row.textContent =
+        text;
+
+    messages.appendChild(row);
+
+    messages.scrollTop =
+        messages.scrollHeight;
+
+}
 
 /* ============================================================
-   INIT
+   THREE INIT
 ============================================================ */
 
-function initGame(){
+function init(){
 
-    if(gameStarted) return;
+    if(gameStarted){
+        return;
+    }
 
     gameStarted = true;
 
-    scene = new THREE.Scene();
+    scene =
+        new THREE.Scene();
 
-    scene.background = new THREE.Color(0x030303);
+    /*
+     * ГЛАВНОЕ:
+     * сцена действительно чёрная.
+     */
 
-    scene.fog = new THREE.FogExp2(
-        0x030303,
-        0.035
-    );
+    scene.background =
+        new THREE.Color(
+            0x010101
+        );
 
-    camera = new THREE.PerspectiveCamera(
-        68,
-        window.innerWidth / window.innerHeight,
-        0.1,
-        200
-    );
+    scene.fog =
+        new THREE.FogExp2(
+            0x010101,
+            0.025
+        );
 
-    renderer = new THREE.WebGLRenderer({
-        antialias:true,
-        powerPreference:'high-performance'
-    });
+    camera =
+        new THREE.PerspectiveCamera(
+            67,
+            innerWidth / innerHeight,
+            .1,
+            180
+        );
+
+    renderer =
+        new THREE.WebGLRenderer({
+            antialias:true,
+            powerPreference:
+                'high-performance'
+        });
 
     renderer.setPixelRatio(
-        Math.min(window.devicePixelRatio,2)
+        Math.min(
+            devicePixelRatio,
+            2
+        )
     );
 
     renderer.setSize(
-        window.innerWidth,
-        window.innerHeight
+        innerWidth,
+        innerHeight
     );
 
     renderer.shadowMap.enabled = true;
+
     renderer.shadowMap.type =
         THREE.PCFSoftShadowMap;
 
-    document.getElementById('game')
+    renderer.outputEncoding =
+        THREE.sRGBEncoding;
+
+    document
+        .getElementById('game')
         .appendChild(renderer.domElement);
 
-    clock = new THREE.Clock();
+    clock =
+        new THREE.Clock();
 
-    createLighting();
+    createClubLighting();
+
     createClub();
-    createPlayer();
 
-    camera.position.set(
-        0,
-        2.5,
-        6
-    );
+    createLocalPlayer();
 
     bindControls();
 
-    window.addEventListener(
+    addEventListener(
         'resize',
         resize
     );
@@ -941,98 +1231,213 @@ function initGame(){
 }
 
 /* ============================================================
-   LIGHTING
+   MATERIALS
 ============================================================ */
 
-function createLighting(){
+function material(
+    color,
+    roughness=.9
+){
 
-    const ambient =
-        new THREE.AmbientLight(
-            0xffffff,
-            .22
-        );
+    return new THREE.MeshStandardMaterial({
 
-    scene.add(ambient);
+        color,
 
-    const main =
-        new THREE.DirectionalLight(
-            0xffffff,
-            .55
-        );
+        roughness,
 
-    main.position.set(
-        0,
-        12,
-        4
-    );
-
-    main.castShadow = true;
-
-    main.shadow.mapSize.width = 1024;
-    main.shadow.mapSize.height = 1024;
-
-    main.shadow.camera.left = -25;
-    main.shadow.camera.right = 25;
-    main.shadow.camera.top = 25;
-    main.shadow.camera.bottom = -25;
-
-    scene.add(main);
-
-    const lights = [
-
-        [-9,5,-10,.7],
-        [9,5,-10,.7],
-        [-9,4,8,.35],
-        [9,4,8,.35],
-        [0,8,-12,.5]
-
-    ];
-
-    lights.forEach(p=>{
-
-        const light =
-            new THREE.PointLight(
-                0xffffff,
-                p[3],
-                18
-            );
-
-        light.position.set(
-            p[0],
-            p[1],
-            p[2]
-        );
-
-        scene.add(light);
+        metalness:.05
 
     });
 
 }
 
+const FLOOR =
+    material(0x020202);
+
+const WALL =
+    material(0x050505);
+
+const BLACK =
+    material(0x080808);
+
+const DARK =
+    material(0x101010);
+
+const DETAIL =
+    material(0x181818);
+
+const HUMAN =
+    material(0x111111);
+
+const WHITE =
+    material(0xbcbcbc);
+
 /* ============================================================
-   CLUB
+   CLUB LIGHTING
 ============================================================ */
 
-function box(
+function createClubLighting(){
+
+    /*
+     * Очень слабый общий свет.
+     * Он НЕ должен превращать клуб в серую комнату.
+     */
+
+    const ambient =
+        new THREE.AmbientLight(
+            0xffffff,
+            .045
+        );
+
+    scene.add(ambient);
+
+    /*
+     * Центральный мягкий overhead light.
+     */
+
+    const center =
+        new THREE.PointLight(
+            0xffffff,
+            2.0,
+            18,
+            2
+        );
+
+    center.position.set(
+        0,
+        7,
+        -1
+    );
+
+    center.castShadow = true;
+
+    center.shadow.mapSize.width =
+        1024;
+
+    center.shadow.mapSize.height =
+        1024;
+
+    scene.add(center);
+
+    /*
+     * Боковые клубные пятна.
+     */
+
+    createSpot(
+        -10,
+        5.5,
+        -7,
+        0xffffff,
+        2.2,
+        Math.PI / 5
+    );
+
+    createSpot(
+        10,
+        5.5,
+        -7,
+        0xffffff,
+        2.2,
+        Math.PI / 5
+    );
+
+    createSpot(
+        -10,
+        5.5,
+        8,
+        0xbcbcbc,
+        1.4,
+        Math.PI / 5
+    );
+
+    createSpot(
+        10,
+        5.5,
+        8,
+        0xbcbcbc,
+        1.4,
+        Math.PI / 5
+    );
+
+    /*
+     * Очень слабая задняя подсветка.
+     */
+
+    const rear =
+        new THREE.PointLight(
+            0xffffff,
+            .75,
+            15
+        );
+
+    rear.position.set(
+        0,
+        3.5,
+        -14
+    );
+
+    scene.add(rear);
+
+}
+
+function createSpot(
     x,
     y,
     z,
-    sx,
-    sy,
-    sz,
-    material=darkMat,
+    color,
+    intensity,
+    angle
+){
+
+    const light =
+        new THREE.SpotLight(
+            color,
+            intensity,
+            24,
+            angle,
+            .72,
+            1.8
+        );
+
+    light.position.set(
+        x,
+        y,
+        z
+    );
+
+    light.target.position.set(
+        x * .35,
+        0,
+        z * .15
+    );
+
+    light.castShadow = true;
+
+    scene.add(
+        light.target
+    );
+
+    scene.add(light);
+
+}
+
+/* ============================================================
+   WORLD
+============================================================ */
+
+function cube(
+    x,y,z,
+    sx,sy,sz,
+    mat,
     collision=false
 ){
 
-    const geometry =
-        new THREE.BoxGeometry(
-            sx,sy,sz
-        );
-
     const mesh =
         new THREE.Mesh(
-            geometry,
-            material
+            new THREE.BoxGeometry(
+                sx,sy,sz
+            ),
+            mat
         );
 
     mesh.position.set(
@@ -1047,252 +1452,248 @@ function box(
     if(collision){
 
         colliders.push({
+
             minX:x-sx/2,
             maxX:x+sx/2,
+
             minZ:z-sz/2,
             maxZ:z+sz/2,
+
             minY:y-sy/2,
             maxY:y+sy/2
+
         });
 
     }
 
     return mesh;
+
 }
 
 function createClub(){
 
-    /* floor */
+    /*
+     * Большой чёрный пол.
+     */
 
-    box(
+    cube(
         0,
         -.3,
         0,
         44,
         .6,
-        38,
-        blackMat,
-        true
+        36,
+        FLOOR
     );
 
-    /* outer walls */
+    /*
+     * Чёрные стены.
+     */
 
-    box(
+    cube(
         0,
         4,
-        -19,
+        -18,
         44,
         8,
         1,
-        darkMat,
+        WALL,
         true
     );
 
-    box(
+    cube(
         -22,
         4,
         0,
         1,
         8,
-        38,
-        darkMat,
+        36,
+        WALL,
         true
     );
 
-    box(
+    cube(
         22,
         4,
         0,
         1,
         8,
-        38,
-        darkMat,
+        36,
+        WALL,
         true
     );
 
-    box(
+    cube(
         0,
         4,
-        19,
+        18,
         44,
         8,
         1,
-        darkMat,
+        WALL,
         true
     );
 
-    /* architectural blocks */
+    /*
+     * Архитектура.
+     * Не серые кубы — почти чёрные объёмы.
+     */
 
-    box(
+    cube(
         -15,
-        2.2,
+        2,
         -11,
         5,
-        4.4,
         4,
-        grayMat,
+        5,
+        BLACK,
         true
     );
 
-    box(
+    cube(
         15,
-        2.2,
+        2,
         -11,
         5,
-        4.4,
         4,
-        grayMat,
+        5,
+        BLACK,
         true
     );
 
-    box(
+    cube(
         -15,
-        1.5,
+        1.3,
         9,
         5,
-        3,
+        2.6,
         6,
-        darkMat,
+        DARK,
         true
     );
 
-    box(
+    cube(
         15,
-        1.5,
+        1.3,
         9,
         5,
-        3,
+        2.6,
         6,
-        darkMat,
+        DARK,
         true
     );
 
-    /* rear architecture */
+    /*
+     * Центральная задняя архитектура.
+     */
 
-    box(
+    cube(
         0,
-        3.2,
-        -16,
-        20,
-        6.4,
-        1.4,
-        darkMat,
+        2.7,
+        -15.5,
+        19,
+        5.4,
+        1.2,
+        BLACK,
         true
     );
 
-    /* central raised platform */
+    /*
+     * Узкие вертикальные элементы.
+     */
 
-    box(
-        0,
-        .45,
-        -10,
-        13,
-        .9,
-        5,
-        grayMat,
-        true
-    );
+    for(
+        let x=-18;
+        x<=18;
+        x+=6
+    ){
 
-    /* ceiling beams */
-
-    for(let x=-18;x<=18;x+=6){
-
-        box(
+        cube(
             x,
-            7.5,
-            0,
-            .55,
-            .5,
-            34,
-            darkMat
-        );
-
-    }
-
-    /* vertical architectural columns */
-
-    for(let x=-18;x<=18;x+=6){
-
-        box(
-            x,
-            4,
+            3.5,
             -5,
-            .65,
-            8,
-            .65,
-            grayMat,
+            .5,
+            7,
+            .5,
+            DETAIL,
             true
         );
 
     }
 
-    /* subtle white strips */
+    /*
+     * Потолочные балки.
+     */
 
-    createStrip(
-        -20,
-        5.9,
-        0,
-        .12,
-        .12,
-        28
-    );
+    for(
+        let x=-18;
+        x<=18;
+        x+=6
+    ){
 
-    createStrip(
-        20,
-        5.9,
-        0,
-        .12,
-        .12,
-        28
-    );
-
-    createStrip(
-        0,
-        6.8,
-        -18.2,
-        26,
-        .12,
-        .12
-    );
-
-    /* wall panels */
-
-    for(let x=-12;x<=12;x+=4){
-
-        box(
+        cube(
             x,
-            3,
-            -18.35,
-            2.4,
-            5.5,
-            .12,
-            grayMat
+            7.5,
+            0,
+            .45,
+            .35,
+            34,
+            BLACK
         );
 
     }
 
-    /* EWS wall mark */
+    /*
+     * Тонкие архитектурные линии.
+     * Они НЕ освещают всю комнату.
+     */
 
-    createWallLogo();
+    createLightLine(
+        -21.35,
+        5.5,
+        0,
+        .08,
+        .08,
+        27
+    );
+
+    createLightLine(
+        21.35,
+        5.5,
+        0,
+        .08,
+        .08,
+        27
+    );
+
+    /*
+     * Задняя вывеска EWS.
+     */
+
+    createLogo();
 
 }
 
-function createStrip(
+/* ============================================================
+   LIGHT LINES
+============================================================ */
+
+function createLightLine(
     x,y,z,
     sx,sy,sz
 ){
 
-    const geometry =
-        new THREE.BoxGeometry(
-            sx,sy,sz
-        );
-
     const mesh =
         new THREE.Mesh(
-            geometry,
+
+            new THREE.BoxGeometry(
+                sx,sy,sz
+            ),
+
             new THREE.MeshBasicMaterial({
-                color:0xffffff
+                color:0x666666
             })
+
         );
 
     mesh.position.set(
@@ -1303,29 +1704,32 @@ function createStrip(
 
 }
 
-function createWallLogo(){
+/* ============================================================
+   LOGO
+============================================================ */
+
+function createLogo(){
 
     const canvas =
-        document.createElement('canvas');
+        document.createElement(
+            'canvas'
+        );
 
-    canvas.width = 1024;
-    canvas.height = 256;
+    canvas.width = 1000;
+    canvas.height = 300;
 
     const ctx =
         canvas.getContext('2d');
 
     ctx.fillStyle =
-        '#050505';
+        '#030303';
 
     ctx.fillRect(
-        0,0,1024,256
+        0,
+        0,
+        1000,
+        300
     );
-
-    ctx.fillStyle =
-        '#eeeeee';
-
-    ctx.font =
-        '900 150px Arial';
 
     ctx.textAlign =
         'center';
@@ -1333,46 +1737,53 @@ function createWallLogo(){
     ctx.textBaseline =
         'middle';
 
+    ctx.fillStyle =
+        '#bdbdbd';
+
+    ctx.font =
+        '900 150px Arial';
+
     ctx.fillText(
         'EWS',
-        512,
+        500,
         125
     );
 
-    ctx.font =
-        '28px Arial';
-
     ctx.fillStyle =
-        '#777';
+        '#555';
+
+    ctx.font =
+        '24px Arial';
 
     ctx.fillText(
         'SESSIONS',
-        512,
-        205
+        500,
+        220
     );
 
     const texture =
-        new THREE.CanvasTexture(canvas);
-
-    const material =
-        new THREE.MeshBasicMaterial({
-            map:texture,
-            transparent:true
-        });
+        new THREE.CanvasTexture(
+            canvas
+        );
 
     const mesh =
         new THREE.Mesh(
+
             new THREE.PlaneGeometry(
-                11,
-                2.75
+                9,
+                2.7
             ),
-            material
+
+            new THREE.MeshBasicMaterial({
+                map:texture
+            })
+
         );
 
     mesh.position.set(
         0,
-        4.2,
-        -18.15
+        4.1,
+        -17.4
     );
 
     scene.add(mesh);
@@ -1383,7 +1794,7 @@ function createWallLogo(){
    PLAYER
 ============================================================ */
 
-function createPlayer(){
+function createLocalPlayer(){
 
     playerGroup =
         new THREE.Group();
@@ -1391,229 +1802,131 @@ function createPlayer(){
     playerGroup.position.set(
         0,
         0,
-        7
+        6
     );
 
-    scene.add(playerGroup);
-
-    player = createHuman(
-        true
+    scene.add(
+        playerGroup
     );
 
-    playerGroup.add(player);
+    player =
+        createHuman();
+
+    playerGroup.add(
+        player
+    );
 
 }
 
-/* ============================================================
-   HUMAN
-============================================================ */
-
-function createHuman(local=false){
+function createHuman(){
 
     const root =
         new THREE.Group();
 
-    const bodyMat =
-        local
-            ? new THREE.MeshStandardMaterial({
-                color:0x171717,
-                roughness:.82,
-                metalness:.05
-            })
-            : new THREE.MeshStandardMaterial({
-                color:0x202020,
-                roughness:.9
-            });
-
-    const accentMat =
-        new THREE.MeshStandardMaterial({
-            color:0xbdbdbd,
-            roughness:.7
-        });
-
-    const headMat =
-        new THREE.MeshStandardMaterial({
-            color:0x080808,
-            roughness:.85
-        });
-
-    /* torso */
-
-    const torso =
+    const body =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                .72,
-                1.25,
-                .42
+                .65,
+                1.15,
+                .38
             ),
-            bodyMat
+            HUMAN
         );
 
-    torso.position.y =
+    body.position.y =
         2.05;
 
-    torso.castShadow = true;
+    body.castShadow = true;
 
-    root.add(torso);
-
-    /* neck */
-
-    const neck =
-        new THREE.Mesh(
-            new THREE.CylinderGeometry(
-                .13,
-                .14,
-                .18,
-                12
-            ),
-            headMat
-        );
-
-    neck.position.y =
-        2.72;
-
-    root.add(neck);
-
-    /* head */
+    root.add(body);
 
     const head =
         new THREE.Mesh(
             new THREE.SphereGeometry(
-                .31,
+                .3,
                 16,
                 12
             ),
-            headMat
+            BLACK
         );
 
-    head.scale.set(
-        .95,
-        1.05,
-        .95
-    );
-
     head.position.y =
-        3.1;
+        3.0;
 
     head.castShadow = true;
 
     root.add(head);
 
-    /* small face detail */
-
-    const face =
+    const neck =
         new THREE.Mesh(
-            new THREE.BoxGeometry(
-                .22,
-                .06,
-                .025
+            new THREE.CylinderGeometry(
+                .11,
+                .13,
+                .18,
+                12
             ),
-            accentMat
+            BLACK
         );
 
-    face.position.set(
-        0,
-        3.12,
-        -.305
-    );
+    neck.position.y =
+        2.68;
 
-    root.add(face);
-
-    /* arms */
+    root.add(neck);
 
     const leftArm =
-        createLimb(
-            .17,
+        limb(
+            .16,
             .82,
-            .18,
-            bodyMat
+            .17
         );
 
     leftArm.position.set(
-        -.52,
-        2.18,
+        -.47,
+        2.15,
         0
     );
-
-    leftArm.rotation.z =
-        -.06;
 
     root.add(leftArm);
 
     const rightArm =
-        createLimb(
-            .17,
+        limb(
+            .16,
             .82,
-            .18,
-            bodyMat
+            .17
         );
 
     rightArm.position.set(
-        .52,
-        2.18,
+        .47,
+        2.15,
         0
     );
-
-    rightArm.rotation.z =
-        .06;
 
     root.add(rightArm);
-
-    /* hands */
-
-    const leftHand =
-        createHand();
-
-    leftHand.position.set(
-        -.52,
-        1.73,
-        0
-    );
-
-    root.add(leftHand);
-
-    const rightHand =
-        createHand();
-
-    rightHand.position.set(
-        .52,
-        1.73,
-        0
-    );
-
-    root.add(rightHand);
-
-    /* hips */
 
     const hips =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                .78,
-                .32,
-                .45
+                .7,
+                .28,
+                .4
             ),
-            bodyMat
+            HUMAN
         );
 
     hips.position.y =
-        1.35;
-
-    hips.castShadow = true;
+        1.38;
 
     root.add(hips);
 
-    /* legs */
-
     const leftLeg =
-        createLimb(
-            .23,
+        limb(
+            .22,
             1.05,
-            .24,
-            bodyMat
+            .22
         );
 
     leftLeg.position.set(
-        -.23,
+        -.21,
         .78,
         0
     );
@@ -1621,44 +1934,63 @@ function createHuman(local=false){
     root.add(leftLeg);
 
     const rightLeg =
-        createLimb(
-            .23,
+        limb(
+            .22,
             1.05,
-            .24,
-            bodyMat
+            .22
         );
 
     rightLeg.position.set(
-        .23,
+        .21,
         .78,
         0
     );
 
     root.add(rightLeg);
 
-    /* feet */
-
     const leftFoot =
-        createFoot();
+        foot();
 
     leftFoot.position.set(
-        -.23,
-        .15,
-        -.08
+        -.21,
+        .14,
+        -.09
     );
 
     root.add(leftFoot);
 
     const rightFoot =
-        createFoot();
+        foot();
 
     rightFoot.position.set(
-        .23,
-        .15,
-        -.08
+        .21,
+        .14,
+        -.09
     );
 
     root.add(rightFoot);
+
+    /*
+     * Небольшая белая деталь лица.
+     */
+
+    const face =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .16,
+                .035,
+                .025
+            ),
+            WHITE
+        );
+
+    face.position.set(
+        0,
+        3.03,
+        -.292
+    );
+
+    root.add(face);
 
     root.userData.parts = {
         leftArm,
@@ -1668,105 +2000,105 @@ function createHuman(local=false){
     };
 
     return root;
+
 }
 
-function createLimb(x,y,z,material){
+function limb(
+    x,
+    y,
+    z
+){
 
     const mesh =
         new THREE.Mesh(
             new THREE.BoxGeometry(
                 x,y,z
             ),
-            material
+            HUMAN
         );
 
     mesh.castShadow = true;
 
     return mesh;
-}
-
-function createHand(){
-
-    return new THREE.Mesh(
-        new THREE.SphereGeometry(
-            .13,
-            10,
-            8
-        ),
-        softWhiteMat
-    );
 
 }
 
-function createFoot(){
+function foot(){
 
     const mesh =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                .3,
-                .16,
-                .5
+                .27,
+                .15,
+                .45
             ),
-            blackMat
+            BLACK
         );
 
     mesh.castShadow = true;
 
     return mesh;
+
 }
 
 /* ============================================================
-   INPUT
+   CONTROLS
 ============================================================ */
 
 function bindControls(){
 
-    window.addEventListener('keydown',e=>{
+    addEventListener(
+        'keydown',
+        e=>{
 
-        if(
-            e.code === 'Space' ||
-            e.code.startsWith('Arrow')
-        ){
-            e.preventDefault();
-        }
-
-        keys[e.code] = true;
-
-        if(
-            e.code === 'Space' &&
-            onGround
-        ){
-
-            velocity.y =
-                jumpPower;
-
-            onGround = false;
-
-        }
-
-    });
-
-    window.addEventListener('keyup',e=>{
-
-        keys[e.code] = false;
-
-    });
-
-    renderer.domElement.addEventListener(
-        'click',
-        ()=>{
-            if(!mouseLocked){
-                renderer.domElement.requestPointerLock();
+            if(
+                e.code === 'Space'
+            ){
+                e.preventDefault();
             }
+
+            keys[e.code] = true;
+
+            if(
+                e.code === 'Space' &&
+                grounded
+            ){
+
+                velocity.y =
+                    7.2;
+
+                grounded = false;
+
+            }
+
         }
     );
+
+    addEventListener(
+        'keyup',
+        e=>{
+
+            keys[e.code] = false;
+
+        }
+    );
+
+    renderer.domElement.onclick =
+        ()=>{
+
+            renderer.domElement
+                .requestPointerLock();
+
+        };
 
     document.addEventListener(
         'pointerlockchange',
         ()=>{
-            mouseLocked =
+
+            pointerLocked =
                 document.pointerLockElement ===
                 renderer.domElement;
+
         }
     );
 
@@ -1774,20 +2106,22 @@ function bindControls(){
         'mousemove',
         e=>{
 
-            if(!mouseLocked) return;
+            if(!pointerLocked){
+                return;
+            }
 
-            cameraYaw -=
-                e.movementX * .0025;
+            yaw -=
+                e.movementX * .0024;
 
-            cameraPitch -=
+            pitch -=
                 e.movementY * .0018;
 
-            cameraPitch =
+            pitch =
                 Math.max(
-                    -.15,
+                    -.1,
                     Math.min(
-                        .65,
-                        cameraPitch
+                        .55,
+                        pitch
                     )
                 );
 
@@ -1802,36 +2136,44 @@ function bindControls(){
 
 function updatePlayer(dt){
 
-    if(!playerGroup) return;
-
     const forward =
         new THREE.Vector3(
-            -Math.sin(cameraYaw),
+            -Math.sin(yaw),
             0,
-            -Math.cos(cameraYaw)
+            -Math.cos(yaw)
         );
 
     const right =
         new THREE.Vector3(
-            Math.cos(cameraYaw),
+            Math.cos(yaw),
             0,
-            -Math.sin(cameraYaw)
+            -Math.sin(yaw)
         );
 
     const direction =
         new THREE.Vector3();
 
-    if(keys.KeyW) direction.add(forward);
-    if(keys.KeyS) direction.sub(forward);
-    if(keys.KeyD) direction.add(right);
-    if(keys.KeyA) direction.sub(right);
+    if(keys.KeyW)
+        direction.add(forward);
 
-    if(direction.lengthSq() > 0){
+    if(keys.KeyS)
+        direction.sub(forward);
+
+    if(keys.KeyD)
+        direction.add(right);
+
+    if(keys.KeyA)
+        direction.sub(right);
+
+    const moving =
+        direction.lengthSq() > .001;
+
+    if(moving){
 
         direction.normalize();
 
         const acceleration =
-            24 * dt;
+            22 * dt;
 
         velocity.x +=
             direction.x *
@@ -1841,95 +2183,196 @@ function updatePlayer(dt){
             direction.z *
             acceleration;
 
-        const horizontalSpeed =
+        const speed =
             Math.sqrt(
-                velocity.x * velocity.x +
-                velocity.z * velocity.z
+                velocity.x *
+                velocity.x +
+                velocity.z *
+                velocity.z
             );
 
-        if(horizontalSpeed > moveSpeed){
+        const max =
+            4.8;
 
-            const factor =
-                moveSpeed /
-                horizontalSpeed;
+        if(speed > max){
 
-            velocity.x *= factor;
-            velocity.z *= factor;
+            velocity.x *=
+                max / speed;
+
+            velocity.z *=
+                max / speed;
 
         }
 
-        playerGroup.rotation.y =
+        /*
+         * Поворачиваем тело
+         * в сторону движения.
+         */
+
+        const target =
             Math.atan2(
                 direction.x,
                 direction.z
             );
 
+        rotateSmooth(
+            playerGroup,
+            target,
+            dt * 12
+        );
+
     }else{
 
-        const damping =
-            Math.pow(.001,dt);
+        /*
+         * Настоящее торможение,
+         * а не резкая остановка.
+         */
 
-        velocity.x *= damping;
-        velocity.z *= damping;
+        const friction =
+            Math.pow(
+                .0005,
+                dt
+            );
+
+        velocity.x *= friction;
+        velocity.z *= friction;
 
     }
-
-    /* gravity */
 
     velocity.y -=
-        gravity * dt;
+        19 * dt;
 
-    const next =
-        playerGroup.position.clone();
+    const nextX =
+        playerGroup.position.x +
+        velocity.x * dt;
 
-    next.x += velocity.x * dt;
-    next.y += velocity.y * dt;
-    next.z += velocity.z * dt;
+    const nextZ =
+        playerGroup.position.z +
+        velocity.z * dt;
 
-    /* floor */
-
-    if(next.y <= 0){
-
-        next.y = 0;
-
-        velocity.y = 0;
-
-        onGround = true;
-
-    }
-
-    /* collisions */
-
-    const radius = .42;
-
-    if(!blocked(
-        next.x,
-        next.z,
-        radius
-    )){
+    if(
+        !blocked(
+            nextX,
+            playerGroup.position.z,
+            .4
+        )
+    ){
 
         playerGroup.position.x =
-            next.x;
-
-        playerGroup.position.z =
-            next.z;
+            nextX;
 
     }else{
 
         velocity.x = 0;
+
+    }
+
+    if(
+        !blocked(
+            playerGroup.position.x,
+            nextZ,
+            .4
+        )
+    ){
+
+        playerGroup.position.z =
+            nextZ;
+
+    }else{
+
         velocity.z = 0;
 
     }
 
-    playerGroup.position.y =
-        next.y;
+    playerGroup.position.y +=
+        velocity.y * dt;
+
+    if(
+        playerGroup.position.y <= 0
+    ){
+
+        playerGroup.position.y = 0;
+
+        velocity.y = 0;
+
+        grounded = true;
+
+    }
+
+    const horizontal =
+        Math.sqrt(
+            velocity.x *
+            velocity.x +
+            velocity.z *
+            velocity.z
+        );
 
     animateHuman(
         player,
-        dt,
-        Math.abs(velocity.x) +
-        Math.abs(velocity.z)
+        horizontal,
+        dt
     );
+
+}
+
+/* ============================================================
+   WALK ANIMATION
+============================================================ */
+
+function animateHuman(
+    human,
+    speed,
+    dt
+){
+
+    const p =
+        human.userData.parts;
+
+    if(!p) return;
+
+    if(speed > .12){
+
+        walkingTime +=
+            dt *
+            (7 + speed * 2);
+
+        const amount =
+            Math.min(
+                .55,
+                speed * .13
+            );
+
+        const swing =
+            Math.sin(
+                walkingTime
+            ) *
+            amount;
+
+        /*
+         * Ноги идут навстречу рукам.
+         */
+
+        p.leftLeg.rotation.x =
+            swing;
+
+        p.rightLeg.rotation.x =
+            -swing;
+
+        p.leftArm.rotation.x =
+            -swing * .7;
+
+        p.rightArm.rotation.x =
+            swing * .7;
+
+    }else{
+
+        p.leftLeg.rotation.x *= .82;
+        p.rightLeg.rotation.x *= .82;
+
+        p.leftArm.rotation.x *= .82;
+        p.rightArm.rotation.x *= .82;
+
+    }
 
 }
 
@@ -1937,9 +2380,15 @@ function updatePlayer(dt){
    COLLISION
 ============================================================ */
 
-function blocked(x,z,radius){
+function blocked(
+    x,
+    z,
+    radius
+){
 
-    for(const c of colliders){
+    for(
+        const c of colliders
+    ){
 
         if(
             x + radius > c.minX &&
@@ -1948,74 +2397,50 @@ function blocked(x,z,radius){
             z - radius < c.maxZ
         ){
 
-            if(
-                c.maxY > 0 &&
-                c.minY < 2
-            ){
-                return true;
-            }
+            return true;
 
         }
 
     }
 
     return false;
+
 }
 
 /* ============================================================
-   HUMAN ANIMATION
+   ROTATION
 ============================================================ */
 
-let walkTime = 0;
-
-function animateHuman(
-    human,
-    dt,
-    movement
+function rotateSmooth(
+    object,
+    target,
+    amount
 ){
 
-    if(!human) return;
+    let diff =
+        target -
+        object.rotation.y;
 
-    const parts =
-        human.userData.parts;
-
-    if(!parts) return;
-
-    const walking =
-        movement > .15;
-
-    if(walking){
-
-        walkTime +=
-            dt *
-            (7 + movement);
-
-        const swing =
-            Math.sin(
-                walkTime
-            ) * .48;
-
-        parts.leftArm.rotation.x =
-            swing;
-
-        parts.rightArm.rotation.x =
-            -swing;
-
-        parts.leftLeg.rotation.x =
-            -swing;
-
-        parts.rightLeg.rotation.x =
-            swing;
-
-    }else{
-
-        parts.leftArm.rotation.x *= .82;
-        parts.rightArm.rotation.x *= .82;
-
-        parts.leftLeg.rotation.x *= .82;
-        parts.rightLeg.rotation.x *= .82;
-
+    while(
+        diff > Math.PI
+    ){
+        diff -=
+            Math.PI * 2;
     }
+
+    while(
+        diff < -Math.PI
+    ){
+        diff +=
+            Math.PI * 2;
+    }
+
+    object.rotation.y +=
+        diff *
+        Math.min(
+            1,
+            amount
+        );
 
 }
 
@@ -2025,31 +2450,38 @@ function animateHuman(
 
 function updateCamera(){
 
-    if(!playerGroup) return;
+    if(!playerGroup){
+        return;
+    }
 
-    const distance = 6.2;
-
-    const height = 2.8;
-
-    const offset =
-        new THREE.Vector3(
-            Math.sin(cameraYaw) * distance,
-            height +
-                Math.sin(cameraPitch) * 2,
-            Math.cos(cameraYaw) * distance
-        );
+    const distance = 5.8;
 
     const target =
         playerGroup.position.clone();
 
-    target.y += 2.05;
+    target.y +=
+        2.0;
+
+    const offset =
+        new THREE.Vector3(
+            Math.sin(yaw) *
+                distance,
+
+            2.4 +
+                Math.sin(pitch) *
+                1.5,
+
+            Math.cos(yaw) *
+                distance
+        );
 
     const desired =
-        target.clone().add(offset);
+        target.clone()
+            .add(offset);
 
     camera.position.lerp(
         desired,
-        .12
+        .1
     );
 
     camera.lookAt(
@@ -2062,14 +2494,20 @@ function updateCamera(){
    REMOTE PLAYERS
 ============================================================ */
 
-function createRemotePlayer(data){
-
-    if(!data || !data.id) return;
+function createRemote(data){
 
     if(
-        data.id === socket.id ||
+        !data ||
+        !data.id ||
+        data.id === socket.id
+    ){
+        return;
+    }
+
+    if(
         remotePlayers.has(data.id)
     ){
+        updateRemoteTarget(data);
         return;
     }
 
@@ -2086,24 +2524,24 @@ function createRemotePlayer(data){
         Number(data.ry) || 0;
 
     const human =
-        createHuman(false);
+        createHuman();
 
-    group.add(human);
-
-    group.userData.username =
-        data.username || 'Guest';
+    group.add(
+        human
+    );
 
     group.userData.target =
-        new THREE.Vector3(
-            group.position.x,
-            group.position.y,
-            group.position.z
-        );
+        group.position.clone();
 
     group.userData.targetRotation =
         group.rotation.y;
 
-    scene.add(group);
+    group.userData.human =
+        human;
+
+    scene.add(
+        group
+    );
 
     remotePlayers.set(
         data.id,
@@ -2112,14 +2550,15 @@ function createRemotePlayer(data){
 
 }
 
-function updateRemotePlayer(data){
+function updateRemoteTarget(data){
 
     const group =
         remotePlayers.get(data.id);
 
     if(!group){
 
-        createRemotePlayer(data);
+        createRemote(data);
+
         return;
 
     }
@@ -2137,106 +2576,121 @@ function updateRemotePlayer(data){
 
 function updateRemotePlayers(dt){
 
-    remotePlayers.forEach(group=>{
+    remotePlayers.forEach(
+        group=>{
 
-        group.position.lerp(
-            group.userData.target,
-            Math.min(
-                1,
-                dt * 12
-            )
-        );
+            const old =
+                group.position.clone();
 
-        const targetRotation =
-            group.userData.targetRotation;
+            group.position.lerp(
+                group.userData.target,
+                Math.min(
+                    1,
+                    dt * 12
+                )
+            );
 
-        let diff =
-            targetRotation -
-            group.rotation.y;
-
-        while(diff > Math.PI)
-            diff -= Math.PI * 2;
-
-        while(diff < -Math.PI)
-            diff += Math.PI * 2;
-
-        group.rotation.y +=
-            diff *
-            Math.min(
-                1,
+            rotateSmooth(
+                group,
+                group.userData.targetRotation,
                 dt * 10
             );
 
-        const human =
-            group.children[0];
+            const moved =
+                old.distanceTo(
+                    group.position
+                );
 
-        animateHuman(
-            human,
-            dt,
-            group.position.distanceTo(
-                group.userData.target
-            ) * 10
-        );
+            animateHuman(
+                group.userData.human,
+                moved * 60,
+                dt
+            );
 
-    });
+        }
+    );
 
 }
 
-function removeRemotePlayer(id){
+function removeRemote(id){
 
     const group =
         remotePlayers.get(id);
 
-    if(!group) return;
+    if(!group){
+        return;
+    }
 
-    scene.remove(group);
+    scene.remove(
+        group
+    );
 
-    remotePlayers.delete(id);
+    remotePlayers.delete(
+        id
+    );
 
 }
 
 /* ============================================================
-   SEND PLAYER
+   PLAYER SYNC
 ============================================================ */
-
-let sendTimer = 0;
 
 function syncPlayer(dt){
 
     sendTimer += dt;
 
-    if(sendTimer < .05) return;
+    if(
+        sendTimer < .05
+    ){
+        return;
+    }
 
     sendTimer = 0;
 
-    if(!loggedIn || !playerGroup) return;
+    if(
+        !loggedIn ||
+        !playerGroup
+    ){
+        return;
+    }
 
-    socket.emit('player-move',{
+    socket.emit(
+        'player-move',
+        {
+            x:
+                playerGroup.position.x,
 
-        x:playerGroup.position.x,
-        y:playerGroup.position.y,
-        z:playerGroup.position.z,
+            y:
+                playerGroup.position.y,
 
-        ry:playerGroup.rotation.y,
+            z:
+                playerGroup.position.z,
 
-        jumping:!onGround
+            ry:
+                playerGroup.rotation.y,
 
-    });
+            jumping:
+                !grounded
+        }
+    );
 
 }
 
 /* ============================================================
-   AUDIO / HLS
+   HLS
 ============================================================ */
 
 let hls = null;
 
-function setupStream(){
+function startStream(){
 
     const url =
         '/hls/ews/index.m3u8';
 
-    if(Hls.isSupported()){
+    if(
+        window.Hls &&
+        Hls.isSupported()
+    ){
 
         hls =
             new Hls({
@@ -2247,13 +2701,15 @@ function setupStream(){
 
         hls.loadSource(url);
 
-        hls.attachMedia(stream);
+        hls.attachMedia(
+            stream
+        );
 
         hls.on(
             Hls.Events.MANIFEST_PARSED,
             ()=>{
                 console.log(
-                    '[EWS] HLS READY'
+                    '[EWS] STREAM READY'
                 );
             }
         );
@@ -2261,21 +2717,15 @@ function setupStream(){
         hls.on(
             Hls.Events.ERROR,
             (event,data)=>{
-
                 console.log(
                     '[EWS HLS]',
                     data.type,
                     data.details
                 );
-
             }
         );
 
-    }else if(
-        stream.canPlayType(
-            'application/vnd.apple.mpegurl'
-        )
-    ){
+    }else{
 
         stream.src = url;
 
@@ -2283,27 +2733,28 @@ function setupStream(){
 
 }
 
-setupStream();
+startStream();
 
-audioButton.addEventListener(
-    'click',
+audioButton.onclick =
     async()=>{
 
         try{
 
-            if(stream.paused){
+            if(
+                stream.paused
+            ){
 
                 await stream.play();
 
                 audioButton.textContent =
-                    'AUDIO / STREAM ON';
+                    'STREAM / ON';
 
             }else{
 
                 stream.pause();
 
                 audioButton.textContent =
-                    'AUDIO / STREAM OFF';
+                    'STREAM / OFF';
 
             }
 
@@ -2316,8 +2767,7 @@ audioButton.addEventListener(
 
         }
 
-    }
-);
+    };
 
 /* ============================================================
    RENDER
@@ -2329,7 +2779,11 @@ function animate(){
         animate
     );
 
-    if(!gameStarted) return;
+    if(
+        !gameStarted
+    ){
+        return;
+    }
 
     const dt =
         Math.min(
@@ -2358,17 +2812,22 @@ function animate(){
 
 function resize(){
 
-    if(!camera || !renderer) return;
+    if(
+        !camera ||
+        !renderer
+    ){
+        return;
+    }
 
     camera.aspect =
-        window.innerWidth /
-        window.innerHeight;
+        innerWidth /
+        innerHeight;
 
     camera.updateProjectionMatrix();
 
     renderer.setSize(
-        window.innerWidth,
-        window.innerHeight
+        innerWidth,
+        innerHeight
     );
 
 }
@@ -2377,4 +2836,3 @@ function resize(){
 
 </body>
 </html>
-```
