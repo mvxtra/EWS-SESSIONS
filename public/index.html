@@ -348,13 +348,96 @@ input:focus{
 
 #ssh101-hidden-player{
   position:fixed;
-  width:1px;
-  height:1px;
-  left:-10px;
-  top:-10px;
-  border:0;
-  opacity:0.01;
-  pointer-events:none;
+  width:360px;
+  height:203px;
+  left:50%;
+  top:92px;
+  transform:translateX(-50%);
+  border:1px solid #333;
+  background:#000;
+  z-index:99;
+  display:none;
+}
+
+
+
+/* ================= MOBILE ================= */
+@media (max-width: 700px){
+  #top-logo{top:12px;left:12px;font-size:22px;}
+  #top-logo span{font-size:9px;}
+
+  #lang-bar{right:12px;top:12px;}
+  #lang{padding:6px 7px;font-size:11px;}
+
+  #online-box{
+    top:52px;
+    right:12px;
+    width:145px;
+    padding:9px;
+    max-height:105px;
+  }
+  #online-list{max-height:62px;font-size:10px;}
+  #online-box h3{font-size:8px;margin-bottom:5px;}
+  #online-list li{padding:2px 0;}
+
+  #stream-indicator{
+    top:52px;
+    left:12px;
+    transform:none;
+    padding:5px 8px;
+    font-size:8px;
+  }
+
+  #audio-control{
+    top:84px;
+    left:12px;
+    transform:none;
+    padding:8px 10px;
+    font-size:8px;
+    z-index:150;
+  }
+
+  #ssh101-hidden-player{
+    width:calc(100vw - 24px);
+    height:82px;
+    left:12px;
+    top:122px;
+    transform:none;
+    z-index:140;
+  }
+
+  #chat{
+    left:10px;
+    right:10px;
+    bottom:10px;
+    width:auto;
+    height:31vh;
+    min-height:190px;
+    max-height:270px;
+    padding:9px;
+    z-index:200;
+    background:rgba(0,0,0,.86);
+  }
+  #chat-title{font-size:8px;margin-bottom:6px;}
+  #chat-messages{font-size:11px;margin-bottom:6px;}
+  .msg{font-size:11px;margin-bottom:5px;}
+  #chat-input{height:38px;font-size:14px;padding:0 9px;}
+  #chat-send{width:44px;font-size:18px;}
+
+  #hint{
+    display:none;
+  }
+
+  #zone-label{
+    bottom:calc(31vh + 20px);
+    font-size:8px;
+  }
+}
+
+@media (max-width: 420px){
+  #online-box{width:125px;}
+  #chat{height:34vh;min-height:185px;}
+  #zone-label{bottom:calc(34vh + 20px);}
 }
 
 </style>
@@ -1910,7 +1993,8 @@ function startSSHAudio(){
      activation, which is required for live audio autoplay.
   */
   iframe.src =
-    'https://ssh101.com/securelive/index.php?id=ewsessions&autoplay=1';
+    'https://ssh101.com/securelive/index.php?id=ewsessions';
+  iframe.style.display = 'block';
 
   indicator.textContent = 'AUDIO: STARTING...';
 
@@ -1919,11 +2003,9 @@ function startSSHAudio(){
   }
 
   iframe.onload = function(){
-    indicator.textContent = 'AUDIO: LIVE';
-
+    indicator.textContent = 'AUDIO: READY';
     if(button){
-      button.textContent = '● AUDIO: LIVE';
-      button.classList.add('live');
+      button.textContent = '▶ PRESS PLAY IN PLAYER';
     }
   };
 
