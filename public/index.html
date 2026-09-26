@@ -1702,8 +1702,10 @@ function createMainScreen(){
       })
     );
 
+  // Экран физически закреплён на внутренней поверхности передней стены.
+  // Стена находится на z=-17, её внутренняя плоскость примерно z=-16.75.
   frame.position.set(
-    0,3.6,-16.5
+    0,3.6,-16.72
   );
 
   scene.add(frame);
@@ -1720,7 +1722,7 @@ function createMainScreen(){
     );
 
   screenMesh.position.set(
-    0,3.6,-16.28
+    0,3.6,-16.50
   );
 
   scene.add(screenMesh);
