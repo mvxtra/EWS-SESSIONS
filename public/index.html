@@ -422,27 +422,20 @@ input:focus{
 
 #media-screen{
   position:absolute;
-  left:0;
-  top:0;
-  width:1024px;
-  height:512px;
   z-index:15;
   display:none;
   overflow:hidden;
   background:#000;
-  border:0;
-  box-shadow:none;
+  border:1px solid #222;
+  box-shadow:0 0 45px rgba(0,0,0,.9);
   pointer-events:auto;
-  transform-origin:0 0;
-  transform:matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1);
-  will-change:transform;
 }
 
 #media-screen.active{display:block;}
 
 #media-screen iframe{
-  width:1024px;
-  height:512px;
+  width:100%;
+  height:100%;
   border:0;
   display:block;
   background:#000;
@@ -1173,7 +1166,8 @@ function startSession(username){
     list=>{
 
       onlineUserList=Array.isArray(list)?list:[];
-      clubScreenHost=(onlineUserList.find(u=>u && typeof u==='object' && u.owner)?.username)||'mvxtra';
+      const ownerEntry=onlineUserList.find(u=>typeof u!=='string' && u && u.owner) || onlineUserList.find(u=>typeof u!=='string' && u && String(u.username||'').toLowerCase()==='mvxtra');
+      clubScreenHost=ownerEntry ? ownerEntry.username : (currentUser && String(currentUser).toLowerCase()==='mvxtra' ? currentUser : 'mvxtra');
 
       const ul =
         document.getElementById('online-list');
@@ -1273,9 +1267,29 @@ function startSession(username){
     }
   );
 
+  socket.on('screen-host', data=>{
+    clubScreenHost=data && data.username ? data.username : 'mvxtra';
+    const screenButton=document.getElementById('screen-control');
+    if(screenButton) screenButton.style.display=isClubHost()?'block':'none';
+  });
+
   socket.on('club-screen-state', state=>{
     if(!state) return;
     applyRemoteClubScreen(state);
+  });
+
+  socket.on('players-state', list=>{
+    if(!Array.isArray(list)) return;
+    list.forEach(player=>{
+      if(player && player.id && player.id!==socket.id){
+        updateRemotePlayer(player);
+      }
+    });
+  });
+
+  socket.on('player-joined', player=>{
+    if(!player || !player.id || player.id===socket.id) return;
+    updateRemotePlayer(player);
   });
 
   socket.on('player-state', data=>{
@@ -1283,8 +1297,25 @@ function startSession(username){
     updateRemotePlayer(data);
   });
 
+  socket.on('player-move', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
   socket.on('player-left', id=>{
     removeRemotePlayer(id);
+  });
+
+  socket.on('player-removed', id=>{
+    removeRemotePlayer(id);
+  });
+
+  socket.on('joined', ()=>{
+    if(socket && socket.connected){
+      socket.emit('request-players');
+      socket.emit('request-online');
+      socket.emit('request-club-screen');
+    }
   });
 
 }
@@ -2909,7 +2940,7 @@ function normalizeClubScreenUrl(raw){
 }
 
 function isClubHost(){
-  return String(currentUser||'').trim().toLowerCase()==='mvxtra' || String(clubScreenHost||'').trim().toLowerCase()===String(currentUser||'').trim().toLowerCase();
+  return !clubScreenHost || clubScreenHost===currentUser;
 }
 
 function loadClubScreen(){
@@ -2951,128 +2982,41 @@ function clearClubScreen(){
   setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
 }
 
-function solveHomography(src,dst){
-  const A=[];
-  const b=[];
-
-  for(let i=0;i<4;i++){
-    const x=src[i][0];
-    const y=src[i][1];
-    const u=dst[i][0];
-    const v=dst[i][1];
-
-    A.push([x,y,1,0,0,0,-u*x,-u*y]);
-    b.push(u);
-
-    A.push([0,0,0,x,y,1,-v*x,-v*y]);
-    b.push(v);
-  }
-
-  // Gaussian elimination with partial pivoting.
-  for(let col=0;col<8;col++){
-    let pivot=col;
-    for(let row=col+1;row<8;row++){
-      if(Math.abs(A[row][col])>Math.abs(A[pivot][col])) pivot=row;
-    }
-
-    if(Math.abs(A[pivot][col])<1e-10) return null;
-
-    if(pivot!==col){
-      const tr=A[pivot]; A[pivot]=A[col]; A[col]=tr;
-      const tb=b[pivot]; b[pivot]=b[col]; b[col]=tb;
-    }
-
-    const div=A[col][col];
-    for(let j=col;j<8;j++) A[col][j]/=div;
-    b[col]/=div;
-
-    for(let row=0;row<8;row++){
-      if(row===col) continue;
-      const factor=A[row][col];
-      if(Math.abs(factor)<1e-12) continue;
-      for(let j=col;j<8;j++) A[row][j]-=factor*A[col][j];
-      b[row]-=factor*b[col];
-    }
-  }
-
-  return [
-    b[0],b[1],b[2],
-    b[3],b[4],b[5],
-    b[6],b[7],1
-  ];
-}
-
 function updateClubScreenOverlay(){
   const panel=document.getElementById('media-screen');
   if(!panel || !screenMesh || !camera || !renderer) return;
-
   if(!screenMediaActive){
     panel.style.display='none';
-    panel.style.transform='matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)';
     return;
   }
-
   const w=renderer.domElement.clientWidth;
   const h=renderer.domElement.clientHeight;
-  if(!w || !h){
+  if(!w || !h){ panel.style.display='none'; return; }
+
+  const leftPoint=new THREE.Vector3(-7,3.65,-16.47).project(camera);
+  const rightPoint=new THREE.Vector3(7,3.65,-16.47).project(camera);
+  const topPoint=new THREE.Vector3(0,6.65,-16.47).project(camera);
+  const bottomPoint=new THREE.Vector3(0,.65,-16.47).project(camera);
+  const center=new THREE.Vector3(0,3.65,-16.47).project(camera);
+
+  const left=(leftPoint.x*.5+.5)*w;
+  const right=(rightPoint.x*.5+.5)*w;
+  const top=(-topPoint.y*.5+.5)*h;
+  const bottom=(-bottomPoint.y*.5+.5)*h;
+  const cx=(center.x*.5+.5)*w;
+  const cy=(-center.y*.5+.5)*h;
+  const width=Math.abs(right-left);
+  const height=Math.abs(bottom-top);
+
+  if(center.z>1 || width<5 || height<5){
     panel.style.display='none';
     return;
   }
-
-  // These are the four physical corners of the 3D screen plane.
-  // The HTML screen is projected onto exactly these four points,
-  // so it stays glued to the wall instead of floating as a rectangle.
-  const worldCorners=[
-    new THREE.Vector3(-7,6.65,-16.47), // top-left
-    new THREE.Vector3( 7,6.65,-16.47), // top-right
-    new THREE.Vector3( 7,.65,-16.47),  // bottom-right
-    new THREE.Vector3(-7,.65,-16.47)   // bottom-left
-  ];
-
-  const projected=worldCorners.map(p=>p.clone().project(camera));
-
-  // If the physical screen is behind the camera or outside the useful
-  // projection, do not draw the HTML layer.
-  if(projected.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)||p.z<0||p.z>1)){
-    panel.style.display='none';
-    return;
-  }
-
-  const dst=projected.map(p=>[
-    (p.x*.5+.5)*w,
-    (-p.y*.5+.5)*h
-  ]);
-
-  const src=[
-    [0,0],
-    [1024,0],
-    [1024,512],
-    [0,512]
-  ];
-
-  const H=solveHomography(src,dst);
-  if(!H){
-    panel.style.display='none';
-    return;
-  }
-
-  const h11=H[0], h12=H[1], h13=H[2];
-  const h21=H[3], h22=H[4], h23=H[5];
-  const h31=H[6], h32=H[7], h33=H[8];
-
   panel.style.display='block';
-  panel.style.left='0px';
-  panel.style.top='0px';
-  panel.style.width='1024px';
-  panel.style.height='512px';
-  panel.style.transformOrigin='0 0';
-  panel.style.transform=
-    'matrix3d('+[
-      h11,h21,0,h31,
-      h12,h22,0,h32,
-      0,0,1,0,
-      h13,h23,0,h33
-    ].join(',')+')';
+  panel.style.left=(cx-width/2)+'px';
+  panel.style.top=(cy-height/2)+'px';
+  panel.style.width=width+'px';
+  panel.style.height=height+'px';
 }
 
 /* =========================================================
@@ -3510,8 +3454,8 @@ function createRemotePlayer(data){
   const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
   label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
 
-  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y=Number(data.yaw)||0;
+  g.position.set(Number(data.x)||0,Number(data.y)||0,Number(data.z)||0);
+  g.rotation.y=Number(data.yaw ?? data.ry)||0;
   scene.add(g);
   remotePlayers.set(data.id,{group:g,last:{x:g.position.x,z:g.position.z,yaw:g.rotation.y},moving:false});
 }
@@ -3520,10 +3464,11 @@ function updateRemotePlayer(data){
   if(!data.id || data.id===socket?.id) return;
   if(!remotePlayers.has(data.id)) createRemotePlayer(data);
   const p=remotePlayers.get(data.id);
-  const nx=Number(data.x)||0, nz=Number(data.z)||0;
+  const nx=Number(data.x)||0, ny=Number(data.y)||0, nz=Number(data.z)||0;
   const dx=nx-p.group.position.x, dz=nz-p.group.position.z;
-  p.moving=Math.hypot(dx,dz)>.002;
-  p.group.position.x=nx; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
+  p.moving=!!data.moving || Math.hypot(dx,dz)>.002;
+  p.group.position.x=nx; p.group.position.y=ny; p.group.position.z=nz;
+  p.group.rotation.y=Number(data.yaw ?? data.ry)||0;
 }
 
 function removeRemotePlayer(id){
