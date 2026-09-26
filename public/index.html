@@ -340,6 +340,7 @@ input:focus{
 ========================================================= */
 
 #screen-control{
+  display:none !important;
   position:absolute;
   top:18px;
   left:50%;
@@ -378,6 +379,30 @@ input:focus{
 }
 
 #screen-menu.open{display:block;}
+
+#pause-panel{
+  position:absolute;
+  left:18px;
+  bottom:18px;
+  z-index:50;
+  width:260px;
+  padding:14px;
+  background:rgba(0,0,0,.90);
+  border:1px solid #333;
+  box-shadow:0 15px 50px rgba(0,0,0,.65);
+  display:none;
+  pointer-events:auto;
+}
+#pause-panel.open{display:block;}
+#pause-title{font-size:10px;letter-spacing:3px;margin-bottom:12px;color:#fff;}
+.pause-row{display:flex;align-items:center;gap:10px;margin:9px 0;}
+.pause-row label{font-size:9px;letter-spacing:2px;color:#888;width:65px;}
+.pause-row input[type=range]{flex:1;accent-color:#fff;}
+#pause-volume-value{font-size:9px;color:#fff;width:32px;text-align:right;}
+#pause-toggle{width:100%;height:34px;border:1px solid #555;background:#111;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;}
+#pause-toggle:hover{background:#fff;color:#000;}
+#pause-backdrop{position:absolute;inset:0;z-index:45;background:rgba(0,0,0,.45);display:none;pointer-events:auto;}
+#pause-backdrop.open{display:block;}
 
 #screen-menu-title{
   font-size:10px;
@@ -925,6 +950,19 @@ input:focus{
 
   </div>
 
+  <div id="pause-backdrop"></div>
+
+  <div id="pause-panel">
+    <div id="pause-title">EWS SESSIONS / PAUSE</div>
+    <button id="pause-toggle" onclick="togglePause()">PAUSE</button>
+    <div class="pause-row">
+      <label>VOLUME</label>
+      <input id="pause-volume" type="range" min="0" max="100" value="100">
+      <span id="pause-volume-value">100%</span>
+    </div>
+    <div style="font-size:9px;color:#666;line-height:1.5;margin-top:10px;">ESC — pause/resume · SPACE — jump</div>
+  </div>
+
   <div id="media-screen">
     <button id="media-screen-close" onclick="clearClubScreen()">×</button>
     <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
@@ -957,6 +995,10 @@ let keys={};
 
 let yaw=0;
 let pitch=0;
+let verticalVelocity=0;
+let grounded=true;
+let paused=false;
+let playerHeight=1.7;
 
 let pointerLocked=false;
 let chatMode=false;
@@ -1145,6 +1187,7 @@ function startSession(username){
   ).style.display='block';
 
   init3D();
+  setupPauseControls();
 
   socket=io();
 
@@ -2756,7 +2799,22 @@ function setupControls(){
     'keydown',
     function(e){
 
-      keys[e.code]=true;
+      if(e.code==='Escape'){
+        e.preventDefault();
+        togglePause();
+        return;
+      }
+
+      if(e.code==='Space'){
+        e.preventDefault();
+        if(!paused && !chatMode && grounded){
+          verticalVelocity=5.2;
+          grounded=false;
+        }
+        return;
+      }
+
+      if(!paused) keys[e.code]=true;
 
       if(
         e.code==='KeyC'
@@ -2969,48 +3027,64 @@ function clearClubScreen(){
   setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
 }
 
+function solveHomography(src, dst){
+  const A=[], b=[];
+  for(let i=0;i<4;i++){
+    const x=src[i][0], y=src[i][1], X=dst[i][0], Y=dst[i][1];
+    A.push([x,y,1,0,0,0,-X*x,-X*y]); b.push(X);
+    A.push([0,0,0,x,y,1,-Y*x,-Y*y]); b.push(Y);
+  }
+  for(let i=0;i<8;i++){
+    let max=i;
+    for(let r=i+1;r<8;r++) if(Math.abs(A[r][i])>Math.abs(A[max][i])) max=r;
+    [A[i],A[max]]=[A[max],A[i]]; [b[i],b[max]]=[b[max],b[i]];
+    const pivot=A[i][i] || 1e-12;
+    for(let c=i;c<8;c++) A[i][c]/=pivot;
+    b[i]/=pivot;
+    for(let r=0;r<8;r++) if(r!==i){
+      const f=A[r][i];
+      if(!f) continue;
+      for(let c=i;c<8;c++) A[r][c]-=f*A[i][c];
+      b[r]-=f*b[i];
+    }
+  }
+  return [b[0],b[3],0,b[6], b[1],b[4],0,b[7], 0,0,1,0, b[2],b[5],0,1];
+}
+
 function updateClubScreenOverlay(){
   const panel=document.getElementById('media-screen');
   if(!panel || !screenMesh || !camera || !renderer) return;
-
   const w=renderer.domElement.clientWidth;
   const h=renderer.domElement.clientHeight;
   if(!w || !h) return;
 
-  // The screen is a FIXED 3D object in the club.
-  // Its HTML player is projected from the screen mesh itself,
-  // so it can never follow the camera/player independently.
-  const center=screenMesh.localToWorld(new THREE.Vector3(0,0,0)).project(camera);
-  const halfW=7.75;
-  const halfH=3.25;
+  const corners=[
+    new THREE.Vector3(-7.75, 3.25, 0),
+    new THREE.Vector3( 7.75, 3.25, 0),
+    new THREE.Vector3( 7.75,-3.25, 0),
+    new THREE.Vector3(-7.75,-3.25, 0)
+  ].map(v=>screenMesh.localToWorld(v).project(camera));
 
-  const leftPoint=screenMesh.localToWorld(new THREE.Vector3(-halfW,0,0)).project(camera);
-  const rightPoint=screenMesh.localToWorld(new THREE.Vector3(halfW,0,0)).project(camera);
-  const topPoint=screenMesh.localToWorld(new THREE.Vector3(0,halfH,0)).project(camera);
-  const bottomPoint=screenMesh.localToWorld(new THREE.Vector3(0,-halfH,0)).project(camera);
+  const pts=corners.map(p=>[(p.x*.5+.5)*w,(-p.y*.5+.5)*h]);
+  const minX=Math.min(...pts.map(p=>p[0])), maxX=Math.max(...pts.map(p=>p[0]));
+  const minY=Math.min(...pts.map(p=>p[1])), maxY=Math.max(...pts.map(p=>p[1]));
 
-  const cx=(center.x*.5+.5)*w;
-  const cy=(-center.y*.5+.5)*h;
-  const left=(leftPoint.x*.5+.5)*w;
-  const right=(rightPoint.x*.5+.5)*w;
-  const top=(-topPoint.y*.5+.5)*h;
-  const bottom=(-bottomPoint.y*.5+.5)*h;
-
-  const width=Math.abs(right-left);
-  const height=Math.abs(bottom-top);
-
-  if(center.z>1 || width<10 || height<10){
+  if(corners.every(p=>p.z>1) || maxX-minX<10 || maxY-minY<10){
     panel.style.display='none';
     return;
   }
 
+  // Render the HTML player through a real projective transform.
+  // This keeps it locked to the physical 3D screen plane instead of
+  // approximating it with a moving axis-aligned rectangle.
   panel.style.display='block';
-  panel.style.left=(cx-width/2)+'px';
-  panel.style.top=(cy-height/2)+'px';
-  panel.style.width=width+'px';
-  panel.style.height=height+'px';
+  panel.style.left='0px';
+  panel.style.top='0px';
+  panel.style.width=w+'px';
+  panel.style.height=h+'px';
+  panel.style.transformOrigin='0 0';
+  panel.style.transform='matrix3d('+solveHomography([[0,0],[w,0],[w,h],[0,h]],pts).join(',')+')';
 }
-
 /* =========================================================
    ANIMATION
 ========================================================= */
@@ -3108,7 +3182,7 @@ function animate(){
     level*.12;
 
   const speed=
-    chatMode
+    (chatMode || paused)
       ?0
       :5*dt;
 
@@ -3184,7 +3258,15 @@ function animate(){
       15.5
     );
 
-  camera.position.y=1.7;
+  if(!paused && !chatMode){
+    verticalVelocity -= 14 * dt;
+    camera.position.y += verticalVelocity * dt;
+    if(camera.position.y <= playerHeight){
+      camera.position.y = playerHeight;
+      verticalVelocity = 0;
+      grounded = true;
+    }
+  }
 
   camera.rotation.order=
     'YXZ';
@@ -3487,6 +3569,34 @@ function applyRemoteClubScreen(state){
   if(state.src && state.src!==screenMediaUrl){
     frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
   }
+}
+
+function togglePause(){
+  paused=!paused;
+  const panel=document.getElementById('pause-panel');
+  const backdrop=document.getElementById('pause-backdrop');
+  const button=document.getElementById('pause-toggle');
+  if(panel) panel.classList.toggle('open',paused);
+  if(backdrop) backdrop.classList.toggle('open',paused);
+  if(button) button.textContent=paused?'RESUME':'PAUSE';
+  if(paused){
+    Object.keys(keys).forEach(k=>keys[k]=false);
+    if(document.pointerLockElement) document.exitPointerLock();
+  }
+}
+
+function setupPauseControls(){
+  const range=document.getElementById('pause-volume');
+  const value=document.getElementById('pause-volume-value');
+  const audio=document.getElementById('ews-audio');
+  if(!range) return;
+  const apply=()=>{
+    const v=Number(range.value)/100;
+    if(audio) audio.volume=v;
+    if(value) value.textContent=range.value+'%';
+  };
+  range.addEventListener('input',apply);
+  apply();
 }
 
 /* =========================================================
