@@ -2977,11 +2977,17 @@ function updateClubScreenOverlay(){
   const h=renderer.domElement.clientHeight;
   if(!w || !h) return;
 
-  const center=screenMesh.position.clone().project(camera);
-  const leftPoint=new THREE.Vector3(-7.75,3.25,-16.28).project(camera);
-  const rightPoint=new THREE.Vector3(7.75,3.25,-16.28).project(camera);
-  const topPoint=new THREE.Vector3(0,6.85,-16.28).project(camera);
-  const bottomPoint=new THREE.Vector3(0,.35,-16.28).project(camera);
+  // The screen is a FIXED 3D object in the club.
+  // Its HTML player is projected from the screen mesh itself,
+  // so it can never follow the camera/player independently.
+  const center=screenMesh.localToWorld(new THREE.Vector3(0,0,0)).project(camera);
+  const halfW=7.75;
+  const halfH=3.25;
+
+  const leftPoint=screenMesh.localToWorld(new THREE.Vector3(-halfW,0,0)).project(camera);
+  const rightPoint=screenMesh.localToWorld(new THREE.Vector3(halfW,0,0)).project(camera);
+  const topPoint=screenMesh.localToWorld(new THREE.Vector3(0,halfH,0)).project(camera);
+  const bottomPoint=screenMesh.localToWorld(new THREE.Vector3(0,-halfH,0)).project(camera);
 
   const cx=(center.x*.5+.5)*w;
   const cy=(-center.y*.5+.5)*h;
