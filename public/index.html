@@ -334,6 +334,133 @@ input:focus{
   cursor:pointer;
 }
 
+
+/* =========================================================
+   CLUB SCREEN / MEDIA
+========================================================= */
+
+#screen-control{
+  position:absolute;
+  top:18px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:31;
+  pointer-events:auto;
+  height:34px;
+  padding:0 18px;
+  border:1px solid #444;
+  background:rgba(0,0,0,.78);
+  color:#fff;
+  font-size:10px;
+  font-weight:bold;
+  letter-spacing:3px;
+  cursor:pointer;
+}
+
+#screen-control:hover{
+  background:#fff;
+  color:#000;
+}
+
+#screen-menu{
+  position:absolute;
+  top:62px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:40;
+  width:min(560px,calc(100vw - 30px));
+  padding:16px;
+  background:rgba(4,4,4,.96);
+  border:1px solid #444;
+  box-shadow:0 20px 70px rgba(0,0,0,.7);
+  display:none;
+  pointer-events:auto;
+}
+
+#screen-menu.open{display:block;}
+
+#screen-menu-title{
+  font-size:10px;
+  letter-spacing:3px;
+  color:#fff;
+  margin-bottom:10px;
+}
+
+#screen-menu-row{
+  display:flex;
+  gap:7px;
+}
+
+#screen-url{
+  flex:1;
+  margin:0;
+  height:38px;
+}
+
+.screen-btn{
+  height:38px;
+  padding:0 13px;
+  border:1px solid #444;
+  background:#111;
+  color:#fff;
+  cursor:pointer;
+  font-size:10px;
+  letter-spacing:1px;
+}
+
+.screen-btn:hover{
+  background:#fff;
+  color:#000;
+}
+
+#screen-status{
+  margin-top:9px;
+  color:#777;
+  font-size:10px;
+  line-height:1.4;
+}
+
+#media-screen{
+  position:absolute;
+  z-index:15;
+  display:none;
+  overflow:hidden;
+  background:#000;
+  border:1px solid #222;
+  box-shadow:0 0 45px rgba(0,0,0,.9);
+  pointer-events:auto;
+}
+
+#media-screen.active{display:block;}
+
+#media-screen iframe{
+  width:100%;
+  height:100%;
+  border:0;
+  display:block;
+  background:#000;
+}
+
+#media-screen-close{
+  position:absolute;
+  top:7px;
+  right:7px;
+  z-index:2;
+  width:28px;
+  height:28px;
+  border:1px solid #555;
+  background:rgba(0,0,0,.85);
+  color:#fff;
+  cursor:pointer;
+  font-size:14px;
+  line-height:26px;
+}
+
+@media(max-width:700px){
+  #screen-menu-row{flex-wrap:wrap;}
+  #screen-url{flex-basis:100%;}
+}
+
 /* =========================================================
    OTHER HUD
 ========================================================= */
@@ -720,6 +847,27 @@ input:focus{
     ▶ AUDIO: START
   </button>
 
+  <button
+    id="screen-control"
+    onclick="toggleScreenMenu()">
+    SCREEN
+  </button>
+
+  <div id="screen-menu">
+    <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
+    <div id="screen-menu-row">
+      <input
+        id="screen-url"
+        type="url"
+        placeholder="YouTube / Twitch / website URL"
+        autocomplete="off"
+      >
+      <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
+      <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
+    </div>
+    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
+  </div>
+
   <div id="lang-bar">
 
     <select id="lang">
@@ -777,6 +925,11 @@ input:focus{
 
   </div>
 
+  <div id="media-screen">
+    <button id="media-screen-close" onclick="clearClubScreen()">×</button>
+    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </div>
+
   <div id="zone-label">
     MAIN FLOOR
   </div>
@@ -831,6 +984,9 @@ let hls=null;
 let screenTexture;
 let screenCanvas;
 let screenCtx;
+let screenMesh;
+let screenMediaActive=false;
+let screenMediaUrl='';
 
 let playerBody;
 
@@ -1177,13 +1333,13 @@ function init3D(){
 
   scene.background =
     new THREE.Color(
-      0x030303
+      0x000000
     );
 
   scene.fog =
     new THREE.FogExp2(
-      0x030303,
-      0.035
+      0x000000,
+      0.045
     );
 
   camera =
@@ -1230,7 +1386,7 @@ function init3D(){
   const ambient =
     new THREE.AmbientLight(
       0xffffff,
-      0.13
+      0.045
     );
 
   scene.add(ambient);
@@ -1238,7 +1394,7 @@ function init3D(){
   const ceilingLight =
     new THREE.PointLight(
       0xffffff,
-      1.4,
+      0.65,
       40
     );
 
@@ -1259,28 +1415,28 @@ function init3D(){
   createLight(
     -7,3,-7,
     0xffffff,
-    5,
+    1.6,
     16
   );
 
   createLight(
     7,3,-7,
     0xffffff,
-    5,
+    1.6,
     16
   );
 
   createLight(
     -8,2,5,
-    0x888888,
-    2,
+    0x666666,
+    0.8,
     14
   );
 
   createLight(
     8,2,5,
-    0x888888,
-    2,
+    0x666666,
+    0.8,
     14
   );
 
@@ -1380,7 +1536,7 @@ function createFloor(){
 
   const mat = new THREE.MeshStandardMaterial({
     map:texture,
-    color:0x5a5a5a,
+    color:0x121212,
     metalness:.18,
     roughness:.82
   });
@@ -1403,7 +1559,7 @@ function createCeiling(){
     new THREE.PlaneGeometry(36,42),
     new THREE.MeshStandardMaterial({
       map:texture,
-      color:0x292929,
+      color:0x080808,
       roughness:1
     })
   );
@@ -1419,7 +1575,7 @@ function createWalls(){
 
   const mat = new THREE.MeshStandardMaterial({
     map:texture,
-    color:0x555555,
+    color:0x101010,
     roughness:.93,
     metalness:.04
   });
@@ -1439,7 +1595,7 @@ function createDanceFloor(){
       ),
       new THREE.MeshStandardMaterial({
         map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
-        color:0x4a4a4a,
+        color:0x151515,
         metalness:.35,
         roughness:.58
       })
@@ -1528,7 +1684,7 @@ function createMainScreen(){
 
   scene.add(frame);
 
-  const screen =
+  screenMesh =
     new THREE.Mesh(
       new THREE.PlaneGeometry(
         15.5,
@@ -1539,11 +1695,11 @@ function createMainScreen(){
       })
     );
 
-  screen.position.set(
+  screenMesh.position.set(
     0,3.6,-16.28
   );
 
-  scene.add(screen);
+  scene.add(screenMesh);
 
 }
 
@@ -1675,7 +1831,7 @@ function createLounge(){
           32
         ),
         new THREE.MeshStandardMaterial({
-          color:0x555555,
+          color:0x101010,
           metalness:.7
         })
       );
@@ -2032,9 +2188,9 @@ function createParticles(){
       geo,
       new THREE.PointsMaterial({
         color:0xffffff,
-        size:.025,
+        size:.035,
         transparent:true,
-        opacity:.18
+        opacity:.28
       })
     );
 
@@ -2677,6 +2833,143 @@ function toggleChat(){
 
 }
 
+
+/* =========================================================
+   CLUB SCREEN MEDIA
+========================================================= */
+
+function toggleScreenMenu(){
+  const menu=document.getElementById('screen-menu');
+  if(!menu) return;
+  menu.classList.toggle('open');
+  if(menu.classList.contains('open')){
+    const input=document.getElementById('screen-url');
+    setTimeout(()=>input && input.focus(),40);
+  }
+}
+
+function setScreenStatus(text){
+  const el=document.getElementById('screen-status');
+  if(el) el.textContent=text;
+}
+
+function youtubeEmbed(url){
+  try{
+    const u=new URL(url);
+    let id='';
+    if(u.hostname.includes('youtu.be')){
+      id=u.pathname.split('/').filter(Boolean)[0]||'';
+    }else if(u.hostname.includes('youtube.com')){
+      id=u.searchParams.get('v')||'';
+      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
+      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
+    }
+    if(!id) return null;
+    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
+  }catch(e){ return null; }
+}
+
+function twitchEmbed(url){
+  try{
+    const u=new URL(url);
+    if(!u.hostname.includes('twitch.tv')) return null;
+    const parts=u.pathname.split('/').filter(Boolean);
+    if(!parts.length) return null;
+    const parent=location.hostname || 'ews-sessions.onrender.com';
+    if(parts[0]==='videos' && parts[1]){
+      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+    }
+    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+  }catch(e){ return null; }
+}
+
+function normalizeClubScreenUrl(raw){
+  const value=String(raw||'').trim();
+  if(!value) return null;
+
+  const yt=youtubeEmbed(value);
+  if(yt) return {src:yt,name:'YOUTUBE'};
+
+  const tw=twitchEmbed(value);
+  if(tw) return {src:tw,name:'TWITCH'};
+
+  try{
+    const u=new URL(value);
+    if(u.protocol!=='http:' && u.protocol!=='https:') return null;
+    return {src:u.href,name:'WEBSITE'};
+  }catch(e){
+    return null;
+  }
+}
+
+function loadClubScreen(){
+  const input=document.getElementById('screen-url');
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('media-screen');
+  if(!input || !frame || !panel) return;
+
+  const result=normalizeClubScreenUrl(input.value);
+  if(!result){
+    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');
+    return;
+  }
+
+  frame.src=result.src;
+  panel.classList.add('active');
+  screenMediaActive=true;
+  screenMediaUrl=result.src;
+  setScreenStatus(result.name+' LOADED — звук управляется плеером на экране.');
+
+  const menu=document.getElementById('screen-menu');
+  if(menu) menu.classList.remove('open');
+}
+
+function clearClubScreen(){
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('media-screen');
+  if(frame) frame.src='about:blank';
+  if(panel) panel.classList.remove('active');
+  screenMediaActive=false;
+  screenMediaUrl='';
+  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
+}
+
+function updateClubScreenOverlay(){
+  const panel=document.getElementById('media-screen');
+  if(!panel || !screenMesh || !camera || !renderer) return;
+
+  const w=renderer.domElement.clientWidth;
+  const h=renderer.domElement.clientHeight;
+  if(!w || !h) return;
+
+  const center=screenMesh.position.clone().project(camera);
+  const leftPoint=new THREE.Vector3(-7.75,3.25,-16.28).project(camera);
+  const rightPoint=new THREE.Vector3(7.75,3.25,-16.28).project(camera);
+  const topPoint=new THREE.Vector3(0,6.85,-16.28).project(camera);
+  const bottomPoint=new THREE.Vector3(0,.35,-16.28).project(camera);
+
+  const cx=(center.x*.5+.5)*w;
+  const cy=(-center.y*.5+.5)*h;
+  const left=(leftPoint.x*.5+.5)*w;
+  const right=(rightPoint.x*.5+.5)*w;
+  const top=(-topPoint.y*.5+.5)*h;
+  const bottom=(-bottomPoint.y*.5+.5)*h;
+
+  const width=Math.abs(right-left);
+  const height=Math.abs(bottom-top);
+
+  if(center.z>1 || width<10 || height<10){
+    panel.style.display='none';
+    return;
+  }
+
+  panel.style.display='block';
+  panel.style.left=(cx-width/2)+'px';
+  panel.style.top=(cy-height/2)+'px';
+  panel.style.width=width+'px';
+  panel.style.height=height+'px';
+}
+
 /* =========================================================
    ANIMATION
 ========================================================= */
@@ -2879,8 +3172,8 @@ function animate(){
       .00015;
 
     particles.material.opacity=
-      .12+
-      audioLevel*.2;
+      .22+
+      audioLevel*.18;
 
   }
 
@@ -3058,6 +3351,8 @@ function animate(){
     screenTexture.needsUpdate=true;
 
   }
+
+  updateClubScreenOverlay();
 
   renderer.render(
     scene,
