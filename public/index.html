@@ -863,15 +863,8 @@ input:focus{
     <span>SESSIONS</span>
   </div>
 
-  <div id="stream-indicator">
-    AUDIO: READY
-  </div>
-
-  <button
-    id="audio-control"
-    onclick="startSSHAudio()">
-    ▶ AUDIO: START
-  </button>
+  <div id="stream-indicator" style="display:none">AUDIO: READY</div>
+  <button id="audio-control" style="display:none" onclick="startSSHAudio()">AUDIO</button>
 
   <button
     id="screen-control"
@@ -956,6 +949,8 @@ input:focus{
   <div id="pause-panel">
     <div id="pause-title">EWS SESSIONS / PAUSE</div>
     <button id="pause-toggle" onclick="togglePause()">PAUSE</button>
+    <button id="pause-audio" onclick="startSSHAudio()" style="width:100%;height:34px;margin-top:8px;border:1px solid #444;background:#111;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;">▶ START AUDIO</button>
+    <button id="pause-mute" onclick="toggleMute()" style="width:100%;height:34px;margin-top:8px;border:1px solid #444;background:#111;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;">MUTE</button>
     <div class="pause-row">
       <label>VOLUME</label>
       <input id="pause-volume" type="range" min="0" max="100" value="100">
@@ -1508,12 +1503,13 @@ function init3D(){
     14
   );
 
-  // Minimal underground shell — no bar, lounge, columns, stage or decorative interior.
+  // Black underground club shell with walls + tables/chairs.
   createFloor();
   createCeiling();
   createWalls();
   createDanceFloor();
   createMainScreen();
+  createTablesAndChairs();
   createSmoke();
   createRedMusicLights();
   createPlayer();
@@ -1646,6 +1642,19 @@ function createWalls(){
   createBox(36,6,.5,0,3,17,mat);
   createBox(.5,6,34,-18,3,0,mat);
   createBox(.5,6,34,18,3,0,mat);
+
+  // Subtle inner wall panels so the black walls remain visible in the smoke.
+  const trimMat=new THREE.MeshStandardMaterial({
+    color:0x242424,
+    metalness:.35,
+    roughness:.65
+  });
+  createBox(35.2,.12,.08,0,.65,-16.68,trimMat,false,false);
+  createBox(35.2,.12,.08,0,4.95,-16.68,trimMat,false,false);
+  createBox(35.2,.12,.08,0,.65,16.68,trimMat,false,false);
+  createBox(35.2,.12,.08,0,4.95,16.68,trimMat,false,false);
+  createBox(.08,.12,33.2,-17.68,.65,0,trimMat,false,false);
+  createBox(.08,.12,33.2,17.68,.65,0,trimMat,false,false);
 }
 
 function createDanceFloor(){
@@ -1662,6 +1671,114 @@ function createDanceFloor(){
   floor.position.set(0,.05,-1);
   floor.receiveShadow=true;
   scene.add(floor);
+}
+
+function createTablesAndChairs(){
+
+  const tableMat = new THREE.MeshStandardMaterial({
+    color:0x101010,
+    metalness:.55,
+    roughness:.45
+  });
+
+  const edgeMat = new THREE.MeshStandardMaterial({
+    color:0x202020,
+    metalness:.35,
+    roughness:.55
+  });
+
+  const chairMat = new THREE.MeshStandardMaterial({
+    color:0x090909,
+    metalness:.25,
+    roughness:.78
+  });
+
+  function chair(x,z,ry=0){
+    const g=new THREE.Group();
+
+    const seat=new THREE.Mesh(
+      new THREE.BoxGeometry(.75,.16,.75),
+      chairMat
+    );
+    seat.position.y=.72;
+    g.add(seat);
+
+    const back=new THREE.Mesh(
+      new THREE.BoxGeometry(.75,.9,.14),
+      chairMat
+    );
+    back.position.set(0,1.08,.31);
+    g.add(back);
+
+    const legGeo=new THREE.BoxGeometry(.10,.72,.10);
+    [[-.27,-.27],[.27,-.27],[-.27,.27],[.27,.27]].forEach(([lx,lz])=>{
+      const leg=new THREE.Mesh(legGeo,chairMat);
+      leg.position.set(lx,.36,lz);
+      g.add(leg);
+    });
+
+    g.position.set(x,0,z);
+    g.rotation.y=ry;
+    scene.add(g);
+  }
+
+  function table(x,z){
+    const g=new THREE.Group();
+
+    const top=new THREE.Mesh(
+      new THREE.CylinderGeometry(1.05,1.05,.16,32),
+      tableMat
+    );
+    top.position.y=1.35;
+    g.add(top);
+
+    const rim=new THREE.Mesh(
+      new THREE.TorusGeometry(1.0,.045,8,32),
+      edgeMat
+    );
+    rim.position.y=1.44;
+    g.add(rim);
+
+    const stem=new THREE.Mesh(
+      new THREE.CylinderGeometry(.11,.16,1.22,16),
+      tableMat
+    );
+    stem.position.y=.69;
+    g.add(stem);
+
+    const base=new THREE.Mesh(
+      new THREE.CylinderGeometry(.62,.72,.10,24),
+      tableMat
+    );
+    base.position.y=.08;
+    g.add(base);
+
+    g.position.set(x,0,z);
+    scene.add(g);
+
+    chair(x-1.35,z,Math.PI/2);
+    chair(x+1.35,z,-Math.PI/2);
+    chair(x,z-1.25,0);
+    chair(x,z+1.25,Math.PI);
+  }
+
+  // Seating along the side walls, leaving the center free for dancing.
+  table(-12,-1);
+  table(12,-1);
+  table(-12,7);
+  table(12,7);
+  table(-7,10);
+  table(7,10);
+
+  // Low wall benches give the room a finished club interior without bringing back the old bar/lounge.
+  const benchMat=new THREE.MeshStandardMaterial({
+    color:0x0b0b0b,
+    roughness:.88,
+    metalness:.15
+  });
+
+  createBox(8,.75,1.05,-13,.42,-8.5,benchMat);
+  createBox(8,.75,1.05,13,.42,-8.5,benchMat);
 }
 
 function createMainScreen(){
@@ -2393,6 +2510,15 @@ async function startSSHAudio(){
 
   if(!audio)return;
 
+  audioMuted=false;
+  audio.muted=false;
+  const range=document.getElementById('pause-volume');
+  if(range) audio.volume=Number(range.value)/100;
+  const muteButton=document.getElementById('pause-mute');
+  if(muteButton) muteButton.textContent='MUTE';
+  const pauseAudio=document.getElementById('pause-audio');
+  if(pauseAudio) pauseAudio.textContent='● AUDIO LIVE / RESTART';
+
   const hlsUrl =
     window.location.origin+
     '/hls/ews/index.m3u8';
@@ -3087,7 +3213,10 @@ function updateClubScreenOverlay(){
   const minX=Math.min(...pts.map(p=>p[0])), maxX=Math.max(...pts.map(p=>p[0]));
   const minY=Math.min(...pts.map(p=>p[1])), maxY=Math.max(...pts.map(p=>p[1]));
 
-  if(corners.every(p=>p.z>1) || maxX-minX<10 || maxY-minY<10){
+  const allBehind=corners.every(p=>p.z>1);
+  const tooSmall=(maxX-minX<10 || maxY-minY<10);
+  const wildlyOff=(maxX < -w || minX > 2*w || maxY < -h || minY > 2*h);
+  if(allBehind || tooSmall || wildlyOff){
     panel.style.display='none';
     return;
   }
@@ -3621,6 +3750,17 @@ function togglePause(){
   }
 }
 
+let audioMuted=false;
+
+function toggleMute(){
+  const audio=document.getElementById('ews-audio');
+  const button=document.getElementById('pause-mute');
+  if(!audio) return;
+  audioMuted=!audioMuted;
+  audio.muted=audioMuted;
+  if(button) button.textContent=audioMuted?'UNMUTE':'MUTE';
+}
+
 function setupPauseControls(){
   const range=document.getElementById('pause-volume');
   const value=document.getElementById('pause-volume-value');
@@ -3628,7 +3768,7 @@ function setupPauseControls(){
   if(!range) return;
   const apply=()=>{
     const v=Number(range.value)/100;
-    if(audio) audio.volume=v;
+    if(audio){ audio.volume=v; audio.muted=audioMuted; }
     if(value) value.textContent=range.value+'%';
   };
   range.addEventListener('input',apply);
