@@ -239,14 +239,6 @@ CLUB SCREEN
 =========================================================
 */
 
-/*
-ВАЖНО:
-
-SCREEN принадлежит только mvxtra.
-
-Никто другой не становится хозяином автоматически.
-*/
-
 let screenHostId = null;
 
 let clubScreenState = {
@@ -263,9 +255,11 @@ ONLINE HELPERS
 */
 
 function getOnlineUsers() {
+
     return Array.from(
         onlineUsers.values()
     );
+
 }
 
 function broadcastOnline() {
@@ -387,6 +381,14 @@ function broadcastScreenHost() {
 
 /*
 =========================================================
+TRANSLATION CACHE
+=========================================================
+*/
+
+const translationCache = new Map();
+
+/*
+=========================================================
 TRANSLATION
 =========================================================
 */
@@ -396,11 +398,40 @@ async function translateText(
     targetLanguage
 ) {
 
+    const target =
+        String(
+            targetLanguage || 'en'
+        )
+        .trim()
+        .toLowerCase();
+
+    /*
+    Английский:
+    оставляем оригинал.
+    */
+
     if (
-        !targetLanguage ||
-        targetLanguage === 'en'
+        !target ||
+        target === 'en'
     ) {
+
         return text;
+    }
+
+    /*
+    Проверяем кэш.
+    */
+
+    const cacheKey =
+        `${target}::${text}`;
+
+    if (
+        translationCache.has(cacheKey)
+    ) {
+
+        return translationCache.get(
+            cacheKey
+        );
     }
 
     try {
@@ -410,7 +441,7 @@ async function translateText(
             '?client=gtx' +
             '&sl=auto' +
             '&tl=' +
-            encodeURIComponent(targetLanguage) +
+            encodeURIComponent(target) +
             '&dt=t' +
             '&q=' +
             encodeURIComponent(text);
@@ -419,6 +450,11 @@ async function translateText(
             await fetch(url);
 
         if (!response.ok) {
+
+            console.log(
+                `[TRANSLATION HTTP ERROR] ${response.status}`
+            );
+
             return text;
         }
 
@@ -432,13 +468,41 @@ async function translateText(
 
             const translated =
                 result[0]
-                    .map(part => part[0])
+                    .map(
+                        part => part[0]
+                    )
                     .join('');
 
             if (translated) {
+
+                /*
+                Ограничиваем размер кэша.
+                */
+
+                if (
+                    translationCache.size >= 1000
+                ) {
+
+                    const firstKey =
+                        translationCache.keys()
+                            .next()
+                            .value;
+
+                    if (firstKey) {
+
+                        translationCache.delete(
+                            firstKey
+                        );
+                    }
+                }
+
+                translationCache.set(
+                    cacheKey,
+                    translated
+                );
+
                 return translated;
             }
-
         }
 
     } catch (error) {
@@ -449,6 +513,11 @@ async function translateText(
         );
 
     }
+
+    /*
+    Если перевод не получился,
+    отправляем оригинал.
+    */
 
     return text;
 }
@@ -488,14 +557,23 @@ io.on('connection', socket => {
         const language =
             String(
                 data?.language || 'en'
-            ).trim();
+            )
+            .trim()
+            .toLowerCase();
 
         if (!username) {
             return;
         }
 
-        socket.username = username;
-        socket.language = language;
+        socket.username =
+            username;
+
+        socket.language =
+            language;
+
+        /*
+        ONLINE USER
+        */
 
         onlineUsers.set(
             socket.id,
@@ -531,8 +609,6 @@ io.on('connection', socket => {
 
         /*
         SCREEN OWNER
-
-        Только mvxtra.
         */
 
         if (
@@ -550,7 +626,7 @@ io.on('connection', socket => {
         }
 
         console.log(
-            `[ONLINE] ${username} | ${socket.id}`
+            `[ONLINE] ${username} | ${socket.id} | ${language}`
         );
 
         /*
@@ -656,7 +732,7 @@ io.on('connection', socket => {
         );
 
         /*
-        Update screen owner for everyone.
+        SCREEN OWNER STATUS
         */
 
         broadcastScreenHost();
@@ -761,7 +837,9 @@ io.on('connection', socket => {
             if (
                 Number.isFinite(ry)
             ) {
-                player.ry = ry;
+
+                player.ry =
+                    ry;
             }
 
             player.jumping =
@@ -863,7 +941,8 @@ io.on('connection', socket => {
                     Math.min(17, z)
                 );
 
-            player.ry = ry;
+            player.ry =
+                ry;
 
             player.jumping =
                 !!data?.jumping;
@@ -897,7 +976,7 @@ io.on('connection', socket => {
 
     /*
     =====================================================
-    SCREEN STATE
+    CLUB SCREEN
     =====================================================
     */
 
@@ -906,20 +985,15 @@ io.on('connection', socket => {
         data => {
 
             /*
-            ГЛАВНАЯ ЗАЩИТА.
-
-            Только аккаунт mvxtra может
-            управлять экраном.
-
-            Не имеет значения socket.id,
-            кто вошёл первым или кто сейчас
-            находится в комнате.
+            Только mvxtra.
             */
 
             const isOwner =
                 String(
                     socket.username || ''
-                ).trim().toLowerCase() ===
+                )
+                .trim()
+                .toLowerCase() ===
                 SCREEN_OWNER_USERNAME.toLowerCase();
 
             if (!isOwner) {
@@ -931,12 +1005,6 @@ io.on('connection', socket => {
                 return;
             }
 
-            /*
-            Убеждаемся, что этот socket
-            действительно является текущим
-            mvxtra.
-            */
-
             screenHostId =
                 socket.id;
 
@@ -945,7 +1013,7 @@ io.on('connection', socket => {
             }
 
             /*
-            CLEAR
+            CLEAR SCREEN
             */
 
             if (
@@ -978,7 +1046,7 @@ io.on('connection', socket => {
             }
 
             /*
-            Разрешаем только HTTP / HTTPS.
+            Только HTTP / HTTPS.
             */
 
             if (
@@ -1081,6 +1149,10 @@ io.on('connection', socket => {
                 return;
             }
 
+            /*
+            Максимум 500 символов.
+            */
+
             if (text.length > 500) {
                 return;
             }
@@ -1091,10 +1163,39 @@ io.on('connection', socket => {
             const timestamp =
                 Date.now();
 
+            /*
+            Все пользователи онлайн.
+            */
+
             const users =
                 Array.from(
                     onlineUsers.entries()
                 );
+
+            /*
+            =================================================
+            ГРУППИРУЕМ SOCKETS ПО ЯЗЫКУ
+            =================================================
+
+            Например:
+
+            user1 -> ru
+            user2 -> ru
+            user3 -> en
+            user4 -> de
+
+            Получаем:
+
+            ru -> user1,user2
+            en -> user3
+            de -> user4
+
+            Поэтому Google Translate вызывается
+            один раз на каждый язык.
+            */
+
+            const usersByLanguage =
+                new Map();
 
             for (
                 const [
@@ -1103,31 +1204,130 @@ io.on('connection', socket => {
                 ] of users
             ) {
 
+                const language =
+                    String(
+                        user.language || 'en'
+                    )
+                    .trim()
+                    .toLowerCase();
+
+                if (
+                    !usersByLanguage.has(
+                        language
+                    )
+                ) {
+
+                    usersByLanguage.set(
+                        language,
+                        []
+                    );
+                }
+
+                usersByLanguage
+                    .get(language)
+                    .push(socketId);
+            }
+
+            /*
+            =================================================
+            ПЕРЕВОДИМ
+            =================================================
+            */
+
+            const translations =
+                new Map();
+
+            for (
+                const [
+                    language
+                ] of usersByLanguage
+            ) {
+
                 const translated =
                     await translateText(
                         original,
-                        user.language
+                        language
                     );
 
-                io.to(socketId).emit(
-                    'chat-message',
-                    {
-                        user:
-                            socket.username,
-
-                        username:
-                            socket.username,
-
-                        text:
-                            translated,
-
-                        original,
-
-                        ts:
-                            timestamp
-                    }
+                translations.set(
+                    language,
+                    translated
                 );
+            }
 
+            /*
+            =================================================
+            ОТПРАВЛЯЕМ КАЖДОМУ ЕГО ЯЗЫК
+            =================================================
+            */
+
+            for (
+                const [
+                    language,
+                    socketIds
+                ] of usersByLanguage
+            ) {
+
+                const messageText =
+                    translations.get(
+                        language
+                    );
+
+                for (
+                    const socketId
+                    of socketIds
+                ) {
+
+                    io.to(socketId).emit(
+                        'chat-message',
+                        {
+                            /*
+                            Текущий index.html
+                            использует message.user
+                            */
+
+                            user:
+                                socket.username,
+
+                            /*
+                            Оставляем также username
+                            */
+
+                            username:
+                                socket.username,
+
+                            /*
+                            Переведённый текст
+                            */
+
+                            text:
+                                messageText,
+
+                            /*
+                            Оригинал
+                            */
+
+                            original:
+                                original,
+
+                            /*
+                            Язык пользователя,
+                            которому отправили
+                            */
+
+                            language:
+                                language,
+
+                            /*
+                            Время сообщения
+                            */
+
+                            ts:
+                                timestamp
+                        }
+                    );
+
+                }
             }
 
         }
@@ -1135,7 +1335,7 @@ io.on('connection', socket => {
 
     /*
     =====================================================
-    LANGUAGE
+    LANGUAGE CHANGE
     =====================================================
     */
 
@@ -1155,7 +1355,9 @@ io.on('connection', socket => {
             const newLanguage =
                 String(
                     language || 'en'
-                ).trim();
+                )
+                .trim()
+                .toLowerCase();
 
             user.language =
                 newLanguage;
@@ -1223,12 +1425,12 @@ io.on('connection', socket => {
             );
 
             /*
+            =================================================
             SCREEN OWNER LEFT
+            =================================================
 
-            НИКАКОГО нового хозяина.
-
-            Если mvxtra ушёл —
-            экран выключается.
+            Если mvxtra вышел,
+            новый хозяин НЕ назначается.
             */
 
             if (
@@ -1244,7 +1446,8 @@ io.on('connection', socket => {
                     `[SCREEN OWNER LEFT] ${user?.username || socket.id}`
                 );
 
-                screenHostId = null;
+                screenHostId =
+                    null;
 
                 clubScreenState = {
                     active: false,

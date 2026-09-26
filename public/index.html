@@ -1233,7 +1233,7 @@ function startSession(username){
       user.className='u';
 
       user.textContent=
-        message.user;
+        message.username || message.user || 'Guest';
 
       const text =
         document.createElement(
