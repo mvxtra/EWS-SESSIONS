@@ -6,6 +6,10 @@ const path = require('path');
 const { spawn } = require('child_process');
 const NodeMediaServer = require('node-media-server');
 
+// ======================================================
+// EWS SESSIONS SERVER
+// ======================================================
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -14,685 +18,849 @@ const PORT = 3000;
 const RTMP_PORT = 1935;
 const HLS_PORT = 8000;
 
-const mediaRoot = path.join(__dirname, 'media');
-const hlsDir = path.join(mediaRoot, 'live', 'ews');
-const ffmpegPath = path.join(__dirname, 'ffmpeg.exe');
+const ROOT = __dirname;
+const PUBLIC_DIR = path.join(ROOT, 'public');
+const MEDIA_ROOT = path.join(ROOT, 'media');
+const HLS_DIR = path.join(MEDIA_ROOT, 'live', 'ews');
 
-fs.mkdirSync(hlsDir, { recursive: true });
+const USERS_FILE = path.join(ROOT, 'users.json');
+const FFMPEG_PATH = path.join(ROOT, 'ffmpeg.exe');
 
-/* =========================================================
-   RTMP SERVER
-========================================================= */
+// ======================================================
+// CREATE DIRECTORIES
+// ======================================================
+
+if (!fs.existsSync(MEDIA_ROOT)) {
+    fs.mkdirSync(MEDIA_ROOT, { recursive: true });
+}
+
+if (!fs.existsSync(HLS_DIR)) {
+    fs.mkdirSync(HLS_DIR, { recursive: true });
+}
+
+if (!fs.existsSync(PUBLIC_DIR)) {
+    fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+}
+
+if (!fs.existsSync(USERS_FILE)) {
+    fs.writeFileSync(
+        USERS_FILE,
+        JSON.stringify([], null, 2),
+        'utf8'
+    );
+}
+
+// ======================================================
+// NODE MEDIA SERVER
+// ======================================================
 
 const nmsConfig = {
-  rtmp: {
-    port: RTMP_PORT,
-    chunk_size: 60000,
-    gop_cache: true,
-    ping: 30,
-    ping_timeout: 60
-  },
+    logType: 3,
 
-  http: {
-    port: HLS_PORT,
-    mediaroot: mediaRoot,
-    allow_origin: '*'
-  }
+    rtmp: {
+        port: RTMP_PORT,
+        chunk_size: 60000,
+        gop_cache: true,
+        ping: 30,
+        ping_timeout: 60
+    },
+
+    http: {
+        port: HLS_PORT,
+        mediaroot: MEDIA_ROOT,
+        allow_origin: '*'
+    }
 };
 
 const nms = new NodeMediaServer(nmsConfig);
 
-nms.on('prePublish', (id, StreamPath) => {
-  console.log('[RTMP] STREAM START:', StreamPath);
-});
-
-nms.on('donePublish', (id, StreamPath) => {
-  console.log('[RTMP] STREAM STOP:', StreamPath);
-});
-
 nms.run();
 
-/* =========================================================
-   FFMPEG
-========================================================= */
-
-let ffmpegProcess = null;
-let ffmpegStarting = false;
-
-function cleanHLS() {
-  try {
-    const files = fs.readdirSync(hlsDir);
-
-    for (const file of files) {
-      if (file.endsWith('.m3u8') || file.endsWith('.ts')) {
-        try {
-          fs.unlinkSync(path.join(hlsDir, file));
-        } catch {}
-      }
-    }
-  } catch {}
-}
-
-function startFFmpeg() {
-  if (ffmpegProcess || ffmpegStarting) {
-    return;
-  }
-
-  if (!fs.existsSync(ffmpegPath)) {
-    console.error('[FFMPEG] ERROR: ffmpeg.exe не найден!');
-    console.error('[FFMPEG] Ожидается:', ffmpegPath);
-    return;
-  }
-
-  ffmpegStarting = true;
-
-  cleanHLS();
-
-  const output = path.join(hlsDir, 'index.m3u8');
-
-  const args = [
-    '-hide_banner',
-    '-loglevel', 'warning',
-    '-fflags', '+genpts',
-
-    '-i',
-    'rtmp://127.0.0.1:1935/live/ews',
-
-    '-map', '0:v:0?',
-    '-map', '0:a:0?',
-
-    '-c:v', 'copy',
-
-    '-c:a', 'aac',
-    '-b:a', '160k',
-    '-ar', '48000',
-    '-ac', '2',
-
-    '-f', 'hls',
-
-    '-hls_time', '2',
-    '-hls_list_size', '6',
-
-    '-hls_flags',
-    'delete_segments+append_list',
-
-    '-hls_segment_filename',
-    path.join(hlsDir, 'segment_%03d.ts'),
-
-    output
-  ];
-
-  console.log('[FFMPEG] Connecting to RTMP...');
-
-  ffmpegProcess = spawn(
-    ffmpegPath,
-    args,
-    {
-      windowsHide: true
-    }
-  );
-
-  ffmpegStarting = false;
-
-  ffmpegProcess.stderr.on('data', data => {
-    const text = data.toString().trim();
-
-    if (text) {
-      console.log('[FFMPEG]', text);
-    }
-  });
-
-  ffmpegProcess.on('error', err => {
-    console.error('[FFMPEG ERROR]', err.message);
-    ffmpegProcess = null;
-  });
-
-  ffmpegProcess.on('close', code => {
-    console.log('[FFMPEG] stopped:', code);
-
-    ffmpegProcess = null;
-
-    setTimeout(startFFmpeg, 3000);
-  });
-}
-
-setTimeout(startFFmpeg, 1500);
-
-/* =========================================================
-   EXPRESS
-========================================================= */
+// ======================================================
+// EXPRESS
+// ======================================================
 
 app.use(express.json());
 
 app.use(
-  express.static(
-    path.join(__dirname, 'public')
-  )
+    express.static(PUBLIC_DIR)
 );
 
-/* =========================================================
-   HLS
-========================================================= */
-
+// HLS files
 app.use(
-  '/hls',
-  express.static(
-    path.join(mediaRoot, 'live'),
-    {
-      setHeaders: (res, filePath) => {
-
-        if (filePath.endsWith('.m3u8')) {
-          res.setHeader(
-            'Content-Type',
-            'application/vnd.apple.mpegurl'
-          );
-
-          res.setHeader(
-            'Cache-Control',
-            'no-cache, no-store, must-revalidate'
-          );
-        }
-
-        if (filePath.endsWith('.ts')) {
-          res.setHeader(
-            'Content-Type',
-            'video/mp2t'
-          );
-
-          res.setHeader(
-            'Cache-Control',
-            'no-cache'
-          );
-        }
-
-        res.setHeader(
-          'Access-Control-Allow-Origin',
-          '*'
-        );
-      }
-    }
-  )
+    '/hls',
+    express.static(MEDIA_ROOT)
 );
 
-/* =========================================================
-   USERS
-========================================================= */
+// Explicit homepage
+app.get('/', (req, res) => {
+    res.sendFile(
+        path.join(PUBLIC_DIR, 'index.html')
+    );
+});
 
-const USERS_FILE =
-  path.join(__dirname, 'users.json');
+// ======================================================
+// BASIC API
+// ======================================================
 
-if (!fs.existsSync(USERS_FILE)) {
-  fs.writeFileSync(
-    USERS_FILE,
-    '{}'
-  );
-}
+app.get('/api/status', (req, res) => {
+    res.json({
+        ok: true,
+        name: 'EWS SESSIONS',
+        server: 'online',
+        rtmp: `rtmp://localhost:${RTMP_PORT}/live`,
+        streamKey: 'ews',
+        hls: `http://localhost:${PORT}/hls/ews/index.m3u8`,
+        time: new Date().toISOString()
+    });
+});
+
+// ======================================================
+// USERS
+// ======================================================
 
 function loadUsers() {
-  try {
-    return JSON.parse(
-      fs.readFileSync(
-        USERS_FILE,
-        'utf8'
-      )
-    );
-  } catch {
-    return {};
-  }
+    try {
+        const data = fs.readFileSync(
+            USERS_FILE,
+            'utf8'
+        );
+
+        return JSON.parse(data);
+    } catch (error) {
+        console.log('[USERS] Could not read users.json');
+
+        return [];
+    }
 }
 
 function saveUsers(users) {
-  fs.writeFileSync(
-    USERS_FILE,
-    JSON.stringify(
-      users,
-      null,
-      2
-    )
-  );
+    fs.writeFileSync(
+        USERS_FILE,
+        JSON.stringify(users, null, 2),
+        'utf8'
+    );
 }
 
-app.post(
-  '/api/register',
-  (req, res) => {
+// ======================================================
+// REGISTER
+// ======================================================
 
-    const {
-      username,
-      password
-    } = req.body || {};
+app.post('/api/register', (req, res) => {
+
+    const username = String(
+        req.body.username || ''
+    ).trim();
+
+    const password = String(
+        req.body.password || ''
+    );
 
     if (!username || !password) {
-      return res.json({
-        error:
-          'Введите логин и пароль'
-      });
+        return res.status(400).json({
+            ok: false,
+            message: 'Username and password required'
+        });
     }
 
-    if (password.length < 6) {
-      return res.json({
-        error:
-          'Пароль минимум 6 символов'
-      });
+    if (username.length < 3) {
+        return res.status(400).json({
+            ok: false,
+            message: 'Username must be at least 3 characters'
+        });
     }
 
     const users = loadUsers();
 
-    if (users[username]) {
-      return res.json({
-        error:
-          'Логин занят'
-      });
+    const exists = users.some(
+        user =>
+            user.username.toLowerCase() ===
+            username.toLowerCase()
+    );
+
+    if (exists) {
+        return res.status(400).json({
+            ok: false,
+            message: 'User already exists'
+        });
     }
 
-    users[username] = {
-      password
-    };
+    users.push({
+        username,
+        password
+    });
 
     saveUsers(users);
 
+    console.log(
+        `[REGISTER] ${username}`
+    );
+
     res.json({
-      ok: true,
-      username
+        ok: true,
+        message: 'Registration successful'
     });
-  }
-);
+});
 
-app.post(
-  '/api/login',
-  (req, res) => {
+// ======================================================
+// LOGIN
+// ======================================================
 
-    const {
-      username,
-      password
-    } = req.body || {};
+app.post('/api/login', (req, res) => {
 
-    if (!username || !password) {
-      return res.json({
-        error:
-          'Введите логин и пароль'
-      });
-    }
+    const username = String(
+        req.body.username || ''
+    ).trim();
+
+    const password = String(
+        req.body.password || ''
+    );
 
     const users = loadUsers();
 
-    if (!users[username]) {
-      return res.json({
-        error:
-          'Логин не найден'
-      });
+    const user = users.find(
+        u =>
+            u.username.toLowerCase() ===
+                username.toLowerCase() &&
+            u.password === password
+    );
+
+    if (!user) {
+        return res.status(401).json({
+            ok: false,
+            message: 'Invalid username or password'
+        });
     }
 
-    if (
-      users[username].password !==
-      password
-    ) {
-      return res.json({
-        error:
-          'Неверный пароль'
-      });
-    }
+    console.log(
+        `[LOGIN] ${user.username}`
+    );
 
     res.json({
-      ok: true,
-      username
+        ok: true,
+        username: user.username
     });
-  }
-);
+});
 
-/* =========================================================
-   TRANSLATION
-========================================================= */
+// ======================================================
+// TRANSLATION
+// ======================================================
 
-const translationCache = new Map();
+app.get('/api/translate', async (req, res) => {
 
-async function translateText(
-  text,
-  targetLang
-) {
-
-  if (!text || !targetLang) {
-    return text;
-  }
-
-  const key =
-    targetLang +
-    '|' +
-    text;
-
-  if (translationCache.has(key)) {
-    return translationCache.get(key);
-  }
-
-  try {
-
-    const url =
-      'https://translate.googleapis.com/translate_a/single' +
-      '?client=gtx' +
-      '&sl=auto' +
-      '&tl=' +
-      encodeURIComponent(targetLang) +
-      '&dt=t' +
-      '&q=' +
-      encodeURIComponent(text);
-
-    const response =
-      await fetch(url);
-
-    if (!response.ok) {
-      return text;
-    }
-
-    const data =
-      await response.json();
-
-    let result = '';
-
-    if (
-      Array.isArray(data) &&
-      Array.isArray(data[0])
-    ) {
-
-      for (
-        const part of data[0]
-      ) {
-
-        if (
-          part &&
-          part[0]
-        ) {
-          result += part[0];
-        }
-      }
-    }
-
-    result =
-      result ||
-      text;
-
-    translationCache.set(
-      key,
-      result
+    const text = String(
+        req.query.text || ''
     );
 
-    return result;
+    const target = String(
+        req.query.target || 'en'
+    );
 
-  } catch {
-    return text;
-  }
-}
+    if (!text) {
+        return res.json({
+            translated: ''
+        });
+    }
 
-/* =========================================================
-   ONLINE / CHAT
-========================================================= */
+    try {
 
-const online = new Map();
+        const url =
+            'https://translate.googleapis.com/translate_a/single' +
+            '?client=gtx' +
+            '&sl=auto' +
+            '&tl=' + encodeURIComponent(target) +
+            '&dt=t' +
+            '&q=' + encodeURIComponent(text);
 
-io.on(
-  'connection',
-  socket => {
+        const response = await fetch(url);
+
+        const data = await response.json();
+
+        let translated = '';
+
+        if (
+            Array.isArray(data) &&
+            Array.isArray(data[0])
+        ) {
+            translated = data[0]
+                .map(item => item[0])
+                .join('');
+        }
+
+        res.json({
+            translated
+        });
+
+    } catch (error) {
+
+        console.log(
+            '[TRANSLATE ERROR]',
+            error.message
+        );
+
+        res.json({
+            translated: text
+        });
+    }
+});
+
+// ======================================================
+// SOCKET.IO
+// ======================================================
+
+const onlineUsers = new Map();
+
+io.on('connection', socket => {
 
     console.log(
-      '[CONNECTED]',
-      socket.id
+        `[SOCKET] Connected ${socket.id}`
     );
 
-    socket.on(
-      'join',
-      data => {
-
-        let username = 'Guest';
-        let lang = 'ru';
-
-        if (
-          typeof data ===
-          'string'
-        ) {
-          username = data;
-        }
-
-        else if (
-          data &&
-          typeof data ===
-          'object'
-        ) {
-          username =
-            data.username ||
-            'Guest';
-
-          lang =
-            data.lang ||
-            'ru';
-        }
-
-        online.set(
-          socket.id,
-          {
-            username,
-            lang
-          }
-        );
-
-        io.emit(
-          'online',
-          [
-            ...online.values()
-          ].map(
-            u => u.username
-          )
-        );
-
-        socket.broadcast.emit(
-          'msg',
-          {
-            user: 'SYSTEM',
-            text:
-              username +
-              ' зашёл в клуб',
-            ts: Date.now(),
-            system: true
-          }
-        );
-      }
-    );
-
-    socket.on(
-      'language',
-      lang => {
-
-        const user =
-          online.get(
-            socket.id
-          );
-
-        if (!user) return;
-
-        user.lang =
-          String(
-            lang || 'ru'
-          );
-      }
-    );
-
-    socket.on(
-      'msg',
-      async data => {
-
-        if (
-          !data ||
-          !data.text
-        ) {
-          return;
-        }
-
-        const text =
-          String(
-            data.text
-          ).trim();
-
-        if (!text) {
-          return;
-        }
-
-        const sender =
-          online.get(
-            socket.id
-          );
+    socket.on('join', data => {
 
         const username =
-          sender?.username ||
-          data.user ||
-          'Guest';
+            String(
+                data?.username || 'Guest'
+            ).trim();
 
-        const users =
-          [
-            ...online.entries()
-          ];
-
-        const translatedByLang =
-          new Map();
-
-        for (
-          const [, user]
-          of users
-        ) {
-
-          const targetLang =
-            user.lang ||
-            'ru';
-
-          if (
-            !translatedByLang.has(
-              targetLang
-            )
-          ) {
-
-            translatedByLang.set(
-              targetLang,
-              await translateText(
-                text,
-                targetLang
-              )
+        const language =
+            String(
+                data?.language || 'en'
             );
-          }
-        }
 
-        for (
-          const [socketId, user]
-          of users
-        ) {
-
-          const targetLang =
-            user.lang ||
-            'ru';
-
-          const translatedText =
-            translatedByLang.get(
-              targetLang
-            ) ||
-            text;
-
-          io.to(
-            socketId
-          ).emit(
-            'msg',
+        onlineUsers.set(
+            socket.id,
             {
-              user: username,
-              text:
-                translatedText,
-              original: text,
-              targetLang,
-              translated:
-                translatedText !==
-                text,
-              ts: Date.now()
+                username,
+                language
             }
-          );
-        }
-      }
-    );
+        );
 
-    socket.on(
-      'disconnect',
-      () => {
+        socket.username = username;
+        socket.language = language;
 
-        const user =
-          online.get(
-            socket.id
-          );
-
-        if (!user) return;
-
-        online.delete(
-          socket.id
+        console.log(
+            `[ONLINE] ${username}`
         );
 
         io.emit(
-          'online',
-          [
-            ...online.values()
-          ].map(
-            u => u.username
-          )
+            'online-users',
+            Array.from(
+                onlineUsers.values()
+            )
         );
 
         socket.broadcast.emit(
-          'msg',
-          {
-            user: 'SYSTEM',
-            text:
-              user.username +
-              ' вышел',
-            ts: Date.now(),
-            system: true
-          }
+            'system-message',
+            {
+                text: `${username} entered EWS SESSIONS`
+            }
         );
-      }
-    );
-  }
-);
+    });
 
-/* =========================================================
-   SERVER
-========================================================= */
+    // ==================================================
+    // CHAT
+    // ==================================================
+
+    socket.on('chat-message', async data => {
+
+        const username =
+            socket.username || 'Guest';
+
+        const text =
+            String(
+                data?.text || ''
+            ).trim();
+
+        if (!text) {
+            return;
+        }
+
+        const users =
+            Array.from(
+                onlineUsers.entries()
+            );
+
+        for (const [
+            socketId,
+            user
+        ] of users) {
+
+            let messageText = text;
+
+            if (
+                user.language &&
+                user.language !== 'en'
+            ) {
+
+                try {
+
+                    const url =
+                        'https://translate.googleapis.com/translate_a/single' +
+                        '?client=gtx' +
+                        '&sl=auto' +
+                        '&tl=' +
+                        encodeURIComponent(
+                            user.language
+                        ) +
+                        '&dt=t' +
+                        '&q=' +
+                        encodeURIComponent(text);
+
+                    const response =
+                        await fetch(url);
+
+                    const result =
+                        await response.json();
+
+                    if (
+                        Array.isArray(result) &&
+                        Array.isArray(result[0])
+                    ) {
+
+                        messageText =
+                            result[0]
+                                .map(item => item[0])
+                                .join('');
+                    }
+
+                } catch (error) {
+
+                    messageText = text;
+                }
+            }
+
+            io.to(socketId).emit(
+                'chat-message',
+                {
+                    username,
+                    text: messageText,
+                    original: text
+                }
+            );
+        }
+    });
+
+    // ==================================================
+    // LANGUAGE
+    // ==================================================
+
+    socket.on('language-change', language => {
+
+        if (!onlineUsers.has(socket.id)) {
+            return;
+        }
+
+        const user =
+            onlineUsers.get(socket.id);
+
+        user.language =
+            String(language || 'en');
+
+        onlineUsers.set(
+            socket.id,
+            user
+        );
+
+        io.emit(
+            'online-users',
+            Array.from(
+                onlineUsers.values()
+            )
+        );
+    });
+
+    // ==================================================
+    // DISCONNECT
+    // ==================================================
+
+    socket.on('disconnect', () => {
+
+        const user =
+            onlineUsers.get(socket.id);
+
+        if (user) {
+
+            console.log(
+                `[OFFLINE] ${user.username}`
+            );
+
+            socket.broadcast.emit(
+                'system-message',
+                {
+                    text:
+                        `${user.username} left EWS SESSIONS`
+                }
+            );
+        }
+
+        onlineUsers.delete(
+            socket.id
+        );
+
+        io.emit(
+            'online-users',
+            Array.from(
+                onlineUsers.values()
+            )
+        );
+    });
+});
+
+// ======================================================
+// FFMPEG
+// ======================================================
+
+let ffmpegProcess = null;
+let ffmpegRestartTimer = null;
+let ffmpegStarting = false;
+
+function cleanHLS() {
+
+    try {
+
+        const files =
+            fs.readdirSync(HLS_DIR);
+
+        for (const file of files) {
+
+            const fullPath =
+                path.join(
+                    HLS_DIR,
+                    file
+                );
+
+            try {
+                fs.unlinkSync(fullPath);
+            } catch (error) {
+                // ignore
+            }
+        }
+
+    } catch (error) {
+
+        console.log(
+            '[HLS] Cleanup error:',
+            error.message
+        );
+    }
+}
+
+// ======================================================
+// START FFMPEG
+// ======================================================
+
+function startFFmpeg() {
+
+    if (ffmpegStarting) {
+        return;
+    }
+
+    if (
+        ffmpegProcess &&
+        !ffmpegProcess.killed
+    ) {
+        return;
+    }
+
+    if (!fs.existsSync(FFMPEG_PATH)) {
+
+        console.log(
+            '[FFMPEG] ffmpeg.exe not found:'
+        );
+
+        console.log(
+            FFMPEG_PATH
+        );
+
+        return;
+    }
+
+    ffmpegStarting = true;
+
+    cleanHLS();
+
+    console.log(
+        '[FFMPEG] Starting...'
+    );
+
+    /*
+        IMPORTANT:
+
+        We DO NOT use:
+
+        -reconnect
+        -reconnect_streamed
+        -reconnect_delay_max
+
+        because the installed FFmpeg build
+        does not support these options for RTMP.
+    */
+
+    const args = [
+
+        '-hide_banner',
+
+        // RTMP input
+        '-i',
+        'rtmp://127.0.0.1:1935/live/ews',
+
+        // Video
+        '-map',
+        '0:v:0',
+
+        '-c:v',
+        'libx264',
+
+        '-preset',
+        'veryfast',
+
+        '-tune',
+        'zerolatency',
+
+        '-pix_fmt',
+        'yuv420p',
+
+        '-r',
+        '30',
+
+        '-g',
+        '60',
+
+        '-keyint_min',
+        '60',
+
+        '-sc_threshold',
+        '0',
+
+        '-b:v',
+        '2500k',
+
+        '-maxrate',
+        '2500k',
+
+        '-bufsize',
+        '5000k',
+
+        // Audio
+        '-map',
+        '0:a:0?',
+
+        '-c:a',
+        'aac',
+
+        '-b:a',
+        '128k',
+
+        '-ar',
+        '48000',
+
+        '-ac',
+        '2',
+
+        // HLS
+        '-f',
+        'hls',
+
+        '-hls_time',
+        '2',
+
+        '-hls_list_size',
+        '6',
+
+        '-hls_flags',
+        'delete_segments+append_list',
+
+        '-hls_segment_filename',
+        path.join(
+            HLS_DIR,
+            'segment_%03d.ts'
+        ),
+
+        path.join(
+            HLS_DIR,
+            'index.m3u8'
+        )
+    ];
+
+    ffmpegProcess =
+        spawn(
+            FFMPEG_PATH,
+            args,
+            {
+                cwd: ROOT,
+                windowsHide: true
+            }
+        );
+
+    ffmpegStarting = false;
+
+    ffmpegProcess.stdout.on(
+        'data',
+        data => {
+
+            const text =
+                data.toString().trim();
+
+            if (text) {
+                console.log(
+                    `[FFMPEG] ${text}`
+                );
+            }
+        }
+    );
+
+    ffmpegProcess.stderr.on(
+        'data',
+        data => {
+
+            const text =
+                data.toString().trim();
+
+            if (text) {
+                console.log(
+                    `[FFMPEG] ${text}`
+                );
+            }
+        }
+    );
+
+    ffmpegProcess.on(
+        'error',
+        error => {
+
+            console.log(
+                '[FFMPEG] Process error:',
+                error.message
+            );
+        }
+    );
+
+    ffmpegProcess.on(
+        'close',
+        code => {
+
+            console.log(
+                `[FFMPEG] Exited code ${code}`
+            );
+
+            ffmpegProcess = null;
+
+            if (ffmpegRestartTimer) {
+                clearTimeout(
+                    ffmpegRestartTimer
+                );
+            }
+
+            ffmpegRestartTimer =
+                setTimeout(() => {
+
+                    console.log(
+                        '[FFMPEG] Restarting...'
+                    );
+
+                    startFFmpeg();
+
+                }, 3000);
+        }
+    );
+}
+
+// ======================================================
+// START WEB SERVER
+// ======================================================
 
 server.listen(
-  PORT,
-  () => {
+    PORT,
+    () => {
 
-    console.log('');
+        console.log('');
+        console.log(
+            '=========================================='
+        );
+        console.log(
+            '          EWS SESSIONS SERVER'
+        );
+        console.log(
+            '=========================================='
+        );
+        console.log(
+            `SERVER READY`
+        );
+        console.log(
+            `http://localhost:${PORT}`
+        );
+        console.log(
+            `RTMP: rtmp://localhost:${RTMP_PORT}/live`
+        );
+        console.log(
+            `KEY:  ews`
+        );
+        console.log(
+            `HLS:  http://localhost:${PORT}/hls/ews/index.m3u8`
+        );
+        console.log(
+            '=========================================='
+        );
+        console.log('');
+
+        // Give NodeMediaServer a moment,
+        // then start FFmpeg.
+        setTimeout(() => {
+
+            startFFmpeg();
+
+        }, 2500);
+    }
+);
+
+// ======================================================
+// GRACEFUL SHUTDOWN
+// ======================================================
+
+function shutdown() {
+
     console.log(
-      '=============================='
+        '\n[EWS] Shutting down...'
     );
 
-    console.log(
-      '       EWS SESSIONS'
-    );
+    if (ffmpegRestartTimer) {
+        clearTimeout(
+            ffmpegRestartTimer
+        );
+    }
 
-    console.log(
-      '=============================='
-    );
+    if (ffmpegProcess) {
 
-    console.log(
-      'WEB:',
-      `http://localhost:${PORT}`
-    );
+        try {
+            ffmpegProcess.kill();
+        } catch (error) {
+            // ignore
+        }
+    }
 
-    console.log(
-      'RTMP:',
-      `rtmp://localhost:${RTMP_PORT}/live`
-    );
+    try {
+        nms.stop();
+    } catch (error) {
+        // ignore
+    }
 
-    console.log(
-      'STREAM KEY: ews'
-    );
+    server.close(() => {
 
-    console.log(
-      'HLS:',
-      `http://localhost:${PORT}/hls/ews/index.m3u8`
-    );
+        console.log(
+            '[EWS] Server stopped.'
+        );
 
-    console.log(
-      '=============================='
-    );
-  }
+        process.exit(0);
+    });
+}
+
+process.on(
+    'SIGINT',
+    shutdown
+);
+
+process.on(
+    'SIGTERM',
+    shutdown
 );
