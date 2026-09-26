@@ -42,11 +42,11 @@ const nmsConfig = {
 
 const nms = new NodeMediaServer(nmsConfig);
 
-nms.on('prePublish', (id, StreamPath, args) => {
+nms.on('prePublish', (id, StreamPath) => {
   console.log('[RTMP] STREAM START:', StreamPath);
 });
 
-nms.on('donePublish', (id, StreamPath, args) => {
+nms.on('donePublish', (id, StreamPath) => {
   console.log('[RTMP] STREAM STOP:', StreamPath);
 });
 
@@ -64,38 +64,23 @@ function cleanHLS() {
     const files = fs.readdirSync(hlsDir);
 
     for (const file of files) {
-      if (
-        file.endsWith('.m3u8') ||
-        file.endsWith('.ts')
-      ) {
+      if (file.endsWith('.m3u8') || file.endsWith('.ts')) {
         try {
-          fs.unlinkSync(
-            path.join(hlsDir, file)
-          );
+          fs.unlinkSync(path.join(hlsDir, file));
         } catch {}
       }
     }
   } catch {}
 }
 
-
 function startFFmpeg() {
-
   if (ffmpegProcess || ffmpegStarting) {
     return;
   }
 
   if (!fs.existsSync(ffmpegPath)) {
-
-    console.error(
-      '[FFMPEG] ERROR: ffmpeg.exe не найден!'
-    );
-
-    console.error(
-      '[FFMPEG] Ожидается:',
-      ffmpegPath
-    );
-
+    console.error('[FFMPEG] ERROR: ffmpeg.exe не найден!');
+    console.error('[FFMPEG] Ожидается:', ffmpegPath);
     return;
   }
 
@@ -103,143 +88,75 @@ function startFFmpeg() {
 
   cleanHLS();
 
-  const output =
-    path.join(
-      hlsDir,
-      'index.m3u8'
-    );
+  const output = path.join(hlsDir, 'index.m3u8');
 
   const args = [
-
     '-hide_banner',
-
-    '-loglevel',
-    'warning',
-
-    '-fflags',
-    '+genpts',
+    '-loglevel', 'warning',
+    '-fflags', '+genpts',
 
     '-i',
     'rtmp://127.0.0.1:1935/live/ews',
 
-    '-map',
-    '0:v:0?',
-    '-map',
-    '0:a:0?',
+    '-map', '0:v:0?',
+    '-map', '0:a:0?',
 
-    '-c:v',
-    'copy',
+    '-c:v', 'copy',
 
-    '-c:a',
-    'aac',
+    '-c:a', 'aac',
+    '-b:a', '160k',
+    '-ar', '48000',
+    '-ac', '2',
 
-    '-b:a',
-    '160k',
+    '-f', 'hls',
 
-    '-ar',
-    '48000',
-
-    '-ac',
-    '2',
-
-    '-f',
-    'hls',
-
-    '-hls_time',
-    '2',
-
-    '-hls_list_size',
-    '6',
+    '-hls_time', '2',
+    '-hls_list_size', '6',
 
     '-hls_flags',
     'delete_segments+append_list',
 
     '-hls_segment_filename',
-    path.join(
-      hlsDir,
-      'segment_%03d.ts'
-    ),
+    path.join(hlsDir, 'segment_%03d.ts'),
 
     output
   ];
 
-  console.log(
-    '[FFMPEG] Connecting to RTMP...'
-  );
+  console.log('[FFMPEG] Connecting to RTMP...');
 
-  ffmpegProcess =
-    spawn(
-      ffmpegPath,
-      args,
-      {
-        windowsHide: true
-      }
-    );
+  ffmpegProcess = spawn(
+    ffmpegPath,
+    args,
+    {
+      windowsHide: true
+    }
+  );
 
   ffmpegStarting = false;
 
-  ffmpegProcess.stderr.on(
-    'data',
-    data => {
+  ffmpegProcess.stderr.on('data', data => {
+    const text = data.toString().trim();
 
-      const text =
-        data.toString().trim();
-
-      if (text) {
-        console.log(
-          '[FFMPEG]',
-          text
-        );
-      }
-
+    if (text) {
+      console.log('[FFMPEG]', text);
     }
-  );
+  });
 
-  ffmpegProcess.on(
-    'error',
-    err => {
+  ffmpegProcess.on('error', err => {
+    console.error('[FFMPEG ERROR]', err.message);
+    ffmpegProcess = null;
+  });
 
-      console.error(
-        '[FFMPEG ERROR]',
-        err.message
-      );
+  ffmpegProcess.on('close', code => {
+    console.log('[FFMPEG] stopped:', code);
 
-      ffmpegProcess = null;
+    ffmpegProcess = null;
 
-    }
-  );
-
-  ffmpegProcess.on(
-    'close',
-    code => {
-
-      console.log(
-        '[FFMPEG] stopped:',
-        code
-      );
-
-      ffmpegProcess = null;
-
-      setTimeout(
-        startFFmpeg,
-        3000
-      );
-
-    }
-  );
+    setTimeout(startFFmpeg, 3000);
+  });
 }
 
-
-/*
-   Запускаем немного позже,
-   чтобы RTMP-сервер успел подняться.
-*/
-
-setTimeout(
-  startFFmpeg,
-  1500
-);
-
+setTimeout(startFFmpeg, 1500);
 
 /* =========================================================
    EXPRESS
@@ -253,7 +170,6 @@ app.use(
   )
 );
 
-
 /* =========================================================
    HLS
 ========================================================= */
@@ -261,17 +177,11 @@ app.use(
 app.use(
   '/hls',
   express.static(
-    path.join(
-      mediaRoot,
-      'live'
-    ),
+    path.join(mediaRoot, 'live'),
     {
       setHeaders: (res, filePath) => {
 
-        if (
-          filePath.endsWith('.m3u8')
-        ) {
-
+        if (filePath.endsWith('.m3u8')) {
           res.setHeader(
             'Content-Type',
             'application/vnd.apple.mpegurl'
@@ -281,13 +191,9 @@ app.use(
             'Cache-Control',
             'no-cache, no-store, must-revalidate'
           );
-
         }
 
-        if (
-          filePath.endsWith('.ts')
-        ) {
-
+        if (filePath.endsWith('.ts')) {
           res.setHeader(
             'Content-Type',
             'video/mp2t'
@@ -297,29 +203,23 @@ app.use(
             'Cache-Control',
             'no-cache'
           );
-
         }
 
         res.setHeader(
           'Access-Control-Allow-Origin',
           '*'
         );
-
       }
     }
   )
 );
-
 
 /* =========================================================
    USERS
 ========================================================= */
 
 const USERS_FILE =
-  path.join(
-    __dirname,
-    'users.json'
-  );
+  path.join(__dirname, 'users.json');
 
 if (!fs.existsSync(USERS_FILE)) {
   fs.writeFileSync(
@@ -328,29 +228,20 @@ if (!fs.existsSync(USERS_FILE)) {
   );
 }
 
-
 function loadUsers() {
-
   try {
-
     return JSON.parse(
       fs.readFileSync(
         USERS_FILE,
         'utf8'
       )
     );
-
   } catch {
-
     return {};
-
   }
-
 }
 
-
 function saveUsers(users) {
-
   fs.writeFileSync(
     USERS_FILE,
     JSON.stringify(
@@ -359,9 +250,7 @@ function saveUsers(users) {
       2
     )
   );
-
 }
-
 
 app.post(
   '/api/register',
@@ -372,39 +261,27 @@ app.post(
       password
     } = req.body || {};
 
-    if (
-      !username ||
-      !password
-    ) {
-
+    if (!username || !password) {
       return res.json({
         error:
           'Введите логин и пароль'
       });
-
     }
 
-    if (
-      password.length < 6
-    ) {
-
+    if (password.length < 6) {
       return res.json({
         error:
           'Пароль минимум 6 символов'
       });
-
     }
 
-    const users =
-      loadUsers();
+    const users = loadUsers();
 
     if (users[username]) {
-
       return res.json({
         error:
           'Логин занят'
       });
-
     }
 
     users[username] = {
@@ -417,10 +294,8 @@ app.post(
       ok: true,
       username
     });
-
   }
 );
-
 
 app.post(
   '/api/login',
@@ -431,71 +306,52 @@ app.post(
       password
     } = req.body || {};
 
-    if (
-      !username ||
-      !password
-    ) {
-
+    if (!username || !password) {
       return res.json({
         error:
           'Введите логин и пароль'
       });
-
     }
 
-    const users =
-      loadUsers();
+    const users = loadUsers();
 
     if (!users[username]) {
-
       return res.json({
         error:
           'Логин не найден'
       });
-
     }
 
     if (
       users[username].password !==
       password
     ) {
-
       return res.json({
         error:
           'Неверный пароль'
       });
-
     }
 
     res.json({
       ok: true,
       username
     });
-
   }
 );
-
 
 /* =========================================================
    TRANSLATION
 ========================================================= */
 
-const translationCache =
-  new Map();
-
+const translationCache = new Map();
 
 async function translateText(
   text,
   targetLang
 ) {
 
-  if (
-    !text ||
-    !targetLang
-  ) {
-
+  if (!text || !targetLang) {
     return text;
-
   }
 
   const key =
@@ -503,12 +359,8 @@ async function translateText(
     '|' +
     text;
 
-  if (
-    translationCache.has(key)
-  ) {
-
+  if (translationCache.has(key)) {
     return translationCache.get(key);
-
   }
 
   try {
@@ -548,13 +400,9 @@ async function translateText(
           part &&
           part[0]
         ) {
-
           result += part[0];
-
         }
-
       }
-
     }
 
     result =
@@ -569,21 +417,15 @@ async function translateText(
     return result;
 
   } catch {
-
     return text;
-
   }
-
 }
-
 
 /* =========================================================
    ONLINE / CHAT
 ========================================================= */
 
-const online =
-  new Map();
-
+const online = new Map();
 
 io.on(
   'connection',
@@ -594,31 +436,25 @@ io.on(
       socket.id
     );
 
-
     socket.on(
       'join',
       data => {
 
-        let username =
-          'Guest';
-
-        let lang =
-          'ru';
+        let username = 'Guest';
+        let lang = 'ru';
 
         if (
           typeof data ===
           'string'
         ) {
+          username = data;
+        }
 
-          username =
-            data;
-
-        } else if (
+        else if (
           data &&
           typeof data ===
           'object'
         ) {
-
           username =
             data.username ||
             'Guest';
@@ -626,7 +462,6 @@ io.on(
           lang =
             data.lang ||
             'ru';
-
         }
 
         online.set(
@@ -657,10 +492,8 @@ io.on(
             system: true
           }
         );
-
       }
     );
-
 
     socket.on(
       'language',
@@ -677,10 +510,8 @@ io.on(
           String(
             lang || 'ru'
           );
-
       }
     );
-
 
     socket.on(
       'msg',
@@ -689,14 +520,18 @@ io.on(
         if (
           !data ||
           !data.text
-        ) return;
+        ) {
+          return;
+        }
 
         const text =
           String(
             data.text
           ).trim();
 
-        if (!text) return;
+        if (!text) {
+          return;
+        }
 
         const sender =
           online.get(
@@ -738,9 +573,7 @@ io.on(
                 targetLang
               )
             );
-
           }
-
         }
 
         for (
@@ -774,12 +607,9 @@ io.on(
               ts: Date.now()
             }
           );
-
         }
-
       }
     );
-
 
     socket.on(
       'disconnect',
@@ -816,13 +646,10 @@ io.on(
             system: true
           }
         );
-
       }
     );
-
   }
 );
-
 
 /* =========================================================
    SERVER
@@ -867,6 +694,5 @@ server.listen(
     console.log(
       '=============================='
     );
-
   }
 );

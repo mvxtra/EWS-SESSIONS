@@ -1,22 +1,32 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0"
+>
+
 <title>EWS SESSIONS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
+
 *{
   margin:0;
   padding:0;
   box-sizing:border-box;
 }
 
-html,body{
+html,
+body{
   width:100%;
   height:100%;
   overflow:hidden;
@@ -39,7 +49,9 @@ html,body{
   display:block;
 }
 
-/* ================= LOGIN ================= */
+/* =========================================================
+   LOGIN
+========================================================= */
 
 #login{
   position:absolute;
@@ -48,19 +60,32 @@ html,body{
   display:flex;
   align-items:center;
   justify-content:center;
+
   background:
-    radial-gradient(circle at 50% 40%,rgba(255,255,255,.08),transparent 25%),
-    radial-gradient(circle at 50% 50%,#171717,#030303 70%);
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(255,255,255,.08),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      #171717,
+      #030303 70%
+    );
 }
 
 .login-box{
   width:380px;
   padding:42px;
+
   background:rgba(5,5,5,.88);
+
   border:1px solid #444;
+
   box-shadow:
     0 0 80px rgba(255,255,255,.06),
     inset 0 0 40px rgba(255,255,255,.02);
+
   text-align:center;
 }
 
@@ -105,9 +130,11 @@ input{
   height:45px;
   margin-bottom:12px;
   padding:0 14px;
+
   border:1px solid #333;
   background:#080808;
   color:#fff;
+
   outline:none;
 }
 
@@ -118,11 +145,15 @@ input:focus{
 .btn{
   width:100%;
   height:45px;
+
   border:0;
+
   background:#fff;
   color:#000;
+
   font-weight:bold;
   letter-spacing:2px;
+
   cursor:pointer;
 }
 
@@ -137,29 +168,38 @@ input:focus{
   font-size:12px;
 }
 
-/* ================= HUD ================= */
+/* =========================================================
+   HUD
+========================================================= */
 
 #hud{
   position:absolute;
   inset:0;
   z-index:20;
+
   display:none;
+
   pointer-events:none;
 }
 
 #top-logo{
   position:absolute;
+
   top:18px;
   left:20px;
+
   font-size:16px;
   font-weight:900;
   letter-spacing:5px;
+
   text-shadow:0 0 20px #fff;
 }
 
 #top-logo span{
   display:block;
+
   margin-top:4px;
+
   font-size:8px;
   letter-spacing:3px;
   color:#777;
@@ -167,12 +207,18 @@ input:focus{
 
 #online-box{
   position:absolute;
+
   top:18px;
   right:18px;
+
   width:190px;
+
   padding:13px;
+
   background:rgba(0,0,0,.72);
+
   border:1px solid #333;
+
   pointer-events:auto;
 }
 
@@ -185,37 +231,52 @@ input:focus{
 
 #online-list{
   list-style:none;
+
   max-height:180px;
   overflow:auto;
+
   color:#ddd;
   font-size:12px;
 }
 
 #online-list li{
   padding:4px 0;
+
   border-bottom:1px solid #161616;
 }
 
 #online-list li::before{
   content:"●";
+
   color:#fff;
+
   margin-right:7px;
+
   font-size:8px;
 }
 
-/* ================= CHAT ================= */
+/* =========================================================
+   CHAT
+========================================================= */
 
 #chat{
   position:absolute;
+
   left:18px;
   bottom:18px;
+
   width:390px;
   height:250px;
+
   padding:12px;
+
   display:flex;
   flex-direction:column;
+
   background:rgba(0,0,0,.75);
+
   border:1px solid #333;
+
   pointer-events:auto;
 }
 
@@ -223,17 +284,21 @@ input:focus{
   font-size:9px;
   letter-spacing:3px;
   color:#777;
+
   margin-bottom:8px;
 }
 
 #chat-messages{
   flex:1;
+
   overflow-y:auto;
+
   margin-bottom:8px;
 }
 
 .msg{
   margin-bottom:7px;
+
   font-size:12px;
   line-height:1.4;
 }
@@ -260,36 +325,55 @@ input:focus{
 
 #chat-send{
   width:45px;
+
   border:0;
+
   background:#fff;
   color:#000;
+
   cursor:pointer;
 }
 
-/* ================= OTHER ================= */
+/* =========================================================
+   OTHER HUD
+========================================================= */
 
 #hint{
   position:absolute;
+
   right:18px;
   bottom:18px;
+
   padding:9px 12px;
+
   background:rgba(0,0,0,.65);
+
   border:1px solid #292929;
+
   color:#777;
+
   font-size:10px;
   letter-spacing:1px;
 }
 
 #stream-indicator{
   position:absolute;
+
   top:18px;
   left:50%;
+
   transform:translateX(-50%);
+
   padding:6px 12px;
+
   background:rgba(0,0,0,.75);
+
   border:1px solid #333;
+
   color:#777;
+
   font-family:monospace;
+
   font-size:10px;
   letter-spacing:2px;
 }
@@ -306,43 +390,66 @@ input:focus{
 
 #lang-bar{
   position:absolute;
+
   right:220px;
   top:18px;
+
   pointer-events:auto;
 }
 
 #lang{
   background:#080808;
+
   border:1px solid #333;
+
   color:#aaa;
+
   padding:7px 10px;
 }
 
 #zone-label{
   position:absolute;
+
   left:50%;
   bottom:90px;
+
   transform:translateX(-50%);
+
   font-size:10px;
+
   letter-spacing:5px;
+
   color:rgba(255,255,255,.4);
+
   pointer-events:none;
 }
 
 #audio-control{
   position:absolute;
+
   top:58px;
   left:50%;
+
   transform:translateX(-50%);
+
   z-index:100;
+
   pointer-events:auto;
+
   padding:9px 14px;
+
   border:1px solid #444;
+
   background:rgba(0,0,0,.78);
+
   color:#aaa;
+
   font-family:monospace;
+
   font-size:10px;
+
   letter-spacing:2px;
+
   cursor:pointer;
 }
 
@@ -358,15 +465,135 @@ input:focus{
 
 #ews-audio{
   position:absolute;
+
   width:1px;
   height:1px;
+
   opacity:0;
+
   pointer-events:none;
 }
 
-/* ================= MOBILE ================= */
+/* =========================================================
+   VK SEARCH
+========================================================= */
 
-@media (max-width:700px){
+#vk-music{
+  position:absolute;
+
+  top:105px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  width:420px;
+
+  padding:14px;
+
+  background:rgba(0,0,0,.84);
+
+  border:1px solid #333;
+
+  z-index:120;
+
+  pointer-events:auto;
+
+  box-shadow:
+    0 0 35px rgba(0,0,0,.5);
+}
+
+#vk-title{
+  font-size:9px;
+
+  letter-spacing:4px;
+
+  color:#aaa;
+
+  margin-bottom:10px;
+
+  text-align:center;
+}
+
+#vk-search-row{
+  display:flex;
+  gap:6px;
+}
+
+#vk-search-input{
+  flex:1;
+
+  height:38px;
+
+  margin:0;
+
+  padding:0 10px;
+
+  background:#080808;
+
+  border:1px solid #333;
+
+  color:#fff;
+
+  outline:none;
+}
+
+#vk-search-input:focus{
+  border-color:#888;
+}
+
+#vk-search-btn{
+  width:85px;
+
+  border:0;
+
+  background:#fff;
+
+  color:#000;
+
+  font-size:10px;
+
+  font-weight:bold;
+
+  letter-spacing:1px;
+
+  cursor:pointer;
+}
+
+#vk-search-btn:hover{
+  background:#ddd;
+}
+
+#vk-result{
+  display:none;
+
+  margin-top:10px;
+
+  padding:10px;
+
+  border-top:1px solid #222;
+
+  color:#888;
+
+  font-size:10px;
+
+  line-height:1.5;
+}
+
+#vk-result a{
+  color:#fff;
+
+  text-decoration:none;
+}
+
+#vk-result a:hover{
+  text-decoration:underline;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media(max-width:700px){
 
   #top-logo{
     top:12px;
@@ -391,8 +618,11 @@ input:focus{
   #online-box{
     top:52px;
     right:12px;
+
     width:145px;
+
     padding:9px;
+
     max-height:105px;
   }
 
@@ -413,30 +643,65 @@ input:focus{
   #stream-indicator{
     top:52px;
     left:12px;
+
     transform:none;
+
     padding:5px 8px;
+
     font-size:8px;
   }
 
   #audio-control{
     top:84px;
     left:12px;
+
     transform:none;
+
     padding:8px 10px;
+
     font-size:8px;
+
     z-index:150;
+  }
+
+  #vk-music{
+    top:125px;
+
+    left:12px;
+
+    transform:none;
+
+    width:calc(100vw - 24px);
+
+    max-width:420px;
+
+    padding:10px;
+  }
+
+  #vk-search-input{
+    font-size:14px;
+  }
+
+  #vk-search-btn{
+    width:75px;
   }
 
   #chat{
     left:10px;
     right:10px;
     bottom:10px;
+
     width:auto;
+
     height:31vh;
+
     min-height:190px;
     max-height:270px;
+
     padding:9px;
+
     z-index:200;
+
     background:rgba(0,0,0,.86);
   }
 
@@ -457,12 +722,15 @@ input:focus{
 
   #chat-input{
     height:38px;
+
     font-size:14px;
+
     padding:0 9px;
   }
 
   #chat-send{
     width:44px;
+
     font-size:18px;
   }
 
@@ -472,11 +740,12 @@ input:focus{
 
   #zone-label{
     bottom:calc(31vh + 20px);
+
     font-size:8px;
   }
 }
 
-@media (max-width:420px){
+@media(max-width:420px){
 
   #online-box{
     width:125px;
@@ -501,8 +770,6 @@ input:focus{
 
 <canvas id="canvas3d"></canvas>
 
-<!-- REAL LOCAL HLS AUDIO -->
-
 <audio
   id="ews-audio"
   crossorigin="anonymous"
@@ -510,8 +777,9 @@ input:focus{
   preload="none">
 </audio>
 
-
-<!-- LOGIN -->
+<!-- =====================================================
+     LOGIN
+===================================================== -->
 
 <div id="login">
 
@@ -542,13 +810,15 @@ input:focus{
     <input
       id="f-username"
       placeholder="USERNAME"
-      autocomplete="username">
+      autocomplete="username"
+    >
 
     <input
       id="f-password"
       type="password"
       placeholder="PASSWORD"
-      autocomplete="current-password">
+      autocomplete="current-password"
+    >
 
     <button
       class="btn"
@@ -566,35 +836,56 @@ input:focus{
 
 </div>
 
-
-<!-- HUD -->
+<!-- =====================================================
+     HUD
+===================================================== -->
 
 <div id="hud">
 
   <div id="top-logo">
-
     EWS
-
-    <span>
-      SESSIONS
-    </span>
-
+    <span>SESSIONS</span>
   </div>
-
 
   <div id="stream-indicator">
     AUDIO: READY
   </div>
 
-
   <button
     id="audio-control"
     onclick="startSSHAudio()">
-
     ▶ AUDIO: START
-
   </button>
 
+  <!-- ===================================================
+       VK MUSIC SEARCH
+  ==================================================== -->
+
+  <div id="vk-music">
+
+    <div id="vk-title">
+      VK MUSIC SEARCH
+    </div>
+
+    <div id="vk-search-row">
+
+      <input
+        id="vk-search-input"
+        type="text"
+        placeholder="Artist / Track..."
+        autocomplete="off"
+      >
+
+      <button
+        id="vk-search-btn">
+        SEARCH
+      </button>
+
+    </div>
+
+    <div id="vk-result"></div>
+
+  </div>
 
   <div id="lang-bar">
 
@@ -619,7 +910,6 @@ input:focus{
 
   </div>
 
-
   <div id="online-box">
 
     <h3>
@@ -629,7 +919,6 @@ input:focus{
     <ul id="online-list"></ul>
 
   </div>
-
 
   <div id="chat">
 
@@ -644,7 +933,8 @@ input:focus{
       <input
         id="chat-input"
         autocomplete="off"
-        placeholder="write something...">
+        placeholder="write something..."
+      >
 
       <button id="chat-send">
         →
@@ -654,11 +944,9 @@ input:focus{
 
   </div>
 
-
   <div id="zone-label">
     MAIN FLOOR
   </div>
-
 
   <div id="hint">
     WASD MOVE · MOUSE LOOK · C CHAT
@@ -668,64 +956,50 @@ input:focus{
 
 </div>
 
-
 <script>
 
-/* =========================================================
-   BASIC STATE
-========================================================= */
+let mode='login';
 
-let mode = 'login';
-
-let socket = null;
-
-let currentUser = null;
+let socket=null;
+let currentUser=null;
 
 let scene;
 let camera;
 let renderer;
 
-let keys = {};
+let keys={};
 
-let yaw = 0;
-let pitch = 0;
+let yaw=0;
+let pitch=0;
 
-let pointerLocked = false;
+let pointerLocked=false;
+let chatMode=false;
 
-let chatMode = false;
+let clock=new THREE.Clock();
 
-let clock = new THREE.Clock();
-
-let neonObjects = [];
-
-let lightObjects = [];
+let neonObjects=[];
+let lightObjects=[];
 
 let particles;
 
-let analyser = null;
+let analyser=null;
+let freqData=null;
 
-let freqData = null;
+let audioLevel=0;
+let bassLevel=0;
 
-let audioLevel = 0;
+let audioContext=null;
+let audioSource=null;
 
-let bassLevel = 0;
+let audioStarted=false;
 
-let audioContext = null;
-
-let audioSource = null;
-
-let audioStarted = false;
-
-let hls = null;
+let hls=null;
 
 let screenTexture;
-
 let screenCanvas;
-
 let screenCtx;
 
 let playerBody;
-
 
 /* =========================================================
    LOGIN
@@ -733,22 +1007,23 @@ let playerBody;
 
 function switchTab(type){
 
-  mode = type;
+  mode=type;
 
   document
     .querySelectorAll('.tab')
-    .forEach(t =>
-      t.classList.remove('active')
+    .forEach(
+      t=>t.classList.remove('active')
     );
 
-  if(type === 'login'){
+  if(type==='login'){
 
     document
       .querySelectorAll('.tab')[0]
       .classList.add('active');
 
-    document.getElementById('submitBtn')
-      .textContent = 'ВОЙТИ';
+    document.getElementById(
+      'submitBtn'
+    ).textContent='ВОЙТИ';
 
   }else{
 
@@ -756,39 +1031,39 @@ function switchTab(type){
       .querySelectorAll('.tab')[1]
       .classList.add('active');
 
-    document.getElementById('submitBtn')
-      .textContent = 'СОЗДАТЬ АККАУНТ';
+    document.getElementById(
+      'submitBtn'
+    ).textContent='СОЗДАТЬ АККАУНТ';
 
   }
 
-  document.getElementById('error')
-    .textContent = '';
+  document.getElementById(
+    'error'
+  ).textContent='';
 
 }
-
 
 async function doLogin(){
 
   const username =
-    document.getElementById(
-      'f-username'
-    ).value.trim();
+    document
+      .getElementById('f-username')
+      .value
+      .trim();
 
   const password =
-    document.getElementById(
-      'f-password'
-    ).value;
+    document
+      .getElementById('f-password')
+      .value;
 
   const error =
-    document.getElementById(
-      'error'
-    );
+    document.getElementById('error');
 
-  error.textContent = '';
+  error.textContent='';
 
   if(!username || !password){
 
-    error.textContent =
+    error.textContent=
       'Введите логин и пароль';
 
     return;
@@ -798,7 +1073,7 @@ async function doLogin(){
 
     const res =
       await fetch(
-        '/api/' + mode,
+        '/api/'+mode,
         {
           method:'POST',
 
@@ -819,11 +1094,10 @@ async function doLogin(){
 
     if(data.error){
 
-      error.textContent =
+      error.textContent=
         data.error;
 
       return;
-
     }
 
     startSession(username);
@@ -832,13 +1106,12 @@ async function doLogin(){
 
     console.error(err);
 
-    error.textContent =
+    error.textContent=
       'Ошибка соединения';
 
   }
 
 }
-
 
 /* =========================================================
    SESSION
@@ -846,73 +1119,84 @@ async function doLogin(){
 
 function startSession(username){
 
-  currentUser = username;
+  currentUser=username;
 
-  document.getElementById('login')
-    .style.display = 'none';
+  document.getElementById(
+    'login'
+  ).style.display='none';
 
-  document.getElementById('hud')
-    .style.display = 'block';
+  document.getElementById(
+    'hud'
+  ).style.display='block';
 
   init3D();
 
-  socket = io();
+  socket=io();
 
   socket.emit(
     'join',
-    username
+    {
+      username,
+      lang:
+        document.getElementById(
+          'lang'
+        ).value
+    }
   );
-
 
   socket.on(
     'online',
-    list => {
+    list=>{
 
       const ul =
         document.getElementById(
           'online-list'
         );
 
-      ul.innerHTML = '';
+      ul.innerHTML='';
 
-      list.forEach(name => {
+      list.forEach(
+        name=>{
 
-        const li =
-          document.createElement('li');
+          const li =
+            document.createElement(
+              'li'
+            );
 
-        li.textContent = name;
+          li.textContent=name;
 
-        ul.appendChild(li);
+          ul.appendChild(li);
 
-      });
+        }
+      );
 
     }
   );
 
-
   socket.on(
     'msg',
-    message => {
+    message=>{
 
       const el =
         document.createElement(
           'div'
         );
 
-      el.className = 'msg';
+      el.className='msg';
 
       const time =
-        new Date(message.ts)
-          .toLocaleTimeString();
+        new Date(
+          message.ts
+        ).toLocaleTimeString();
 
       const user =
         document.createElement(
           'span'
         );
 
-      user.className = 'u';
+      user.className='u';
 
-      user.textContent =
+      user.textContent=
         message.user;
 
       const text =
@@ -920,17 +1204,15 @@ function startSession(username){
           'span'
         );
 
-      text.className = 't';
+      text.className='t';
 
-      text.textContent =
-        ' ' + message.text;
+      text.textContent=
+        ' '+time+' '+message.text;
 
       el.appendChild(user);
 
       el.appendChild(
-        document.createTextNode(
-          ' ' + time + ' '
-        )
+        document.createTextNode(' ')
       );
 
       el.appendChild(text);
@@ -942,14 +1224,13 @@ function startSession(username){
 
       box.appendChild(el);
 
-      box.scrollTop =
+      box.scrollTop=
         box.scrollHeight;
 
     }
   );
 
 }
-
 
 /* =========================================================
    CHAT
@@ -963,7 +1244,7 @@ document
 
       e.preventDefault();
 
-      if(!socket) return;
+      if(!socket)return;
 
       const input =
         document.getElementById(
@@ -973,13 +1254,14 @@ document
       const text =
         input.value.trim();
 
-      if(!text) return;
+      if(!text)return;
 
       socket.emit(
         'msg',
         {
           user:currentUser,
           text:text,
+
           lang:
             document.getElementById(
               'lang'
@@ -987,11 +1269,110 @@ document
         }
       );
 
-      input.value = '';
+      input.value='';
 
     }
   );
 
+/* =========================================================
+   LANGUAGE
+========================================================= */
+
+document
+  .getElementById('lang')
+  .addEventListener(
+    'change',
+    function(){
+
+      if(socket){
+
+        socket.emit(
+          'language',
+          this.value
+        );
+
+      }
+
+    }
+  );
+
+/* =========================================================
+   VK MUSIC SEARCH
+========================================================= */
+
+const vkSearchInput =
+  document.getElementById(
+    'vk-search-input'
+  );
+
+const vkSearchBtn =
+  document.getElementById(
+    'vk-search-btn'
+  );
+
+const vkResult =
+  document.getElementById(
+    'vk-result'
+  );
+
+function searchVKMusic(){
+
+  const query =
+    vkSearchInput.value.trim();
+
+  if(!query){
+
+    vkResult.style.display=
+      'block';
+
+    vkResult.textContent=
+      'Введите исполнителя или название трека.';
+
+    return;
+  }
+
+  const vkUrl =
+    'https://vk.com/search?c[q]='+
+    encodeURIComponent(query)+
+    '&c[section]=audio';
+
+  vkResult.style.display=
+    'block';
+
+  vkResult.innerHTML=
+    '<a href="'+
+    vkUrl+
+    '" target="_blank" rel="noopener noreferrer">'+
+    'OPEN VK MUSIC SEARCH →'+
+    '</a>';
+
+  window.open(
+    vkUrl,
+    '_blank',
+    'noopener,noreferrer'
+  );
+
+}
+
+vkSearchBtn.addEventListener(
+  'click',
+  searchVKMusic
+);
+
+vkSearchInput.addEventListener(
+  'keydown',
+  function(e){
+
+    if(e.key==='Enter'){
+
+      e.preventDefault();
+
+      searchVKMusic();
+
+    }
+
+  }
+);
 
 /* =========================================================
    THREE.JS
@@ -1013,11 +1394,10 @@ function init3D(){
       0.035
     );
 
-
   camera =
     new THREE.PerspectiveCamera(
       72,
-      innerWidth / innerHeight,
+      innerWidth/innerHeight,
       0.1,
       150
     );
@@ -1028,22 +1408,20 @@ function init3D(){
     13
   );
 
-
   renderer =
     new THREE.WebGLRenderer({
       canvas:
         document.getElementById(
           'canvas3d'
         ),
+
       antialias:true
     });
-
 
   renderer.setSize(
     innerWidth,
     innerHeight
   );
-
 
   renderer.setPixelRatio(
     Math.min(
@@ -1052,16 +1430,10 @@ function init3D(){
     )
   );
 
-
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled=true;
 
   renderer.shadowMap.type =
     THREE.PCFSoftShadowMap;
-
-
-/* =========================================================
-   LIGHTING
-========================================================= */
 
   const ambient =
     new THREE.AmbientLight(
@@ -1070,7 +1442,6 @@ function init3D(){
     );
 
   scene.add(ambient);
-
 
   const ceilingLight =
     new THREE.PointLight(
@@ -1093,137 +1464,87 @@ function init3D(){
     ceilingLight
   );
 
-
   createLight(
-    -7,
-    3,
-    -7,
+    -7,3,-7,
     0xffffff,
     5,
     16
   );
 
   createLight(
-    7,
-    3,
-    -7,
+    7,3,-7,
     0xffffff,
     5,
     16
   );
 
   createLight(
-    -8,
-    2,
-    5,
+    -8,2,5,
     0x888888,
     2,
     14
   );
 
   createLight(
-    8,
-    2,
-    5,
+    8,2,5,
     0x888888,
     2,
     14
   );
-
-
-/* =========================================================
-   CLUB ARCHITECTURE
-========================================================= */
 
   createFloor();
-
   createCeiling();
-
   createWalls();
-
   createDanceFloor();
-
   createMainScreen();
-
   createStage();
-
   createBar();
-
   createLounge();
-
   createColumns();
-
   createEntrance();
-
   createNeonArchitecture();
-
   createCeilingBeams();
-
   createSpeakers();
-
   createParticles();
-
   createPlayer();
-
-
-/* =========================================================
-   AUDIO
-========================================================= */
 
   setupAudio();
 
-
-/* =========================================================
-   CONTROLS
-========================================================= */
-
   setupControls();
-
-
-/* =========================================================
-   LOOP
-========================================================= */
 
   animate();
 
 }
 
-
 /* =========================================================
-   HELPERS
+   OBJECTS
 ========================================================= */
 
 function createBox(
-  w,
-  h,
-  d,
-  x,
-  y,
-  z,
+  w,h,d,
+  x,y,z,
   material,
-  cast = true,
-  receive = true
+  cast=true,
+  receive=true
 ){
 
   const mesh =
     new THREE.Mesh(
       new THREE.BoxGeometry(
-        w,
-        h,
-        d
+        w,h,d
       ),
       material
     );
 
   mesh.position.set(
-    x,
-    y,
-    z
+    x,y,z
   );
 
-  mesh.castShadow = cast;
+  mesh.castShadow=
+    cast;
 
-  mesh.receiveShadow = receive;
+  mesh.receiveShadow=
+    receive;
 
   scene.add(mesh);
 
@@ -1231,11 +1552,8 @@ function createBox(
 
 }
 
-
 function createLight(
-  x,
-  y,
-  z,
+  x,y,z,
   color,
   intensity,
   distance
@@ -1249,25 +1567,20 @@ function createLight(
     );
 
   light.position.set(
-    x,
-    y,
-    z
+    x,y,z
   );
 
-  light.castShadow = true;
+  light.castShadow=true;
 
   scene.add(light);
 
-  lightObjects.push(light);
+  lightObjects.push(
+    light
+  );
 
   return light;
 
 }
-
-
-/* =========================================================
-   FLOOR
-========================================================= */
 
 function createFloor(){
 
@@ -1278,7 +1591,6 @@ function createFloor(){
       roughness:.28
     });
 
-
   const floor =
     new THREE.Mesh(
       new THREE.PlaneGeometry(
@@ -1288,13 +1600,12 @@ function createFloor(){
       mat
     );
 
-  floor.rotation.x =
-    -Math.PI / 2;
+  floor.rotation.x=
+    -Math.PI/2;
 
-  floor.receiveShadow = true;
+  floor.receiveShadow=true;
 
   scene.add(floor);
-
 
   const grid =
     new THREE.GridHelper(
@@ -1304,16 +1615,11 @@ function createFloor(){
       0x111111
     );
 
-  grid.position.y = .012;
+  grid.position.y=.012;
 
   scene.add(grid);
 
 }
-
-
-/* =========================================================
-   CEILING
-========================================================= */
 
 function createCeiling(){
 
@@ -1329,19 +1635,14 @@ function createCeiling(){
       })
     );
 
-  ceiling.rotation.x =
-    Math.PI / 2;
+  ceiling.rotation.x=
+    Math.PI/2;
 
-  ceiling.position.y = 6;
+  ceiling.position.y=6;
 
   scene.add(ceiling);
 
 }
-
-
-/* =========================================================
-   WALLS
-========================================================= */
 
 function createWalls(){
 
@@ -1351,62 +1652,38 @@ function createWalls(){
       roughness:.9
     });
 
-
   createBox(
-    36,
-    6,
-    .5,
-    0,
-    3,
-    -17,
+    36,6,.5,
+    0,3,-17,
     mat
   );
 
   createBox(
-    36,
-    6,
-    .5,
-    0,
-    3,
-    17,
+    36,6,.5,
+    0,3,17,
     mat
   );
 
   createBox(
-    .5,
-    6,
-    34,
-    -18,
-    3,
-    0,
+    .5,6,34,
+    -18,3,0,
     mat
   );
 
   createBox(
-    .5,
-    6,
-    34,
-    18,
-    3,
-    0,
+    .5,6,34,
+    18,3,0,
     mat
   );
 
 }
-
-
-/* =========================================================
-   DANCE FLOOR
-========================================================= */
 
 function createDanceFloor(){
 
   const floor =
     new THREE.Mesh(
       new THREE.BoxGeometry(
-        14,
-        .12,
-        14
+        14,.12,14
       ),
       new THREE.MeshStandardMaterial({
         color:0x111111,
@@ -1416,60 +1693,49 @@ function createDanceFloor(){
     );
 
   floor.position.set(
-    0,
-    .08,
-    -1
+    0,.08,-1
   );
 
-  floor.receiveShadow = true;
+  floor.receiveShadow=true;
 
   scene.add(floor);
-
 
   const frameMat =
     new THREE.MeshBasicMaterial({
       color:0xffffff
     });
 
-
-  const lines = [
-
+  const lines=[
     [-7,.16,-1,14,.04,.04],
-
     [7,.16,-1,14,.04,.04],
-
     [0,.16,-8,.04,.04,14],
-
     [0,.16,6,.04,.04,14]
-
   ];
 
+  lines.forEach(
+    l=>{
 
-  lines.forEach(l => {
+      const mesh =
+        createBox(
+          l[3],
+          l[4],
+          l[5],
+          l[0],
+          l[1],
+          l[2],
+          frameMat,
+          false,
+          false
+        );
 
-    const mesh =
-      createBox(
-        l[3],
-        l[4],
-        l[5],
-        l[0],
-        l[1],
-        l[2],
-        frameMat,
-        false,
-        false
+      neonObjects.push(
+        mesh
       );
 
-    neonObjects.push(mesh);
-
-  });
+    }
+  );
 
 }
-
-
-/* =========================================================
-   MAIN SCREEN
-========================================================= */
 
 function createMainScreen(){
 
@@ -1478,29 +1744,23 @@ function createMainScreen(){
       'canvas'
     );
 
-  screenCanvas.width = 1024;
-
-  screenCanvas.height = 512;
-
+  screenCanvas.width=1024;
+  screenCanvas.height=512;
 
   screenCtx =
     screenCanvas.getContext(
       '2d'
     );
 
-
   screenTexture =
     new THREE.CanvasTexture(
       screenCanvas
     );
 
-
   const frame =
     new THREE.Mesh(
       new THREE.BoxGeometry(
-        16,
-        7,
-        .35
+        16,7,.35
       ),
       new THREE.MeshStandardMaterial({
         color:0x151515,
@@ -1509,15 +1769,11 @@ function createMainScreen(){
       })
     );
 
-
   frame.position.set(
-    0,
-    3.6,
-    -16.5
+    0,3.6,-16.5
   );
 
   scene.add(frame);
-
 
   const screen =
     new THREE.Mesh(
@@ -1530,21 +1786,13 @@ function createMainScreen(){
       })
     );
 
-
   screen.position.set(
-    0,
-    3.6,
-    -16.28
+    0,3.6,-16.28
   );
 
   scene.add(screen);
 
 }
-
-
-/* =========================================================
-   STAGE
-========================================================= */
 
 function createStage(){
 
@@ -1555,45 +1803,31 @@ function createStage(){
       roughness:.35
     });
 
-
   createBox(
-    17,
-    .45,
-    3,
-    0,
-    .3,
-    -12.5,
+    17,.45,3,
+    0,.3,-12.5,
     stageMat
   );
-
 
   const stripMat =
     new THREE.MeshBasicMaterial({
       color:0xffffff
     });
 
-
   const strip =
     createBox(
-      16,
-      .04,
-      .08,
-      0,
-      .54,
-      -11,
+      16,.04,.08,
+      0,.54,-11,
       stripMat,
       false,
       false
     );
 
-  neonObjects.push(strip);
+  neonObjects.push(
+    strip
+  );
 
 }
-
-
-/* =========================================================
-   BAR
-========================================================= */
 
 function createBar(){
 
@@ -1604,25 +1838,15 @@ function createBar(){
       roughness:.55
     });
 
-
   createBox(
-    8,
-    1.1,
-    2,
-    -12,
-    .65,
-    7,
+    8,1.1,2,
+    -12,.65,7,
     wood
   );
 
-
   createBox(
-    8.5,
-    .15,
-    2.3,
-    -12,
-    1.25,
-    7,
+    8.5,.15,2.3,
+    -12,1.25,7,
     new THREE.MeshStandardMaterial({
       color:0xdddddd,
       metalness:.7,
@@ -1630,8 +1854,11 @@ function createBar(){
     })
   );
 
-
-  for(let i=0;i<5;i++){
+  for(
+    let i=0;
+    i<5;
+    i++
+  ){
 
     const bottle =
       new THREE.Mesh(
@@ -1649,7 +1876,7 @@ function createBar(){
       );
 
     bottle.position.set(
-      -15 + i*.8,
+      -15+i*.8,
       1.7,
       6.5
     );
@@ -1660,11 +1887,6 @@ function createBar(){
 
 }
 
-
-/* =========================================================
-   LOUNGE
-========================================================= */
-
 function createLounge(){
 
   const sofaMat =
@@ -1673,30 +1895,23 @@ function createLounge(){
       roughness:.9
     });
 
-
   createBox(
-    6,
-    .8,
-    1.6,
-    11,
-    .7,
-    8,
+    6,.8,1.6,
+    11,.7,8,
     sofaMat
   );
 
-
   createBox(
-    1.6,
-    1.4,
-    5.5,
-    14,
-    1.2,
-    8,
+    1.6,1.4,5.5,
+    14,1.2,8,
     sofaMat
   );
 
-
-  for(let i=0;i<3;i++){
+  for(
+    let i=0;
+    i<3;
+    i++
+  ){
 
     const table =
       new THREE.Mesh(
@@ -1713,7 +1928,7 @@ function createLounge(){
       );
 
     table.position.set(
-      8 + i*3,
+      8+i*3,
       .75,
       4
     );
@@ -1724,11 +1939,6 @@ function createLounge(){
 
 }
 
-
-/* =========================================================
-   COLUMNS
-========================================================= */
-
 function createColumns(){
 
   const mat =
@@ -1738,65 +1948,53 @@ function createColumns(){
       roughness:.35
     });
 
-
-  const positions = [
-
+  const positions=[
     [-15,5],
-
     [15,5],
-
     [-15,-5],
-
     [15,-5]
-
   ];
 
+  positions.forEach(
+    p=>{
 
-  positions.forEach(p => {
-
-    createBox(
-      1,
-      6,
-      1,
-      p[0],
-      3,
-      p[1],
-      mat
-    );
-
-
-    const ring =
-      new THREE.Mesh(
-        new THREE.TorusGeometry(
-          .72,
-          .06,
-          8,
-          32
-        ),
-        new THREE.MeshBasicMaterial({
-          color:0xffffff
-        })
+      createBox(
+        1,6,1,
+        p[0],
+        3,
+        p[1],
+        mat
       );
 
+      const ring =
+        new THREE.Mesh(
+          new THREE.TorusGeometry(
+            .72,
+            .06,
+            8,
+            32
+          ),
+          new THREE.MeshBasicMaterial({
+            color:0xffffff
+          })
+        );
 
-    ring.position.set(
-      p[0],
-      2,
-      p[1]
-    );
+      ring.position.set(
+        p[0],
+        2,
+        p[1]
+      );
 
-    scene.add(ring);
+      scene.add(ring);
 
-    neonObjects.push(ring);
+      neonObjects.push(
+        ring
+      );
 
-  });
+    }
+  );
 
 }
-
-
-/* =========================================================
-   ENTRANCE
-========================================================= */
 
 function createEntrance(){
 
@@ -1806,25 +2004,15 @@ function createEntrance(){
       metalness:.7
     });
 
-
   createBox(
-    7,
-    5.5,
-    .6,
-    0,
-    2.75,
-    16.3,
+    7,5.5,.6,
+    0,2.75,16.3,
     frameMat
   );
 
-
   createBox(
-    5.8,
-    4.7,
-    .1,
-    0,
-    2.35,
-    15.98,
+    5.8,4.7,.1,
+    0,2.35,15.98,
     new THREE.MeshBasicMaterial({
       color:0x020202
     }),
@@ -1832,25 +2020,20 @@ function createEntrance(){
     false
   );
 
-
   const signCanvas =
     document.createElement(
       'canvas'
     );
 
-  signCanvas.width = 600;
-
-  signCanvas.height = 160;
-
+  signCanvas.width=600;
+  signCanvas.height=160;
 
   const ctx =
     signCanvas.getContext(
       '2d'
     );
 
-
-  ctx.fillStyle =
-    '#050505';
+  ctx.fillStyle='#050505';
 
   ctx.fillRect(
     0,
@@ -1859,16 +2042,12 @@ function createEntrance(){
     160
   );
 
+  ctx.fillStyle='#fff';
 
-  ctx.fillStyle =
-    '#fff';
-
-  ctx.font =
+  ctx.font=
     'bold 58px Arial';
 
-  ctx.textAlign =
-    'center';
-
+  ctx.textAlign='center';
 
   ctx.fillText(
     'EWS SESSIONS',
@@ -1876,12 +2055,10 @@ function createEntrance(){
     95
   );
 
-
   const tex =
     new THREE.CanvasTexture(
       signCanvas
     );
-
 
   const sign =
     new THREE.Mesh(
@@ -1894,7 +2071,6 @@ function createEntrance(){
       })
     );
 
-
   sign.position.set(
     0,
     5.4,
@@ -1905,18 +2081,12 @@ function createEntrance(){
 
 }
 
-
-/* =========================================================
-   NEON ARCHITECTURE
-========================================================= */
-
 function createNeonArchitecture(){
 
   const mat =
     new THREE.MeshBasicMaterial({
       color:0xffffff
     });
-
 
   for(
     let z=-14;
@@ -1926,9 +2096,7 @@ function createNeonArchitecture(){
 
     const left =
       createBox(
-        .06,
-        4,
-        .06,
+        .06,4,.06,
         -17.5,
         3,
         z,
@@ -1937,12 +2105,9 @@ function createNeonArchitecture(){
         false
       );
 
-
     const right =
       createBox(
-        .06,
-        4,
-        .06,
+        .06,4,.06,
         17.5,
         3,
         z,
@@ -1951,14 +2116,12 @@ function createNeonArchitecture(){
         false
       );
 
-
     neonObjects.push(
       left,
       right
     );
 
   }
-
 
   for(
     let z=-15;
@@ -1968,9 +2131,7 @@ function createNeonArchitecture(){
 
     const beam =
       createBox(
-        34,
-        .05,
-        .05,
+        34,.05,.05,
         0,
         5.4,
         z,
@@ -1979,7 +2140,6 @@ function createNeonArchitecture(){
         false
       );
 
-
     neonObjects.push(
       beam
     );
@@ -1987,11 +2147,6 @@ function createNeonArchitecture(){
   }
 
 }
-
-
-/* =========================================================
-   CEILING BEAMS
-========================================================= */
 
 function createCeilingBeams(){
 
@@ -2002,7 +2157,6 @@ function createCeilingBeams(){
       roughness:.3
     });
 
-
   for(
     let x=-14;
     x<=14;
@@ -2010,23 +2164,14 @@ function createCeilingBeams(){
   ){
 
     createBox(
-      .3,
-      .3,
-      34,
-      x,
-      5.7,
-      0,
+      .3,.3,34,
+      x,5.7,0,
       mat
     );
 
   }
 
 }
-
-
-/* =========================================================
-   SPEAKERS
-========================================================= */
 
 function createSpeakers(){
 
@@ -2037,99 +2182,89 @@ function createSpeakers(){
       roughness:.7
     });
 
-
-  const positions = [
-
+  const positions=[
     [-8,2,-11],
-
     [8,2,-11],
-
     [-11,2,-10],
-
     [11,2,-10]
-
   ];
 
+  positions.forEach(
+    p=>{
 
-  positions.forEach(p => {
-
-    createBox(
-      1.2,
-      2.5,
-      .8,
-      p[0],
-      p[1],
-      p[2],
-      mat
-    );
-
-
-    for(let i=0;i<3;i++){
-
-      const cone =
-        new THREE.Mesh(
-          new THREE.CylinderGeometry(
-            .23,
-            .23,
-            .12,
-            24
-          ),
-          new THREE.MeshBasicMaterial({
-            color:0xaaaaaa
-          })
-        );
-
-
-      cone.rotation.x =
-        Math.PI / 2;
-
-
-      cone.position.set(
+      createBox(
+        1.2,2.5,.8,
         p[0],
-        1.3 + i*.6,
-        p[2]-.45
+        p[1],
+        p[2],
+        mat
       );
 
+      for(
+        let i=0;
+        i<3;
+        i++
+      ){
 
-      scene.add(cone);
+        const cone =
+          new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              .23,
+              .23,
+              .12,
+              24
+            ),
+            new THREE.MeshBasicMaterial({
+              color:0xaaaaaa
+            })
+          );
+
+        cone.rotation.x=
+          Math.PI/2;
+
+        cone.position.set(
+          p[0],
+          1.3+i*.6,
+          p[2]-.45
+        );
+
+        scene.add(cone);
+
+      }
 
     }
-
-  });
+  );
 
 }
 
-
-/* =========================================================
-   PARTICLES
-========================================================= */
-
 function createParticles(){
 
-  const count = 900;
+  const count=900;
 
   const geo =
     new THREE.BufferGeometry();
 
   const pos =
     new Float32Array(
-      count * 3
+      count*3
     );
 
+  for(
+    let i=0;
+    i<count;
+    i++
+  ){
 
-  for(let i=0;i<count;i++){
-
-    pos[i*3] =
+    pos[i*3]=
       (Math.random()-.5)*34;
 
-    pos[i*3+1] =
+    pos[i*3+1]=
       Math.random()*5.8;
 
-    pos[i*3+2] =
+    pos[i*3+2]=
       (Math.random()-.5)*34;
 
   }
-
 
   geo.setAttribute(
     'position',
@@ -2138,7 +2273,6 @@ function createParticles(){
       3
     )
   );
-
 
   particles =
     new THREE.Points(
@@ -2151,21 +2285,16 @@ function createParticles(){
       })
     );
 
-
-  scene.add(particles);
+  scene.add(
+    particles
+  );
 
 }
-
-
-/* =========================================================
-   PLAYER
-========================================================= */
 
 function createPlayer(){
 
   playerBody =
     new THREE.Group();
-
 
   const body =
     new THREE.Mesh(
@@ -2181,11 +2310,11 @@ function createPlayer(){
       })
     );
 
+  body.position.y=.5;
 
-  body.position.y = .5;
-
-  playerBody.add(body);
-
+  playerBody.add(
+    body
+  );
 
   const head =
     new THREE.Mesh(
@@ -2200,11 +2329,11 @@ function createPlayer(){
       })
     );
 
+  head.position.y=1.25;
 
-  head.position.y = 1.25;
-
-  playerBody.add(head);
-
+  playerBody.add(
+    head
+  );
 
   playerBody.position.set(
     0,
@@ -2212,11 +2341,11 @@ function createPlayer(){
     13
   );
 
-
-  scene.add(playerBody);
+  scene.add(
+    playerBody
+  );
 
 }
-
 
 /* =========================================================
    AUDIO
@@ -2234,8 +2363,7 @@ function setupAudio(){
       'audio-control'
     );
 
-
-  indicator.textContent =
+  indicator.textContent=
     'AUDIO: READY';
 
   indicator.classList.remove(
@@ -2243,8 +2371,7 @@ function setupAudio(){
     'error'
   );
 
-
-  button.textContent =
+  button.textContent=
     '▶ AUDIO: START';
 
   button.classList.remove(
@@ -2252,11 +2379,6 @@ function setupAudio(){
   );
 
 }
-
-
-/* =========================================================
-   REAL HLS AUDIO
-========================================================= */
 
 async function startSSHAudio(){
 
@@ -2275,23 +2397,11 @@ async function startSSHAudio(){
       'audio-control'
     );
 
-
-  if(!audio) return;
-
-
-  /*
-     ВАЖНО:
-
-     Это уже НЕ SSH101.
-
-     Поток берётся с нашего собственного
-     Node.js / FFmpeg HLS сервера.
-  */
+  if(!audio)return;
 
   const hlsUrl =
-    window.location.origin +
+    window.location.origin+
     '/hls/ews/index.m3u8';
-
 
   indicator.classList.remove(
     'error'
@@ -2301,27 +2411,20 @@ async function startSSHAudio(){
     'live'
   );
 
-  indicator.textContent =
+  indicator.textContent=
     'AUDIO: CONNECTING...';
 
+  button.disabled=true;
 
-  button.disabled = true;
-
-  button.textContent =
+  button.textContent=
     '● AUDIO: CONNECTING';
 
-
   try{
-
-    /*
-       Создаём Web Audio только
-       после клика пользователя.
-    */
 
     if(!audioContext){
 
       audioContext =
-        new (
+        new(
           window.AudioContext ||
           window.webkitAudioContext
         )();
@@ -2334,17 +2437,14 @@ async function startSSHAudio(){
       analyser =
         audioContext.createAnalyser();
 
-      analyser.fftSize = 256;
+      analyser.fftSize=256;
 
-      analyser.smoothingTimeConstant =
-        0.82;
-
+      analyser.smoothingTimeConstant=.82;
 
       freqData =
         new Uint8Array(
           analyser.frequencyBinCount
         );
-
 
       audioSource.connect(
         analyser
@@ -2356,9 +2456,8 @@ async function startSSHAudio(){
 
     }
 
-
     if(
-      audioContext.state ===
+      audioContext.state===
       'suspended'
     ){
 
@@ -2366,29 +2465,15 @@ async function startSSHAudio(){
 
     }
 
-
-    /*
-       Если HLS уже создан —
-       просто запускаем его.
-    */
-
     if(hls){
 
       try{
         hls.destroy();
       }catch(e){}
 
-      hls = null;
+      hls=null;
 
     }
-
-
-    /*
-       Chrome / Edge / Firefox:
-
-       hls.js подключает HLS
-       непосредственно к audio element.
-    */
 
     if(
       window.Hls &&
@@ -2397,6 +2482,7 @@ async function startSSHAudio(){
 
       hls =
         new Hls({
+
           enableWorker:true,
 
           lowLatencyMode:true,
@@ -2410,37 +2496,34 @@ async function startSSHAudio(){
           liveSyncDurationCount:3,
 
           liveMaxLatencyDurationCount:6
-        });
 
+        });
 
       hls.loadSource(
         hlsUrl
       );
 
-
       hls.attachMedia(
         audio
       );
-
 
       hls.on(
         Hls.Events.MANIFEST_PARSED,
         async function(){
 
-          indicator.textContent =
+          indicator.textContent=
             'AUDIO: LIVE';
 
-          button.textContent =
+          button.textContent=
             '● AUDIO: LIVE';
 
           button.classList.add(
             'live'
           );
 
-          button.disabled = false;
+          button.disabled=false;
 
-          audioStarted = true;
-
+          audioStarted=true;
 
           try{
 
@@ -2453,10 +2536,10 @@ async function startSSHAudio(){
               err
             );
 
-            indicator.textContent =
+            indicator.textContent=
               'AUDIO: PRESS START';
 
-            button.textContent =
+            button.textContent=
               '▶ AUDIO: START';
 
             button.classList.remove(
@@ -2467,7 +2550,6 @@ async function startSSHAudio(){
 
         }
       );
-
 
       hls.on(
         Hls.Events.ERROR,
@@ -2481,28 +2563,18 @@ async function startSSHAudio(){
             data
           );
 
+          if(!data.fatal)return;
 
           if(
-            !data.fatal
-          ){
-
-            return;
-
-          }
-
-
-          if(
-            data.type ===
+            data.type===
             Hls.ErrorTypes.NETWORK_ERROR
           ){
 
-            indicator.textContent =
+            indicator.textContent=
               'AUDIO: RECONNECTING...';
 
-
-            button.textContent =
+            button.textContent=
               '● AUDIO: RECONNECTING';
-
 
             setTimeout(
               function(){
@@ -2521,15 +2593,13 @@ async function startSSHAudio(){
 
           }
 
-
           else if(
-            data.type ===
+            data.type===
             Hls.ErrorTypes.MEDIA_ERROR
           ){
 
-            indicator.textContent =
+            indicator.textContent=
               'AUDIO: RECOVERING...';
-
 
             try{
 
@@ -2543,10 +2613,9 @@ async function startSSHAudio(){
 
           }
 
-
           else{
 
-            indicator.textContent =
+            indicator.textContent=
               'AUDIO: NO STREAM';
 
             indicator.classList.remove(
@@ -2557,15 +2626,14 @@ async function startSSHAudio(){
               'error'
             );
 
-
-            button.textContent =
+            button.textContent=
               '▶ AUDIO: RETRY';
 
             button.classList.remove(
               'live'
             );
 
-            button.disabled = false;
+            button.disabled=false;
 
           }
 
@@ -2574,20 +2642,14 @@ async function startSSHAudio(){
 
     }
 
-
-    /*
-       Safari / browsers with native HLS.
-    */
-
     else if(
       audio.canPlayType(
         'application/vnd.apple.mpegurl'
       )
     ){
 
-      audio.src =
+      audio.src=
         hlsUrl;
-
 
       audio.addEventListener(
         'loadedmetadata',
@@ -2611,7 +2673,6 @@ async function startSSHAudio(){
 
     }
 
-
     else{
 
       throw new Error(
@@ -2620,92 +2681,81 @@ async function startSSHAudio(){
 
     }
 
+    audio.onplaying=function(){
 
-    /*
-       AUDIO EVENTS
-    */
+      indicator.textContent=
+        'AUDIO: LIVE';
 
-    audio.onplaying =
-      function(){
+      indicator.classList.add(
+        'live'
+      );
 
-        indicator.textContent =
-          'AUDIO: LIVE';
+      indicator.classList.remove(
+        'error'
+      );
 
-        indicator.classList.add(
-          'live'
-        );
+      button.textContent=
+        '● AUDIO: LIVE';
 
-        indicator.classList.remove(
-          'error'
-        );
+      button.classList.add(
+        'live'
+      );
 
-        button.textContent =
-          '● AUDIO: LIVE';
+      button.disabled=false;
 
-        button.classList.add(
-          'live'
-        );
+      audioStarted=true;
 
-        button.disabled = false;
+    };
 
-        audioStarted = true;
+    audio.onpause=function(){
 
-      };
+      if(
+        audioStarted &&
+        !audio.ended
+      ){
 
+        indicator.textContent=
+          'AUDIO: PAUSED';
 
-    audio.onpause =
-      function(){
-
-        if(
-          audioStarted &&
-          !audio.ended
-        ){
-
-          indicator.textContent =
-            'AUDIO: PAUSED';
-
-          button.textContent =
-            '▶ AUDIO: RESUME';
-
-          button.classList.remove(
-            'live'
-          );
-
-        }
-
-      };
-
-
-    audio.onerror =
-      function(){
-
-        console.error(
-          '[AUDIO]',
-          audio.error
-        );
-
-        indicator.textContent =
-          'AUDIO: ERROR';
-
-        indicator.classList.remove(
-          'live'
-        );
-
-        indicator.classList.add(
-          'error'
-        );
-
-        button.textContent =
-          '▶ AUDIO: RETRY';
+        button.textContent=
+          '▶ AUDIO: RESUME';
 
         button.classList.remove(
           'live'
         );
 
-        button.disabled = false;
+      }
 
-      };
+    };
 
+    audio.onerror=function(){
+
+      console.error(
+        '[AUDIO]',
+        audio.error
+      );
+
+      indicator.textContent=
+        'AUDIO: ERROR';
+
+      indicator.classList.remove(
+        'live'
+      );
+
+      indicator.classList.add(
+        'error'
+      );
+
+      button.textContent=
+        '▶ AUDIO: RETRY';
+
+      button.classList.remove(
+        'live'
+      );
+
+      button.disabled=false;
+
+    };
 
   }catch(err){
 
@@ -2714,8 +2764,7 @@ async function startSSHAudio(){
       err
     );
 
-
-    indicator.textContent =
+    indicator.textContent=
       'AUDIO: NO STREAM';
 
     indicator.classList.remove(
@@ -2726,20 +2775,18 @@ async function startSSHAudio(){
       'error'
     );
 
-
-    button.textContent =
+    button.textContent=
       '▶ AUDIO: RETRY';
 
     button.classList.remove(
       'live'
     );
 
-    button.disabled = false;
+    button.disabled=false;
 
   }
 
 }
-
 
 /* =========================================================
    CONTROLS
@@ -2751,17 +2798,18 @@ function setupControls(){
     'resize',
     function(){
 
-      if(!camera || !renderer)
+      if(
+        !camera ||
+        !renderer
+      ){
         return;
+      }
 
-
-      camera.aspect =
-        innerWidth /
+      camera.aspect=
+        innerWidth/
         innerHeight;
 
-
       camera.updateProjectionMatrix();
-
 
       renderer.setSize(
         innerWidth,
@@ -2771,19 +2819,17 @@ function setupControls(){
     }
   );
 
-
   window.addEventListener(
     'keydown',
     function(e){
 
-      keys[e.code] = true;
-
+      keys[e.code]=true;
 
       if(
-        e.code === 'KeyC'
+        e.code==='KeyC'
       ){
 
-        chatMode =
+        chatMode=
           !chatMode;
 
         toggleChat();
@@ -2793,22 +2839,19 @@ function setupControls(){
     }
   );
 
-
   window.addEventListener(
     'keyup',
     function(e){
 
-      keys[e.code] = false;
+      keys[e.code]=false;
 
     }
   );
-
 
   const canvas =
     document.getElementById(
       'canvas3d'
     );
-
 
   canvas.addEventListener(
     'click',
@@ -2823,36 +2866,30 @@ function setupControls(){
     }
   );
 
-
   document.addEventListener(
     'pointerlockchange',
     function(){
 
-      pointerLocked =
-        document.pointerLockElement ===
+      pointerLocked=
+        document.pointerLockElement===
         canvas;
 
     }
   );
 
-
   document.addEventListener(
     'mousemove',
     function(e){
 
-      if(!pointerLocked)
-        return;
+      if(!pointerLocked)return;
 
+      yaw-=
+        e.movementX*.002;
 
-      yaw -=
-        e.movementX * .002;
+      pitch-=
+        e.movementY*.002;
 
-
-      pitch -=
-        e.movementY * .002;
-
-
-      pitch =
+      pitch=
         Math.max(
           -1.45,
           Math.min(
@@ -2866,14 +2903,12 @@ function setupControls(){
 
 }
 
-
 function toggleChat(){
 
   const input =
     document.getElementById(
       'chat-input'
     );
-
 
   if(chatMode){
 
@@ -2889,7 +2924,6 @@ function toggleChat(){
 
 }
 
-
 /* =========================================================
    ANIMATION
 ========================================================= */
@@ -2900,10 +2934,7 @@ function animate(){
     animate
   );
 
-
-  if(!scene)
-    return;
-
+  if(!scene)return;
 
   const dt =
     Math.min(
@@ -2911,19 +2942,11 @@ function animate(){
       .05
     );
 
-
   const time =
-    performance.now() / 1000;
+    performance.now()/1000;
 
-
-  /* =======================================================
-     AUDIO ANALYSIS
-  ======================================================= */
-
-  let bass = .2;
-
-  let level = .2;
-
+  let bass=.2;
+  let level=.2;
 
   if(
     analyser &&
@@ -2935,42 +2958,29 @@ function animate(){
       freqData
     );
 
-
-    /*
-       BASS
-    */
-
-    let b = 0;
-
+    let b=0;
 
     for(
       let i=0;
-      i<10 && i<freqData.length;
+      i<10 &&
+      i<freqData.length;
       i++
     ){
 
-      b +=
-        freqData[i];
+      b+=freqData[i];
 
     }
 
-
-    bass =
-      b /
+    bass=
+      b/
       (
         Math.min(
           10,
           freqData.length
-        ) * 255
+        )*255
       );
 
-
-    /*
-       TOTAL LEVEL
-    */
-
-    let total = 0;
-
+    let total=0;
 
     for(
       let i=0;
@@ -2978,204 +2988,165 @@ function animate(){
       i++
     ){
 
-      total +=
-        freqData[i];
+      total+=freqData[i];
 
     }
 
-
-    level =
-      total /
+    level=
+      total/
       (
-        freqData.length * 255
+        freqData.length*255
       );
 
   }
 
-
-  /*
-     Пока музыка не подключена —
-     лёгкая атмосферная анимация.
-  */
-
   else{
 
-    bass =
-      .25 +
-      Math.sin(
-        time * 3
-      ) * .12;
+    bass=
+      .25+
+      Math.sin(time*3)*.12;
 
-
-    level =
-      .25 +
-      Math.sin(
-        time * 1.5
-      ) * .08;
+    level=
+      .25+
+      Math.sin(time*1.5)*.08;
 
   }
 
+  bassLevel=
+    bassLevel*.82+
+    bass*.18;
 
-  bassLevel =
-    bassLevel * .82 +
-    bass * .18;
+  audioLevel=
+    audioLevel*.88+
+    level*.12;
 
-
-  audioLevel =
-    audioLevel * .88 +
-    level * .12;
-
-
-/* =========================================================
-   MOVEMENT
-========================================================= */
-
-  const speed =
+  const speed=
     chatMode
-      ? 0
-      : 5 * dt;
+      ?0
+      :5*dt;
 
+  let forward=0;
+  let side=0;
 
-  let forward = 0;
+  if(
+    keys['KeyW']
+  ){
+    forward+=1;
+  }
 
-  let side = 0;
+  if(
+    keys['KeyS']
+  ){
+    forward-=1;
+  }
 
+  if(
+    keys['KeyA']
+  ){
+    side-=1;
+  }
 
-  if(keys['KeyW'])
-    forward += 1;
-
-  if(keys['KeyS'])
-    forward -= 1;
-
-  if(keys['KeyA'])
-    side -= 1;
-
-  if(keys['KeyD'])
-    side += 1;
-
+  if(
+    keys['KeyD']
+  ){
+    side+=1;
+  }
 
   if(
     pointerLocked &&
     !chatMode
   ){
 
-    const fx =
+    const fx=
       -Math.sin(yaw);
 
-    const fz =
+    const fz=
       -Math.cos(yaw);
 
-    const rx =
+    const rx=
       Math.cos(yaw);
 
-    const rz =
+    const rz=
       -Math.sin(yaw);
 
-
-    camera.position.x +=
+    camera.position.x+=
       (
-        fx * forward +
-        rx * side
-      ) * speed;
+        fx*forward+
+        rx*side
+      )*speed;
 
-
-    camera.position.z +=
+    camera.position.z+=
       (
-        fz * forward +
-        rz * side
-      ) * speed;
+        fz*forward+
+        rz*side
+      )*speed;
 
   }
 
-
-  camera.position.x =
+  camera.position.x=
     THREE.MathUtils.clamp(
       camera.position.x,
       -16,
       16
     );
 
-
-  camera.position.z =
+  camera.position.z=
     THREE.MathUtils.clamp(
       camera.position.z,
       -15.5,
       15.5
     );
 
+  camera.position.y=1.7;
 
-  camera.position.y = 1.7;
-
-
-  camera.rotation.order =
+  camera.rotation.order=
     'YXZ';
 
-
-  camera.rotation.y =
+  camera.rotation.y=
     yaw;
 
-
-  camera.rotation.x =
+  camera.rotation.x=
     pitch;
-
-
-/* =========================================================
-   PLAYER
-========================================================= */
 
   if(playerBody){
 
-    playerBody.position.x =
+    playerBody.position.x=
       camera.position.x;
 
-    playerBody.position.z =
+    playerBody.position.z=
       camera.position.z;
 
-    playerBody.visible =
-      false;
+    playerBody.visible=false;
 
   }
-
-
-/* =========================================================
-   PARTICLES
-========================================================= */
 
   if(particles){
 
-    particles.rotation.y +=
+    particles.rotation.y+=
       .00015;
 
-
-    particles.material.opacity =
-      .12 +
-      audioLevel * .2;
+    particles.material.opacity=
+      .12+
+      audioLevel*.2;
 
   }
 
-
-/* =========================================================
-   NEON PULSE
-========================================================= */
-
   neonObjects.forEach(
-    (obj,index) => {
+    (obj,index)=>{
 
-      const pulse =
-        .5 +
+      const pulse=
+        .5+
         Math.sin(
-          time * 3 +
-          index * .4
-        ) * .25 +
-        bassLevel * .7;
+          time*3+
+          index*.4
+        )*.25+
+        bassLevel*.7;
 
-
-      const value =
+      const value=
         Math.min(
           1,
           pulse
         );
-
 
       obj.material.color.setRGB(
         value,
@@ -3186,35 +3157,24 @@ function animate(){
     }
   );
 
-
-/* =========================================================
-   LIGHT PULSE
-========================================================= */
-
   lightObjects.forEach(
-    (light,index) => {
+    (light,index)=>{
 
-      light.intensity =
-        1 +
-        bassLevel * 2 +
+      light.intensity=
+        1+
+        bassLevel*2+
         Math.sin(
-          time * 2 +
+          time*2+
           index
-        ) * .15;
+        )*.15;
 
     }
   );
 
-
-/* =========================================================
-   MAIN SCREEN
-========================================================= */
-
   if(screenCtx){
 
-    screenCtx.fillStyle =
+    screenCtx.fillStyle=
       '#050505';
-
 
     screenCtx.fillRect(
       0,
@@ -3222,7 +3182,6 @@ function animate(){
       1024,
       512
     );
-
 
     const grd =
       screenCtx.createLinearGradient(
@@ -3232,35 +3191,29 @@ function animate(){
         0
       );
 
-
-    const intensity =
-      40 +
+    const intensity=
+      40+
       Math.floor(
-        bassLevel * 120
+        bassLevel*120
       );
-
 
     grd.addColorStop(
       0,
       `rgb(${intensity},${intensity},${intensity})`
     );
 
-
     grd.addColorStop(
       .5,
       '#050505'
     );
-
 
     grd.addColorStop(
       1,
       `rgb(${intensity},${intensity},${intensity})`
     );
 
-
-    screenCtx.fillStyle =
+    screenCtx.fillStyle=
       grd;
-
 
     screenCtx.fillRect(
       0,
@@ -3269,18 +3222,14 @@ function animate(){
       512
     );
 
-
-    screenCtx.fillStyle =
+    screenCtx.fillStyle=
       '#fff';
 
-
-    screenCtx.font =
+    screenCtx.font=
       'bold 80px Arial';
 
-
-    screenCtx.textAlign =
+    screenCtx.textAlign=
       'center';
-
 
     screenCtx.fillText(
       'EWS SESSIONS',
@@ -3288,14 +3237,11 @@ function animate(){
       200
     );
 
-
-    screenCtx.font =
+    screenCtx.font=
       '22px Arial';
 
-
-    screenCtx.fillStyle =
+    screenCtx.fillStyle=
       '#777';
-
 
     screenCtx.fillText(
       'UNDERGROUND CLUB',
@@ -3303,12 +3249,10 @@ function animate(){
       245
     );
 
+    const bars=48;
 
-    const bars = 48;
-
-    const bw =
-      800 / bars;
-
+    const bw=
+      800/bars;
 
     for(
       let i=0;
@@ -3318,60 +3262,49 @@ function animate(){
 
       let value;
 
-
       if(
         freqData &&
         audioStarted
       ){
 
-        value =
+        value=
           freqData[
             Math.floor(
-              i *
-              freqData.length /
+              i*
+              freqData.length/
               bars
             )
-          ] / 255;
+          ]/255;
 
       }else{
 
-        value =
-          .2 +
+        value=
+          .2+
           Math.sin(
-            time * 4 +
-            i * .5
-          ) * .15;
+            time*4+
+            i*.5
+          )*.15;
 
       }
 
+      const h=
+        value*180;
 
-      const h =
-        value * 180;
-
-
-      screenCtx.fillStyle =
+      screenCtx.fillStyle=
         '#fff';
 
-
       screenCtx.fillRect(
-        112 + i * bw,
-        450 - h,
-        bw - 3,
+        112+i*bw,
+        450-h,
+        bw-3,
         h
       );
 
     }
 
-
-    screenTexture.needsUpdate =
-      true;
+    screenTexture.needsUpdate=true;
 
   }
-
-
-/* =========================================================
-   RENDER
-========================================================= */
 
   renderer.render(
     scene,
@@ -3380,9 +3313,8 @@ function animate(){
 
 }
 
-
 /* =========================================================
-   CLEANUP WHEN PAGE CLOSES
+   CLEANUP
 ========================================================= */
 
 window.addEventListener(
@@ -3396,7 +3328,6 @@ window.addEventListener(
       }
 
     }catch(e){}
-
 
     try{
 
