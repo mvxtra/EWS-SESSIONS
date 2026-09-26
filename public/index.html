@@ -324,62 +324,39 @@ input:focus{
   pointer-events:none;
 }
 
-#ssh101-audio-panel{
-  position:fixed;
-  right:20px;
-  bottom:20px;
-  width:360px;
-  height:235px;
-  z-index:50;
-  background:#050505;
-  border:1px solid rgba(255,255,255,.22);
-  box-shadow:0 0 30px rgba(0,0,0,.6);
-  font-family:monospace;
-}
-
-#ssh101-title{
-  height:32px;
-  display:flex;
-  align-items:center;
-  padding:0 10px;
-  box-sizing:border-box;
-  color:#fff;
-  background:#090909;
-  border-bottom:1px solid #222;
-  font-size:9px;
-  letter-spacing:2px;
-}
-
-#ssh101-player{
-  display:block;
-  width:360px;
-  height:203px;
-  border:0;
-  background:#000;
-}
-
-#ssh101-help{
+#audio-control{
   position:absolute;
-  left:0;
-  right:0;
-  bottom:0;
-  height:0;
-  overflow:hidden;
+  top:58px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:100;
+  pointer-events:auto;
+  padding:9px 14px;
+  border:1px solid #444;
+  background:rgba(0,0,0,.78);
+  color:#aaa;
+  font-family:monospace;
+  font-size:10px;
+  letter-spacing:2px;
+  cursor:pointer;
+}
+
+#audio-control.live{
+  color:#fff;
+  border-color:#aaa;
+}
+
+#ssh101-hidden-player{
+  position:fixed;
+  width:1px;
+  height:1px;
+  left:-10px;
+  top:-10px;
+  border:0;
+  opacity:0.01;
   pointer-events:none;
 }
 
-@media(max-width:600px){
-  #ssh101-audio-panel{
-    right:10px;
-    bottom:10px;
-    width:300px;
-    height:200px;
-  }
-  #ssh101-player{
-    width:300px;
-    height:168px;
-  }
-}
 </style>
 </head>
 
@@ -389,18 +366,18 @@ input:focus{
 
 <canvas id="canvas3d"></canvas>
 
-<div id="ssh101-audio-panel">
-  <div id="ssh101-title">EWS SESSIONS / LIVE AUDIO</div>
-  <iframe
-    id="ssh101-player"
-    src="https://ssh101.com/securelive/index.php?id=ewsessions"
-    allow="autoplay; fullscreen; encrypted-media"
-    frameborder="0"
-    scrolling="no"
-    allowfullscreen>
-  </iframe>
-  <div id="ssh101-help">PRESS PLAY TO START AUDIO</div>
-</div>
+<!-- SSH101 AUDIO PLAYER
+     The official SSH101 player is loaded invisibly.
+     Audio is started from the user's click on the AUDIO button.
+-->
+<iframe
+  id="ssh101-hidden-player"
+  title="EWS SESSIONS audio"
+  allow="autoplay; fullscreen; encrypted-media"
+  frameborder="0"
+  scrolling="no">
+</iframe>
+
 
 <!-- LOGIN -->
 
@@ -460,6 +437,10 @@ input:focus{
   <div id="stream-indicator">
     AUDIO: CONNECTING
   </div>
+
+  <button id="audio-control" onclick="startSSHAudio()">
+    ▶ AUDIO: START
+  </button>
 
   <div id="lang-bar">
     <select id="lang">
@@ -1895,28 +1876,56 @@ function createPlayer(){
 function setupAudio(){
 
   const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
+    document.getElementById('stream-indicator');
 
-  const player =
-    document.getElementById(
-      'ssh101-player'
-    );
+  const button =
+    document.getElementById('audio-control');
 
-  if(!player){
-    indicator.textContent =
-      'AUDIO: OFFLINE';
-    return;
+  indicator.textContent = 'AUDIO: READY';
+
+  if(button){
+    button.textContent = '▶ AUDIO: START';
+    button.classList.remove('live');
   }
 
-  indicator.textContent =
-    'AUDIO: CLICK PLAY';
+}
 
-  player.addEventListener('load',function(){
-    indicator.textContent =
-      'AUDIO: READY — PRESS PLAY';
-  });
+
+function startSSHAudio(){
+
+  const iframe =
+    document.getElementById('ssh101-hidden-player');
+
+  const indicator =
+    document.getElementById('stream-indicator');
+
+  const button =
+    document.getElementById('audio-control');
+
+  if(!iframe) return;
+
+  /*
+     SSH101 officially provides this iframe player for embedding.
+     Loading it from a real user click gives the browser a user
+     activation, which is required for live audio autoplay.
+  */
+  iframe.src =
+    'https://ssh101.com/securelive/index.php?id=ewsessions&autoplay=1';
+
+  indicator.textContent = 'AUDIO: STARTING...';
+
+  if(button){
+    button.textContent = '● AUDIO: STARTING';
+  }
+
+  iframe.onload = function(){
+    indicator.textContent = 'AUDIO: LIVE';
+
+    if(button){
+      button.textContent = '● AUDIO: LIVE';
+      button.classList.add('live');
+    }
+  };
 
 }
 
