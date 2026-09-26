@@ -1,41 +1,32 @@
+```html
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="ru">
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width,initial-scale=1.0"
->
-
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>EWS SESSIONS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
+<script src="/socket.io/socket.io.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
-<script src="/socket.io/socket.io.js"></script>
-
 <style>
-
 *{
     box-sizing:border-box;
 }
 
-html,
-body{
+html,body{
     margin:0;
     width:100%;
     height:100%;
     overflow:hidden;
-    background:#000;
-    color:#fff;
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
+    background:#050505;
+    color:#eee;
+    font-family:Arial,Helvetica,sans-serif;
+}
+
+body{
+    user-select:none;
 }
 
 #game{
@@ -55,79 +46,86 @@ canvas{
     position:fixed;
     inset:0;
     z-index:100;
-
     display:flex;
     align-items:center;
     justify-content:center;
-
-    background:#000;
+    background:
+        radial-gradient(circle at center,#151515 0%,#090909 42%,#020202 100%);
 }
 
 .login-box{
-    width:360px;
-    max-width:90vw;
-
-    padding:40px;
-
+    width:340px;
+    padding:34px;
     border:1px solid #333;
-
-    background:#050505;
-
-    text-align:center;
+    background:rgba(5,5,5,.94);
+    box-shadow:
+        0 30px 100px rgba(0,0,0,.8),
+        inset 0 0 40px rgba(255,255,255,.025);
 }
 
 .logo{
+    text-align:center;
     font-size:32px;
     font-weight:900;
     letter-spacing:8px;
-    margin-bottom:8px;
+    margin-bottom:5px;
 }
 
-.subtitle{
-    color:#666;
-    font-size:11px;
-    letter-spacing:4px;
-    margin-bottom:30px;
+.logo-sub{
+    text-align:center;
+    font-size:9px;
+    letter-spacing:5px;
+    color:#777;
+    margin-bottom:32px;
 }
 
-input,
-select,
-button{
+.login-box input,
+.login-box button{
     width:100%;
     height:44px;
-
     margin-top:10px;
-
     border:1px solid #333;
-
-    background:#080808;
-    color:#fff;
-
-    padding:0 12px;
-
+    background:#0b0b0b;
+    color:#eee;
+    padding:0 13px;
     outline:none;
 }
 
-input:focus,
-select:focus{
+.login-box input:focus{
     border-color:#777;
 }
 
-button{
+.login-box button{
     cursor:pointer;
-    font-weight:bold;
+    background:#eee;
+    color:#050505;
+    font-weight:800;
     letter-spacing:2px;
+    transition:.15s;
 }
 
-button:hover{
-    background:#151515;
+.login-box button:hover{
+    background:#fff;
 }
 
-#login-message{
-    min-height:20px;
-    margin-top:15px;
+.login-switch{
+    margin-top:18px;
+    text-align:center;
+    color:#777;
+    font-size:11px;
+    cursor:pointer;
+}
+
+.login-switch:hover{
+    color:#fff;
+}
+
+#loginMessage{
+    min-height:18px;
+    margin-top:12px;
+    text-align:center;
+    font-size:11px;
     color:#aaa;
-    font-size:12px;
 }
 
 /* =========================
@@ -135,134 +133,115 @@ button:hover{
 ========================= */
 
 #hud{
-    display:none;
-
     position:fixed;
     inset:0;
-
-    z-index:20;
-
     pointer-events:none;
+    z-index:20;
+}
+
+.corner{
+    position:absolute;
+    font-size:9px;
+    letter-spacing:3px;
+    color:#aaa;
+    text-transform:uppercase;
 }
 
 #brand{
-    position:absolute;
+    left:25px;
     top:22px;
-    left:24px;
+}
 
-    font-weight:900;
-    font-size:18px;
+#brand strong{
+    display:block;
+    color:#fff;
+    font-size:16px;
     letter-spacing:5px;
 }
 
+#brand span{
+    color:#666;
+    font-size:8px;
+}
+
 #status{
-    position:absolute;
-    top:25px;
     right:25px;
+    top:22px;
+    text-align:right;
+}
 
-    font-size:11px;
-    letter-spacing:2px;
-
-    color:#aaa;
+.status-dot{
+    display:inline-block;
+    width:6px;
+    height:6px;
+    margin-right:7px;
+    border-radius:50%;
+    background:#aaa;
 }
 
 #controls{
-    position:absolute;
-    bottom:22px;
-    left:24px;
-
-    color:#777;
-
-    font-size:10px;
-    line-height:18px;
-
-    letter-spacing:1px;
+    left:25px;
+    bottom:23px;
+    color:#666;
+    line-height:1.7;
 }
 
-#crosshair{
-    position:absolute;
-
-    left:50%;
-    top:50%;
-
-    width:14px;
-    height:14px;
-
-    transform:
-        translate(-50%,-50%);
-
-    opacity:.65;
+#controls b{
+    color:#bbb;
 }
 
-#crosshair:before,
-#crosshair:after{
-    content:"";
-
-    position:absolute;
-
-    background:#fff;
+#zone{
+    right:25px;
+    bottom:23px;
+    text-align:right;
+    color:#666;
 }
 
-#crosshair:before{
-    left:6px;
-    top:0;
-
-    width:1px;
-    height:14px;
-}
-
-#crosshair:after{
-    top:6px;
-    left:0;
-
-    width:14px;
-    height:1px;
+#zone strong{
+    color:#ddd;
+    display:block;
+    letter-spacing:3px;
 }
 
 /* =========================
    ONLINE
 ========================= */
 
-#online-panel{
+#onlinePanel{
     position:absolute;
-
     top:65px;
     right:25px;
-
-    width:180px;
-
-    border-left:1px solid #222;
-
-    padding-left:12px;
+    width:170px;
+    max-height:220px;
+    overflow:hidden;
+    padding:12px;
+    border:1px solid rgba(255,255,255,.1);
+    background:rgba(0,0,0,.35);
+    backdrop-filter:blur(8px);
 }
 
 .panel-title{
-    font-size:9px;
-    color:#555;
+    font-size:8px;
     letter-spacing:3px;
-    margin-bottom:8px;
-}
-
-#online-list{
-    font-size:11px;
-    line-height:20px;
+    color:#777;
+    margin-bottom:10px;
 }
 
 .online-user{
-    color:#aaa;
+    font-size:11px;
+    padding:5px 0;
+    border-bottom:1px solid rgba(255,255,255,.05);
+    color:#bbb;
 }
 
-.online-dot{
+.online-user::before{
+    content:"";
     display:inline-block;
-
     width:5px;
     height:5px;
-
     margin-right:7px;
-
     border-radius:50%;
-
-    background:#fff;
+    background:#aaa;
 }
 
 /* =========================
@@ -270,104 +249,159 @@ button:hover{
 ========================= */
 
 #chat{
-    position:absolute;
-
-    left:24px;
-    bottom:85px;
-
-    width:320px;
-    max-width:calc(100vw - 48px);
-
     pointer-events:auto;
+    position:absolute;
+    left:25px;
+    bottom:72px;
+    width:310px;
+    height:190px;
+    display:flex;
+    flex-direction:column;
+    border:1px solid rgba(255,255,255,.1);
+    background:rgba(0,0,0,.42);
+    backdrop-filter:blur(9px);
 }
 
 #messages{
-    height:190px;
-
+    flex:1;
     overflow-y:auto;
+    padding:12px;
+    scrollbar-width:none;
+}
 
-    padding-right:8px;
-
-    font-size:11px;
-
-    text-shadow:
-        0 1px 4px #000;
+#messages::-webkit-scrollbar{
+    display:none;
 }
 
 .message{
     margin-bottom:7px;
-}
-
-.message-user{
-    color:#fff;
-    font-weight:bold;
-}
-
-.message-text{
+    font-size:11px;
+    line-height:1.35;
     color:#aaa;
 }
 
-#chat-form{
-    display:flex;
-    gap:6px;
+.message b{
+    color:#eee;
+    margin-right:5px;
 }
 
-#chat-input{
+.system{
+    color:#555;
+    font-style:italic;
+}
+
+#chatForm{
+    display:flex;
+    border-top:1px solid rgba(255,255,255,.08);
+}
+
+#chatInput{
     flex:1;
-
-    width:auto;
-    height:34px;
-
-    margin:0;
-
+    height:35px;
+    border:0;
+    outline:0;
+    background:rgba(255,255,255,.025);
+    color:#ddd;
+    padding:0 10px;
     font-size:11px;
 }
 
-#chat-send{
-    width:65px;
-    height:34px;
-
-    margin:0;
-
+#chatSend{
+    width:55px;
+    border:0;
+    background:#eee;
+    color:#050505;
+    cursor:pointer;
     font-size:9px;
+    font-weight:bold;
 }
 
 /* =========================
-   AUDIO
+   STREAM
 ========================= */
 
-#audio-button{
-    position:absolute;
+#stream{
+    display:none;
+}
 
-    right:25px;
-    bottom:25px;
-
-    width:auto;
-
-    padding:0 18px;
-
-    height:34px;
-
+#audioButton{
     pointer-events:auto;
-
+    position:absolute;
+    right:25px;
+    bottom:70px;
+    width:170px;
+    height:34px;
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(0,0,0,.5);
+    color:#aaa;
     font-size:9px;
+    letter-spacing:2px;
+    cursor:pointer;
+}
+
+#audioButton:hover{
+    color:#fff;
+    border-color:#555;
 }
 
 /* =========================
-   HIDE
+   CROSSHAIR
 ========================= */
+
+#crosshair{
+    position:absolute;
+    left:50%;
+    top:50%;
+    width:12px;
+    height:12px;
+    transform:translate(-50%,-50%);
+    opacity:.3;
+}
+
+#crosshair::before,
+#crosshair::after{
+    content:"";
+    position:absolute;
+    background:#fff;
+}
+
+#crosshair::before{
+    width:1px;
+    height:12px;
+    left:5px;
+}
+
+#crosshair::after{
+    width:12px;
+    height:1px;
+    top:5px;
+}
+
+/* =========================
+   FADE
+========================= */
+
+#fade{
+    position:fixed;
+    inset:0;
+    z-index:90;
+    background:#000;
+    pointer-events:none;
+    opacity:1;
+    transition:opacity 1.2s ease;
+}
 
 .hidden{
-    display:none !important;
+    display:none!important;
 }
-
 </style>
-
 </head>
 
 <body>
 
 <div id="game"></div>
+
+<div id="fade"></div>
 
 <!-- LOGIN -->
 
@@ -375,64 +409,19 @@ button:hover{
 
     <div class="login-box">
 
-        <div class="logo">
-            EWS
+        <div class="logo">EWS</div>
+        <div class="logo-sub">SESSIONS / UNDERGROUND CLUB</div>
+
+        <input id="username" placeholder="USERNAME" autocomplete="username">
+        <input id="password" type="password" placeholder="PASSWORD" autocomplete="current-password">
+
+        <button id="loginButton">ENTER</button>
+
+        <div class="login-switch" id="registerSwitch">
+            CREATE ACCOUNT
         </div>
 
-        <div class="subtitle">
-            SESSIONS
-        </div>
-
-        <input
-            id="username"
-            type="text"
-            placeholder="USERNAME"
-            autocomplete="off"
-        >
-
-        <input
-            id="password"
-            type="password"
-            placeholder="PASSWORD"
-        >
-
-        <select id="language">
-
-            <option value="en">
-                ENGLISH
-            </option>
-
-            <option value="ru">
-                РУССКИЙ
-            </option>
-
-            <option value="nl">
-                NEDERLANDS
-            </option>
-
-            <option value="de">
-                DEUTSCH
-            </option>
-
-            <option value="fr">
-                FRANÇAIS
-            </option>
-
-            <option value="es">
-                ESPAÑOL
-            </option>
-
-        </select>
-
-        <button id="login-button">
-            ENTER
-        </button>
-
-        <button id="register-button">
-            REGISTER
-        </button>
-
-        <div id="login-message"></div>
+        <div id="loginMessage"></div>
 
     </div>
 
@@ -440,353 +429,480 @@ button:hover{
 
 <!-- HUD -->
 
-<div id="hud">
+<div id="hud" class="hidden">
 
-    <div id="brand">
+    <div id="brand" class="corner">
+        <strong>EWS</strong>
+        <span>SESSIONS / UNDERGROUND</span>
+    </div>
+
+    <div id="status" class="corner">
+        <span class="status-dot"></span>
+        <span id="onlineCount">0</span> ONLINE
+    </div>
+
+    <div id="onlinePanel">
+        <div class="panel-title">IN THE CLUB</div>
+        <div id="onlineUsers"></div>
+    </div>
+
+    <div id="controls" class="corner">
+        <b>W A S D</b> MOVE<br>
+        <b>SPACE</b> JUMP<br>
+        <b>MOUSE</b> LOOK
+    </div>
+
+    <div id="zone" class="corner">
+        <strong>MAIN FLOOR</strong>
         EWS SESSIONS
-    </div>
-
-    <div id="status">
-        OFFLINE
-    </div>
-
-    <div id="online-panel">
-
-        <div class="panel-title">
-            ONLINE
-        </div>
-
-        <div id="online-list"></div>
-
-    </div>
-
-    <div id="crosshair"></div>
-
-    <div id="controls">
-
-        WASD — MOVE<br>
-        SPACE — JUMP<br>
-        V — THIRD PERSON<br>
-        CLICK — LOCK MOUSE
-
     </div>
 
     <div id="chat">
 
         <div id="messages"></div>
 
-        <form id="chat-form">
-
+        <form id="chatForm">
             <input
-                id="chat-input"
-                maxlength="500"
+                id="chatInput"
                 autocomplete="off"
-                placeholder="message..."
+                maxlength="500"
+                placeholder="say something..."
             >
-
-            <button id="chat-send">
-                SEND
-            </button>
-
+            <button id="chatSend" type="submit">SEND</button>
         </form>
 
     </div>
 
-    <button id="audio-button">
-        AUDIO OFF
+    <button id="audioButton">
+        AUDIO / STREAM OFF
     </button>
+
+    <div id="crosshair"></div>
 
 </div>
 
+<audio id="stream" playsinline></audio>
+
 <script>
 
-/* =========================================================
-   GLOBAL
-========================================================= */
+/* ============================================================
+   EWS SESSIONS
+   CLIENT
+============================================================ */
 
-const socket = io();
+const socket = io({
+    transports:['websocket','polling']
+});
 
 let username = '';
-let language = 'en';
+let language = localStorage.getItem('ews-language') || (
+    navigator.language || 'en'
+).slice(0,2);
 
-let joined = false;
+let loggedIn = false;
+
+/* ============================================================
+   DOM
+============================================================ */
+
+const loginScreen = document.getElementById('login');
+const hud = document.getElementById('hud');
+const loginButton = document.getElementById('loginButton');
+const registerSwitch = document.getElementById('registerSwitch');
+const loginMessage = document.getElementById('loginMessage');
+
+const usernameInput = document.getElementById('username');
+const passwordInput = document.getElementById('password');
+
+const messages = document.getElementById('messages');
+const onlineUsers = document.getElementById('onlineUsers');
+const onlineCount = document.getElementById('onlineCount');
+
+const chatForm = document.getElementById('chatForm');
+const chatInput = document.getElementById('chatInput');
+
+const audioButton = document.getElementById('audioButton');
+const stream = document.getElementById('stream');
+
+/* ============================================================
+   LOGIN / REGISTER
+============================================================ */
+
+let registerMode = false;
+
+registerSwitch.addEventListener('click',()=>{
+    registerMode = !registerMode;
+
+    loginButton.textContent =
+        registerMode ? 'CREATE ACCOUNT' : 'ENTER';
+
+    registerSwitch.textContent =
+        registerMode ? 'BACK TO LOGIN' : 'CREATE ACCOUNT';
+
+    loginMessage.textContent = '';
+});
+
+loginButton.addEventListener('click',async()=>{
+
+    const user = usernameInput.value.trim();
+    const pass = passwordInput.value;
+
+    if(!user || !pass){
+        loginMessage.textContent = 'ENTER USERNAME AND PASSWORD';
+        return;
+    }
+
+    loginButton.disabled = true;
+
+    try{
+
+        const endpoint = registerMode
+            ? '/api/register'
+            : '/api/login';
+
+        const response = await fetch(endpoint,{
+            method:'POST',
+            headers:{
+                'Content-Type':'application/json'
+            },
+            body:JSON.stringify({
+                username:user,
+                password:pass
+            })
+        });
+
+        const result = await response.json();
+
+        if(!result.ok){
+
+            loginMessage.textContent =
+                result.message || 'ERROR';
+
+            loginButton.disabled = false;
+            return;
+        }
+
+        if(registerMode){
+
+            registerMode = false;
+
+            loginButton.textContent = 'ENTER';
+            registerSwitch.textContent = 'CREATE ACCOUNT';
+
+            loginMessage.textContent =
+                'ACCOUNT CREATED';
+
+            loginButton.disabled = false;
+            return;
+        }
+
+        enterClub(result.username || user);
+
+    }catch(error){
+
+        console.error(error);
+
+        loginMessage.textContent =
+            'SERVER CONNECTION ERROR';
+
+    }
+
+    loginButton.disabled = false;
+});
+
+passwordInput.addEventListener('keydown',e=>{
+    if(e.key === 'Enter'){
+        loginButton.click();
+    }
+});
+
+usernameInput.addEventListener('keydown',e=>{
+    if(e.key === 'Enter'){
+        passwordInput.focus();
+    }
+});
+
+function enterClub(name){
+
+    username = name;
+
+    localStorage.setItem(
+        'ews-username',
+        username
+    );
+
+    loggedIn = true;
+
+    loginScreen.classList.add('hidden');
+    hud.classList.remove('hidden');
+
+    setTimeout(()=>{
+        document.getElementById('fade').style.opacity = '0';
+    },100);
+
+    initGame();
+
+    socket.emit('join',{
+        username,
+        language
+    });
+
+    socket.emit('request-online');
+    socket.emit('request-players');
+
+    addSystemMessage(
+        `WELCOME TO EWS SESSIONS, ${username}`
+    );
+}
+
+/* ============================================================
+   SOCKET
+============================================================ */
+
+socket.on('connect',()=>{
+
+    console.log('[EWS] socket connected');
+
+    if(loggedIn){
+
+        socket.emit('join',{
+            username,
+            language
+        });
+
+    }
+
+});
+
+socket.on('online-users',users=>{
+
+    onlineUsers.innerHTML = '';
+
+    const list = Array.isArray(users) ? users : [];
+
+    onlineCount.textContent = list.length;
+
+    list.forEach(user=>{
+
+        const div = document.createElement('div');
+
+        div.className = 'online-user';
+
+        div.textContent =
+            user.username || user.user || 'Guest';
+
+        onlineUsers.appendChild(div);
+
+    });
+
+});
+
+socket.on('system-message',data=>{
+
+    if(data && data.text){
+        addSystemMessage(data.text);
+    }
+
+});
+
+socket.on('chat-message',data=>{
+
+    if(!data) return;
+
+    addMessage(
+        data.username || data.user || 'Guest',
+        data.text || ''
+    );
+
+});
+
+socket.on('players-state',list=>{
+
+    if(!Array.isArray(list)) return;
+
+    list.forEach(data=>{
+        createRemotePlayer(data);
+        updateRemotePlayer(data);
+    });
+
+});
+
+socket.on('player-joined',data=>{
+
+    if(!data || data.id === socket.id) return;
+
+    createRemotePlayer(data);
+
+});
+
+socket.on('player-move',data=>{
+
+    if(!data || data.id === socket.id) return;
+
+    updateRemotePlayer(data);
+
+});
+
+socket.on('player-left',id=>{
+
+    removeRemotePlayer(id);
+
+});
+
+/* ============================================================
+   CHAT
+============================================================ */
+
+chatForm.addEventListener('submit',e=>{
+
+    e.preventDefault();
+
+    const text = chatInput.value.trim();
+
+    if(!text) return;
+
+    socket.emit('chat-message',{
+        text
+    });
+
+    chatInput.value = '';
+
+});
+
+function addMessage(user,text){
+
+    const div = document.createElement('div');
+
+    div.className = 'message';
+
+    const name = document.createElement('b');
+
+    name.textContent = user;
+
+    const body = document.createElement('span');
+
+    body.textContent = text;
+
+    div.appendChild(name);
+    div.appendChild(body);
+
+    messages.appendChild(div);
+
+    messages.scrollTop = messages.scrollHeight;
+
+}
+
+function addSystemMessage(text){
+
+    const div = document.createElement('div');
+
+    div.className = 'message system';
+
+    div.textContent = text;
+
+    messages.appendChild(div);
+
+    messages.scrollTop = messages.scrollHeight;
+
+}
+
+/* ============================================================
+   THREE.JS
+============================================================ */
 
 let scene;
 let camera;
 let renderer;
 
+let player;
+let playerGroup;
+
 let clock;
 
-let localPlayer;
-let playerBody;
+let gameStarted = false;
 
-let remotePlayers = new Map();
+/* player physics */
 
-let thirdPerson = false;
+const velocity = new THREE.Vector3();
 
-let pointerLocked = false;
+let onGround = true;
+
+const moveSpeed = 5.4;
+const jumpPower = 7.5;
+const gravity = 20;
 
 const keys = {};
 
-let velocityY = 0;
-
-let canJump = true;
-
 let cameraYaw = 0;
+let cameraPitch = 0.22;
 
-let cameraPitch = 0.25;
+let mouseLocked = false;
 
-let audio;
-let audioStarted = false;
+/* ============================================================
+   REMOTE PLAYERS
+============================================================ */
 
-/* =========================================================
-   LOGIN
-========================================================= */
+const remotePlayers = new Map();
 
-const loginScreen =
-    document.getElementById(
-        'login'
-    );
+/* ============================================================
+   WORLD COLLIDERS
+============================================================ */
 
-const hud =
-    document.getElementById(
-        'hud'
-    );
+const colliders = [];
 
-const loginMessage =
-    document.getElementById(
-        'login-message'
-    );
+/* ============================================================
+   MATERIALS
+============================================================ */
 
-const usernameInput =
-    document.getElementById(
-        'username'
-    );
+function mat(color,roughness=.9){
 
-const passwordInput =
-    document.getElementById(
-        'password'
-    );
+    return new THREE.MeshStandardMaterial({
+        color,
+        roughness,
+        metalness:0
+    });
 
-const languageSelect =
-    document.getElementById(
-        'language'
-    );
-
-document
-    .getElementById(
-        'login-button'
-    )
-    .onclick = login;
-
-document
-    .getElementById(
-        'register-button'
-    )
-    .onclick = register;
-
-async function login(){
-
-    const user =
-        usernameInput.value.trim();
-
-    const pass =
-        passwordInput.value;
-
-    language =
-        languageSelect.value;
-
-    if(!user || !pass){
-
-        loginMessage.textContent =
-            'ENTER USERNAME AND PASSWORD';
-
-        return;
-    }
-
-    try{
-
-        const response =
-            await fetch(
-                '/api/login',
-                {
-                    method:'POST',
-
-                    headers:{
-                        'Content-Type':
-                            'application/json'
-                    },
-
-                    body:JSON.stringify({
-                        username:user,
-                        password:pass
-                    })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if(!data.ok){
-
-            loginMessage.textContent =
-                data.message ||
-                'LOGIN ERROR';
-
-            return;
-        }
-
-        username =
-            data.username;
-
-        enterClub();
-
-    }catch(error){
-
-        loginMessage.textContent =
-            'SERVER ERROR';
-
-        console.error(error);
-    }
 }
 
-async function register(){
+const blackMat = mat(0x080808);
+const darkMat = mat(0x111111);
+const grayMat = mat(0x292929);
+const whiteMat = mat(0xd8d8d8);
+const softWhiteMat = mat(0x777777);
 
-    const user =
-        usernameInput.value.trim();
+/* ============================================================
+   INIT
+============================================================ */
 
-    const pass =
-        passwordInput.value;
+function initGame(){
 
-    language =
-        languageSelect.value;
+    if(gameStarted) return;
 
-    if(!user || !pass){
+    gameStarted = true;
 
-        loginMessage.textContent =
-            'ENTER USERNAME AND PASSWORD';
+    scene = new THREE.Scene();
 
-        return;
-    }
+    scene.background = new THREE.Color(0x030303);
 
-    try{
-
-        const response =
-            await fetch(
-                '/api/register',
-                {
-                    method:'POST',
-
-                    headers:{
-                        'Content-Type':
-                            'application/json'
-                    },
-
-                    body:JSON.stringify({
-                        username:user,
-                        password:pass
-                    })
-                }
-            );
-
-        const data =
-            await response.json();
-
-        if(!data.ok){
-
-            loginMessage.textContent =
-                data.message ||
-                'REGISTER ERROR';
-
-            return;
-        }
-
-        username =
-            data.username;
-
-        enterClub();
-
-    }catch(error){
-
-        loginMessage.textContent =
-            'SERVER ERROR';
-
-        console.error(error);
-    }
-}
-
-/* =========================================================
-   ENTER
-========================================================= */
-
-function enterClub(){
-
-    loginScreen.classList.add(
-        'hidden'
+    scene.fog = new THREE.FogExp2(
+        0x030303,
+        0.035
     );
 
-    hud.style.display =
-        'block';
-
-    createClub();
-
-    socket.emit(
-        'join',
-        {
-            username,
-            language
-        }
+    camera = new THREE.PerspectiveCamera(
+        68,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        200
     );
 
-    socket.emit(
-        'request-online'
-    );
-
-    socket.emit(
-        'request-players'
-    );
-}
-
-/* =========================================================
-   THREE
-========================================================= */
-
-function createClub(){
-
-    scene =
-        new THREE.Scene();
-
-    scene.background =
-        new THREE.Color(
-            0x000000
-        );
-
-    scene.fog =
-        new THREE.Fog(
-            0x000000,
-            18,
-            45
-        );
-
-    camera =
-        new THREE.PerspectiveCamera(
-            65,
-            window.innerWidth /
-            window.innerHeight,
-            0.1,
-            100
-        );
-
-    renderer =
-        new THREE.WebGLRenderer({
-            antialias:true
-        });
+    renderer = new THREE.WebGLRenderer({
+        antialias:true,
+        powerPreference:'high-performance'
+    });
 
     renderer.setPixelRatio(
-        Math.min(
-            window.devicePixelRatio,
-            2
-        )
+        Math.min(window.devicePixelRatio,2)
     );
 
     renderer.setSize(
@@ -794,395 +910,422 @@ function createClub(){
         window.innerHeight
     );
 
-    renderer.outputEncoding =
-        THREE.sRGBEncoding;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type =
+        THREE.PCFSoftShadowMap;
 
-    document
-        .getElementById(
-            'game'
-        )
-        .appendChild(
-            renderer.domElement
-        );
+    document.getElementById('game')
+        .appendChild(renderer.domElement);
 
-    clock =
-        new THREE.Clock();
+    clock = new THREE.Clock();
 
-    /* LIGHT */
+    createLighting();
+    createClub();
+    createPlayer();
+
+    camera.position.set(
+        0,
+        2.5,
+        6
+    );
+
+    bindControls();
+
+    window.addEventListener(
+        'resize',
+        resize
+    );
+
+    animate();
+
+}
+
+/* ============================================================
+   LIGHTING
+============================================================ */
+
+function createLighting(){
 
     const ambient =
         new THREE.AmbientLight(
             0xffffff,
-            0.55
+            .22
         );
 
-    scene.add(
-        ambient
-    );
+    scene.add(ambient);
 
-    const mainLight =
-        new THREE.PointLight(
+    const main =
+        new THREE.DirectionalLight(
             0xffffff,
-            1.5,
-            35
+            .55
         );
 
-    mainLight.position.set(
+    main.position.set(
         0,
-        8,
-        0
+        12,
+        4
     );
 
-    scene.add(
-        mainLight
-    );
+    main.castShadow = true;
 
-    const sideLight =
-        new THREE.PointLight(
-            0x888888,
-            0.8,
-            25
-        );
+    main.shadow.mapSize.width = 1024;
+    main.shadow.mapSize.height = 1024;
 
-    sideLight.position.set(
-        -10,
-        5,
-        -4
-    );
+    main.shadow.camera.left = -25;
+    main.shadow.camera.right = 25;
+    main.shadow.camera.top = 25;
+    main.shadow.camera.bottom = -25;
 
-    scene.add(
-        sideLight
-    );
+    scene.add(main);
 
-    createClubEnvironment();
+    const lights = [
 
-    createLocalPlayer();
+        [-9,5,-10,.7],
+        [9,5,-10,.7],
+        [-9,4,8,.35],
+        [9,4,8,.35],
+        [0,8,-12,.5]
 
-    camera.position.set(
-        0,
-        4,
-        8
-    );
+    ];
 
-    window.addEventListener(
-        'resize',
-        onResize
-    );
-
-    renderer.domElement.addEventListener(
-        'click',
-        requestPointerLock
-    );
-
-    document.addEventListener(
-        'pointerlockchange',
-        pointerLockChange
-    );
-
-    document.addEventListener(
-        'mousemove',
-        mouseMove
-    );
-
-    document.addEventListener(
-        'keydown',
-        keyDown
-    );
-
-    document.addEventListener(
-        'keyup',
-        keyUp
-    );
-
-    animate();
-}
-
-/* =========================================================
-   CLUB
-========================================================= */
-
-function createClubEnvironment(){
-
-    /*
-        ЧЁРНЫЙ МИНИМАЛИСТИЧНЫЙ КЛУБ.
-
-        Никакой клетчатой текстуры.
-        Никаких шахмат.
-    */
-
-    const floorMaterial =
-        new THREE.MeshStandardMaterial({
-            color:0x080808,
-            roughness:0.85,
-            metalness:0.1
-        });
-
-    const floor =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                36,
-                0.25,
-                36
-            ),
-            floorMaterial
-        );
-
-    floor.position.y =
-        -0.15;
-
-    scene.add(
-        floor
-    );
-
-    /* WALLS */
-
-    const wallMaterial =
-        new THREE.MeshStandardMaterial({
-            color:0x030303,
-            roughness:0.95
-        });
-
-    const backWall =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                36,
-                10,
-                0.3
-            ),
-            wallMaterial
-        );
-
-    backWall.position.set(
-        0,
-        5,
-        -18
-    );
-
-    scene.add(
-        backWall
-    );
-
-    const leftWall =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.3,
-                10,
-                36
-            ),
-            wallMaterial
-        );
-
-    leftWall.position.set(
-        -18,
-        5,
-        0
-    );
-
-    scene.add(
-        leftWall
-    );
-
-    const rightWall =
-        leftWall.clone();
-
-    rightWall.position.x =
-        18;
-
-    scene.add(
-        rightWall
-    );
-
-    /* CEILING */
-
-    const ceiling =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                36,
-                0.3,
-                36
-            ),
-            new THREE.MeshStandardMaterial({
-                color:0x010101
-            })
-        );
-
-    ceiling.position.y =
-        10;
-
-    scene.add(
-        ceiling
-    );
-
-    /* MINIMAL STAGE */
-
-    const stage =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                12,
-                0.6,
-                5
-            ),
-            new THREE.MeshStandardMaterial({
-                color:0x111111,
-                roughness:0.7
-            })
-        );
-
-    stage.position.set(
-        0,
-        0.3,
-        -13
-    );
-
-    scene.add(
-        stage
-    );
-
-    /* BACK PANEL */
-
-    const panel =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                13,
-                5,
-                0.25
-            ),
-            new THREE.MeshStandardMaterial({
-                color:0x090909
-            })
-        );
-
-    panel.position.set(
-        0,
-        3,
-        -15.5
-    );
-
-    scene.add(
-        panel
-    );
-
-    /* SIMPLE EWS LETTERING */
-
-    const ews =
-        createTextSprite(
-            'EWS'
-        );
-
-    ews.position.set(
-        0,
-        4.2,
-        -15.25
-    );
-
-    ews.scale.set(
-        4,
-        2,
-        1
-    );
-
-    scene.add(
-        ews
-    );
-
-    /* COLUMNS */
-
-    for(
-        const x of [-14,14]
-    ){
-
-        const column =
-            new THREE.Mesh(
-                new THREE.BoxGeometry(
-                    0.5,
-                    8,
-                    0.5
-                ),
-                new THREE.MeshStandardMaterial({
-                    color:0x111111
-                })
-            );
-
-        column.position.set(
-            x,
-            4,
-            -10
-        );
-
-        scene.add(
-            column
-        );
-    }
-
-    /* MINIMAL WALL LIGHTS */
-
-    for(
-        const z of [-7,0,7]
-    ){
+    lights.forEach(p=>{
 
         const light =
             new THREE.PointLight(
                 0xffffff,
-                0.22,
-                10
+                p[3],
+                18
             );
 
         light.position.set(
-            -12,
-            4,
-            z
+            p[0],
+            p[1],
+            p[2]
         );
 
-        scene.add(
-            light
-        );
+        scene.add(light);
 
-        const light2 =
-            new THREE.PointLight(
-                0xffffff,
-                0.22,
-                10
-            );
+    });
 
-        light2.position.set(
-            12,
-            4,
-            z
-        );
-
-        scene.add(
-            light2
-        );
-    }
 }
 
-/* =========================================================
-   TEXT SPRITE
-========================================================= */
+/* ============================================================
+   CLUB
+============================================================ */
 
-function createTextSprite(text){
+function box(
+    x,
+    y,
+    z,
+    sx,
+    sy,
+    sz,
+    material=darkMat,
+    collision=false
+){
+
+    const geometry =
+        new THREE.BoxGeometry(
+            sx,sy,sz
+        );
+
+    const mesh =
+        new THREE.Mesh(
+            geometry,
+            material
+        );
+
+    mesh.position.set(
+        x,y,z
+    );
+
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    scene.add(mesh);
+
+    if(collision){
+
+        colliders.push({
+            minX:x-sx/2,
+            maxX:x+sx/2,
+            minZ:z-sz/2,
+            maxZ:z+sz/2,
+            minY:y-sy/2,
+            maxY:y+sy/2
+        });
+
+    }
+
+    return mesh;
+}
+
+function createClub(){
+
+    /* floor */
+
+    box(
+        0,
+        -.3,
+        0,
+        44,
+        .6,
+        38,
+        blackMat,
+        true
+    );
+
+    /* outer walls */
+
+    box(
+        0,
+        4,
+        -19,
+        44,
+        8,
+        1,
+        darkMat,
+        true
+    );
+
+    box(
+        -22,
+        4,
+        0,
+        1,
+        8,
+        38,
+        darkMat,
+        true
+    );
+
+    box(
+        22,
+        4,
+        0,
+        1,
+        8,
+        38,
+        darkMat,
+        true
+    );
+
+    box(
+        0,
+        4,
+        19,
+        44,
+        8,
+        1,
+        darkMat,
+        true
+    );
+
+    /* architectural blocks */
+
+    box(
+        -15,
+        2.2,
+        -11,
+        5,
+        4.4,
+        4,
+        grayMat,
+        true
+    );
+
+    box(
+        15,
+        2.2,
+        -11,
+        5,
+        4.4,
+        4,
+        grayMat,
+        true
+    );
+
+    box(
+        -15,
+        1.5,
+        9,
+        5,
+        3,
+        6,
+        darkMat,
+        true
+    );
+
+    box(
+        15,
+        1.5,
+        9,
+        5,
+        3,
+        6,
+        darkMat,
+        true
+    );
+
+    /* rear architecture */
+
+    box(
+        0,
+        3.2,
+        -16,
+        20,
+        6.4,
+        1.4,
+        darkMat,
+        true
+    );
+
+    /* central raised platform */
+
+    box(
+        0,
+        .45,
+        -10,
+        13,
+        .9,
+        5,
+        grayMat,
+        true
+    );
+
+    /* ceiling beams */
+
+    for(let x=-18;x<=18;x+=6){
+
+        box(
+            x,
+            7.5,
+            0,
+            .55,
+            .5,
+            34,
+            darkMat
+        );
+
+    }
+
+    /* vertical architectural columns */
+
+    for(let x=-18;x<=18;x+=6){
+
+        box(
+            x,
+            4,
+            -5,
+            .65,
+            8,
+            .65,
+            grayMat,
+            true
+        );
+
+    }
+
+    /* subtle white strips */
+
+    createStrip(
+        -20,
+        5.9,
+        0,
+        .12,
+        .12,
+        28
+    );
+
+    createStrip(
+        20,
+        5.9,
+        0,
+        .12,
+        .12,
+        28
+    );
+
+    createStrip(
+        0,
+        6.8,
+        -18.2,
+        26,
+        .12,
+        .12
+    );
+
+    /* wall panels */
+
+    for(let x=-12;x<=12;x+=4){
+
+        box(
+            x,
+            3,
+            -18.35,
+            2.4,
+            5.5,
+            .12,
+            grayMat
+        );
+
+    }
+
+    /* EWS wall mark */
+
+    createWallLogo();
+
+}
+
+function createStrip(
+    x,y,z,
+    sx,sy,sz
+){
+
+    const geometry =
+        new THREE.BoxGeometry(
+            sx,sy,sz
+        );
+
+    const mesh =
+        new THREE.Mesh(
+            geometry,
+            new THREE.MeshBasicMaterial({
+                color:0xffffff
+            })
+        );
+
+    mesh.position.set(
+        x,y,z
+    );
+
+    scene.add(mesh);
+
+}
+
+function createWallLogo(){
 
     const canvas =
-        document.createElement(
-            'canvas'
-        );
+        document.createElement('canvas');
 
-    canvas.width =
-        1024;
-
-    canvas.height =
-        256;
+    canvas.width = 1024;
+    canvas.height = 256;
 
     const ctx =
-        canvas.getContext(
-            '2d'
-        );
+        canvas.getContext('2d');
 
     ctx.fillStyle =
-        '#ffffff';
+        '#050505';
+
+    ctx.fillRect(
+        0,0,1024,256
+    );
+
+    ctx.fillStyle =
+        '#eeeeee';
 
     ctx.font =
-        '900 180px Arial';
+        '900 150px Arial';
 
     ctx.textAlign =
         'center';
@@ -1191,1107 +1334,1031 @@ function createTextSprite(text){
         'middle';
 
     ctx.fillText(
-        text,
+        'EWS',
         512,
-        128
+        125
+    );
+
+    ctx.font =
+        '28px Arial';
+
+    ctx.fillStyle =
+        '#777';
+
+    ctx.fillText(
+        'SESSIONS',
+        512,
+        205
     );
 
     const texture =
-        new THREE.CanvasTexture(
-            canvas
-        );
+        new THREE.CanvasTexture(canvas);
 
     const material =
-        new THREE.SpriteMaterial({
+        new THREE.MeshBasicMaterial({
             map:texture,
             transparent:true
         });
 
-    return new THREE.Sprite(
-        material
-    );
-}
-
-/* =========================================================
-   PLAYER
-========================================================= */
-
-function createHuman(
-    color = 0xffffff
-){
-
-    const group =
-        new THREE.Group();
-
-    const material =
-        new THREE.MeshStandardMaterial({
-            color,
-            roughness:0.7,
-            metalness:0
-        });
-
-    const darkMaterial =
-        new THREE.MeshStandardMaterial({
-            color:0x111111,
-            roughness:0.8
-        });
-
-    /* LEGS */
-
-    const leftLeg =
+    const mesh =
         new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.28,
-                1.05,
-                0.32
-            ),
-            darkMaterial
-        );
-
-    leftLeg.position.set(
-        -0.22,
-        0.85,
-        0
-    );
-
-    group.add(
-        leftLeg
-    );
-
-    const rightLeg =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.28,
-                1.05,
-                0.32
-            ),
-            darkMaterial
-        );
-
-    rightLeg.position.set(
-        0.22,
-        0.85,
-        0
-    );
-
-    group.add(
-        rightLeg
-    );
-
-    /* BODY */
-
-    const body =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.75,
-                1.25,
-                0.42
+            new THREE.PlaneGeometry(
+                11,
+                2.75
             ),
             material
         );
 
-    body.position.y =
-        1.85;
-
-    group.add(
-        body
+    mesh.position.set(
+        0,
+        4.2,
+        -18.15
     );
 
-    /* HEAD */
+    scene.add(mesh);
+
+}
+
+/* ============================================================
+   PLAYER
+============================================================ */
+
+function createPlayer(){
+
+    playerGroup =
+        new THREE.Group();
+
+    playerGroup.position.set(
+        0,
+        0,
+        7
+    );
+
+    scene.add(playerGroup);
+
+    player = createHuman(
+        true
+    );
+
+    playerGroup.add(player);
+
+}
+
+/* ============================================================
+   HUMAN
+============================================================ */
+
+function createHuman(local=false){
+
+    const root =
+        new THREE.Group();
+
+    const bodyMat =
+        local
+            ? new THREE.MeshStandardMaterial({
+                color:0x171717,
+                roughness:.82,
+                metalness:.05
+            })
+            : new THREE.MeshStandardMaterial({
+                color:0x202020,
+                roughness:.9
+            });
+
+    const accentMat =
+        new THREE.MeshStandardMaterial({
+            color:0xbdbdbd,
+            roughness:.7
+        });
+
+    const headMat =
+        new THREE.MeshStandardMaterial({
+            color:0x080808,
+            roughness:.85
+        });
+
+    /* torso */
+
+    const torso =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                .72,
+                1.25,
+                .42
+            ),
+            bodyMat
+        );
+
+    torso.position.y =
+        2.05;
+
+    torso.castShadow = true;
+
+    root.add(torso);
+
+    /* neck */
+
+    const neck =
+        new THREE.Mesh(
+            new THREE.CylinderGeometry(
+                .13,
+                .14,
+                .18,
+                12
+            ),
+            headMat
+        );
+
+    neck.position.y =
+        2.72;
+
+    root.add(neck);
+
+    /* head */
 
     const head =
         new THREE.Mesh(
             new THREE.SphereGeometry(
-                0.38,
+                .31,
                 16,
-                16
+                12
             ),
-            material
+            headMat
         );
 
-    head.position.y =
-        2.8;
-
-    group.add(
-        head
+    head.scale.set(
+        .95,
+        1.05,
+        .95
     );
 
-    /* LEFT ARM */
+    head.position.y =
+        3.1;
 
-    const leftArm =
+    head.castShadow = true;
+
+    root.add(head);
+
+    /* small face detail */
+
+    const face =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                0.24,
-                1.05,
-                0.24
+                .22,
+                .06,
+                .025
             ),
-            material
+            accentMat
+        );
+
+    face.position.set(
+        0,
+        3.12,
+        -.305
+    );
+
+    root.add(face);
+
+    /* arms */
+
+    const leftArm =
+        createLimb(
+            .17,
+            .82,
+            .18,
+            bodyMat
         );
 
     leftArm.position.set(
-        -0.58,
-        1.88,
+        -.52,
+        2.18,
         0
     );
 
     leftArm.rotation.z =
-        -0.08;
+        -.06;
 
-    group.add(
-        leftArm
-    );
-
-    /* RIGHT ARM */
+    root.add(leftArm);
 
     const rightArm =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.24,
-                1.05,
-                0.24
-            ),
-            material
+        createLimb(
+            .17,
+            .82,
+            .18,
+            bodyMat
         );
 
     rightArm.position.set(
-        0.58,
-        1.88,
+        .52,
+        2.18,
         0
     );
 
     rightArm.rotation.z =
-        0.08;
+        .06;
 
-    group.add(
-        rightArm
-    );
+    root.add(rightArm);
 
-    /* HANDS */
+    /* hands */
 
     const leftHand =
-        new THREE.Mesh(
-            new THREE.SphereGeometry(
-                0.14,
-                10,
-                10
-            ),
-            material
-        );
+        createHand();
 
     leftHand.position.set(
-        -0.59,
-        1.35,
+        -.52,
+        1.73,
         0
     );
 
-    group.add(
-        leftHand
-    );
+    root.add(leftHand);
 
     const rightHand =
+        createHand();
+
+    rightHand.position.set(
+        .52,
+        1.73,
+        0
+    );
+
+    root.add(rightHand);
+
+    /* hips */
+
+    const hips =
         new THREE.Mesh(
-            new THREE.SphereGeometry(
-                0.14,
-                10,
-                10
+            new THREE.BoxGeometry(
+                .78,
+                .32,
+                .45
+            ),
+            bodyMat
+        );
+
+    hips.position.y =
+        1.35;
+
+    hips.castShadow = true;
+
+    root.add(hips);
+
+    /* legs */
+
+    const leftLeg =
+        createLimb(
+            .23,
+            1.05,
+            .24,
+            bodyMat
+        );
+
+    leftLeg.position.set(
+        -.23,
+        .78,
+        0
+    );
+
+    root.add(leftLeg);
+
+    const rightLeg =
+        createLimb(
+            .23,
+            1.05,
+            .24,
+            bodyMat
+        );
+
+    rightLeg.position.set(
+        .23,
+        .78,
+        0
+    );
+
+    root.add(rightLeg);
+
+    /* feet */
+
+    const leftFoot =
+        createFoot();
+
+    leftFoot.position.set(
+        -.23,
+        .15,
+        -.08
+    );
+
+    root.add(leftFoot);
+
+    const rightFoot =
+        createFoot();
+
+    rightFoot.position.set(
+        .23,
+        .15,
+        -.08
+    );
+
+    root.add(rightFoot);
+
+    root.userData.parts = {
+        leftArm,
+        rightArm,
+        leftLeg,
+        rightLeg
+    };
+
+    return root;
+}
+
+function createLimb(x,y,z,material){
+
+    const mesh =
+        new THREE.Mesh(
+            new THREE.BoxGeometry(
+                x,y,z
             ),
             material
         );
 
-    rightHand.position.set(
-        0.59,
-        1.35,
-        0
+    mesh.castShadow = true;
+
+    return mesh;
+}
+
+function createHand(){
+
+    return new THREE.Mesh(
+        new THREE.SphereGeometry(
+            .13,
+            10,
+            8
+        ),
+        softWhiteMat
     );
 
-    group.add(
-        rightHand
-    );
+}
 
-    /* FEET */
+function createFoot(){
 
-    const leftFoot =
+    const mesh =
         new THREE.Mesh(
             new THREE.BoxGeometry(
-                0.34,
-                0.18,
-                0.5
+                .3,
+                .16,
+                .5
             ),
-            darkMaterial
+            blackMat
         );
 
-    leftFoot.position.set(
-        -0.22,
-        0.32,
-        -0.06
-    );
+    mesh.castShadow = true;
 
-    group.add(
-        leftFoot
-    );
-
-    const rightFoot =
-        new THREE.Mesh(
-            new THREE.BoxGeometry(
-                0.34,
-                0.18,
-                0.5
-            ),
-            darkMaterial
-        );
-
-    rightFoot.position.set(
-        0.22,
-        0.32,
-        -0.06
-    );
-
-    group.add(
-        rightFoot
-    );
-
-    return group;
+    return mesh;
 }
 
-function createLocalPlayer(){
+/* ============================================================
+   INPUT
+============================================================ */
 
-    playerBody =
-        createHuman(
-            0xffffff
-        );
+function bindControls(){
 
-    playerBody.position.set(
-        0,
-        0,
-        5
-    );
-
-    scene.add(
-        playerBody
-    );
-
-    localPlayer =
-        playerBody;
-}
-
-/* =========================================================
-   REMOTE PLAYERS
-========================================================= */
-
-function addRemotePlayer(data){
-
-    if(
-        remotePlayers.has(
-            data.id
-        )
-    ){
-        return;
-    }
-
-    const player =
-        createHuman(
-            0xaaaaaa
-        );
-
-    player.position.set(
-        data.x || 0,
-        data.y || 0,
-        data.z || 0
-    );
-
-    player.rotation.y =
-        data.ry || 0;
-
-    scene.add(
-        player
-    );
-
-    remotePlayers.set(
-        data.id,
-        player
-    );
-}
-
-function removeRemotePlayer(id){
-
-    const player =
-        remotePlayers.get(id);
-
-    if(!player){
-        return;
-    }
-
-    scene.remove(
-        player
-    );
-
-    remotePlayers.delete(
-        id
-    );
-}
-
-/* =========================================================
-   MOVEMENT
-========================================================= */
-
-function keyDown(event){
-
-    keys[
-        event.code
-    ] = true;
-
-    if(
-        event.code === 'Space'
-    ){
-
-        event.preventDefault();
-
-        if(canJump){
-
-            velocityY =
-                6.5;
-
-            canJump =
-                false;
-        }
-    }
-
-    if(
-        event.code === 'KeyV'
-    ){
-
-        thirdPerson =
-            !thirdPerson;
-    }
-}
-
-function keyUp(event){
-
-    keys[
-        event.code
-    ] = false;
-}
-
-function updatePlayer(delta){
-
-    if(!localPlayer){
-        return;
-    }
-
-    const speed =
-        5.5;
-
-    let dx = 0;
-    let dz = 0;
-
-    if(
-        keys['KeyW'] ||
-        keys['ArrowUp']
-    ){
-        dz -= 1;
-    }
-
-    if(
-        keys['KeyS'] ||
-        keys['ArrowDown']
-    ){
-        dz += 1;
-    }
-
-    if(
-        keys['KeyA'] ||
-        keys['ArrowLeft']
-    ){
-        dx -= 1;
-    }
-
-    if(
-        keys['KeyD'] ||
-        keys['ArrowRight']
-    ){
-        dx += 1;
-    }
-
-    const length =
-        Math.sqrt(
-            dx * dx +
-            dz * dz
-        );
-
-    if(length > 0){
-
-        dx /= length;
-        dz /= length;
-
-        const angle =
-            cameraYaw;
-
-        const moveX =
-            dx * Math.cos(angle) -
-            dz * Math.sin(angle);
-
-        const moveZ =
-            dx * Math.sin(angle) +
-            dz * Math.cos(angle);
-
-        const nextX =
-            localPlayer.position.x +
-            moveX *
-            speed *
-            delta;
-
-        const nextZ =
-            localPlayer.position.z +
-            moveZ *
-            speed *
-            delta;
+    window.addEventListener('keydown',e=>{
 
         if(
-            !isBlocked(
-                nextX,
-                localPlayer.position.z
-            )
+            e.code === 'Space' ||
+            e.code.startsWith('Arrow')
         ){
-
-            localPlayer.position.x =
-                nextX;
+            e.preventDefault();
         }
+
+        keys[e.code] = true;
 
         if(
-            !isBlocked(
-                localPlayer.position.x,
-                nextZ
-            )
+            e.code === 'Space' &&
+            onGround
         ){
 
-            localPlayer.position.z =
-                nextZ;
+            velocity.y =
+                jumpPower;
+
+            onGround = false;
+
         }
 
-        localPlayer.rotation.y =
-            Math.atan2(
-                moveX,
-                moveZ
-            );
-    }
+    });
 
-    /* GRAVITY */
+    window.addEventListener('keyup',e=>{
 
-    velocityY -=
-        15 *
-        delta;
+        keys[e.code] = false;
 
-    localPlayer.position.y +=
-        velocityY *
-        delta;
+    });
 
-    if(
-        localPlayer.position.y <= 0
-    ){
-
-        localPlayer.position.y =
-            0;
-
-        velocityY =
-            0;
-
-        canJump =
-            true;
-    }
-
-    /* LIMIT */
-
-    localPlayer.position.x =
-        THREE.MathUtils.clamp(
-            localPlayer.position.x,
-            -16.5,
-            16.5
-        );
-
-    localPlayer.position.z =
-        THREE.MathUtils.clamp(
-            localPlayer.position.z,
-            -16.5,
-            16.5
-        );
-
-    /* SYNC */
-
-    if(joined){
-
-        socket.emit(
-            'player-move',
-            {
-                x:
-                    localPlayer.position.x,
-
-                y:
-                    localPlayer.position.y,
-
-                z:
-                    localPlayer.position.z,
-
-                ry:
-                    localPlayer.rotation.y,
-
-                jumping:
-                    !canJump
+    renderer.domElement.addEventListener(
+        'click',
+        ()=>{
+            if(!mouseLocked){
+                renderer.domElement.requestPointerLock();
             }
-        );
-    }
+        }
+    );
+
+    document.addEventListener(
+        'pointerlockchange',
+        ()=>{
+            mouseLocked =
+                document.pointerLockElement ===
+                renderer.domElement;
+        }
+    );
+
+    document.addEventListener(
+        'mousemove',
+        e=>{
+
+            if(!mouseLocked) return;
+
+            cameraYaw -=
+                e.movementX * .0025;
+
+            cameraPitch -=
+                e.movementY * .0018;
+
+            cameraPitch =
+                Math.max(
+                    -.15,
+                    Math.min(
+                        .65,
+                        cameraPitch
+                    )
+                );
+
+        }
+    );
+
 }
 
-/* =========================================================
+/* ============================================================
+   MOVEMENT
+============================================================ */
+
+function updatePlayer(dt){
+
+    if(!playerGroup) return;
+
+    const forward =
+        new THREE.Vector3(
+            -Math.sin(cameraYaw),
+            0,
+            -Math.cos(cameraYaw)
+        );
+
+    const right =
+        new THREE.Vector3(
+            Math.cos(cameraYaw),
+            0,
+            -Math.sin(cameraYaw)
+        );
+
+    const direction =
+        new THREE.Vector3();
+
+    if(keys.KeyW) direction.add(forward);
+    if(keys.KeyS) direction.sub(forward);
+    if(keys.KeyD) direction.add(right);
+    if(keys.KeyA) direction.sub(right);
+
+    if(direction.lengthSq() > 0){
+
+        direction.normalize();
+
+        const acceleration =
+            24 * dt;
+
+        velocity.x +=
+            direction.x *
+            acceleration;
+
+        velocity.z +=
+            direction.z *
+            acceleration;
+
+        const horizontalSpeed =
+            Math.sqrt(
+                velocity.x * velocity.x +
+                velocity.z * velocity.z
+            );
+
+        if(horizontalSpeed > moveSpeed){
+
+            const factor =
+                moveSpeed /
+                horizontalSpeed;
+
+            velocity.x *= factor;
+            velocity.z *= factor;
+
+        }
+
+        playerGroup.rotation.y =
+            Math.atan2(
+                direction.x,
+                direction.z
+            );
+
+    }else{
+
+        const damping =
+            Math.pow(.001,dt);
+
+        velocity.x *= damping;
+        velocity.z *= damping;
+
+    }
+
+    /* gravity */
+
+    velocity.y -=
+        gravity * dt;
+
+    const next =
+        playerGroup.position.clone();
+
+    next.x += velocity.x * dt;
+    next.y += velocity.y * dt;
+    next.z += velocity.z * dt;
+
+    /* floor */
+
+    if(next.y <= 0){
+
+        next.y = 0;
+
+        velocity.y = 0;
+
+        onGround = true;
+
+    }
+
+    /* collisions */
+
+    const radius = .42;
+
+    if(!blocked(
+        next.x,
+        next.z,
+        radius
+    )){
+
+        playerGroup.position.x =
+            next.x;
+
+        playerGroup.position.z =
+            next.z;
+
+    }else{
+
+        velocity.x = 0;
+        velocity.z = 0;
+
+    }
+
+    playerGroup.position.y =
+        next.y;
+
+    animateHuman(
+        player,
+        dt,
+        Math.abs(velocity.x) +
+        Math.abs(velocity.z)
+    );
+
+}
+
+/* ============================================================
    COLLISION
-========================================================= */
+============================================================ */
 
-function isBlocked(
-    x,
-    z
-){
+function blocked(x,z,radius){
 
-    /*
-        Стены
-    */
-
-    if(
-        x < -16.5 ||
-        x > 16.5 ||
-        z < -16.5 ||
-        z > 16.5
-    ){
-        return true;
-    }
-
-    /*
-        Сцена / stage
-    */
-
-    if(
-        z < -10.2 &&
-        z > -15.8 &&
-        Math.abs(x) < 6.5
-    ){
-        return true;
-    }
-
-    /*
-        Центральные минимальные колонны
-    */
-
-    const columns = [
-        [-14,-10],
-        [14,-10]
-    ];
-
-    for(
-        const [
-            cx,
-            cz
-        ] of columns
-    ){
+    for(const c of colliders){
 
         if(
-            Math.abs(x-cx) < 0.7 &&
-            Math.abs(z-cz) < 0.7
+            x + radius > c.minX &&
+            x - radius < c.maxX &&
+            z + radius > c.minZ &&
+            z - radius < c.maxZ
         ){
-            return true;
+
+            if(
+                c.maxY > 0 &&
+                c.minY < 2
+            ){
+                return true;
+            }
+
         }
+
     }
 
     return false;
 }
 
-/* =========================================================
-   CAMERA
-========================================================= */
+/* ============================================================
+   HUMAN ANIMATION
+============================================================ */
 
-function updateCamera(){
+let walkTime = 0;
 
-    if(!localPlayer){
-        return;
-    }
+function animateHuman(
+    human,
+    dt,
+    movement
+){
 
-    if(thirdPerson){
+    if(!human) return;
 
-        const distance =
-            6;
+    const parts =
+        human.userData.parts;
 
-        const height =
-            3.2;
+    if(!parts) return;
 
-        const target =
-            new THREE.Vector3(
-                localPlayer.position.x,
-                localPlayer.position.y +
-                    2,
-                localPlayer.position.z
-            );
+    const walking =
+        movement > .15;
 
-        const offset =
-            new THREE.Vector3(
-                Math.sin(cameraYaw) *
-                    distance,
+    if(walking){
 
-                height,
+        walkTime +=
+            dt *
+            (7 + movement);
 
-                Math.cos(cameraYaw) *
-                    distance
-            );
+        const swing =
+            Math.sin(
+                walkTime
+            ) * .48;
 
-        camera.position
-            .copy(target)
-            .add(offset);
+        parts.leftArm.rotation.x =
+            swing;
 
-        camera.lookAt(
-            target
-        );
+        parts.rightArm.rotation.x =
+            -swing;
+
+        parts.leftLeg.rotation.x =
+            -swing;
+
+        parts.rightLeg.rotation.x =
+            swing;
 
     }else{
 
-        const target =
-            new THREE.Vector3(
-                localPlayer.position.x,
-                localPlayer.position.y +
-                    2.1,
-                localPlayer.position.z
-            );
+        parts.leftArm.rotation.x *= .82;
+        parts.rightArm.rotation.x *= .82;
 
-        camera.position.lerp(
-            target,
-            0.3
-        );
+        parts.leftLeg.rotation.x *= .82;
+        parts.rightLeg.rotation.x *= .82;
 
-        const direction =
-            new THREE.Vector3(
-                -Math.sin(cameraYaw),
-                Math.sin(cameraPitch),
-                -Math.cos(cameraYaw)
-            );
-
-        camera.lookAt(
-            camera.position
-                .clone()
-                .add(direction)
-        );
     }
+
 }
 
-/* =========================================================
-   MOUSE
-========================================================= */
+/* ============================================================
+   CAMERA
+============================================================ */
 
-function requestPointerLock(){
+function updateCamera(){
+
+    if(!playerGroup) return;
+
+    const distance = 6.2;
+
+    const height = 2.8;
+
+    const offset =
+        new THREE.Vector3(
+            Math.sin(cameraYaw) * distance,
+            height +
+                Math.sin(cameraPitch) * 2,
+            Math.cos(cameraYaw) * distance
+        );
+
+    const target =
+        playerGroup.position.clone();
+
+    target.y += 2.05;
+
+    const desired =
+        target.clone().add(offset);
+
+    camera.position.lerp(
+        desired,
+        .12
+    );
+
+    camera.lookAt(
+        target
+    );
+
+}
+
+/* ============================================================
+   REMOTE PLAYERS
+============================================================ */
+
+function createRemotePlayer(data){
+
+    if(!data || !data.id) return;
 
     if(
-        renderer &&
-        renderer.domElement
+        data.id === socket.id ||
+        remotePlayers.has(data.id)
     ){
-
-        renderer.domElement.requestPointerLock();
-    }
-}
-
-function pointerLockChange(){
-
-    pointerLocked =
-        document.pointerLockElement ===
-        renderer.domElement;
-}
-
-function mouseMove(event){
-
-    if(!pointerLocked){
         return;
     }
 
-    cameraYaw -=
-        event.movementX *
-        0.0025;
+    const group =
+        new THREE.Group();
 
-    cameraPitch -=
-        event.movementY *
-        0.0025;
-
-    cameraPitch =
-        THREE.MathUtils.clamp(
-            cameraPitch,
-            -0.7,
-            0.9
-        );
-}
-
-/* =========================================================
-   SOCKET
-========================================================= */
-
-socket.on(
-    'server-ready',
-    () => {
-        console.log(
-            'SERVER READY'
-        );
-    }
-);
-
-socket.on(
-    'joined',
-    data => {
-
-        joined =
-            true;
-
-        document.getElementById(
-            'status'
-        ).textContent =
-            'ONLINE';
-
-        console.log(
-            'JOINED',
-            data
-        );
-    }
-);
-
-socket.on(
-    'online-users',
-    users => {
-
-        const list =
-            document.getElementById(
-                'online-list'
-            );
-
-        list.innerHTML = '';
-
-        users.forEach(
-            user => {
-
-                const div =
-                    document.createElement(
-                        'div'
-                    );
-
-                div.className =
-                    'online-user';
-
-                div.innerHTML =
-                    '<span class="online-dot"></span>' +
-                    escapeHTML(
-                        user.username
-                    );
-
-                list.appendChild(
-                    div
-                );
-            }
-        );
-
-        document.getElementById(
-            'status'
-        ).textContent =
-            `ONLINE ${users.length}`;
-    }
-);
-
-socket.on(
-    'players-state',
-    players => {
-
-        players.forEach(
-            addRemotePlayer
-        );
-    }
-);
-
-socket.on(
-    'player-joined',
-    player => {
-
-        addRemotePlayer(
-            player
-        );
-    }
-);
-
-socket.on(
-    'player-move',
-    data => {
-
-        const player =
-            remotePlayers.get(
-                data.id
-            );
-
-        if(!player){
-            addRemotePlayer(
-                data
-            );
-            return;
-        }
-
-        player.position.lerp(
-            new THREE.Vector3(
-                data.x,
-                data.y,
-                data.z
-            ),
-            0.35
-        );
-
-        player.rotation.y =
-            data.ry || 0;
-    }
-);
-
-socket.on(
-    'player-left',
-    id => {
-
-        removeRemotePlayer(
-            id
-        );
-    }
-);
-
-/* =========================================================
-   CHAT
-========================================================= */
-
-socket.on(
-    'chat-message',
-    message => {
-
-        addMessage(
-            message.user ||
-            message.username ||
-            'USER',
-            message.text
-        );
-    }
-);
-
-socket.on(
-    'system-message',
-    message => {
-
-        addMessage(
-            'SYSTEM',
-            message.text
-        );
-    }
-);
-
-function addMessage(
-    user,
-    text
-){
-
-    const messages =
-        document.getElementById(
-            'messages'
-        );
-
-    const div =
-        document.createElement(
-            'div'
-        );
-
-    div.className =
-        'message';
-
-    div.innerHTML =
-        '<span class="message-user">' +
-        escapeHTML(user) +
-        '</span> ' +
-        '<span class="message-text">' +
-        escapeHTML(text) +
-        '</span>';
-
-    messages.appendChild(
-        div
+    group.position.set(
+        Number(data.x) || 0,
+        Number(data.y) || 0,
+        Number(data.z) || 0
     );
 
-    while(
-        messages.children.length >
-        100
-    ){
+    group.rotation.y =
+        Number(data.ry) || 0;
 
-        messages.removeChild(
-            messages.firstChild
+    const human =
+        createHuman(false);
+
+    group.add(human);
+
+    group.userData.username =
+        data.username || 'Guest';
+
+    group.userData.target =
+        new THREE.Vector3(
+            group.position.x,
+            group.position.y,
+            group.position.z
         );
-    }
 
-    messages.scrollTop =
-        messages.scrollHeight;
-}
+    group.userData.targetRotation =
+        group.rotation.y;
 
-document
-    .getElementById(
-        'chat-form'
-    )
-    .addEventListener(
-        'submit',
-        event => {
+    scene.add(group);
 
-            event.preventDefault();
-
-            const input =
-                document.getElementById(
-                    'chat-input'
-                );
-
-            const text =
-                input.value.trim();
-
-            if(!text){
-                return;
-            }
-
-            socket.emit(
-                'chat-message',
-                {
-                    text
-                }
-            );
-
-            input.value = '';
-        }
+    remotePlayers.set(
+        data.id,
+        group
     );
 
-/* =========================================================
-   AUDIO
-========================================================= */
+}
 
-document
-    .getElementById(
-        'audio-button'
-    )
-    .onclick = startAudio;
+function updateRemotePlayer(data){
 
-function startAudio(){
+    const group =
+        remotePlayers.get(data.id);
 
-    if(audioStarted){
+    if(!group){
+
+        createRemotePlayer(data);
         return;
+
     }
 
-    audioStarted =
-        true;
+    group.userData.target.set(
+        Number(data.x) || 0,
+        Number(data.y) || 0,
+        Number(data.z) || 0
+    );
 
-    audio =
-        document.createElement(
-            'audio'
+    group.userData.targetRotation =
+        Number(data.ry) || 0;
+
+}
+
+function updateRemotePlayers(dt){
+
+    remotePlayers.forEach(group=>{
+
+        group.position.lerp(
+            group.userData.target,
+            Math.min(
+                1,
+                dt * 12
+            )
         );
 
-    audio.controls =
-        false;
+        const targetRotation =
+            group.userData.targetRotation;
 
-    audio.autoplay =
-        true;
+        let diff =
+            targetRotation -
+            group.rotation.y;
 
-    audio.muted =
-        false;
+        while(diff > Math.PI)
+            diff -= Math.PI * 2;
 
-    audio.playsInline =
-        true;
+        while(diff < -Math.PI)
+            diff += Math.PI * 2;
 
-    audio.src =
+        group.rotation.y +=
+            diff *
+            Math.min(
+                1,
+                dt * 10
+            );
+
+        const human =
+            group.children[0];
+
+        animateHuman(
+            human,
+            dt,
+            group.position.distanceTo(
+                group.userData.target
+            ) * 10
+        );
+
+    });
+
+}
+
+function removeRemotePlayer(id){
+
+    const group =
+        remotePlayers.get(id);
+
+    if(!group) return;
+
+    scene.remove(group);
+
+    remotePlayers.delete(id);
+
+}
+
+/* ============================================================
+   SEND PLAYER
+============================================================ */
+
+let sendTimer = 0;
+
+function syncPlayer(dt){
+
+    sendTimer += dt;
+
+    if(sendTimer < .05) return;
+
+    sendTimer = 0;
+
+    if(!loggedIn || !playerGroup) return;
+
+    socket.emit('player-move',{
+
+        x:playerGroup.position.x,
+        y:playerGroup.position.y,
+        z:playerGroup.position.z,
+
+        ry:playerGroup.rotation.y,
+
+        jumping:!onGround
+
+    });
+
+}
+
+/* ============================================================
+   AUDIO / HLS
+============================================================ */
+
+let hls = null;
+
+function setupStream(){
+
+    const url =
         '/hls/ews/index.m3u8';
 
-    document.body.appendChild(
-        audio
-    );
+    if(Hls.isSupported()){
 
-    if(
-        window.Hls &&
-        Hls.isSupported()
-    ){
-
-        const hls =
+        hls =
             new Hls({
                 enableWorker:true,
-                lowLatencyMode:true
+                lowLatencyMode:true,
+                liveSyncDurationCount:2
             });
 
-        hls.loadSource(
-            '/hls/ews/index.m3u8'
-        );
+        hls.loadSource(url);
 
-        hls.attachMedia(
-            audio
-        );
+        hls.attachMedia(stream);
 
         hls.on(
             Hls.Events.MANIFEST_PARSED,
-            () => {
+            ()=>{
+                console.log(
+                    '[EWS] HLS READY'
+                );
+            }
+        );
 
-                audio.play()
-                    .catch(
-                        console.error
-                    );
+        hls.on(
+            Hls.Events.ERROR,
+            (event,data)=>{
+
+                console.log(
+                    '[EWS HLS]',
+                    data.type,
+                    data.details
+                );
+
             }
         );
 
     }else if(
-        audio.canPlayType(
+        stream.canPlayType(
             'application/vnd.apple.mpegurl'
         )
     ){
 
-        audio.play()
-            .catch(
-                console.error
+        stream.src = url;
+
+    }
+
+}
+
+setupStream();
+
+audioButton.addEventListener(
+    'click',
+    async()=>{
+
+        try{
+
+            if(stream.paused){
+
+                await stream.play();
+
+                audioButton.textContent =
+                    'AUDIO / STREAM ON';
+
+            }else{
+
+                stream.pause();
+
+                audioButton.textContent =
+                    'AUDIO / STREAM OFF';
+
+            }
+
+        }catch(error){
+
+            console.log(
+                '[AUDIO]',
+                error
             );
+
+        }
+
     }
+);
 
-    document.getElementById(
-        'audio-button'
-    ).textContent =
-        'AUDIO ON';
-}
+/* ============================================================
+   RENDER
+============================================================ */
 
-/* =========================================================
-   ESCAPE
-========================================================= */
+function animate(){
 
-function escapeHTML(
-    value
-){
-
-    return String(
-        value
-    )
-    .replace(
-        /&/g,
-        '&amp;'
-    )
-    .replace(
-        /</g,
-        '&lt;'
-    )
-    .replace(
-        />/g,
-        '&gt;'
-    )
-    .replace(
-        /"/g,
-        '&quot;'
-    )
-    .replace(
-        /'/g,
-        '&#039;'
+    requestAnimationFrame(
+        animate
     );
+
+    if(!gameStarted) return;
+
+    const dt =
+        Math.min(
+            clock.getDelta(),
+            .05
+        );
+
+    updatePlayer(dt);
+
+    updateRemotePlayers(dt);
+
+    updateCamera();
+
+    syncPlayer(dt);
+
+    renderer.render(
+        scene,
+        camera
+    );
+
 }
 
-/* =========================================================
+/* ============================================================
    RESIZE
-========================================================= */
+============================================================ */
 
-function onResize(){
+function resize(){
 
-    if(!camera || !renderer){
-        return;
-    }
+    if(!camera || !renderer) return;
 
     camera.aspect =
         window.innerWidth /
@@ -2303,38 +2370,11 @@ function onResize(){
         window.innerWidth,
         window.innerHeight
     );
-}
 
-/* =========================================================
-   ANIMATION
-========================================================= */
-
-function animate(){
-
-    requestAnimationFrame(
-        animate
-    );
-
-    const delta =
-        Math.min(
-            clock.getDelta(),
-            0.05
-        );
-
-    updatePlayer(
-        delta
-    );
-
-    updateCamera();
-
-    renderer.render(
-        scene,
-        camera
-    );
 }
 
 </script>
 
 </body>
-
 </html>
+```
