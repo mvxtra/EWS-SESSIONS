@@ -752,56 +752,36 @@ input:focus{
 }
 
 
-/* =========================================================
-   EWS SESSIONS — VISUAL THEME V3
-   VISUAL ONLY: no JavaScript or functionality changed
-========================================================= */
-:root{
-  --ews-bg:#020202;
-  --ews-panel:rgba(8,8,8,.78);
-  --ews-panel-strong:rgba(4,4,4,.92);
-  --ews-line:rgba(255,255,255,.16);
-  --ews-line-soft:rgba(255,255,255,.07);
-  --ews-text:#f4f4f4;
-  --ews-muted:#777;
-  --ews-dim:#444;
-  --ews-glow:rgba(255,255,255,.18);
-}
-html,body{background:#000!important;color:var(--ews-text)!important;}
-body{overflow:hidden;letter-spacing:.02em;}
-#app{background:radial-gradient(circle at 50% 42%,rgba(255,255,255,.035),transparent 38%),#000;}
-#app::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:90;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.58) 100%);}
-#app::after{content:"EWS / SESSIONS";position:fixed;left:22px;bottom:18px;pointer-events:none;z-index:91;color:rgba(255,255,255,.14);font:9px/1 monospace;letter-spacing:4px;}
-#canvas3d{filter:contrast(1.06) brightness(.94);}
-#top-logo{font-weight:900!important;letter-spacing:6px!important;text-shadow:0 0 22px rgba(255,255,255,.14);}
-#top-logo span{letter-spacing:3px!important;color:#777!important;}
-#online-box,#chat,#screen-menu,#screen-control,#audio-control,#stream-indicator,#lang,#hint{box-shadow:0 12px 40px rgba(0,0,0,.42),inset 0 1px rgba(255,255,255,.05);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
-#online-box{background:linear-gradient(145deg,rgba(12,12,12,.88),rgba(2,2,2,.72))!important;border:1px solid var(--ews-line)!important;border-radius:2px;}
-#online-box::before{content:"LIVE ROOM";display:block;color:#555;font:8px monospace;letter-spacing:3px;margin-bottom:7px;}
-#online-box h3{color:#aaa!important;letter-spacing:3px!important;}
-#online-list li{border-bottom:1px solid rgba(255,255,255,.045);transition:.2s;}
+/* EWS SESSIONS V4 — VISUAL ONLY / NO JS CHANGES */
+body{background:#000;color:#fff;}
+#app{background:radial-gradient(circle at 50% 45%,rgba(255,255,255,.035),transparent 38%),#000;}
+#hud{font-family:Arial,Helvetica,sans-serif;}
+#hud:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:90;background:radial-gradient(circle at center,transparent 45%,rgba(0,0,0,.38) 100%);mix-blend-mode:multiply;}
+#hud:after{content:"EWS / SESSIONS";position:fixed;left:24px;bottom:22px;pointer-events:none;color:rgba(255,255,255,.16);font:700 9px/1 monospace;letter-spacing:4px;z-index:90;}
+#top-logo{font-weight:900;letter-spacing:7px;text-shadow:0 0 18px rgba(255,255,255,.18);}
+#top-logo span{letter-spacing:3px;color:#777;}
+#online-box,#chat,#screen-menu,#hint,#stream-indicator,#audio-control,#screen-control,#lang{background:rgba(8,8,8,.72);border:1px solid rgba(255,255,255,.16);box-shadow:0 14px 40px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.06);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+#online-box{border-radius:2px;}
+#online-box h3,#chat-title{color:#fff;letter-spacing:3px;font-weight:700;}
+#online-list li{border-bottom:1px solid rgba(255,255,255,.07);padding:4px 0;}
 #online-list li:last-child{border-bottom:0;}
-#chat{background:linear-gradient(145deg,rgba(10,10,10,.88),rgba(0,0,0,.78))!important;border:1px solid var(--ews-line)!important;border-radius:2px;}
-#chat-title{color:#aaa!important;letter-spacing:3px!important;border-bottom:1px solid var(--ews-line-soft);padding-bottom:8px;}
-#chat-messages{scrollbar-width:thin;scrollbar-color:#444 transparent;}
-#chat-input{background:rgba(255,255,255,.035)!important;border:1px solid #292929!important;color:#fff!important;outline:none!important;}
-#chat-input:focus{border-color:#777!important;box-shadow:0 0 18px rgba(255,255,255,.05);}
-#chat-send{background:#fff!important;color:#000!important;border:0!important;transition:.18s;}
+#online-list li:before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 9px #fff;margin-right:7px;vertical-align:middle;}
+#chat{border-radius:3px;overflow:hidden;}
+#chat-messages{scrollbar-width:thin;scrollbar-color:#555 transparent;}
+#chat-input{background:rgba(0,0,0,.72)!important;border:1px solid rgba(255,255,255,.16)!important;color:#fff!important;outline:none;}
+#chat-input:focus{border-color:rgba(255,255,255,.45)!important;box-shadow:0 0 20px rgba(255,255,255,.06);}
+#chat-send{background:#fff!important;color:#000!important;border:0!important;font-weight:900;transition:.2s;}
 #chat-send:hover{background:#ccc!important;}
-#stream-indicator{background:rgba(0,0,0,.72)!important;border:1px solid #292929!important;border-radius:2px;}
-#stream-indicator.live{border-color:#aaa!important;box-shadow:0 0 18px rgba(255,255,255,.08);}
-#stream-indicator.error{box-shadow:0 0 18px rgba(255,60,60,.08);}
-#audio-control,#screen-control{background:rgba(8,8,8,.82)!important;border:1px solid #333!important;color:#aaa!important;border-radius:2px;transition:.18s;}
-#audio-control:hover,#screen-control:hover{color:#fff!important;border-color:#888!important;background:#111!important;}
-#audio-control.live{border-color:#aaa!important;color:#fff!important;box-shadow:0 0 22px rgba(255,255,255,.08);}
-#screen-menu{background:rgba(4,4,4,.94)!important;border:1px solid #444!important;border-radius:2px;}
-#lang{background:rgba(5,5,5,.88)!important;border:1px solid #333!important;color:#aaa!important;border-radius:2px;outline:none;}
+#stream-indicator{border-radius:999px;letter-spacing:3px;}
+#stream-indicator.live{box-shadow:0 0 22px rgba(255,255,255,.12);}
+#audio-control,#screen-control{border-radius:999px;transition:all .2s ease;}
+#audio-control:hover,#screen-control:hover{background:#fff;color:#000;border-color:#fff;box-shadow:0 0 24px rgba(255,255,255,.16);}
+#screen-menu{border-radius:4px;}
+#lang{border-radius:999px;outline:none;}
 #zone-label{font-weight:700;text-shadow:0 0 15px rgba(255,255,255,.2);}
-#hint{background:rgba(4,4,4,.72)!important;border:1px solid #252525!important;color:#666!important;border-radius:2px;}
-@media(max-width:700px){
- #app::after{left:12px;bottom:8px;font-size:7px;letter-spacing:2px;}
- #online-box,#chat{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
-}
+#hint{border-radius:2px;color:#999;}
+button,input,select{font-family:inherit;}
+@media(max-width:700px){#hud:after{display:none;}#top-logo{letter-spacing:4px;}}
 
 </style>
 </head>
