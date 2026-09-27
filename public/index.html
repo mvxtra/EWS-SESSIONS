@@ -14,8 +14,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
-
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
@@ -485,38 +483,6 @@ input:focus{
   letter-spacing:1px;
 }
 
-#stream-indicator{
-  position:absolute;
-
-  top:18px;
-  left:50%;
-
-  transform:translateX(-50%);
-
-  padding:6px 12px;
-
-  background:rgba(0,0,0,.75);
-
-  border:1px solid #333;
-
-  color:#777;
-
-  font-family:monospace;
-
-  font-size:10px;
-  letter-spacing:2px;
-}
-
-#stream-indicator.live{
-  color:#fff;
-  border-color:#aaa;
-}
-
-#stream-indicator.error{
-  color:#ff5555;
-  border-color:#ff5555;
-}
-
 #lang-bar{
   position:absolute;
 
@@ -549,56 +515,6 @@ input:focus{
   letter-spacing:5px;
 
   color:rgba(255,255,255,.4);
-
-  pointer-events:none;
-}
-
-#audio-control{
-  position:absolute;
-
-  top:58px;
-  left:50%;
-
-  transform:translateX(-50%);
-
-  z-index:100;
-
-  pointer-events:auto;
-
-  padding:9px 14px;
-
-  border:1px solid #444;
-
-  background:rgba(0,0,0,.78);
-
-  color:#aaa;
-
-  font-family:monospace;
-
-  font-size:10px;
-
-  letter-spacing:2px;
-
-  cursor:pointer;
-}
-
-#audio-control.live{
-  color:#fff;
-  border-color:#aaa;
-}
-
-#audio-control:disabled{
-  opacity:.7;
-  cursor:wait;
-}
-
-#ews-audio{
-  position:absolute;
-
-  width:1px;
-  height:1px;
-
-  opacity:0;
 
   pointer-events:none;
 }
@@ -652,30 +568,6 @@ input:focus{
 
   #online-list li{
     padding:2px 0;
-  }
-
-  #stream-indicator{
-    top:52px;
-    left:12px;
-
-    transform:none;
-
-    padding:5px 8px;
-
-    font-size:8px;
-  }
-
-  #audio-control{
-    top:84px;
-    left:12px;
-
-    transform:none;
-
-    padding:8px 10px;
-
-    font-size:8px;
-
-    z-index:150;
   }
 
   #chat{
@@ -762,12 +654,6 @@ input:focus{
 
 <canvas id="canvas3d"></canvas>
 
-<audio
-  id="ews-audio"
-  crossorigin="anonymous"
-  playsinline
-  preload="none">
-</audio>
 
 <!-- =====================================================
      LOGIN
@@ -839,15 +725,7 @@ input:focus{
     <span>SESSIONS</span>
   </div>
 
-  <div id="stream-indicator">
-    AUDIO: READY
-  </div>
 
-  <button
-    id="audio-control"
-    onclick="startSSHAudio()">
-    ▶ AUDIO: START
-  </button>
 
   <button
     id="screen-control"
@@ -856,7 +734,7 @@ input:focus{
   </button>
 
   <div id="screen-menu">
-    <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
+    <div id="screen-menu-title">CLUB SCREEN</div>
     <div id="screen-menu-row">
       <input
         id="screen-url"
@@ -867,7 +745,7 @@ input:focus{
       <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
       <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
     </div>
-    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
+    <div id="screen-status">YouTube / Twitch / сайт будут показаны прямо на экране на стене.</div>
   </div>
 
   <div id="lang-bar">
@@ -928,7 +806,6 @@ input:focus{
   </div>
 
   <div id="media-screen">
-    <button id="media-screen-close" onclick="clearClubScreen()">×</button>
     <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
   </div>
 
@@ -973,22 +850,12 @@ let lightObjects=[];
 
 let particles;
 
-let analyser=null;
-let freqData=null;
 
-let audioLevel=0;
-let bassLevel=0;
 
-let audioContext=null;
-let audioSource=null;
 
-let audioStarted=false;
 
-let hls=null;
 
 let screenTexture;
-let screenCanvas;
-let screenCtx;
 let screenMesh;
 let screenMediaActive=false;
 let screenMediaUrl='';
@@ -1517,16 +1384,7 @@ function init3D(){
   createParticles();
   createPlayer();
 
-  setupAudio();
-
   setupControls();
-
-  // Браузер блокирует autoplay. Первый клик по клубу автоматически запускает HLS-аудио.
-  document.addEventListener('pointerdown', function(){
-    if(!audioStarted){
-      startSSHAudio().catch(function(){});
-    }
-  }, {once:false, passive:true});
 
   animate();
 
@@ -1715,61 +1573,64 @@ function createDanceFloor(){
 }
 
 function createMainScreen(){
-  // Физическая панель/рамка на задней стене клуба.
-  screenCanvas=document.createElement('canvas');
-  screenCanvas.width=1024;
-  screenCanvas.height=512;
-  screenCtx=screenCanvas.getContext('2d');
-  screenCtx.fillStyle='#050505';
-  screenCtx.fillRect(0,0,1024,512);
-  screenTexture=new THREE.CanvasTexture(screenCanvas);
-  screenTexture.needsUpdate=true;
-
+  // ЕДИНСТВЕННЫЙ экран клуба: физически закреплён на задней стене.
+  // Никакого отдельного HTML-окна перед камерой.
   const frame=new THREE.Mesh(
     new THREE.BoxGeometry(14.6,6.6,.42),
-    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
+    new THREE.MeshStandardMaterial({
+      color:0x080808,
+      metalness:.75,
+      roughness:.28
+    })
   );
   frame.position.set(0,3.65,-16.72);
   scene.add(frame);
 
+  // Чёрная поверхность экрана. Она остаётся на стене, пока ссылка не загружена.
   screenMesh=new THREE.Mesh(
     new THREE.PlaneGeometry(14,6),
-    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
+    new THREE.MeshBasicMaterial({
+      color:0x000000,
+      side:THREE.FrontSide
+    })
   );
-  screenMesh.position.set(0,3.65,-16.35);
+  screenMesh.position.set(0,3.65,-16.47);
   scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
-    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
+  [
+    [14.2,.035,.035,0,6.68,-16.43],
+    [14.2,.035,.035,0,.62,-16.43],
+    [.035,6.1,.035,-7.08,3.65,-16.43],
+    [.035,6.1,.035,7.08,3.65,-16.43]
+  ].forEach(a=>{
+    const m=new THREE.Mesh(
+      new THREE.BoxGeometry(a[0],a[1],a[2]),
+      borderMat
+    );
     m.position.set(a[3],a[4],a[5]);
     scene.add(m);
   });
 
-  // Настоящий экран с iframe. Он находится в CSS3D-сцене
-  // на тех же координатах, что и физическая панель стены.
+  // HTML iframe становится частью CSS3D-сцены и получает те же 3D-координаты.
   const panel=document.getElementById('media-screen');
-  if(panel && scene){
-    panel.style.position='absolute';
-    panel.style.left='0';
-    panel.style.top='0';
+  if(panel){
     panel.style.width='1400px';
     panel.style.height='600px';
     panel.style.display='none';
+    panel.style.background='#000';
+    panel.style.border='0';
+    panel.style.overflow='hidden';
+    panel.style.pointerEvents='auto';
 
     screenDomObject=new THREE.CSS3DObject(panel);
-    screenDomObject.position.set(0,3.65,-16.36);
+    screenDomObject.position.set(0,3.65,-16.30);
     screenDomObject.rotation.set(0,0,0);
     screenDomObject.scale.set(.01,.01,.01);
-    screenDomObject.element.style.transformStyle='preserve-3d';
     screenDomObject.visible=false;
     css3dScene.add(screenDomObject);
-
-    const frameEl=document.getElementById('media-screen-frame');
-    if(frameEl) frameEl.style.pointerEvents='auto';
   }
 }
-
 function createStage(){
 
   const stageMat =
@@ -2269,447 +2130,6 @@ function createPlayer(){
 }
 
 /* =========================================================
-   AUDIO
-========================================================= */
-
-function setupAudio(){
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  indicator.textContent=
-    'AUDIO: READY';
-
-  indicator.classList.remove(
-    'live',
-    'error'
-  );
-
-  button.textContent=
-    '▶ AUDIO: START';
-
-  button.classList.remove(
-    'live'
-  );
-
-}
-
-async function startSSHAudio(){
-
-  const audio =
-    document.getElementById(
-      'ews-audio'
-    );
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  if(!audio)return;
-
-  const hlsUrl =
-    window.location.origin+
-    '/hls/ews/index.m3u8';
-
-  indicator.classList.remove(
-    'error'
-  );
-
-  indicator.classList.add(
-    'live'
-  );
-
-  indicator.textContent=
-    'AUDIO: CONNECTING...';
-
-  button.disabled=true;
-
-  button.textContent=
-    '● AUDIO: CONNECTING';
-
-  try{
-
-    if(!audioContext){
-
-      audioContext =
-        new(
-          window.AudioContext ||
-          window.webkitAudioContext
-        )();
-
-      audioSource =
-        audioContext.createMediaElementSource(
-          audio
-        );
-
-      analyser =
-        audioContext.createAnalyser();
-
-      analyser.fftSize=256;
-
-      analyser.smoothingTimeConstant=.82;
-
-      freqData =
-        new Uint8Array(
-          analyser.frequencyBinCount
-        );
-
-      audioSource.connect(
-        analyser
-      );
-
-      analyser.connect(
-        audioContext.destination
-      );
-
-    }
-
-    if(
-      audioContext.state===
-      'suspended'
-    ){
-
-      await audioContext.resume();
-
-    }
-
-    if(hls){
-
-      try{
-        hls.destroy();
-      }catch(e){}
-
-      hls=null;
-
-    }
-
-    if(
-      window.Hls &&
-      Hls.isSupported()
-    ){
-
-      hls =
-        new Hls({
-
-          enableWorker:true,
-
-          lowLatencyMode:true,
-
-          backBufferLength:30,
-
-          maxBufferLength:10,
-
-          maxMaxBufferLength:20,
-
-          liveSyncDurationCount:3,
-
-          liveMaxLatencyDurationCount:6
-
-        });
-
-      hls.loadSource(
-        hlsUrl
-      );
-
-      hls.attachMedia(
-        audio
-      );
-
-      hls.on(
-        Hls.Events.MANIFEST_PARSED,
-        async function(){
-
-          indicator.textContent=
-            'AUDIO: LIVE';
-
-          button.textContent=
-            '● AUDIO: LIVE';
-
-          button.classList.add(
-            'live'
-          );
-
-          button.disabled=false;
-
-          audioStarted=true;
-
-          try{
-
-            await audio.play();
-
-          }catch(err){
-
-            console.warn(
-              'Audio play blocked:',
-              err
-            );
-
-            indicator.textContent=
-              'AUDIO: PRESS START';
-
-            button.textContent=
-              '▶ AUDIO: START';
-
-            button.classList.remove(
-              'live'
-            );
-
-          }
-
-        }
-      );
-
-      hls.on(
-        Hls.Events.ERROR,
-        function(
-          event,
-          data
-        ){
-
-          console.error(
-            '[HLS]',
-            data
-          );
-
-          if(!data.fatal)return;
-
-          if(
-            data.type===
-            Hls.ErrorTypes.NETWORK_ERROR
-          ){
-
-            indicator.textContent=
-              'AUDIO: RECONNECTING...';
-
-            button.textContent=
-              '● AUDIO: RECONNECTING';
-
-            setTimeout(
-              function(){
-
-                if(hls){
-
-                  try{
-                    hls.startLoad();
-                  }catch(e){}
-
-                }
-
-              },
-              1000
-            );
-
-          }
-
-          else if(
-            data.type===
-            Hls.ErrorTypes.MEDIA_ERROR
-          ){
-
-            indicator.textContent=
-              'AUDIO: RECOVERING...';
-
-            try{
-
-              hls.recoverMediaError();
-
-            }catch(e){
-
-              console.error(e);
-
-            }
-
-          }
-
-          else{
-
-            indicator.textContent=
-              'AUDIO: NO STREAM';
-
-            indicator.classList.remove(
-              'live'
-            );
-
-            indicator.classList.add(
-              'error'
-            );
-
-            button.textContent=
-              '▶ AUDIO: RETRY';
-
-            button.classList.remove(
-              'live'
-            );
-
-            button.disabled=false;
-
-          }
-
-        }
-      );
-
-    }
-
-    else if(
-      audio.canPlayType(
-        'application/vnd.apple.mpegurl'
-      )
-    ){
-
-      audio.src=
-        hlsUrl;
-
-      audio.addEventListener(
-        'loadedmetadata',
-        async function(){
-
-          try{
-
-            await audio.play();
-
-          }catch(err){
-
-            console.error(err);
-
-          }
-
-        },
-        {
-          once:true
-        }
-      );
-
-    }
-
-    else{
-
-      throw new Error(
-        'HLS is not supported by this browser'
-      );
-
-    }
-
-    audio.onplaying=function(){
-
-      indicator.textContent=
-        'AUDIO: LIVE';
-
-      indicator.classList.add(
-        'live'
-      );
-
-      indicator.classList.remove(
-        'error'
-      );
-
-      button.textContent=
-        '● AUDIO: LIVE';
-
-      button.classList.add(
-        'live'
-      );
-
-      button.disabled=false;
-
-      audioStarted=true;
-
-    };
-
-    audio.onpause=function(){
-
-      if(
-        audioStarted &&
-        !audio.ended
-      ){
-
-        indicator.textContent=
-          'AUDIO: PAUSED';
-
-        button.textContent=
-          '▶ AUDIO: RESUME';
-
-        button.classList.remove(
-          'live'
-        );
-
-      }
-
-    };
-
-    audio.onerror=function(){
-
-      console.error(
-        '[AUDIO]',
-        audio.error
-      );
-
-      indicator.textContent=
-        'AUDIO: ERROR';
-
-      indicator.classList.remove(
-        'live'
-      );
-
-      indicator.classList.add(
-        'error'
-      );
-
-      button.textContent=
-        '▶ AUDIO: RETRY';
-
-      button.classList.remove(
-        'live'
-      );
-
-      button.disabled=false;
-
-    };
-
-  }catch(err){
-
-    console.error(
-      '[EWS AUDIO ERROR]',
-      err
-    );
-
-    indicator.textContent=
-      'AUDIO: NO STREAM';
-
-    indicator.classList.remove(
-      'live'
-    );
-
-    indicator.classList.add(
-      'error'
-    );
-
-    button.textContent=
-      '▶ AUDIO: RETRY';
-
-    button.classList.remove(
-      'live'
-    );
-
-    button.disabled=false;
-
-  }
-
-}
-
-/* =========================================================
    CONTROLS
 ========================================================= */
 
@@ -2999,80 +2419,6 @@ function animate(){
   const time =
     performance.now()/1000;
 
-  let bass=.2;
-  let level=.2;
-
-  if(
-    analyser &&
-    freqData &&
-    audioStarted
-  ){
-
-    analyser.getByteFrequencyData(
-      freqData
-    );
-
-    let b=0;
-
-    for(
-      let i=0;
-      i<10 &&
-      i<freqData.length;
-      i++
-    ){
-
-      b+=freqData[i];
-
-    }
-
-    bass=
-      b/
-      (
-        Math.min(
-          10,
-          freqData.length
-        )*255
-      );
-
-    let total=0;
-
-    for(
-      let i=0;
-      i<freqData.length;
-      i++
-    ){
-
-      total+=freqData[i];
-
-    }
-
-    level=
-      total/
-      (
-        freqData.length*255
-      );
-
-  }
-
-  else{
-
-    bass=
-      .25+
-      Math.sin(time*3)*.12;
-
-    level=
-      .25+
-      Math.sin(time*1.5)*.08;
-
-  }
-
-  bassLevel=
-    bassLevel*.82+
-    bass*.18;
-
-  audioLevel=
-    audioLevel*.88+
-    level*.12;
 
   const speed=
     chatMode
@@ -3195,9 +2541,7 @@ function animate(){
     particles.rotation.y+=
       .00015;
 
-    particles.material.opacity=
-      .22+
-      audioLevel*.18;
+    particles.material.opacity=.28;
 
   }
 
@@ -3212,12 +2556,11 @@ function animate(){
     (obj,index)=>{
 
       const pulse=
-        .5+
+        .65+
         Math.sin(
           time*3+
           index*.4
-        )*.25+
-        bassLevel*.7;
+        )*.18;
 
       const value=
         Math.min(
@@ -3238,150 +2581,15 @@ function animate(){
     (light,index)=>{
 
       light.intensity=
-        1+
-        bassLevel*2+
+        .9+
         Math.sin(
           time*2+
           index
-        )*.15;
+        )*.12;
 
     }
   );
 
-  if(screenCtx){
-
-    screenCtx.fillStyle=
-      '#050505';
-
-    screenCtx.fillRect(
-      0,
-      0,
-      1024,
-      512
-    );
-
-    const grd =
-      screenCtx.createLinearGradient(
-        0,
-        0,
-        1024,
-        0
-      );
-
-    const intensity=
-      40+
-      Math.floor(
-        bassLevel*120
-      );
-
-    grd.addColorStop(
-      0,
-      `rgb(${intensity},${intensity},${intensity})`
-    );
-
-    grd.addColorStop(
-      .5,
-      '#050505'
-    );
-
-    grd.addColorStop(
-      1,
-      `rgb(${intensity},${intensity},${intensity})`
-    );
-
-    screenCtx.fillStyle=
-      grd;
-
-    screenCtx.fillRect(
-      0,
-      0,
-      1024,
-      512
-    );
-
-    screenCtx.fillStyle=
-      '#fff';
-
-    screenCtx.font=
-      'bold 80px Arial';
-
-    screenCtx.textAlign=
-      'center';
-
-    screenCtx.fillText(
-      'EWS SESSIONS',
-      512,
-      200
-    );
-
-    screenCtx.font=
-      '22px Arial';
-
-    screenCtx.fillStyle=
-      '#777';
-
-    screenCtx.fillText(
-      'UNDERGROUND CLUB',
-      512,
-      245
-    );
-
-    const bars=48;
-
-    const bw=
-      800/bars;
-
-    for(
-      let i=0;
-      i<bars;
-      i++
-    ){
-
-      let value;
-
-      if(
-        freqData &&
-        audioStarted
-      ){
-
-        value=
-          freqData[
-            Math.floor(
-              i*
-              freqData.length/
-              bars
-            )
-          ]/255;
-
-      }else{
-
-        value=
-          .2+
-          Math.sin(
-            time*4+
-            i*.5
-          )*.15;
-
-      }
-
-      const h=
-        value*180;
-
-      screenCtx.fillStyle=
-        '#fff';
-
-      screenCtx.fillRect(
-        112+i*bw,
-        450-h,
-        bw-3,
-        h
-      );
-
-    }
-
-    screenTexture.needsUpdate=true;
-
-  }
 
   renderer.render(
     scene,
@@ -3457,7 +2665,7 @@ function broadcastPlayerState(now){
   if(!socket || !socket.connected || !camera) return;
   if(now-lastPlayerBroadcast<50) return;
   lastPlayerBroadcast=now;
-  socket.emit('player-state',{x:camera.position.x,y:camera.position.y-1.7,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser,jumping:!grounded,moving:!!(forward||side)});
+  socket.emit('player-state',{x:camera.position.x,y:camera.position.y-1.7,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser,jumping:!grounded,moving:!!(keys['KeyW']||keys['KeyA']||keys['KeyS']||keys['KeyD'])});
 }
 
 function applyRemoteClubScreen(state){
@@ -3490,28 +2698,7 @@ function applyRemoteClubScreen(state){
    CLEANUP
 ========================================================= */
 
-window.addEventListener(
-  'beforeunload',
-  function(){
-
-    try{
-
-      if(hls){
-        hls.destroy();
-      }
-
-    }catch(e){}
-
-    try{
-
-      if(audioContext){
-        audioContext.close();
-      }
-
-    }catch(e){}
-
-  }
-);
+window.addEventListener('beforeunload',function(){});
 
 </script>
 
