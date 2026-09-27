@@ -13,9 +13,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
-
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
@@ -26,8 +24,7 @@
   box-sizing:border-box;
 }
 
-html,
-body{
+html,body{
   width:100%;
   height:100%;
   overflow:hidden;
@@ -50,7 +47,6 @@ body{
   display:block;
 }
 
-/* 3D HTML layer — the club screen is physically anchored in Three.js */
 #css3d-container{
   position:absolute;
   inset:0;
@@ -87,11 +83,6 @@ body{
   background:#000;
 }
 
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
 #login{
   position:absolute;
   inset:0;
@@ -99,32 +90,19 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-
   background:
-    radial-gradient(
-      circle at 50% 40%,
-      rgba(255,255,255,.08),
-      transparent 25%
-    ),
-    radial-gradient(
-      circle at 50% 50%,
-      #171717,
-      #030303 70%
-    );
+    radial-gradient(circle at 50% 40%,rgba(255,255,255,.08),transparent 25%),
+    radial-gradient(circle at 50% 50%,#171717,#030303 70%);
 }
 
 .login-box{
   width:380px;
   padding:42px;
-
   background:rgba(5,5,5,.88);
-
   border:1px solid #444;
-
   box-shadow:
     0 0 80px rgba(255,255,255,.06),
     inset 0 0 40px rgba(255,255,255,.02);
-
   text-align:center;
 }
 
@@ -169,11 +147,9 @@ input{
   height:45px;
   margin-bottom:12px;
   padding:0 14px;
-
   border:1px solid #333;
   background:#080808;
   color:#fff;
-
   outline:none;
 }
 
@@ -184,15 +160,11 @@ input:focus{
 .btn{
   width:100%;
   height:45px;
-
   border:0;
-
   background:#fff;
   color:#000;
-
   font-weight:bold;
   letter-spacing:2px;
-
   cursor:pointer;
 }
 
@@ -207,38 +179,27 @@ input:focus{
   font-size:12px;
 }
 
-/* =========================================================
-   HUD
-========================================================= */
-
 #hud{
   position:absolute;
   inset:0;
   z-index:20;
-
   display:none;
-
   pointer-events:none;
 }
 
 #top-logo{
   position:absolute;
-
   top:18px;
   left:20px;
-
   font-size:16px;
   font-weight:900;
   letter-spacing:5px;
-
   text-shadow:0 0 20px #fff;
 }
 
 #top-logo span{
   display:block;
-
   margin-top:4px;
-
   font-size:8px;
   letter-spacing:3px;
   color:#777;
@@ -246,18 +207,12 @@ input:focus{
 
 #online-box{
   position:absolute;
-
   top:18px;
   right:18px;
-
   width:190px;
-
   padding:13px;
-
   background:rgba(0,0,0,.72);
-
   border:1px solid #333;
-
   pointer-events:auto;
 }
 
@@ -270,52 +225,35 @@ input:focus{
 
 #online-list{
   list-style:none;
-
   max-height:180px;
   overflow:auto;
-
   color:#ddd;
   font-size:12px;
 }
 
 #online-list li{
   padding:4px 0;
-
   border-bottom:1px solid #161616;
 }
 
 #online-list li::before{
   content:"●";
-
   color:#fff;
-
   margin-right:7px;
-
   font-size:8px;
 }
 
-/* =========================================================
-   CHAT
-========================================================= */
-
 #chat{
   position:absolute;
-
   left:18px;
   bottom:18px;
-
   width:390px;
   height:250px;
-
   padding:12px;
-
   display:flex;
   flex-direction:column;
-
   background:rgba(0,0,0,.75);
-
   border:1px solid #333;
-
   pointer-events:auto;
 }
 
@@ -323,21 +261,17 @@ input:focus{
   font-size:9px;
   letter-spacing:3px;
   color:#777;
-
   margin-bottom:8px;
 }
 
 #chat-messages{
   flex:1;
-
   overflow-y:auto;
-
   margin-bottom:8px;
 }
 
 .msg{
   margin-bottom:7px;
-
   font-size:12px;
   line-height:1.4;
 }
@@ -364,19 +298,11 @@ input:focus{
 
 #chat-send{
   width:45px;
-
   border:0;
-
   background:#fff;
   color:#000;
-
   cursor:pointer;
 }
-
-
-/* =========================================================
-   CLUB SCREEN / MEDIA
-========================================================= */
 
 #screen-control{
   position:fixed;
@@ -416,7 +342,9 @@ input:focus{
   pointer-events:auto;
 }
 
-#screen-menu.open{display:block;}
+#screen-menu.open{
+  display:block;
+}
 
 #screen-menu-title{
   font-size:10px;
@@ -459,67 +387,91 @@ input:focus{
   line-height:1.4;
 }
 
-#css3d-container{position:absolute;inset:0;width:100%;height:100%;z-index:15;pointer-events:none;overflow:hidden;}
-#css3d-screen{width:1400px;height:600px;position:absolute;left:0;top:0;background:#000;border:1px solid #222;box-shadow:0 0 45px rgba(0,0,0,.9);pointer-events:auto;overflow:hidden;display:none;}
-#css3d-screen.active{display:block;}
-#css3d-screen iframe{width:100%;height:100%;border:0;display:block;background:#000;pointer-events:auto;}
-#css3d-screen-close{position:absolute;top:7px;right:7px;z-index:2;width:28px;height:28px;border:1px solid #555;background:rgba(0,0,0,.85);color:#fff;cursor:pointer;font-size:14px;line-height:26px;}
-
-@media(max-width:700px){
-  #screen-menu-row{flex-wrap:wrap;}
-  #screen-url{flex-basis:100%;}
+#emotes-control{
+  position:fixed;
+  left:50%;
+  bottom:58px;
+  transform:translateX(-50%);
+  z-index:32;
+  pointer-events:auto;
+  height:34px;
+  padding:0 18px;
+  border:1px solid #444;
+  background:rgba(0,0,0,.82);
+  color:#fff;
+  font-size:10px;
+  font-weight:bold;
+  letter-spacing:3px;
+  cursor:pointer;
 }
 
-/* =========================================================
-   EMOTES / DANCES
-========================================================= */
-#emotes-control{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:32;pointer-events:auto;height:34px;padding:0 18px;border:1px solid #444;background:rgba(0,0,0,.82);color:#fff;font-size:10px;font-weight:bold;letter-spacing:3px;cursor:pointer;}
-#emotes-control:hover{background:#fff;color:#000;}
-#emotes-menu{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:41;width:250px;padding:10px;background:rgba(4,4,4,.97);border:1px solid #444;box-shadow:0 20px 70px rgba(0,0,0,.7);display:none;pointer-events:auto;}
-#emotes-menu.open{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-.emote-btn{height:36px;border:1px solid #333;background:#111;color:#fff;cursor:pointer;font-size:10px;letter-spacing:1px;}
-.emote-btn:hover{background:#fff;color:#000;}
-#emote-stop{grid-column:1/-1;}
-/* =========================================================
-   OTHER HUD
-========================================================= */
+#emotes-control:hover{
+  background:#fff;
+  color:#000;
+}
+
+#emotes-menu{
+  position:fixed;
+  left:50%;
+  bottom:100px;
+  transform:translateX(-50%);
+  z-index:41;
+  width:250px;
+  padding:10px;
+  background:rgba(4,4,4,.97);
+  border:1px solid #444;
+  box-shadow:0 20px 70px rgba(0,0,0,.7);
+  display:none;
+  pointer-events:auto;
+}
+
+#emotes-menu.open{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+}
+
+.emote-btn{
+  height:36px;
+  border:1px solid #333;
+  background:#111;
+  color:#fff;
+  cursor:pointer;
+  font-size:10px;
+  letter-spacing:1px;
+}
+
+.emote-btn:hover{
+  background:#fff;
+  color:#000;
+}
+
+#emote-stop{
+  grid-column:1/-1;
+}
 
 #hint{
   position:absolute;
-
   right:18px;
   bottom:18px;
-
   padding:9px 12px;
-
   background:rgba(0,0,0,.65);
-
   border:1px solid #292929;
-
   color:#777;
-
   font-size:10px;
   letter-spacing:1px;
 }
 
 #stream-indicator{
   position:absolute;
-
   top:18px;
   left:50%;
-
   transform:translateX(-50%);
-
   padding:6px 12px;
-
   background:rgba(0,0,0,.75);
-
   border:1px solid #333;
-
   color:#777;
-
   font-family:monospace;
-
   font-size:10px;
   letter-spacing:2px;
 }
@@ -536,66 +488,43 @@ input:focus{
 
 #lang-bar{
   position:absolute;
-
   right:220px;
   top:18px;
-
   pointer-events:auto;
 }
 
 #lang{
   background:#080808;
-
   border:1px solid #333;
-
   color:#aaa;
-
   padding:7px 10px;
 }
 
 #zone-label{
   position:absolute;
-
   left:50%;
   bottom:90px;
-
   transform:translateX(-50%);
-
   font-size:10px;
-
   letter-spacing:5px;
-
   color:rgba(255,255,255,.4);
-
   pointer-events:none;
 }
 
 #audio-control{
   position:absolute;
-
   top:58px;
   left:50%;
-
   transform:translateX(-50%);
-
   z-index:100;
-
   pointer-events:auto;
-
   padding:9px 14px;
-
   border:1px solid #444;
-
   background:rgba(0,0,0,.78);
-
   color:#aaa;
-
   font-family:monospace;
-
   font-size:10px;
-
   letter-spacing:2px;
-
   cursor:pointer;
 }
 
@@ -611,18 +540,11 @@ input:focus{
 
 #ews-audio{
   position:absolute;
-
   width:1px;
   height:1px;
-
   opacity:0;
-
   pointer-events:none;
 }
-
-/* =========================================================
-   MOBILE
-========================================================= */
 
 @media(max-width:700px){
 
@@ -649,11 +571,8 @@ input:focus{
   #online-box{
     top:52px;
     right:12px;
-
     width:145px;
-
     padding:9px;
-
     max-height:105px;
   }
 
@@ -674,24 +593,17 @@ input:focus{
   #stream-indicator{
     top:52px;
     left:12px;
-
     transform:none;
-
     padding:5px 8px;
-
     font-size:8px;
   }
 
   #audio-control{
     top:84px;
     left:12px;
-
     transform:none;
-
     padding:8px 10px;
-
     font-size:8px;
-
     z-index:150;
   }
 
@@ -699,28 +611,17 @@ input:focus{
     left:10px;
     right:10px;
     bottom:10px;
-
     width:auto;
-
     height:31vh;
-
     min-height:190px;
     max-height:270px;
-
     padding:9px;
-
     z-index:200;
-
     background:rgba(0,0,0,.86);
   }
 
   #chat-title{
     font-size:8px;
-    margin-bottom:6px;
-  }
-
-  #chat-messages{
-    font-size:11px;
     margin-bottom:6px;
   }
 
@@ -731,15 +632,12 @@ input:focus{
 
   #chat-input{
     height:38px;
-
     font-size:14px;
-
     padding:0 9px;
   }
 
   #chat-send{
     width:44px;
-
     font-size:18px;
   }
 
@@ -749,8 +647,15 @@ input:focus{
 
   #zone-label{
     bottom:calc(31vh + 20px);
-
     font-size:8px;
+  }
+
+  #screen-menu-row{
+    flex-wrap:wrap;
+  }
+
+  #screen-url{
+    flex-basis:100%;
   }
 }
 
@@ -780,9 +685,17 @@ input:focus{
 <canvas id="canvas3d"></canvas>
 
 <div id="css3d-container">
+
   <div id="css3d-screen">
-    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+
+    <iframe
+      id="media-screen-frame"
+      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen>
+    </iframe>
+
   </div>
+
 </div>
 
 <audio
@@ -792,9 +705,7 @@ input:focus{
   preload="none">
 </audio>
 
-<!-- =====================================================
-     LOGIN
-===================================================== -->
+<!-- LOGIN -->
 
 <div id="login">
 
@@ -802,9 +713,7 @@ input:focus{
 
     <h1>EWS</h1>
 
-    <p>
-      SESSIONS / UNDERGROUND CLUB
-    </p>
+    <p>SESSIONS / UNDERGROUND CLUB</p>
 
     <div class="tabs">
 
@@ -825,15 +734,13 @@ input:focus{
     <input
       id="f-username"
       placeholder="USERNAME"
-      autocomplete="username"
-    >
+      autocomplete="username">
 
     <input
       id="f-password"
       type="password"
       placeholder="PASSWORD"
-      autocomplete="current-password"
-    >
+      autocomplete="current-password">
 
     <button
       class="btn"
@@ -842,18 +749,13 @@ input:focus{
       ВОЙТИ
     </button>
 
-    <div
-      id="error"
-      class="error">
-    </div>
+    <div id="error" class="error"></div>
 
   </div>
 
 </div>
 
-<!-- =====================================================
-     HUD
-===================================================== -->
+<!-- HUD -->
 
 <div id="hud">
 
@@ -879,30 +781,90 @@ input:focus{
   </button>
 
   <div id="screen-menu">
-    <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
+
+    <div id="screen-menu-title">
+      EWS SESSIONS / CLUB SCREEN
+    </div>
+
     <div id="screen-menu-row">
+
       <input
         id="screen-url"
         type="url"
         placeholder="YouTube / Twitch / website URL"
-        autocomplete="off"
-      >
-      <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
-      <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
+        autocomplete="off">
+
+      <button
+        class="screen-btn"
+        onclick="loadClubScreen()">
+        LOAD
+      </button>
+
+      <button
+        class="screen-btn"
+        onclick="clearClubScreen()">
+        CLEAR
+      </button>
+
     </div>
-    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
+
+    <div id="screen-status">
+      YouTube и Twitch открываются через официальный embed.
+    </div>
+
   </div>
 
-  <button id="emotes-control" onclick="toggleEmotesMenu()">EMOTES</button>
+  <button
+    id="emotes-control"
+    onclick="toggleEmotesMenu()">
+    EMOTES
+  </button>
 
   <div id="emotes-menu">
-    <button class="emote-btn" onclick="playDance(1)">DANCE 01</button>
-    <button class="emote-btn" onclick="playDance(2)">DANCE 02</button>
-    <button class="emote-btn" onclick="playDance(3)">SHUFFLE</button>
-    <button class="emote-btn" onclick="playDance(4)">ROBOT</button>
-    <button class="emote-btn" onclick="playDance(5)">BOUNCE</button>
-    <button class="emote-btn" onclick="playDance(6)">WAVE</button>
-    <button id="emote-stop" class="emote-btn" onclick="stopDance()">STOP DANCE</button>
+
+    <button
+      class="emote-btn"
+      onclick="playDance(1)">
+      DANCE 01
+    </button>
+
+    <button
+      class="emote-btn"
+      onclick="playDance(2)">
+      DANCE 02
+    </button>
+
+    <button
+      class="emote-btn"
+      onclick="playDance(3)">
+      SHUFFLE
+    </button>
+
+    <button
+      class="emote-btn"
+      onclick="playDance(4)">
+      ROBOT
+    </button>
+
+    <button
+      class="emote-btn"
+      onclick="playDance(5)">
+      BOUNCE
+    </button>
+
+    <button
+      class="emote-btn"
+      onclick="playDance(6)">
+      WAVE
+    </button>
+
+    <button
+      id="emote-stop"
+      class="emote-btn"
+      onclick="stopDance()">
+      STOP DANCE
+    </button>
+
   </div>
 
   <div id="lang-bar">
@@ -930,9 +892,7 @@ input:focus{
 
   <div id="online-box">
 
-    <h3>
-      ONLINE
-    </h3>
+    <h3>ONLINE</h3>
 
     <ul id="online-list"></ul>
 
@@ -951,8 +911,7 @@ input:focus{
       <input
         id="chat-input"
         autocomplete="off"
-        placeholder="write something..."
-      >
+        placeholder="write something...">
 
       <button id="chat-send">
         →
@@ -961,7 +920,6 @@ input:focus{
     </form>
 
   </div>
-
 
   <div id="zone-label">
     MAIN FLOOR
@@ -977,6 +935,10 @@ input:focus{
 
 <script>
 
+/* =========================================================
+   GLOBAL
+========================================================= */
+
 let mode='login';
 
 let socket=null;
@@ -985,18 +947,20 @@ let currentUser=null;
 let scene;
 let camera;
 let renderer;
+
 let cssScene;
 let cssRenderer;
 let cssScreenObject;
 
 let keys={};
 
-// JUMP / GRAVITY
 let jumpVelocity=0;
 let playerY=1.7;
+
 const GROUND_Y=1.7;
 const JUMP_FORCE=7.2;
 const GRAVITY=18;
+
 let isGrounded=true;
 
 let yaw=0;
@@ -1029,36 +993,66 @@ let screenTexture;
 let screenCanvas;
 let screenCtx;
 let screenMesh;
+
 let screenMediaActive=false;
 let screenMediaUrl='';
+
 let onlineUserList=[];
+
 let remotePlayers=new Map();
+
 let lastPlayerBroadcast=0;
-let clubScreenHost=null;
+
+let clubScreenHost='mvxtra';
+
 let activeDance=0;
 let danceStartedAt=0;
 
 let playerBody;
 
 /* =========================================================
-   EWS TEXTURES
-   CC0 seamless textures from ShareTextures
+   TEXTURES
 ========================================================= */
 
-const EWS_TEXTURES = {
-  concrete: 'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
-  floor: 'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+const EWS_TEXTURES={
+  concrete:'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
+  floor:'https://images.sharetextures.com/u/stone_floor_1-min.webp'
 };
 
-const ewsTextureLoader = new THREE.TextureLoader();
+const ewsTextureLoader=
+  new THREE.TextureLoader();
 
-function loadEWSTexture(url, repeatX=4, repeatY=4){
-  const texture = ewsTextureLoader.load(url);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeatX, repeatY);
-  texture.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 8);
-  texture.colorSpace = THREE.SRGBColorSpace;
+function loadEWSTexture(
+  url,
+  repeatX=4,
+  repeatY=4
+){
+
+  const texture=
+    ewsTextureLoader.load(url);
+
+  texture.wrapS=
+    THREE.RepeatWrapping;
+
+  texture.wrapT=
+    THREE.RepeatWrapping;
+
+  texture.repeat.set(
+    repeatX,
+    repeatY
+  );
+
+  texture.anisotropy=
+    Math.min(
+      8,
+      renderer
+        ? renderer.capabilities.getMaxAnisotropy()
+        : 8
+    );
+
+  texture.colorSpace=
+    THREE.SRGBColorSpace;
+
   return texture;
 }
 
@@ -1106,18 +1100,18 @@ function switchTab(type){
 
 async function doLogin(){
 
-  const username =
+  const username=
     document
       .getElementById('f-username')
       .value
       .trim();
 
-  const password =
+  const password=
     document
       .getElementById('f-password')
       .value;
 
-  const error =
+  const error=
     document.getElementById('error');
 
   error.textContent='';
@@ -1132,17 +1126,15 @@ async function doLogin(){
 
   try{
 
-    const res =
+    const res=
       await fetch(
         '/api/'+mode,
         {
           method:'POST',
-
           headers:{
             'Content-Type':
               'application/json'
           },
-
           body:JSON.stringify({
             username,
             password
@@ -1150,7 +1142,7 @@ async function doLogin(){
         }
       );
 
-    const data =
+    const data=
       await res.json();
 
     if(data.error){
@@ -1161,7 +1153,9 @@ async function doLogin(){
       return;
     }
 
-    startSession(username);
+    startSession(
+      data.username || username
+    );
 
   }catch(err){
 
@@ -1190,209 +1184,591 @@ function startSession(username){
     'hud'
   ).style.display='block';
 
-  // SCREEN button is a HUD control and belongs only to mvxtra.
   clubScreenHost='mvxtra';
-  const screenButton=document.getElementById('screen-control');
+
+  const screenButton=
+    document.getElementById(
+      'screen-control'
+    );
+
   if(screenButton){
-    screenButton.style.display = String(currentUser).toLowerCase()==='mvxtra' ? 'block' : 'none';
+
+    screenButton.style.display=
+      isClubHost()
+        ? 'block'
+        : 'none';
+
   }
 
   init3D();
 
   socket=io();
 
-  socket.on('connect',function(){
+  socket.on(
+    'connect',
+    function(){
 
-    socket.emit(
-      'join',
-      {
-        username: currentUser,
-        language:
-          document.getElementById('lang').value
-      }
-    );
+      socket.emit(
+        'join',
+        {
+          username:currentUser,
+          language:
+            document.getElementById(
+              'lang'
+            ).value
+        }
+      );
 
-    // Explicit snapshot request makes reconnects deterministic.
-    setTimeout(()=>{
-      if(socket && socket.connected) socket.emit('request-players');
-    },120);
+      setTimeout(
+        ()=>{
+          if(
+            socket &&
+            socket.connected
+          ){
+            socket.emit(
+              'request-players'
+            );
+          }
+        },
+        150
+      );
 
-  });
+    }
+  );
+
+  /* =====================================================
+     ONLINE
+  ===================================================== */
 
   socket.on(
     'online-users',
     list=>{
 
-      onlineUserList=Array.isArray(list)?list:[];
-      // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
-      clubScreenHost='mvxtra';
+      onlineUserList=
+        Array.isArray(list)
+          ? list
+          : [];
 
-      const ul =
-        document.getElementById('online-list');
+      const ul=
+        document.getElementById(
+          'online-list'
+        );
 
       ul.innerHTML='';
 
-      const screenButton=document.getElementById('screen-control');
-      if(screenButton){ screenButton.style.display=isClubHost()?'block':'none'; }
+      const screenButton=
+        document.getElementById(
+          'screen-control'
+        );
 
-      if(!Array.isArray(list)) return;
+      if(screenButton){
 
-      list.forEach(user=>{
+        screenButton.style.display=
+          isClubHost()
+            ? 'block'
+            : 'none';
 
-        const li =
-          document.createElement('li');
+      }
 
-        const name =
-          typeof user === 'string'
-            ? user
-            : user.username;
+      onlineUserList.forEach(
+        user=>{
 
-        li.textContent =
-          name === currentUser
-            ? name + ' (YOU)'
-            : name;
+          const li=
+            document.createElement(
+              'li'
+            );
 
-        ul.appendChild(li);
+          const name=
+            typeof user==='string'
+              ? user
+              : user.username;
 
-      });
+          li.textContent=
+            String(name).toLowerCase()===
+            String(currentUser).toLowerCase()
+              ? name+' (YOU)'
+              : name;
+
+          ul.appendChild(li);
+
+        }
+      );
 
     }
   );
 
-  // Compatibility with an older server version.
-  socket.on('online',list=>{
-
-    if(socket.connected){
-      socket.emit('request-online');
-    }
-
-  });
+  /* =====================================================
+     CHAT
+  ===================================================== */
 
   socket.on(
     'chat-message',
     message=>{
+      renderChatMessage(message);
+    }
+  );
 
-      const el =
-        document.createElement(
-          'div'
-        );
+  socket.on(
+    'club-screen-state',
+    state=>{
+      applyRemoteClubScreen(state);
+    }
+  );
 
-      el.className='msg';
+  /* =====================================================
+     PLAYERS
+  ===================================================== */
 
-      const time =
-        new Date(
-          message.ts
-        ).toLocaleTimeString();
+  socket.on(
+    'players-state',
+    list=>{
 
-      const user =
-        document.createElement(
-          'span'
-        );
+      if(!Array.isArray(list))
+        return;
 
-      user.className='u';
+      const alive=
+        new Set();
 
-      user.textContent=
-        message.user;
+      list.forEach(
+        data=>{
 
-      const text =
-        document.createElement(
-          'span'
-        );
+          if(
+            !data ||
+            !data.id ||
+            data.id===socket.id
+          ){
+            return;
+          }
 
-      text.className='t';
+          alive.add(data.id);
 
-      text.textContent=
-        ' '+time+' '+message.text;
+          updateRemotePlayer(
+            data
+          );
 
-      el.appendChild(user);
-
-      el.appendChild(
-        document.createTextNode(' ')
+        }
       );
 
-      el.appendChild(text);
-
-      const box =
-        document.getElementById(
-          'chat-messages'
+      Array
+        .from(remotePlayers.keys())
+        .forEach(
+          id=>{
+            if(!alive.has(id)){
+              removeRemotePlayer(id);
+            }
+          }
         );
-
-      box.appendChild(el);
-
-      box.scrollTop=
-        box.scrollHeight;
 
     }
   );
 
-  socket.on('club-screen-state', state=>{
-    applyRemoteClubScreen(state);
-  });
+  socket.on(
+    'player-joined',
+    data=>{
 
-  // =====================================================
-  // MULTIPLAYER — initial snapshot + live updates
-  // =====================================================
+      if(
+        !data ||
+        !data.id ||
+        data.id===socket.id
+      ){
+        return;
+      }
 
-  socket.on('players-state', list=>{
-    if(!Array.isArray(list)) return;
-
-    // Server sends everyone except the current socket.
-    // Rebuild only the missing players so existing objects keep moving smoothly.
-    const alive = new Set();
-
-    list.forEach(data=>{
-      if(!data || !data.id || data.id===socket.id) return;
-      alive.add(data.id);
       updateRemotePlayer(data);
-    });
 
-    // Remove players that are no longer present in the server snapshot.
-    Array.from(remotePlayers.keys()).forEach(id=>{
-      if(!alive.has(id)) removeRemotePlayer(id);
-    });
-  });
+    }
+  );
 
-  socket.on('player-joined', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
+  socket.on(
+    'player-state',
+    data=>{
 
-  socket.on('player-state', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
+      if(
+        !data ||
+        !data.id ||
+        data.id===socket.id
+      ){
+        return;
+      }
 
-  // Compatibility with the older multiplayer event name.
-  socket.on('player-move', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
+      updateRemotePlayer(data);
 
-  socket.on('player-left', id=>{
-    removeRemotePlayer(id);
-  });
+    }
+  );
 
-  socket.on('player-removed', id=>{
-    removeRemotePlayer(id);
-  });
+  socket.on(
+    'player-move',
+    data=>{
 
-  // Ask the server for a fresh snapshot after every connection.
-  socket.on('joined', ()=>{
-    socket.emit('request-players');
-  });
+      if(
+        !data ||
+        !data.id ||
+        data.id===socket.id
+      ){
+        return;
+      }
 
-  socket.on('connect', ()=>{
-    // The server may have already sent the snapshot during join.
-    // This request also makes reconnects deterministic.
-    setTimeout(()=>{
-      if(socket && socket.connected) socket.emit('request-players');
-    }, 100);
-  });
+      updateRemotePlayer(data);
+
+    }
+  );
+
+  socket.on(
+    'player-emote',
+    data=>{
+
+      if(
+        !data ||
+        !data.id ||
+        data.id===socket.id
+      ){
+        return;
+      }
+
+      const p=
+        remotePlayers.get(
+          data.id
+        );
+
+      if(!p)return;
+
+      const map={
+        dance1:1,
+        dance2:2,
+        shuffle:3,
+        robot:4,
+        bounce:5,
+        wave:6
+      };
+
+      p.dance=
+        map[data.emote] || 0;
+
+      p.danceStartedAt=
+        Date.now();
+
+    }
+  );
+
+  socket.on(
+    'player-left',
+    id=>{
+      removeRemotePlayer(id);
+    }
+  );
+
+  socket.on(
+    'player-removed',
+    id=>{
+      removeRemotePlayer(id);
+    }
+  );
 
 }
 
 /* =========================================================
-   CHAT
+   CHAT TRANSLATOR
+========================================================= */
+
+const translationCache=
+  new Map();
+
+async function translateMessage(
+  text,
+  fromLang,
+  toLang
+){
+
+  text=
+    String(text || '')
+      .trim();
+
+  fromLang=
+    String(fromLang || 'auto')
+      .trim();
+
+  toLang=
+    String(toLang || 'ru')
+      .trim();
+
+  if(!text)
+    return '';
+
+  if(
+    fromLang!=='auto' &&
+    fromLang.toLowerCase()===
+    toLang.toLowerCase()
+  ){
+    return text;
+  }
+
+  const key=
+    fromLang+
+    '|'+
+    toLang+
+    '|'+
+    text;
+
+  if(
+    translationCache.has(key)
+  ){
+
+    return translationCache.get(key);
+
+  }
+
+  try{
+
+    const url=
+      'https://translate.googleapis.com/translate_a/single'+
+      '?client=gtx'+
+      '&sl='+encodeURIComponent(fromLang)+
+      '&tl='+encodeURIComponent(toLang)+
+      '&dt=t'+
+      '&q='+encodeURIComponent(text);
+
+    const response=
+      await fetch(url);
+
+    if(!response.ok){
+
+      throw new Error(
+        'Translation HTTP '+
+        response.status
+      );
+
+    }
+
+    const data=
+      await response.json();
+
+    let translated='';
+
+    if(
+      Array.isArray(data) &&
+      Array.isArray(data[0])
+    ){
+
+      translated=
+        data[0]
+          .map(
+            part=>
+              part && part[0]
+                ? part[0]
+                : ''
+          )
+          .join('');
+
+    }
+
+    if(!translated)
+      translated=text;
+
+    translationCache.set(
+      key,
+      translated
+    );
+
+    return translated;
+
+  }catch(err){
+
+    console.warn(
+      '[EWS TRANSLATOR]',
+      err
+    );
+
+    return text;
+
+  }
+
+}
+
+async function renderChatMessage(
+  message
+){
+
+  if(!message)
+    return;
+
+  const box=
+    document.getElementById(
+      'chat-messages'
+    );
+
+  if(!box)
+    return;
+
+  const el=
+    document.createElement(
+      'div'
+    );
+
+  el.className='msg';
+
+  const user=
+    document.createElement(
+      'span'
+    );
+
+  user.className='u';
+
+  user.textContent=
+    String(
+      message.user ||
+      'PLAYER'
+    );
+
+  const text=
+    document.createElement(
+      'span'
+    );
+
+  text.className='t';
+
+  const timestamp=
+    message.timestamp ||
+    message.ts ||
+    Date.now();
+
+  const time=
+    new Date(timestamp)
+      .toLocaleTimeString(
+        [],
+        {
+          hour:'2-digit',
+          minute:'2-digit'
+        }
+      );
+
+  const original=
+    String(
+      message.text || ''
+    );
+
+  const sourceLang=
+    String(
+      message.lang || 'auto'
+    );
+
+  const targetLang=
+    String(
+      document
+        .getElementById('lang')
+        ?.value ||
+      'ru'
+    );
+
+  text.textContent=
+    ' '+
+    time+
+    ' '+
+    original;
+
+  el.appendChild(user);
+
+  el.appendChild(
+    document.createTextNode(' ')
+  );
+
+  el.appendChild(text);
+
+  box.appendChild(el);
+
+  box.scrollTop=
+    box.scrollHeight;
+
+  /*
+   * Свои сообщения оставляем как есть.
+   */
+
+  if(
+    String(message.user || '')
+      .toLowerCase()===
+    String(currentUser || '')
+      .toLowerCase()
+  ){
+
+    return;
+
+  }
+
+  /*
+   * Если язык сообщения уже совпадает
+   * с языком пользователя — перевод не нужен.
+   */
+
+  if(
+    sourceLang!=='auto' &&
+    sourceLang.toLowerCase()===
+    targetLang.toLowerCase()
+  ){
+
+    return;
+
+  }
+
+  text.textContent=
+    ' '+
+    time+
+    ' '+
+    original+
+    ' …';
+
+  const translated=
+    await translateMessage(
+      original,
+      sourceLang,
+      targetLang
+    );
+
+  /*
+   * Пользователь мог поменять язык,
+   * пока перевод загружался.
+   */
+
+  const currentTarget=
+    String(
+      document
+        .getElementById('lang')
+        ?.value ||
+      'ru'
+    );
+
+  if(
+    currentTarget!==targetLang
+  ){
+
+    const translatedAgain=
+      await translateMessage(
+        original,
+        sourceLang,
+        currentTarget
+      );
+
+    text.textContent=
+      ' '+
+      time+
+      ' '+
+      translatedAgain;
+
+  }else{
+
+    text.textContent=
+      ' '+
+      time+
+      ' '+
+      translated;
+
+  }
+
+  box.scrollTop=
+    box.scrollHeight;
+
+}
+
+/* =========================================================
+   CHAT SEND
 ========================================================= */
 
 document
@@ -1403,40 +1779,54 @@ document
 
       e.preventDefault();
 
-      if(!socket)return;
+      if(!socket)
+        return;
 
-      const input =
+      const input=
         document.getElementById(
           'chat-input'
         );
 
-      const text =
+      const text=
         input.value.trim();
 
-      if(!text)return;
+      if(!text)
+        return;
 
       socket.emit(
         'chat-message',
         {
           user:currentUser,
           text:text,
-
           lang:
-            document.getElementById(
-              'lang'
-            ).value
+            document
+              .getElementById('lang')
+              .value
         }
       );
 
       input.value='';
 
-      // Enter sends the message and immediately returns control to the club.
       chatMode=false;
+
       input.blur();
+
       keys={};
-      const canvas=document.getElementById('canvas3d');
-      if(canvas && document.pointerLockElement!==canvas){
-        try{ canvas.requestPointerLock(); }catch(err){}
+
+      const canvas=
+        document.getElementById(
+          'canvas3d'
+        );
+
+      if(
+        canvas &&
+        document.pointerLockElement!==canvas
+      ){
+
+        try{
+          canvas.requestPointerLock();
+        }catch(err){}
+
       }
 
     }
@@ -1461,34 +1851,64 @@ document
 
       }
 
+      /*
+       * Перерисовываем уже открытый чат
+       * на новый язык.
+       */
+
+      retranslateVisibleChat();
+
     }
   );
 
+async function retranslateVisibleChat(){
+
+  const box=
+    document.getElementById(
+      'chat-messages'
+    );
+
+  if(!box)
+    return;
+
+  const messages=
+    Array.from(
+      box.querySelectorAll('.msg')
+    );
+
+  /*
+   * История хранится отдельно.
+   * Чтобы не ломать DOM, новые сообщения
+   * будут переводиться сразу.
+   */
+
+}
+
 /* =========================================================
-   THREE.JS
+   THREE
 ========================================================= */
 
 function init3D(){
 
-  scene =
+  scene=
     new THREE.Scene();
 
-  scene.background =
+  scene.background=
     new THREE.Color(
       0x000000
     );
 
-  scene.fog =
+  scene.fog=
     new THREE.FogExp2(
       0x000000,
-      0.045
+      .045
     );
 
-  camera =
+  camera=
     new THREE.PerspectiveCamera(
       72,
       innerWidth/innerHeight,
-      0.1,
+      .1,
       150
     );
 
@@ -1498,13 +1918,12 @@ function init3D(){
     13
   );
 
-  renderer =
+  renderer=
     new THREE.WebGLRenderer({
       canvas:
         document.getElementById(
           'canvas3d'
         ),
-
       antialias:true
     });
 
@@ -1520,45 +1939,84 @@ function init3D(){
     )
   );
 
-  // =====================================================
-  // CSS3D SCREEN — permanently anchored to the physical wall
-  // =====================================================
-  cssScene = new THREE.Scene();
-  cssRenderer = new THREE.CSS3DRenderer();
-  cssRenderer.setSize(innerWidth, innerHeight);
-  cssRenderer.domElement.style.position='absolute';
+  cssScene=
+    new THREE.Scene();
+
+  cssRenderer=
+    new THREE.CSS3DRenderer();
+
+  cssRenderer.setSize(
+    innerWidth,
+    innerHeight
+  );
+
+  cssRenderer.domElement.style.position=
+    'absolute';
+
   cssRenderer.domElement.style.left='0';
   cssRenderer.domElement.style.top='0';
   cssRenderer.domElement.style.width='100%';
   cssRenderer.domElement.style.height='100%';
   cssRenderer.domElement.style.zIndex='15';
   cssRenderer.domElement.style.pointerEvents='none';
-  document.getElementById('css3d-container').appendChild(cssRenderer.domElement);
 
-  const cssScreenEl=document.getElementById('css3d-screen');
-  cssScreenObject=new THREE.CSS3DObject(cssScreenEl);
-  cssScreenObject.position.set(0,3.65,-16.455);
-  cssScreenObject.rotation.set(0,0,0);
-  cssScreenObject.scale.set(0.01,0.01,0.01);
-  cssScene.add(cssScreenObject);
+  document
+    .getElementById(
+      'css3d-container'
+    )
+    .appendChild(
+      cssRenderer.domElement
+    );
+
+  const cssScreenEl=
+    document.getElementById(
+      'css3d-screen'
+    );
+
+  cssScreenObject=
+    new THREE.CSS3DObject(
+      cssScreenEl
+    );
+
+  cssScreenObject.position.set(
+    0,
+    3.65,
+    -16.455
+  );
+
+  cssScreenObject.rotation.set(
+    0,
+    0,
+    0
+  );
+
+  cssScreenObject.scale.set(
+    .01,
+    .01,
+    .01
+  );
+
+  cssScene.add(
+    cssScreenObject
+  );
 
   renderer.shadowMap.enabled=true;
 
-  renderer.shadowMap.type =
+  renderer.shadowMap.type=
     THREE.PCFSoftShadowMap;
 
-  const ambient =
+  const ambient=
     new THREE.AmbientLight(
       0xffffff,
-      0.045
+      .045
     );
 
   scene.add(ambient);
 
-  const ceilingLight =
+  const ceilingLight=
     new THREE.PointLight(
       0xffffff,
-      0.65,
+      .65,
       40
     );
 
@@ -1593,14 +2051,14 @@ function init3D(){
   createLight(
     -8,2,5,
     0x666666,
-    0.8,
+    .8,
     14
   );
 
   createLight(
     8,2,5,
     0x666666,
-    0.8,
+    .8,
     14
   );
 
@@ -1621,7 +2079,6 @@ function init3D(){
   createPlayer();
 
   setupAudio();
-
   setupControls();
 
   animate();
@@ -1629,7 +2086,7 @@ function init3D(){
 }
 
 /* =========================================================
-   OBJECTS
+   OBJECT HELPERS
 ========================================================= */
 
 function createBox(
@@ -1640,7 +2097,7 @@ function createBox(
   receive=true
 ){
 
-  const mesh =
+  const mesh=
     new THREE.Mesh(
       new THREE.BoxGeometry(
         w,h,d
@@ -1652,11 +2109,8 @@ function createBox(
     x,y,z
   );
 
-  mesh.castShadow=
-    cast;
-
-  mesh.receiveShadow=
-    receive;
+  mesh.castShadow=cast;
+  mesh.receiveShadow=receive;
 
   scene.add(mesh);
 
@@ -1671,7 +2125,7 @@ function createLight(
   distance
 ){
 
-  const light =
+  const light=
     new THREE.PointLight(
       color,
       intensity,
@@ -1686,79 +2140,151 @@ function createLight(
 
   scene.add(light);
 
-  lightObjects.push(
-    light
-  );
+  lightObjects.push(light);
 
   return light;
 
 }
 
+/* =========================================================
+   FLOOR
+========================================================= */
+
 function createFloor(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.floor,8,10);
+  const texture=
+    loadEWSTexture(
+      EWS_TEXTURES.floor,
+      8,
+      10
+    );
 
-  const mat = new THREE.MeshStandardMaterial({
-    map:texture,
-    color:0x121212,
-    metalness:.18,
-    roughness:.82
-  });
+  const mat=
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x121212,
+      metalness:.18,
+      roughness:.82
+    });
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(36,42),
-    mat
-  );
+  const floor=
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        36,
+        42
+      ),
+      mat
+    );
 
-  floor.rotation.x=-Math.PI/2;
+  floor.rotation.x=
+    -Math.PI/2;
+
   floor.receiveShadow=true;
+
   scene.add(floor);
+
 }
+
+/* =========================================================
+   CEILING
+========================================================= */
 
 function createCeiling(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.concrete,7,8);
+  const texture=
+    loadEWSTexture(
+      EWS_TEXTURES.concrete,
+      7,
+      8
+    );
 
-  const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(36,42),
-    new THREE.MeshStandardMaterial({
-      map:texture,
-      color:0x080808,
-      roughness:1
-    })
-  );
+  const ceiling=
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        36,
+        42
+      ),
+      new THREE.MeshStandardMaterial({
+        map:texture,
+        color:0x080808,
+        roughness:1
+      })
+    );
 
-  ceiling.rotation.x=Math.PI/2;
+  ceiling.rotation.x=
+    Math.PI/2;
+
   ceiling.position.y=6;
+
   scene.add(ceiling);
+
 }
+
+/* =========================================================
+   WALLS
+========================================================= */
 
 function createWalls(){
 
-  const texture = loadEWSTexture(EWS_TEXTURES.concrete,6,2);
+  const texture=
+    loadEWSTexture(
+      EWS_TEXTURES.concrete,
+      6,
+      2
+    );
 
-  const mat = new THREE.MeshStandardMaterial({
-    map:texture,
-    color:0x101010,
-    roughness:.93,
-    metalness:.04
-  });
+  const mat=
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x101010,
+      roughness:.93,
+      metalness:.04
+    });
 
-  createBox(36,6,.5,0,3,-17,mat);
-  createBox(36,6,.5,0,3,17,mat);
-  createBox(.5,6,34,-18,3,0,mat);
-  createBox(.5,6,34,18,3,0,mat);
+  createBox(
+    36,6,.5,
+    0,3,-17,
+    mat
+  );
+
+  createBox(
+    36,6,.5,
+    0,3,17,
+    mat
+  );
+
+  createBox(
+    .5,6,34,
+    -18,3,0,
+    mat
+  );
+
+  createBox(
+    .5,6,34,
+    18,3,0,
+    mat
+  );
+
 }
+
+/* =========================================================
+   DANCE FLOOR
+========================================================= */
 
 function createDanceFloor(){
 
-  const floor =
+  const floor=
     new THREE.Mesh(
       new THREE.BoxGeometry(
         14,.12,14
       ),
       new THREE.MeshStandardMaterial({
-        map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
+        map:
+          loadEWSTexture(
+            EWS_TEXTURES.floor,
+            4,
+            4
+          ),
         color:0x151515,
         metalness:.35,
         roughness:.58
@@ -1773,7 +2299,7 @@ function createDanceFloor(){
 
   scene.add(floor);
 
-  const frameMat =
+  const frameMat=
     new THREE.MeshBasicMaterial({
       color:0xffffff
     });
@@ -1788,7 +2314,7 @@ function createDanceFloor(){
   lines.forEach(
     l=>{
 
-      const mesh =
+      const mesh=
         createBox(
           l[3],
           l[4],
@@ -1801,50 +2327,133 @@ function createDanceFloor(){
           false
         );
 
-      neonObjects.push(
-        mesh
-      );
+      neonObjects.push(mesh);
 
     }
   );
 
 }
 
+/* =========================================================
+   SCREEN
+========================================================= */
+
 function createMainScreen(){
-  screenCanvas=document.createElement('canvas');
+
+  screenCanvas=
+    document.createElement(
+      'canvas'
+    );
+
   screenCanvas.width=1024;
   screenCanvas.height=512;
-  screenCtx=screenCanvas.getContext('2d');
+
+  screenCtx=
+    screenCanvas.getContext(
+      '2d'
+    );
+
   screenCtx.fillStyle='#050505';
-  screenCtx.fillRect(0,0,1024,512);
-  screenTexture=new THREE.CanvasTexture(screenCanvas);
+
+  screenCtx.fillRect(
+    0,
+    0,
+    1024,
+    512
+  );
+
+  screenTexture=
+    new THREE.CanvasTexture(
+      screenCanvas
+    );
+
   screenTexture.needsUpdate=true;
 
-  const frame=new THREE.Mesh(
-    new THREE.BoxGeometry(14.6,6.6,.42),
-    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
+  const frame=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        14.6,
+        6.6,
+        .42
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0x080808,
+        metalness:.75,
+        roughness:.28
+      })
+    );
+
+  frame.position.set(
+    0,
+    3.65,
+    -16.72
   );
-  frame.position.set(0,3.65,-16.72);
+
   scene.add(frame);
 
-  screenMesh=new THREE.Mesh(
-    new THREE.PlaneGeometry(14,6),
-    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
+  screenMesh=
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        14,
+        6
+      ),
+      new THREE.MeshBasicMaterial({
+        map:screenTexture,
+        side:THREE.FrontSide
+      })
+    );
+
+  screenMesh.position.set(
+    0,
+    3.65,
+    -16.48
   );
-  screenMesh.position.set(0,3.65,-16.48);
+
   scene.add(screenMesh);
 
-  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
-    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
-    m.position.set(a[3],a[4],a[5]);
-    scene.add(m);
-  });
+  const borderMat=
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  [
+    [14.2,.035,.035,0,6.68,-16.43],
+    [14.2,.035,.035,0,.62,-16.43],
+    [.035,6.1,.035,-7.08,3.65,-16.43],
+    [.035,6.1,.035,7.08,3.65,-16.43]
+  ].forEach(
+    a=>{
+
+      const m=
+        new THREE.Mesh(
+          new THREE.BoxGeometry(
+            a[0],
+            a[1],
+            a[2]
+          ),
+          borderMat
+        );
+
+      m.position.set(
+        a[3],
+        a[4],
+        a[5]
+      );
+
+      scene.add(m);
+
+    }
+  );
+
 }
+
+/* =========================================================
+   STAGE
+========================================================= */
 
 function createStage(){
 
-  const stageMat =
+  const stageMat=
     new THREE.MeshStandardMaterial({
       color:0x111111,
       metalness:.6,
@@ -1857,29 +2466,28 @@ function createStage(){
     stageMat
   );
 
-  const stripMat =
-    new THREE.MeshBasicMaterial({
-      color:0xffffff
-    });
-
-  const strip =
+  const strip=
     createBox(
       16,.04,.08,
       0,.54,-11,
-      stripMat,
+      new THREE.MeshBasicMaterial({
+        color:0xffffff
+      }),
       false,
       false
     );
 
-  neonObjects.push(
-    strip
-  );
+  neonObjects.push(strip);
 
 }
 
+/* =========================================================
+   BAR
+========================================================= */
+
 function createBar(){
 
-  const wood =
+  const wood=
     new THREE.MeshStandardMaterial({
       color:0x141414,
       metalness:.3,
@@ -1908,7 +2516,7 @@ function createBar(){
     i++
   ){
 
-    const bottle =
+    const bottle=
       new THREE.Mesh(
         new THREE.CylinderGeometry(
           .07,
@@ -1935,9 +2543,13 @@ function createBar(){
 
 }
 
+/* =========================================================
+   LOUNGE
+========================================================= */
+
 function createLounge(){
 
-  const sofaMat =
+  const sofaMat=
     new THREE.MeshStandardMaterial({
       color:0x181818,
       roughness:.9
@@ -1961,7 +2573,7 @@ function createLounge(){
     i++
   ){
 
-    const table =
+    const table=
       new THREE.Mesh(
         new THREE.CylinderGeometry(
           .65,
@@ -1987,34 +2599,34 @@ function createLounge(){
 
 }
 
+/* =========================================================
+   COLUMNS
+========================================================= */
+
 function createColumns(){
 
-  const mat =
+  const mat=
     new THREE.MeshStandardMaterial({
       color:0x101010,
       metalness:.55,
       roughness:.35
     });
 
-  const positions=[
+  [
     [-15,5],
     [15,5],
     [-15,-5],
     [15,-5]
-  ];
-
-  positions.forEach(
+  ].forEach(
     p=>{
 
       createBox(
         1,6,1,
-        p[0],
-        3,
-        p[1],
+        p[0],3,p[1],
         mat
       );
 
-      const ring =
+      const ring=
         new THREE.Mesh(
           new THREE.TorusGeometry(
             .72,
@@ -2035,18 +2647,20 @@ function createColumns(){
 
       scene.add(ring);
 
-      neonObjects.push(
-        ring
-      );
+      neonObjects.push(ring);
 
     }
   );
 
 }
 
+/* =========================================================
+   ENTRANCE
+========================================================= */
+
 function createEntrance(){
 
-  const frameMat =
+  const frameMat=
     new THREE.MeshStandardMaterial({
       color:0x191919,
       metalness:.7
@@ -2068,7 +2682,7 @@ function createEntrance(){
     false
   );
 
-  const signCanvas =
+  const signCanvas=
     document.createElement(
       'canvas'
     );
@@ -2076,7 +2690,7 @@ function createEntrance(){
   signCanvas.width=600;
   signCanvas.height=160;
 
-  const ctx =
+  const ctx=
     signCanvas.getContext(
       '2d'
     );
@@ -2103,12 +2717,12 @@ function createEntrance(){
     95
   );
 
-  const tex =
+  const tex=
     new THREE.CanvasTexture(
       signCanvas
     );
 
-  const sign =
+  const sign=
     new THREE.Mesh(
       new THREE.PlaneGeometry(
         5,
@@ -2129,9 +2743,13 @@ function createEntrance(){
 
 }
 
+/* =========================================================
+   NEON
+========================================================= */
+
 function createNeonArchitecture(){
 
-  const mat =
+  const mat=
     new THREE.MeshBasicMaterial({
       color:0xffffff
     });
@@ -2142,23 +2760,19 @@ function createNeonArchitecture(){
     z+=4
   ){
 
-    const left =
+    const left=
       createBox(
         .06,4,.06,
-        -17.5,
-        3,
-        z,
+        -17.5,3,z,
         mat,
         false,
         false
       );
 
-    const right =
+    const right=
       createBox(
         .06,4,.06,
-        17.5,
-        3,
-        z,
+        17.5,3,z,
         mat,
         false,
         false
@@ -2177,28 +2791,28 @@ function createNeonArchitecture(){
     z+=5
   ){
 
-    const beam =
+    const beam=
       createBox(
         34,.05,.05,
-        0,
-        5.4,
-        z,
+        0,5.4,z,
         mat,
         false,
         false
       );
 
-    neonObjects.push(
-      beam
-    );
+    neonObjects.push(beam);
 
   }
 
 }
 
+/* =========================================================
+   CEILING BEAMS
+========================================================= */
+
 function createCeilingBeams(){
 
-  const mat =
+  const mat=
     new THREE.MeshStandardMaterial({
       color:0x151515,
       metalness:.8,
@@ -2221,23 +2835,25 @@ function createCeilingBeams(){
 
 }
 
+/* =========================================================
+   SPEAKERS
+========================================================= */
+
 function createSpeakers(){
 
-  const mat =
+  const mat=
     new THREE.MeshStandardMaterial({
       color:0x050505,
       metalness:.4,
       roughness:.7
     });
 
-  const positions=[
+  [
     [-8,2,-11],
     [8,2,-11],
     [-11,2,-10],
     [11,2,-10]
-  ];
-
-  positions.forEach(
+  ].forEach(
     p=>{
 
       createBox(
@@ -2254,7 +2870,7 @@ function createSpeakers(){
         i++
       ){
 
-        const cone =
+        const cone=
           new THREE.Mesh(
             new THREE.CylinderGeometry(
               .23,
@@ -2285,14 +2901,18 @@ function createSpeakers(){
 
 }
 
+/* =========================================================
+   PARTICLES
+========================================================= */
+
 function createParticles(){
 
   const count=900;
 
-  const geo =
+  const geo=
     new THREE.BufferGeometry();
 
-  const pos =
+  const pos=
     new Float32Array(
       count*3
     );
@@ -2322,7 +2942,7 @@ function createParticles(){
     )
   );
 
-  particles =
+  particles=
     new THREE.Points(
       geo,
       new THREE.PointsMaterial({
@@ -2333,18 +2953,20 @@ function createParticles(){
       })
     );
 
-  scene.add(
-    particles
-  );
+  scene.add(particles);
 
 }
 
+/* =========================================================
+   LOCAL PLAYER
+========================================================= */
+
 function createPlayer(){
 
-  playerBody =
+  playerBody=
     new THREE.Group();
 
-  const body =
+  const body=
     new THREE.Mesh(
       new THREE.CylinderGeometry(
         .25,
@@ -2360,11 +2982,9 @@ function createPlayer(){
 
   body.position.y=.5;
 
-  playerBody.add(
-    body
-  );
+  playerBody.add(body);
 
-  const head =
+  const head=
     new THREE.Mesh(
       new THREE.SphereGeometry(
         .23,
@@ -2379,9 +2999,7 @@ function createPlayer(){
 
   head.position.y=1.25;
 
-  playerBody.add(
-    head
-  );
+  playerBody.add(head);
 
   playerBody.position.set(
     0,
@@ -2389,9 +3007,7 @@ function createPlayer(){
     13
   );
 
-  scene.add(
-    playerBody
-  );
+  scene.add(playerBody);
 
 }
 
@@ -2401,12 +3017,12 @@ function createPlayer(){
 
 function setupAudio(){
 
-  const indicator =
+  const indicator=
     document.getElementById(
       'stream-indicator'
     );
 
-  const button =
+  const button=
     document.getElementById(
       'audio-control'
     );
@@ -2422,42 +3038,35 @@ function setupAudio(){
   button.textContent=
     '▶ AUDIO: START';
 
-  button.classList.remove(
-    'live'
-  );
+  button.classList.remove('live');
 
 }
 
 async function startSSHAudio(){
 
-  const audio =
+  const audio=
     document.getElementById(
       'ews-audio'
     );
 
-  const indicator =
+  const indicator=
     document.getElementById(
       'stream-indicator'
     );
 
-  const button =
+  const button=
     document.getElementById(
       'audio-control'
     );
 
   if(!audio)return;
 
-  const hlsUrl =
+  const hlsUrl=
     window.location.origin+
     '/hls/ews/index.m3u8';
 
-  indicator.classList.remove(
-    'error'
-  );
-
-  indicator.classList.add(
-    'live'
-  );
+  indicator.classList.remove('error');
+  indicator.classList.add('live');
 
   indicator.textContent=
     'AUDIO: CONNECTING...';
@@ -2471,25 +3080,26 @@ async function startSSHAudio(){
 
     if(!audioContext){
 
-      audioContext =
+      audioContext=
         new(
           window.AudioContext ||
           window.webkitAudioContext
         )();
 
-      audioSource =
-        audioContext.createMediaElementSource(
-          audio
-        );
+      audioSource=
+        audioContext
+          .createMediaElementSource(
+            audio
+          );
 
-      analyser =
+      analyser=
         audioContext.createAnalyser();
 
       analyser.fftSize=256;
 
       analyser.smoothingTimeConstant=.82;
 
-      freqData =
+      freqData=
         new Uint8Array(
           analyser.frequencyBinCount
         );
@@ -2528,32 +3138,19 @@ async function startSSHAudio(){
       Hls.isSupported()
     ){
 
-      hls =
+      hls=
         new Hls({
-
           enableWorker:true,
-
           lowLatencyMode:true,
-
           backBufferLength:30,
-
           maxBufferLength:10,
-
           maxMaxBufferLength:20,
-
           liveSyncDurationCount:3,
-
           liveMaxLatencyDurationCount:6
-
         });
 
-      hls.loadSource(
-        hlsUrl
-      );
-
-      hls.attachMedia(
-        audio
-      );
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(audio);
 
       hls.on(
         Hls.Events.MANIFEST_PARSED,
@@ -2565,18 +3162,13 @@ async function startSSHAudio(){
           button.textContent=
             '● AUDIO: LIVE';
 
-          button.classList.add(
-            'live'
-          );
-
+          button.classList.add('live');
           button.disabled=false;
 
           audioStarted=true;
 
           try{
-
             await audio.play();
-
           }catch(err){
 
             console.warn(
@@ -2590,9 +3182,7 @@ async function startSSHAudio(){
             button.textContent=
               '▶ AUDIO: START';
 
-            button.classList.remove(
-              'live'
-            );
+            button.classList.remove('live');
 
           }
 
@@ -2601,10 +3191,7 @@ async function startSSHAudio(){
 
       hls.on(
         Hls.Events.ERROR,
-        function(
-          event,
-          data
-        ){
+        function(event,data){
 
           console.error(
             '[HLS]',
@@ -2625,23 +3212,17 @@ async function startSSHAudio(){
               '● AUDIO: RECONNECTING';
 
             setTimeout(
-              function(){
-
+              ()=>{
                 if(hls){
-
                   try{
                     hls.startLoad();
                   }catch(e){}
-
                 }
-
               },
               1000
             );
 
-          }
-
-          else if(
+          }else if(
             data.type===
             Hls.ErrorTypes.MEDIA_ERROR
           ){
@@ -2650,37 +3231,21 @@ async function startSSHAudio(){
               'AUDIO: RECOVERING...';
 
             try{
-
               hls.recoverMediaError();
+            }catch(e){}
 
-            }catch(e){
-
-              console.error(e);
-
-            }
-
-          }
-
-          else{
+          }else{
 
             indicator.textContent=
               'AUDIO: NO STREAM';
 
-            indicator.classList.remove(
-              'live'
-            );
-
-            indicator.classList.add(
-              'error'
-            );
+            indicator.classList.remove('live');
+            indicator.classList.add('error');
 
             button.textContent=
               '▶ AUDIO: RETRY';
 
-            button.classList.remove(
-              'live'
-            );
-
+            button.classList.remove('live');
             button.disabled=false;
 
           }
@@ -2688,40 +3253,29 @@ async function startSSHAudio(){
         }
       );
 
-    }
-
-    else if(
+    }else if(
       audio.canPlayType(
         'application/vnd.apple.mpegurl'
       )
     ){
 
-      audio.src=
-        hlsUrl;
+      audio.src=hlsUrl;
 
       audio.addEventListener(
         'loadedmetadata',
         async function(){
 
           try{
-
             await audio.play();
-
           }catch(err){
-
             console.error(err);
-
           }
 
         },
-        {
-          once:true
-        }
+        {once:true}
       );
 
-    }
-
-    else{
+    }else{
 
       throw new Error(
         'HLS is not supported by this browser'
@@ -2734,21 +3288,13 @@ async function startSSHAudio(){
       indicator.textContent=
         'AUDIO: LIVE';
 
-      indicator.classList.add(
-        'live'
-      );
-
-      indicator.classList.remove(
-        'error'
-      );
+      indicator.classList.add('live');
+      indicator.classList.remove('error');
 
       button.textContent=
         '● AUDIO: LIVE';
 
-      button.classList.add(
-        'live'
-      );
-
+      button.classList.add('live');
       button.disabled=false;
 
       audioStarted=true;
@@ -2768,9 +3314,7 @@ async function startSSHAudio(){
         button.textContent=
           '▶ AUDIO: RESUME';
 
-        button.classList.remove(
-          'live'
-        );
+        button.classList.remove('live');
 
       }
 
@@ -2786,21 +3330,13 @@ async function startSSHAudio(){
       indicator.textContent=
         'AUDIO: ERROR';
 
-      indicator.classList.remove(
-        'live'
-      );
-
-      indicator.classList.add(
-        'error'
-      );
+      indicator.classList.remove('live');
+      indicator.classList.add('error');
 
       button.textContent=
         '▶ AUDIO: RETRY';
 
-      button.classList.remove(
-        'live'
-      );
-
+      button.classList.remove('live');
       button.disabled=false;
 
     };
@@ -2815,21 +3351,13 @@ async function startSSHAudio(){
     indicator.textContent=
       'AUDIO: NO STREAM';
 
-    indicator.classList.remove(
-      'live'
-    );
-
-    indicator.classList.add(
-      'error'
-    );
+    indicator.classList.remove('live');
+    indicator.classList.add('error');
 
     button.textContent=
       '▶ AUDIO: RETRY';
 
-    button.classList.remove(
-      'live'
-    );
-
+    button.classList.remove('live');
     button.disabled=false;
 
   }
@@ -2846,12 +3374,8 @@ function setupControls(){
     'resize',
     function(){
 
-      if(
-        !camera ||
-        !renderer
-      ){
+      if(!camera || !renderer)
         return;
-      }
 
       camera.aspect=
         innerWidth/
@@ -2865,7 +3389,10 @@ function setupControls(){
       );
 
       if(cssRenderer){
-        cssRenderer.setSize(innerWidth,innerHeight);
+        cssRenderer.setSize(
+          innerWidth,
+          innerHeight
+        );
       }
 
     }
@@ -2875,55 +3402,139 @@ function setupControls(){
     'keydown',
     function(e){
 
-      // While typing, movement keys must never get stuck in the 3D controller.
-      const active=document.activeElement;
-      const typing=active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA');
+      const active=
+        document.activeElement;
 
-      if(e.code==='Escape' && chatMode){
+      const typing=
+        active &&
+        (
+          active.tagName==='INPUT' ||
+          active.tagName==='TEXTAREA'
+        );
+
+      if(
+        e.code==='Escape' &&
+        chatMode
+      ){
+
         e.preventDefault();
+
         chatMode=false;
-        const input=document.getElementById('chat-input');
-        if(input) input.blur();
+
+        const input=
+          document.getElementById(
+            'chat-input'
+          );
+
+        if(input)
+          input.blur();
+
         keys={};
+
         return;
       }
 
-      if(typing && !chatMode){
+      if(
+        typing &&
+        !chatMode
+      ){
         return;
       }
 
-      if(chatMode && active && active.id==='chat-input'){
-        if(e.code==='KeyW' || e.code==='KeyA' || e.code==='KeyS' || e.code==='KeyD' || e.code==='ArrowUp' || e.code==='ArrowDown' || e.code==='ArrowLeft' || e.code==='ArrowRight'){
+      if(
+        chatMode &&
+        active &&
+        active.id==='chat-input'
+      ){
+
+        if(
+          [
+            'KeyW',
+            'KeyA',
+            'KeyS',
+            'KeyD',
+            'ArrowUp',
+            'ArrowDown',
+            'ArrowLeft',
+            'ArrowRight'
+          ].includes(e.code)
+        ){
           return;
         }
+
       }
 
       if(!chatMode){
-        if(e.code==='KeyB'){ toggleEmotesMenu(); e.preventDefault(); return; }
-        if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
-        if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
-        if(e.code==='Digit3'){ playDance(3); e.preventDefault(); return; }
-        if(e.code==='Digit4'){ playDance(4); e.preventDefault(); return; }
-        if(e.code==='Digit5'){ playDance(5); e.preventDefault(); return; }
-        if(e.code==='Digit6'){ playDance(6); e.preventDefault(); return; }
-        if(['KeyW','KeyA','KeyS','KeyD','Space'].includes(e.code) && activeDance){ stopDance(); }
+
+        if(e.code==='KeyB'){
+          toggleEmotesMenu();
+          e.preventDefault();
+          return;
+        }
+
+        if(e.code==='Digit1'){
+          playDance(1);
+          e.preventDefault();
+          return;
+        }
+
+        if(e.code==='Digit2'){
+          playDance(2);
+          e.preventDefault();
+          return;
+        }
+
+        if(e.code==='Digit3'){
+          playDance(3);
+          e.preventDefault();
+          return;
+        }
+
+        if(e.code==='Digit4'){
+          playDance(4);
+          e.preventDefault();
+          return;
+        }
+
+        if(e.code==='Digit5'){
+          playDance(5);
+          e.preventDefault();
+          return;
+        }
+
+        if(e.code==='Digit6'){
+          playDance(6);
+          e.preventDefault();
+          return;
+        }
+
+        if(
+          [
+            'KeyW',
+            'KeyA',
+            'KeyS',
+            'KeyD',
+            'Space'
+          ].includes(e.code) &&
+          activeDance
+        ){
+
+          stopDance();
+
+        }
+
       }
 
       keys[e.code]=true;
 
-      if(
-        e.code==='KeyC'
-      ){
+      if(e.code==='KeyC'){
 
-        chatMode=
-          !chatMode;
+        chatMode=!chatMode;
 
         toggleChat();
 
       }
 
-      // SPACE = JUMP
-      // Пока открыт чат — пробел остаётся обычным пробелом.
       if(
         e.code==='Space' &&
         !chatMode &&
@@ -2933,7 +3544,9 @@ function setupControls(){
 
         e.preventDefault();
 
-        jumpVelocity=JUMP_FORCE;
+        jumpVelocity=
+          JUMP_FORCE;
+
         isGrounded=false;
 
       }
@@ -2950,7 +3563,7 @@ function setupControls(){
     }
   );
 
-  const canvas =
+  const canvas=
     document.getElementById(
       'canvas3d'
     );
@@ -2961,7 +3574,9 @@ function setupControls(){
 
       if(!chatMode){
 
-        canvas.requestPointerLock();
+        try{
+          canvas.requestPointerLock();
+        }catch(e){}
 
       }
 
@@ -2983,7 +3598,8 @@ function setupControls(){
     'mousemove',
     function(e){
 
-      if(!pointerLocked)return;
+      if(!pointerLocked)
+        return;
 
       yaw-=
         e.movementX*.002;
@@ -3007,134 +3623,497 @@ function setupControls(){
 
 function toggleChat(){
 
-  const input =
+  const input=
     document.getElementById(
       'chat-input'
     );
 
   if(chatMode){
 
-    document.exitPointerLock();
+    try{
+      document.exitPointerLock();
+    }catch(e){}
 
     input.focus();
 
   }else{
 
     input.blur();
+
     keys={};
-    const canvas=document.getElementById('canvas3d');
-    if(canvas && document.pointerLockElement!==canvas){
-      try{ canvas.requestPointerLock(); }catch(err){}
+
+    const canvas=
+      document.getElementById(
+        'canvas3d'
+      );
+
+    if(
+      canvas &&
+      document.pointerLockElement!==canvas
+    ){
+
+      try{
+        canvas.requestPointerLock();
+      }catch(e){}
+
     }
 
   }
 
 }
 
-
 /* =========================================================
-   CLUB SCREEN MEDIA
+   SCREEN
 ========================================================= */
 
 function toggleScreenMenu(){
-  const menu=document.getElementById('screen-menu');
-  if(!menu) return;
+
+  if(!isClubHost())
+    return;
+
+  const menu=
+    document.getElementById(
+      'screen-menu'
+    );
+
+  if(!menu)return;
+
   menu.classList.toggle('open');
+
   if(menu.classList.contains('open')){
-    const input=document.getElementById('screen-url');
-    setTimeout(()=>input && input.focus(),40);
+
+    const input=
+      document.getElementById(
+        'screen-url'
+      );
+
+    setTimeout(
+      ()=>{
+        if(input)
+          input.focus();
+      },
+      40
+    );
+
   }
+
 }
 
 function setScreenStatus(text){
-  const el=document.getElementById('screen-status');
-  if(el) el.textContent=text;
+
+  const el=
+    document.getElementById(
+      'screen-status'
+    );
+
+  if(el)
+    el.textContent=text;
+
 }
 
 function youtubeEmbed(url){
+
   try{
-    const u=new URL(url);
+
+    const u=
+      new URL(url);
+
     let id='';
-    if(u.hostname.includes('youtu.be')){
-      id=u.pathname.split('/').filter(Boolean)[0]||'';
-    }else if(u.hostname.includes('youtube.com')){
-      id=u.searchParams.get('v')||'';
-      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
-      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
+
+    if(
+      u.hostname.includes(
+        'youtu.be'
+      )
+    ){
+
+      id=
+        u.pathname
+          .split('/')
+          .filter(Boolean)[0] || '';
+
+    }else if(
+      u.hostname.includes(
+        'youtube.com'
+      )
+    ){
+
+      id=
+        u.searchParams.get('v') || '';
+
+      if(
+        !id &&
+        u.pathname.startsWith('/shorts/')
+      ){
+
+        id=
+          u.pathname
+            .split('/')[2] || '';
+
+      }
+
+      if(
+        !id &&
+        u.pathname.startsWith('/embed/')
+      ){
+
+        id=
+          u.pathname
+            .split('/')[2] || '';
+
+      }
+
     }
-    if(!id) return null;
-    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
-  }catch(e){ return null; }
+
+    if(!id)
+      return null;
+
+    return(
+      'https://www.youtube.com/embed/' +
+      encodeURIComponent(id) +
+      '?autoplay=1&rel=0&playsinline=1'
+    );
+
+  }catch(e){
+
+    return null;
+
+  }
+
 }
 
 function twitchEmbed(url){
+
   try{
-    const u=new URL(url);
-    if(!u.hostname.includes('twitch.tv')) return null;
-    const parts=u.pathname.split('/').filter(Boolean);
-    if(!parts.length) return null;
-    const parent=location.hostname || 'ews-sessions.onrender.com';
-    if(parts[0]==='videos' && parts[1]){
-      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+
+    const u=
+      new URL(url);
+
+    if(
+      !u.hostname.includes(
+        'twitch.tv'
+      )
+    ){
+      return null;
     }
-    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-  }catch(e){ return null; }
+
+    const parts=
+      u.pathname
+        .split('/')
+        .filter(Boolean);
+
+    if(!parts.length)
+      return null;
+
+    const parent=
+      location.hostname ||
+      'ews-sessions.onrender.com';
+
+    if(
+      parts[0]==='videos' &&
+      parts[1]
+    ){
+
+      return(
+        'https://player.twitch.tv/?video=' +
+        encodeURIComponent(parts[1]) +
+        '&parent=' +
+        encodeURIComponent(parent) +
+        '&autoplay=true'
+      );
+
+    }
+
+    return(
+      'https://player.twitch.tv/?channel=' +
+      encodeURIComponent(parts[0]) +
+      '&parent=' +
+      encodeURIComponent(parent) +
+      '&autoplay=true'
+    );
+
+  }catch(e){
+
+    return null;
+
+  }
+
 }
 
 function normalizeClubScreenUrl(raw){
-  const value=String(raw||'').trim();
-  if(!value) return null;
 
-  const yt=youtubeEmbed(value);
-  if(yt) return {src:yt,name:'YOUTUBE'};
+  const value=
+    String(raw || '').trim();
 
-  const tw=twitchEmbed(value);
-  if(tw) return {src:tw,name:'TWITCH'};
+  if(!value)
+    return null;
+
+  const yt=
+    youtubeEmbed(value);
+
+  if(yt){
+
+    return{
+      src:yt,
+      name:'YOUTUBE'
+    };
+
+  }
+
+  const tw=
+    twitchEmbed(value);
+
+  if(tw){
+
+    return{
+      src:tw,
+      name:'TWITCH'
+    };
+
+  }
 
   try{
-    const u=new URL(value);
-    if(u.protocol!=='http:' && u.protocol!=='https:') return null;
-    return {src:u.href,name:'WEBSITE'};
+
+    const u=
+      new URL(value);
+
+    if(
+      u.protocol!=='http:' &&
+      u.protocol!=='https:'
+    ){
+      return null;
+    }
+
+    return{
+      src:u.href,
+      name:'WEBSITE'
+    };
+
   }catch(e){
+
     return null;
+
   }
+
 }
 
 function isClubHost(){
-  return String(currentUser||'').trim().toLowerCase()==='mvxtra';
+
+  return(
+    String(currentUser || '')
+      .trim()
+      .toLowerCase()===
+    'mvxtra'
+  );
+
 }
 
 function loadClubScreen(){
-  if(!isClubHost()){ setScreenStatus('Только главный пользователь клуба может включать экран.'); return; }
-  const input=document.getElementById('screen-url'); const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
-  if(!input||!frame||!panel)return; const result=normalizeClubScreenUrl(input.value);
-  if(!result){setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');return;}
-  frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — экран закреплён. Нажми ESC, чтобы выйти из управления камерой и кликать по плееру.');
-  if(socket)socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
-  const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
+
+  if(!isClubHost()){
+
+    setScreenStatus(
+      'Только mvxtra может управлять экраном.'
+    );
+
+    return;
+  }
+
+  const input=
+    document.getElementById(
+      'screen-url'
+    );
+
+  const frame=
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel=
+    document.getElementById(
+      'css3d-screen'
+    );
+
+  if(
+    !input ||
+    !frame ||
+    !panel
+  ){
+    return;
+  }
+
+  const result=
+    normalizeClubScreenUrl(
+      input.value
+    );
+
+  if(!result){
+
+    setScreenStatus(
+      'Неверная ссылка.'
+    );
+
+    return;
+
+  }
+
+  frame.src=result.src;
+
+  panel.classList.add('active');
+
+  screenMediaActive=true;
+  screenMediaUrl=result.src;
+
+  setScreenStatus(
+    result.name+
+    ' LOADED — экран закреплён на стене.'
+  );
+
+  if(socket){
+
+    socket.emit(
+      'club-screen-state',
+      {
+        src:result.src,
+        name:result.name,
+        active:true,
+        owner:currentUser
+      }
+    );
+
+  }
+
+  const menu=
+    document.getElementById(
+      'screen-menu'
+    );
+
+  if(menu)
+    menu.classList.remove('open');
+
 }
 
 function clearClubScreen(){
-  if(!isClubHost())return; const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
-  if(frame)frame.src='about:blank'; if(panel)panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl='';
-  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser}); setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
-}
 
-// When the user wants to click the embedded player, release pointer lock first.
-// The 3D screen remains physically fixed to the wall; only mouse control is released.
-function enableScreenInteraction(){
-  if(document.pointerLockElement){
-    try{ document.exitPointerLock(); }catch(e){}
+  if(!isClubHost())
+    return;
+
+  const frame=
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel=
+    document.getElementById(
+      'css3d-screen'
+    );
+
+  if(frame)
+    frame.src='about:blank';
+
+  if(panel)
+    panel.classList.remove('active');
+
+  screenMediaActive=false;
+  screenMediaUrl='';
+
+  if(socket){
+
+    socket.emit(
+      'club-screen-state',
+      {
+        active:false,
+        owner:currentUser
+      }
+    );
+
   }
-  const panel=document.getElementById('css3d-screen');
-  if(panel){ panel.style.pointerEvents='auto'; }
+
+  setScreenStatus(
+    'Экран очищен.'
+  );
+
 }
 
-document.addEventListener('mousedown',function(e){
-  const screen=e.target && e.target.closest ? e.target.closest('#css3d-screen') : null;
-  if(screen) enableScreenInteraction();
-});
+function applyRemoteClubScreen(state){
+
+  const frame=
+    document.getElementById(
+      'media-screen-frame'
+    );
+
+  const panel=
+    document.getElementById(
+      'css3d-screen'
+    );
+
+  if(!frame || !panel)
+    return;
+
+  if(
+    !state ||
+    !state.active ||
+    !state.src
+  ){
+
+    frame.src='about:blank';
+
+    panel.classList.remove('active');
+
+    screenMediaActive=false;
+    screenMediaUrl='';
+
+    return;
+
+  }
+
+  frame.src=
+    String(state.src);
+
+  panel.classList.add('active');
+
+  screenMediaActive=true;
+  screenMediaUrl=
+    String(state.src);
+
+}
+
+function enableScreenInteraction(){
+
+  if(document.pointerLockElement){
+
+    try{
+      document.exitPointerLock();
+    }catch(e){}
+
+  }
+
+  const panel=
+    document.getElementById(
+      'css3d-screen'
+    );
+
+  if(panel)
+    panel.style.pointerEvents='auto';
+
+}
+
+document.addEventListener(
+  'mousedown',
+  function(e){
+
+    const screen=
+      e.target &&
+      e.target.closest
+        ? e.target.closest(
+            '#css3d-screen'
+          )
+        : null;
+
+    if(screen)
+      enableScreenInteraction();
+
+  }
+);
 
 /* =========================================================
    ANIMATION
@@ -3146,15 +4125,16 @@ function animate(){
     animate
   );
 
-  if(!scene)return;
+  if(!scene)
+    return;
 
-  const dt =
+  const dt=
     Math.min(
       clock.getDelta(),
       .05
     );
 
-  const time =
+  const time=
     performance.now()/1000;
 
   let bass=.2;
@@ -3210,9 +4190,7 @@ function animate(){
         freqData.length*255
       );
 
-  }
-
-  else{
+  }else{
 
     bass=
       .25+
@@ -3234,39 +4212,23 @@ function animate(){
 
   const speed=
     chatMode || activeDance
-      ?0
-      :5*dt;
+      ? 0
+      : 5*dt;
 
   let forward=0;
   let side=0;
 
-  if(
-    keys['KeyW']
-  ){
+  if(keys['KeyW'])
     forward+=1;
-  }
 
-  if(
-    keys['KeyS']
-  ){
+  if(keys['KeyS'])
     forward-=1;
-  }
 
-  if(
-    keys['KeyA']
-  ){
+  if(keys['KeyA'])
     side-=1;
-  }
 
-  if(
-    keys['KeyD']
-  ){
+  if(keys['KeyD'])
     side+=1;
-  }
-
-  // =========================
-  // JUMP PHYSICS
-  // =========================
 
   if(!chatMode){
 
@@ -3276,7 +4238,9 @@ function animate(){
     playerY+=
       jumpVelocity*dt;
 
-    if(playerY<=GROUND_Y){
+    if(
+      playerY<=GROUND_Y
+    ){
 
       playerY=GROUND_Y;
       jumpVelocity=0;
@@ -3331,7 +4295,8 @@ function animate(){
       15.5
     );
 
-  camera.position.y=playerY;
+  camera.position.y=
+    playerY;
 
   camera.rotation.order=
     'YXZ';
@@ -3354,7 +4319,9 @@ function animate(){
 
   }
 
-  broadcastPlayerState(performance.now());
+  broadcastPlayerState(
+    performance.now()
+  );
 
   if(particles){
 
@@ -3367,12 +4334,46 @@ function animate(){
 
   }
 
-  remotePlayers.forEach(p=>{
-    const t=performance.now()/1000;
-    const swing=p.moving?Math.sin(t*8)*.35:0;
-    const limbs=p.group.children.filter(o=>o.isMesh);
-    if(limbs.length>=5){ limbs[2].rotation.x=swing; limbs[3].rotation.x=-swing; limbs[4].rotation.x=-swing; }
-  });
+  const now=
+    performance.now()/1000;
+
+  remotePlayers.forEach(
+    p=>{
+
+      if(p.dance){
+
+        animateRemoteDance(
+          p,
+          now
+        );
+
+      }else{
+
+        resetRemoteDancePose(
+          p
+        );
+
+        const swing=
+          p.moving
+            ? Math.sin(now*8)*.35
+            : 0;
+
+        p.parts.leftArm.rotation.x=
+          swing;
+
+        p.parts.rightArm.rotation.x=
+          -swing;
+
+        p.parts.leftLeg.rotation.x=
+          -swing;
+
+        p.parts.rightLeg.rotation.x=
+          swing;
+
+      }
+
+    }
+  );
 
   neonObjects.forEach(
     (obj,index)=>{
@@ -3426,7 +4427,7 @@ function animate(){
       512
     );
 
-    const grd =
+    const grd=
       screenCtx.createLinearGradient(
         0,
         0,
@@ -3455,8 +4456,7 @@ function animate(){
       `rgb(${intensity},${intensity},${intensity})`
     );
 
-    screenCtx.fillStyle=
-      grd;
+    screenCtx.fillStyle=grd;
 
     screenCtx.fillRect(
       0,
@@ -3465,14 +4465,12 @@ function animate(){
       512
     );
 
-    screenCtx.fillStyle=
-      '#fff';
+    screenCtx.fillStyle='#fff';
 
     screenCtx.font=
       'bold 80px Arial';
 
-    screenCtx.textAlign=
-      'center';
+    screenCtx.textAlign='center';
 
     screenCtx.fillText(
       'EWS SESSIONS',
@@ -3483,8 +4481,7 @@ function animate(){
     screenCtx.font=
       '22px Arial';
 
-    screenCtx.fillStyle=
-      '#777';
+    screenCtx.fillStyle='#777';
 
     screenCtx.fillText(
       'UNDERGROUND CLUB',
@@ -3493,9 +4490,7 @@ function animate(){
     );
 
     const bars=48;
-
-    const bw=
-      800/bars;
+    const bw=800/bars;
 
     for(
       let i=0;
@@ -3533,8 +4528,7 @@ function animate(){
       const h=
         value*180;
 
-      screenCtx.fillStyle=
-        '#fff';
+      screenCtx.fillStyle='#fff';
 
       screenCtx.fillRect(
         112+i*bw,
@@ -3549,222 +4543,867 @@ function animate(){
 
   }
 
-
-  remotePlayers.forEach(p=>{
-    if(p.dance) animateRemoteDance(p,time);
-    else resetRemoteDancePose(p);
-  });
-
   renderer.render(
     scene,
     camera
   );
 
-  // Render the screen from the exact same 3D camera.
-  // It is therefore locked to the wall instead of being projected from screen pixels.
-  if(cssRenderer && cssScene){
-    cssRenderer.render(cssScene,camera);
+  if(
+    cssRenderer &&
+    cssScene
+  ){
+
+    cssRenderer.render(
+      cssScene,
+      camera
+    );
+
   }
 
 }
 
 /* =========================================================
-   REMOTE PLAYERS / SILHOUETTES
+   REMOTE PLAYERS
 ========================================================= */
+
 function createRemotePlayer(data){
-  if(!scene || !data || !data.id || data.id===socket?.id) return;
 
-  // If a stale object exists for this socket, replace it cleanly.
-  if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
+  if(
+    !scene ||
+    !data ||
+    !data.id ||
+    data.id===socket?.id
+  ){
+    return;
+  }
 
-  const g=new THREE.Group();
-  g.userData.username=data.username||'PLAYER';
+  if(
+    remotePlayers.has(
+      data.id
+    )
+  ){
 
-  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
-  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
+    removeRemotePlayer(
+      data.id
+    );
 
-  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
+  }
+
+  const g=
+    new THREE.Group();
+
+  g.userData.username=
+    data.username ||
+    'PLAYER';
+
+  const mat=
+    new THREE.MeshStandardMaterial({
+      color:0x777777,
+      roughness:1,
+      metalness:0
+    });
+
+  const dark=
+    new THREE.MeshStandardMaterial({
+      color:0x151515,
+      roughness:1
+    });
+
+  const torso=
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        .22,
+        .30,
+        .85,
+        8
+      ),
+      mat
+    );
+
   torso.position.y=.78;
   g.add(torso);
 
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
+  const head=
+    new THREE.Mesh(
+      new THREE.SphereGeometry(
+        .23,
+        12,
+        12
+      ),
+      mat
+    );
+
   head.position.y=1.42;
   g.add(head);
 
-  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
-  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
-  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
-  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
-  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
-  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
+  const armGeo=
+    new THREE.CylinderGeometry(
+      .075,
+      .09,
+      .72,
+      6
+    );
 
-  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg};
+  const legGeo=
+    new THREE.CylinderGeometry(
+      .09,
+      .11,
+      .82,
+      6
+    );
 
-  const labelCanvas=document.createElement('canvas');
-  labelCanvas.width=256; labelCanvas.height=64;
-  const ctx=labelCanvas.getContext('2d');
-  ctx.clearRect(0,0,256,64);
-  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
-  ctx.fillText(g.userData.username,128,32);
-  const tex=new THREE.CanvasTexture(labelCanvas);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+  const leftArm=
+    new THREE.Mesh(
+      armGeo,
+      dark
+    );
 
-  const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
-  const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
-  const y=Number.isFinite(Number(data.y)) ? Number(data.y) : 0;
-  const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
+  leftArm.position.set(
+    -.34,
+    .80,
+    0
+  );
 
-  g.position.set(x,y,z);
+  leftArm.rotation.z=-.12;
+
+  g.add(leftArm);
+
+  const rightArm=
+    new THREE.Mesh(
+      armGeo,
+      dark
+    );
+
+  rightArm.position.set(
+    .34,
+    .80,
+    0
+  );
+
+  rightArm.rotation.z=.12;
+
+  g.add(rightArm);
+
+  const leftLeg=
+    new THREE.Mesh(
+      legGeo,
+      dark
+    );
+
+  leftLeg.position.set(
+    -.13,
+    .30,
+    0
+  );
+
+  g.add(leftLeg);
+
+  const rightLeg=
+    new THREE.Mesh(
+      legGeo,
+      dark
+    );
+
+  rightLeg.position.set(
+    .13,
+    .30,
+    0
+  );
+
+  g.add(rightLeg);
+
+  const parts={
+    torso,
+    head,
+    leftArm,
+    rightArm,
+    leftLeg,
+    rightLeg
+  };
+
+  const labelCanvas=
+    document.createElement(
+      'canvas'
+    );
+
+  labelCanvas.width=256;
+  labelCanvas.height=64;
+
+  const ctx=
+    labelCanvas.getContext(
+      '2d'
+    );
+
+  ctx.clearRect(
+    0,
+    0,
+    256,
+    64
+  );
+
+  ctx.font=
+    'bold 24px Arial';
+
+  ctx.textAlign='center';
+
+  ctx.fillStyle='#ffffff';
+
+  ctx.fillText(
+    g.userData.username,
+    128,
+    32
+  );
+
+  const tex=
+    new THREE.CanvasTexture(
+      labelCanvas
+    );
+
+  const label=
+    new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map:tex,
+        transparent:true,
+        depthTest:false
+      })
+    );
+
+  label.scale.set(
+    1.7,
+    .42,
+    1
+  );
+
+  label.position.y=1.95;
+
+  g.add(label);
+
+  const x=
+    Number.isFinite(
+      Number(data.x)
+    )
+      ? Number(data.x)
+      : 0;
+
+  const z=
+    Number.isFinite(
+      Number(data.z)
+    )
+      ? Number(data.z)
+      : 13;
+
+  const y=
+    Number.isFinite(
+      Number(data.y)
+    )
+      ? Number(data.y)
+      : 0;
+
+  const ry=
+    Number.isFinite(
+      Number(
+        data.yaw ??
+        data.ry
+      )
+    )
+      ? Number(
+          data.yaw ??
+          data.ry
+        )
+      : 0;
+
+  g.position.set(
+    x,
+    y,
+    z
+  );
+
   g.rotation.y=ry;
+
   g.visible=true;
+
   scene.add(g);
 
-  remotePlayers.set(data.id,{
-    group:g,
-    last:{x,z,yaw:ry},
-    moving:!!data.moving,
-    username:data.username||'PLAYER',
-    dance:Number(data.dance)||0,
-    danceStartedAt:Number(data.danceStartedAt)||0,
-    parts,
-    baseY:y
-  });
+  remotePlayers.set(
+    data.id,
+    {
+      group:g,
+      last:{
+        x,
+        z,
+        yaw:ry
+      },
+      moving:!!data.moving,
+      username:
+        data.username ||
+        'PLAYER',
+      dance:
+        Number(data.dance) ||
+        0,
+      danceStartedAt:
+        Number(data.danceStartedAt) ||
+        0,
+      parts,
+      baseY:y
+    }
+  );
+
 }
 
 function updateRemotePlayer(data){
-  if(!data.id || data.id===socket?.id) return;
-  if(!remotePlayers.has(data.id)) createRemotePlayer(data);
-  const p=remotePlayers.get(data.id);
 
-  const rawX=Number(data.x);
-  const rawZ=Number(data.z);
-  const rawY=Number(data.y);
-  const rawYaw=Number(data.yaw ?? data.ry);
+  if(
+    !data ||
+    !data.id ||
+    data.id===socket?.id
+  ){
+    return;
+  }
 
-  const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
-  const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
-  const ny=Number.isFinite(rawY) ? rawY : p.group.position.y;
-  const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
+  if(
+    !remotePlayers.has(
+      data.id
+    )
+  ){
 
-  const dx=nx-p.group.position.x;
-  const dz=nz-p.group.position.z;
+    createRemotePlayer(
+      data
+    );
 
-  p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
-  if(data.dance!==undefined) p.dance=Number(data.dance)||0;
-  if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
+  }
+
+  const p=
+    remotePlayers.get(
+      data.id
+    );
+
+  if(!p)
+    return;
+
+  const rawX=
+    Number(data.x);
+
+  const rawZ=
+    Number(data.z);
+
+  const rawY=
+    Number(data.y);
+
+  const rawYaw=
+    Number(
+      data.yaw ??
+      data.ry
+    );
+
+  const nx=
+    Number.isFinite(rawX)
+      ? rawX
+      : p.group.position.x;
+
+  const nz=
+    Number.isFinite(rawZ)
+      ? rawZ
+      : p.group.position.z;
+
+  const ny=
+    Number.isFinite(rawY)
+      ? rawY
+      : p.group.position.y;
+
+  const nyaw=
+    Number.isFinite(rawYaw)
+      ? rawYaw
+      : p.group.rotation.y;
+
+  const dx=
+    nx-
+    p.group.position.x;
+
+  const dz=
+    nz-
+    p.group.position.z;
+
+  p.moving=
+    Boolean(data.moving) ||
+    Math.hypot(dx,dz)>.002;
+
+  if(
+    data.dance!==undefined
+  ){
+
+    p.dance=
+      Number(data.dance) ||
+      0;
+
+  }
+
+  if(
+    data.danceStartedAt!==undefined
+  ){
+
+    p.danceStartedAt=
+      Number(
+        data.danceStartedAt
+      ) || 0;
+
+  }
+
   p.group.position.x=nx;
   p.group.position.y=ny;
   p.group.position.z=nz;
   p.group.rotation.y=nyaw;
-  p.last={x:nx,z:nz,yaw:nyaw};
+
+  p.last={
+    x:nx,
+    z:nz,
+    yaw:nyaw
+  };
+
 }
 
 function removeRemotePlayer(id){
-  const p=remotePlayers.get(id);
-  if(!p) return;
-  scene.remove(p.group);
-  p.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }});
+
+  const p=
+    remotePlayers.get(id);
+
+  if(!p)
+    return;
+
+  scene.remove(
+    p.group
+  );
+
+  p.group.traverse(
+    o=>{
+
+      if(o.geometry)
+        o.geometry.dispose();
+
+      if(o.material){
+
+        if(o.material.map)
+          o.material.map.dispose();
+
+        o.material.dispose();
+
+      }
+
+    }
+  );
+
   remotePlayers.delete(id);
+
 }
-
-function broadcastPlayerState(now){
-  if(!socket || !socket.connected || !camera) return;
-  if(now-lastPlayerBroadcast<50) return;
-  lastPlayerBroadcast=now;
-  const moving = Math.abs(camera.position.x-(broadcastPlayerState.lastX ?? camera.position.x)) > 0.0005 ||
-                 Math.abs(camera.position.z-(broadcastPlayerState.lastZ ?? camera.position.z)) > 0.0005;
-
-  broadcastPlayerState.lastX=camera.position.x;
-  broadcastPlayerState.lastZ=camera.position.z;
-
-  socket.emit('player-state',{
-    x:camera.position.x,
-    y:Math.max(0, playerY-1.7),
-    z:camera.position.z,
-    yaw:yaw,
-    pitch:pitch,
-    username:currentUser,
-    moving:moving,
-    jumping:!isGrounded,
-    dance:activeDance,
-    danceStartedAt:danceStartedAt
-  });
-}
-
-
 
 /* =========================================================
-   EMOTES / DANCES
+   PLAYER BROADCAST
 ========================================================= */
+
+function broadcastPlayerState(now){
+
+  if(
+    !socket ||
+    !socket.connected ||
+    !camera
+  ){
+    return;
+  }
+
+  if(
+    now-
+    lastPlayerBroadcast<
+    50
+  ){
+    return;
+  }
+
+  lastPlayerBroadcast=
+    now;
+
+  const moving=
+    Math.abs(
+      camera.position.x-
+      (
+        broadcastPlayerState.lastX ??
+        camera.position.x
+      )
+    )>.0005 ||
+    Math.abs(
+      camera.position.z-
+      (
+        broadcastPlayerState.lastZ ??
+        camera.position.z
+      )
+    )>.0005;
+
+  broadcastPlayerState.lastX=
+    camera.position.x;
+
+  broadcastPlayerState.lastZ=
+    camera.position.z;
+
+  socket.emit(
+    'player-state',
+    {
+      x:camera.position.x,
+
+      y:
+        Math.max(
+          0,
+          playerY-1.7
+        ),
+
+      z:camera.position.z,
+
+      yaw:yaw,
+
+      pitch:pitch,
+
+      username:currentUser,
+
+      moving:moving,
+
+      jumping:!isGrounded,
+
+      dance:activeDance,
+
+      danceStartedAt:
+        danceStartedAt
+    }
+  );
+
+}
+
+/* =========================================================
+   DANCES
+========================================================= */
+
 function toggleEmotesMenu(){
-  const menu=document.getElementById('emotes-menu');
-  if(menu) menu.classList.toggle('open');
+
+  const menu=
+    document.getElementById(
+      'emotes-menu'
+    );
+
+  if(menu)
+    menu.classList.toggle(
+      'open'
+    );
+
 }
 
 function playDance(id){
-  if(chatMode || !socket) return;
-  activeDance=Math.max(1,Math.min(6,Number(id)||1));
-  danceStartedAt=Date.now();
+
+  if(
+    chatMode ||
+    !socket
+  ){
+    return;
+  }
+
+  activeDance=
+    Math.max(
+      1,
+      Math.min(
+        6,
+        Number(id)||1
+      )
+    );
+
+  danceStartedAt=
+    Date.now();
+
   keys={};
-  try{ if(document.pointerLockElement) document.exitPointerLock(); }catch(e){}
-  const menu=document.getElementById('emotes-menu');
-  if(menu) menu.classList.remove('open');
-  broadcastPlayerState(Date.now(),true);
+
+  try{
+
+    if(
+      document.pointerLockElement
+    ){
+
+      document.exitPointerLock();
+
+    }
+
+  }catch(e){}
+
+  const menu=
+    document.getElementById(
+      'emotes-menu'
+    );
+
+  if(menu)
+    menu.classList.remove(
+      'open'
+    );
+
+  socket.emit(
+    'player-emote',
+    {
+      emote:
+        [
+          '',
+          'dance1',
+          'dance2',
+          'shuffle',
+          'robot',
+          'bounce',
+          'wave'
+        ][activeDance]
+    }
+  );
+
+  broadcastPlayerState(
+    Date.now()
+  );
+
 }
 
 function stopDance(){
+
   activeDance=0;
+
   danceStartedAt=0;
-  const menu=document.getElementById('emotes-menu');
-  if(menu) menu.classList.remove('open');
-  broadcastPlayerState(Date.now(),true);
+
+  const menu=
+    document.getElementById(
+      'emotes-menu'
+    );
+
+  if(menu)
+    menu.classList.remove(
+      'open'
+    );
+
+  if(socket){
+
+    socket.emit(
+      'stop-emote'
+    );
+
+  }
+
+  broadcastPlayerState(
+    Date.now()
+  );
+
 }
 
-function animateRemoteDance(p,time){
-  if(!p || !p.parts) return;
-  const q=p.parts;
-  const t=Math.max(0,(Date.now()-(p.danceStartedAt||Date.now()))/1000);
-  const w=t*Math.PI*2;
-  q.torso.rotation.set(0,0,0);
-  q.head.rotation.set(0,0,0);
-  q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
-  q.leftLeg.rotation.set(0,0,0); q.rightLeg.rotation.set(0,0,0);
-  if(!p.dance) return;
-  if(p.dance===1){
-    q.leftArm.rotation.z=-1.1+Math.sin(w*2)*.35; q.rightArm.rotation.z=1.1-Math.sin(w*2)*.35;
-    q.leftLeg.rotation.z=Math.sin(w)*.35; q.rightLeg.rotation.z=-Math.sin(w)*.35;
-    q.torso.rotation.y=Math.sin(w)*.18;
-  }else if(p.dance===2){
-    q.leftArm.rotation.z=-.55+Math.sin(w*2)*.9; q.rightArm.rotation.z=.55-Math.sin(w*2)*.9;
-    q.leftLeg.rotation.z=Math.sin(w*2)*.28; q.rightLeg.rotation.z=-Math.sin(w*2)*.28;
-    q.torso.rotation.z=Math.sin(w)*.16;
-  }else if(p.dance===3){
-    q.leftArm.rotation.z=-1.25+Math.sin(w*2)*.25; q.rightArm.rotation.z=.25+Math.sin(w*2+.8)*.8;
-    q.leftLeg.rotation.z=Math.sin(w*2)*.55; q.rightLeg.rotation.z=-Math.sin(w*2)*.55;
-    q.torso.rotation.y=Math.sin(w)*.35;
-  }else if(p.dance===4){
-    const step=Math.sin(w*2)>0?1:-1;
-    q.leftArm.rotation.z=-.85*step; q.rightArm.rotation.z=.85*step;
-    q.leftLeg.rotation.z=.35*step; q.rightLeg.rotation.z=-.35*step;
-    q.head.rotation.y=Math.sin(w*2)*.35;
-  }else if(p.dance===5){
-    const bounce=Math.abs(Math.sin(w*2))*0.22;
-    p.group.position.y=(p.baseY||p.group.position.y)+bounce;
-    q.leftArm.rotation.z=-.8-Math.sin(w*2)*.3; q.rightArm.rotation.z=.8+Math.sin(w*2)*.3;
-  }else if(p.dance===6){
-    q.leftArm.rotation.z=-1.35+Math.sin(w*3)*.5; q.rightArm.rotation.z=.15;
-    q.rightArm.rotation.x=Math.sin(w*2)*.5; q.head.rotation.z=Math.sin(w*2)*.15;
+function animateRemoteDance(
+  p,
+  time
+){
+
+  if(
+    !p ||
+    !p.parts
+  ){
+    return;
   }
+
+  const q=
+    p.parts;
+
+  const t=
+    Math.max(
+      0,
+      (
+        Date.now()-
+        (
+          p.danceStartedAt ||
+          Date.now()
+        )
+      )/1000
+    );
+
+  const w=
+    t*
+    Math.PI*
+    2;
+
+  q.torso.rotation.set(
+    0,0,0
+  );
+
+  q.head.rotation.set(
+    0,0,0
+  );
+
+  q.leftArm.rotation.set(
+    0,0,-.12
+  );
+
+  q.rightArm.rotation.set(
+    0,0,.12
+  );
+
+  q.leftLeg.rotation.set(
+    0,0,0
+  );
+
+  q.rightLeg.rotation.set(
+    0,0,0
+  );
+
+  if(!p.dance)
+    return;
+
+  if(p.dance===1){
+
+    q.leftArm.rotation.z=
+      -1.1+
+      Math.sin(w*2)*.35;
+
+    q.rightArm.rotation.z=
+      1.1-
+      Math.sin(w*2)*.35;
+
+    q.leftLeg.rotation.z=
+      Math.sin(w)*.35;
+
+    q.rightLeg.rotation.z=
+      -Math.sin(w)*.35;
+
+    q.torso.rotation.y=
+      Math.sin(w)*.18;
+
+  }else if(p.dance===2){
+
+    q.leftArm.rotation.z=
+      -.55+
+      Math.sin(w*2)*.9;
+
+    q.rightArm.rotation.z=
+      .55-
+      Math.sin(w*2)*.9;
+
+    q.leftLeg.rotation.z=
+      Math.sin(w*2)*.28;
+
+    q.rightLeg.rotation.z=
+      -Math.sin(w*2)*.28;
+
+    q.torso.rotation.z=
+      Math.sin(w)*.16;
+
+  }else if(p.dance===3){
+
+    q.leftArm.rotation.z=
+      -1.25+
+      Math.sin(w*2)*.25;
+
+    q.rightArm.rotation.z=
+      .25+
+      Math.sin(w*2+.8)*.8;
+
+    q.leftLeg.rotation.z=
+      Math.sin(w*2)*.55;
+
+    q.rightLeg.rotation.z=
+      -Math.sin(w*2)*.55;
+
+    q.torso.rotation.y=
+      Math.sin(w)*.35;
+
+  }else if(p.dance===4){
+
+    const step=
+      Math.sin(w*2)>0
+        ? 1
+        : -1;
+
+    q.leftArm.rotation.z=
+      -.85*step;
+
+    q.rightArm.rotation.z=
+      .85*step;
+
+    q.leftLeg.rotation.z=
+      .35*step;
+
+    q.rightLeg.rotation.z=
+      -.35*step;
+
+    q.head.rotation.y=
+      Math.sin(w*2)*.35;
+
+  }else if(p.dance===5){
+
+    const bounce=
+      Math.abs(
+        Math.sin(w*2)
+      )*.22;
+
+    p.group.position.y=
+      (p.baseY||0)+
+      bounce;
+
+    q.leftArm.rotation.z=
+      -.8-
+      Math.sin(w*2)*.3;
+
+    q.rightArm.rotation.z=
+      .8+
+      Math.sin(w*2)*.3;
+
+  }else if(p.dance===6){
+
+    q.leftArm.rotation.z=
+      -1.35+
+      Math.sin(w*3)*.5;
+
+    q.rightArm.rotation.z=
+      .15;
+
+    q.rightArm.rotation.x=
+      Math.sin(w*2)*.5;
+
+    q.head.rotation.z=
+      Math.sin(w*2)*.15;
+
+  }
+
 }
 
 function resetRemoteDancePose(p){
-  if(!p || !p.parts) return;
-  p.group.position.y=p.baseY||0;
-  const q=p.parts;
-  q.torso.rotation.set(0,0,0); q.head.rotation.set(0,0,0);
-  q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
-  q.leftLeg.rotation.set(0,0,0); q.rightLeg.rotation.set(0,0,0);
+
+  if(
+    !p ||
+    !p.parts
+  ){
+    return;
+  }
+
+  p.group.position.y=
+    p.baseY||0;
+
+  const q=
+    p.parts;
+
+  q.torso.rotation.set(
+    0,0,0
+  );
+
+  q.head.rotation.set(
+    0,0,0
+  );
+
+  q.leftArm.rotation.set(
+    0,0,-.12
+  );
+
+  q.rightArm.rotation.set(
+    0,0,.12
+  );
+
+  q.leftLeg.rotation.set(
+    0,0,0
+  );
+
+  q.rightLeg.rotation.set(
+    0,0,0
+  );
+
 }
 
 /* =========================================================
@@ -3777,17 +5416,15 @@ window.addEventListener(
 
     try{
 
-      if(hls){
+      if(hls)
         hls.destroy();
-      }
 
     }catch(e){}
 
     try{
 
-      if(audioContext){
+      if(audioContext)
         audioContext.close();
-      }
 
     }catch(e){}
 

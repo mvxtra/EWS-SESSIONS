@@ -17,10 +17,6 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 
-// ============================================================
-// PATHS
-// ============================================================
-
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const USERS_FILE = path.join(__dirname, 'users.json');
 
@@ -28,9 +24,9 @@ if (!fs.existsSync(USERS_FILE)) {
     fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2), 'utf8');
 }
 
-// ============================================================
-// USERS
-// ============================================================
+/* =========================================================
+   USERS
+========================================================= */
 
 function loadUsers() {
     try {
@@ -57,17 +53,17 @@ function saveUsers(users) {
     }
 }
 
-// ============================================================
-// EXPRESS
-// ============================================================
+/* =========================================================
+   EXPRESS
+========================================================= */
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(PUBLIC_DIR));
 
-// ============================================================
-// REGISTRATION
-// ============================================================
+/* =========================================================
+   REGISTER
+========================================================= */
 
 app.post('/api/register', (req, res) => {
     const username = String(req.body.username || '').trim();
@@ -114,7 +110,12 @@ app.post('/api/register', (req, res) => {
         password
     });
 
-    saveUsers(users);
+    if (!saveUsers(users)) {
+        return res.status(500).json({
+            ok: false,
+            error: 'Не удалось сохранить пользователя.'
+        });
+    }
 
     res.json({
         ok: true,
@@ -122,9 +123,9 @@ app.post('/api/register', (req, res) => {
     });
 });
 
-// ============================================================
-// LOGIN
-// ============================================================
+/* =========================================================
+   LOGIN
+========================================================= */
 
 app.post('/api/login', (req, res) => {
     const username = String(req.body.username || '').trim();
@@ -152,9 +153,9 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// ============================================================
-// GLOBAL CLUB STATE
-// ============================================================
+/* =========================================================
+   CLUB STATE
+========================================================= */
 
 const SCREEN_HOST = 'mvxtra';
 
@@ -165,66 +166,57 @@ let clubScreenState = {
     owner: SCREEN_HOST
 };
 
-// username -> socket id
 const onlineUsers = new Map();
-
-// socket.id -> player state
 const players = new Map();
-
-// socket.id -> language
 const userLanguages = new Map();
-
-// socket.id -> current emote
 const playerEmotes = new Map();
 
-// ============================================================
-// HELPERS
-// ============================================================
+/* =========================================================
+   HELPERS
+========================================================= */
 
 function sanitizeNumber(value, fallback = 0) {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
 }
 
-function broadcastOnlineUsers() {
-    const users = [];
-
-    for (const [id, username] of onlineUsers.entries()) {
-        users.push({
-            id,
-            username
-        });
-    }
-
-    io.emit('online-users', users);
+function getPlayers() {
+    return Array.from(players.values());
 }
 
-function broadcastPlayers() {
+function broadcastOnlineUsers() {
     io.emit(
-        'players-state',
-        Array.from(players.values())
+        'online-users',
+        Array.from(onlineUsers.entries()).map(([id, username]) => ({
+            id,
+            username
+        }))
     );
 }
 
-// ============================================================
-// SOCKET.IO
-// ============================================================
+function broadcastPlayers() {
+    io.emit('players-state', getPlayers());
+}
+
+/* =========================================================
+   SOCKET.IO
+========================================================= */
 
 io.on('connection', socket => {
+
     console.log('Socket connected:', socket.id);
 
-    // --------------------------------------------------------
-    // JOIN
-    // --------------------------------------------------------
+    /* =====================================================
+       JOIN
+    ===================================================== */
 
     socket.on('join', data => {
-        const username = String(
-            data?.username || 'PLAYER'
-        ).trim();
 
-        const language = String(
-            data?.lang || 'ru'
-        ).trim();
+        const username =
+            String(data?.username || 'PLAYER').trim();
+
+        const language =
+            String(data?.language || data?.lang || 'ru').trim();
 
         socket.username = username;
         socket.language = language;
@@ -232,13 +224,13 @@ io.on('connection', socket => {
         onlineUsers.set(socket.id, username);
         userLanguages.set(socket.id, language);
 
-        players.set(socket.id, {
+        const player = {
             id: socket.id,
             username,
 
             x: 0,
             y: 0,
-            z: 0,
+            z: 13,
 
             yaw: 0,
             pitch: 0,
@@ -246,112 +238,201 @@ io.on('connection', socket => {
             moving: false,
             jumping: false,
 
-            emote: null
-        });
+            dance: 0,
+            danceStartedAt: 0
+        };
 
-        socket.emit('club-screen-state', clubScreenState);
+        players.set(socket.id, player);
+
+        socket.emit(
+            'club-screen-state',
+            clubScreenState
+        );
 
         socket.emit(
             'players-state',
-            Array.from(players.values())
-                .filter(player => player.id !== socket.id)
+            getPlayers().filter(
+                p => p.id !== socket.id
+            )
+        );
+
+        socket.emit(
+            'online-users',
+            Array.from(onlineUsers.entries()).map(
+                ([id, name]) => ({
+                    id,
+                    username: name
+                })
+            )
+        );
+
+        socket.broadcast.emit(
+            'player-joined',
+            player
         );
 
         broadcastOnlineUsers();
-        broadcastPlayers();
 
         console.log(
             `${username} joined the club (${socket.id})`
         );
     });
 
-    // --------------------------------------------------------
-    // PLAYER SPAWN
-    // --------------------------------------------------------
+    /* =====================================================
+       REQUEST PLAYERS
+    ===================================================== */
 
-    socket.on('player-spawn', data => {
-        const player = players.get(socket.id);
+    socket.on('request-players', () => {
 
-        if (!player) return;
+        socket.emit(
+            'players-state',
+            getPlayers().filter(
+                p => p.id !== socket.id
+            )
+        );
 
-        player.x = sanitizeNumber(data?.x, player.x);
-        player.y = sanitizeNumber(data?.y, player.y);
-        player.z = sanitizeNumber(data?.z, player.z);
-
-        player.yaw = sanitizeNumber(data?.yaw, player.yaw);
-        player.pitch = sanitizeNumber(data?.pitch, player.pitch);
-
-        player.moving = !!data?.moving;
-        player.jumping = !!data?.jumping;
-
-        broadcastPlayers();
     });
 
-    // --------------------------------------------------------
-    // PLAYER STATE
-    // --------------------------------------------------------
+    /* =====================================================
+       REQUEST ONLINE
+    ===================================================== */
+
+    socket.on('request-online', () => {
+
+        socket.emit(
+            'online-users',
+            Array.from(onlineUsers.entries()).map(
+                ([id, username]) => ({
+                    id,
+                    username
+                })
+            )
+        );
+
+    });
+
+    /* =====================================================
+       PLAYER STATE
+    ===================================================== */
 
     socket.on('player-state', data => {
+
         const player = players.get(socket.id);
 
         if (!player) return;
 
-        player.x = sanitizeNumber(data?.x, player.x);
-        player.y = sanitizeNumber(data?.y, player.y);
-        player.z = sanitizeNumber(data?.z, player.z);
+        player.x =
+            sanitizeNumber(data?.x, player.x);
 
-        player.yaw = sanitizeNumber(data?.yaw, player.yaw);
-        player.pitch = sanitizeNumber(data?.pitch, player.pitch);
+        player.y =
+            sanitizeNumber(data?.y, player.y);
 
-        player.moving = !!data?.moving;
-        player.jumping = !!data?.jumping;
+        player.z =
+            sanitizeNumber(data?.z, player.z);
 
-        if (typeof data?.emote === 'string') {
-            player.emote = data.emote;
+        player.yaw =
+            sanitizeNumber(data?.yaw, player.yaw);
+
+        player.pitch =
+            sanitizeNumber(data?.pitch, player.pitch);
+
+        player.moving =
+            !!data?.moving;
+
+        player.jumping =
+            !!data?.jumping;
+
+        if (data?.dance !== undefined) {
+            player.dance =
+                sanitizeNumber(data.dance, 0);
         }
 
-        socket.broadcast.emit('player-state', player);
+        if (data?.danceStartedAt !== undefined) {
+            player.danceStartedAt =
+                sanitizeNumber(
+                    data.danceStartedAt,
+                    0
+                );
+        }
+
+        socket.broadcast.emit(
+            'player-state',
+            player
+        );
     });
 
-    // --------------------------------------------------------
-    // PLAYER MOVE
-    // --------------------------------------------------------
+    /* =====================================================
+       PLAYER MOVE
+    ===================================================== */
 
     socket.on('player-move', data => {
+
         const player = players.get(socket.id);
 
         if (!player) return;
 
-        player.x = sanitizeNumber(data?.x, player.x);
-        player.y = sanitizeNumber(data?.y, player.y);
-        player.z = sanitizeNumber(data?.z, player.z);
+        player.x =
+            sanitizeNumber(data?.x, player.x);
 
-        player.yaw = sanitizeNumber(data?.yaw, player.yaw);
-        player.pitch = sanitizeNumber(data?.pitch, player.pitch);
+        player.y =
+            sanitizeNumber(data?.y, player.y);
 
-        player.moving = !!data?.moving;
-        player.jumping = !!data?.jumping;
+        player.z =
+            sanitizeNumber(data?.z, player.z);
 
-        socket.broadcast.emit('player-move', player);
+        player.yaw =
+            sanitizeNumber(data?.yaw, player.yaw);
+
+        player.pitch =
+            sanitizeNumber(data?.pitch, player.pitch);
+
+        player.moving =
+            !!data?.moving;
+
+        player.jumping =
+            !!data?.jumping;
+
+        if (data?.dance !== undefined) {
+            player.dance =
+                sanitizeNumber(data.dance, 0);
+        }
+
+        if (data?.danceStartedAt !== undefined) {
+            player.danceStartedAt =
+                sanitizeNumber(
+                    data.danceStartedAt,
+                    0
+                );
+        }
+
+        socket.broadcast.emit(
+            'player-move',
+            player
+        );
     });
 
-    // ========================================================
-    // EMOTES / DANCES
-    // ========================================================
+    /* =====================================================
+       EMOTE
+    ===================================================== */
 
     socket.on('player-emote', data => {
+
         const player = players.get(socket.id);
 
         if (!player) return;
 
         let emote = data?.emote;
 
-        if (emote === null || emote === undefined) {
+        if (
+            emote === null ||
+            emote === undefined
+        ) {
             emote = null;
         } else {
+
             emote = String(emote).trim();
 
-            const allowedEmotes = [
+            const allowed = [
                 'dance1',
                 'dance2',
                 'shuffle',
@@ -360,152 +441,225 @@ io.on('connection', socket => {
                 'bounce'
             ];
 
-            if (!allowedEmotes.includes(emote)) {
+            if (!allowed.includes(emote)) {
                 return;
             }
         }
 
         player.emote = emote;
-
         playerEmotes.set(socket.id, emote);
 
-        socket.broadcast.emit('player-emote', {
-            id: socket.id,
-            username: player.username,
-            emote
-        });
-
-        console.log(
-            `${player.username}: emote ${emote || 'STOP'}`
+        socket.broadcast.emit(
+            'player-emote',
+            {
+                id: socket.id,
+                username: player.username,
+                emote
+            }
         );
     });
 
-    // --------------------------------------------------------
-    // STOP EMOTE
-    // --------------------------------------------------------
+    /* =====================================================
+       STOP EMOTE
+    ===================================================== */
 
     socket.on('stop-emote', () => {
+
         const player = players.get(socket.id);
 
         if (!player) return;
 
         player.emote = null;
+        player.dance = 0;
+        player.danceStartedAt = 0;
+
         playerEmotes.delete(socket.id);
 
-        socket.broadcast.emit('player-emote', {
-            id: socket.id,
-            username: player.username,
-            emote: null
-        });
+        socket.broadcast.emit(
+            'player-emote',
+            {
+                id: socket.id,
+                username: player.username,
+                emote: null
+            }
+        );
     });
 
-    // ========================================================
-    // LANGUAGE
-    // ========================================================
+    /* =====================================================
+       LANGUAGE
+    ===================================================== */
 
     socket.on('language-change', language => {
-        const lang = String(language || 'ru');
+
+        const lang =
+            String(language || 'ru').trim();
 
         socket.language = lang;
-        userLanguages.set(socket.id, lang);
+        userLanguages.set(
+            socket.id,
+            lang
+        );
 
-        socket.emit('language-updated', lang);
+        socket.emit(
+            'language-updated',
+            lang
+        );
     });
 
-    // ========================================================
-    // CHAT
-    // ========================================================
+    /* =====================================================
+       CHAT
+    ===================================================== */
 
     socket.on('chat-message', data => {
+
         const username =
             String(
-                data?.user ||
                 socket.username ||
+                data?.user ||
                 'PLAYER'
             ).trim();
 
         const text =
-            String(data?.text || '')
-                .trim()
-                .slice(0, 500);
+            String(
+                data?.text || ''
+            )
+            .trim()
+            .slice(0, 500);
 
         const sourceLang =
             String(
-                data?.lang ||
                 socket.language ||
+                data?.lang ||
                 'ru'
             ).trim();
 
         if (!text) return;
 
         const message = {
-            id: Date.now() + '-' + socket.id,
+            id:
+                Date.now() +
+                '-' +
+                socket.id,
+
             user: username,
+
             text,
+
             lang: sourceLang,
+
             timestamp: Date.now()
         };
 
         /*
-         * ВАЖНО:
-         * Сервер НЕ меняет язык пользователя.
-         * Каждый клиент получает оригинальный текст
-         * и самостоятельно переводит его на выбранный язык.
+         * Отправляем оригинал ВСЕМ.
          *
-         * Это позволяет каждому пользователю иметь
-         * свой язык независимо от остальных.
+         * Каждый браузер самостоятельно переводит
+         * сообщение на выбранный именно этим пользователем
+         * язык.
          */
-
-        io.emit('chat-message', message);
+        io.emit(
+            'chat-message',
+            message
+        );
     });
 
-    // ========================================================
-    // SCREEN HOST
-    // ========================================================
+    /* =====================================================
+       SCREEN HOST
+    ===================================================== */
 
     socket.on('screen-host', () => {
+
         if (
             String(socket.username || '').toLowerCase() !==
             SCREEN_HOST.toLowerCase()
         ) {
-            socket.emit('screen-host-result', {
-                ok: false,
-                error: 'Только mvxtra может управлять экраном.'
-            });
+
+            socket.emit(
+                'screen-host-result',
+                {
+                    ok: false,
+                    error:
+                        'Только mvxtra может управлять экраном.'
+                }
+            );
 
             return;
         }
 
-        socket.emit('screen-host-result', {
-            ok: true
-        });
+        socket.emit(
+            'screen-host-result',
+            {
+                ok: true
+            }
+        );
     });
 
-    // ========================================================
-    // CLUB SCREEN
-    // ========================================================
+    /* =====================================================
+       CLUB SCREEN
+    ===================================================== */
 
-    socket.on('club-screen-state', state => {
-        const username =
-            String(socket.username || '').trim();
+    socket.on(
+        'club-screen-state',
+        state => {
 
-        if (
-            username.toLowerCase() !==
-            SCREEN_HOST.toLowerCase()
-        ) {
-            socket.emit('screen-host-result', {
-                ok: false,
-                error: 'Только mvxtra может управлять экраном.'
-            });
+            const username =
+                String(
+                    socket.username || ''
+                ).trim();
 
-            return;
-        }
+            if (
+                username.toLowerCase() !==
+                SCREEN_HOST.toLowerCase()
+            ) {
 
-        if (!state || state.active === false) {
+                socket.emit(
+                    'screen-host-result',
+                    {
+                        ok: false,
+                        error:
+                            'Только mvxtra может управлять экраном.'
+                    }
+                );
+
+                return;
+            }
+
+            if (
+                !state ||
+                state.active === false
+            ) {
+
+                clubScreenState = {
+                    active: false,
+                    src: '',
+                    name: '',
+                    owner: SCREEN_HOST
+                };
+
+                io.emit(
+                    'club-screen-state',
+                    clubScreenState
+                );
+
+                return;
+            }
+
+            const src =
+                String(
+                    state.src || ''
+                ).trim();
+
+            const name =
+                String(
+                    state.name || 'MEDIA'
+                ).trim();
+
+            if (!src) return;
+
             clubScreenState = {
-                active: false,
-                src: '',
-                name: '',
+                active: true,
+                src,
+                name,
                 owner: SCREEN_HOST
             };
 
@@ -513,36 +667,15 @@ io.on('connection', socket => {
                 'club-screen-state',
                 clubScreenState
             );
-
-            return;
         }
+    );
 
-        const src =
-            String(state.src || '').trim();
-
-        const name =
-            String(state.name || 'MEDIA').trim();
-
-        if (!src) return;
-
-        clubScreenState = {
-            active: true,
-            src,
-            name,
-            owner: SCREEN_HOST
-        };
-
-        io.emit(
-            'club-screen-state',
-            clubScreenState
-        );
-    });
-
-    // ========================================================
-    // DISCONNECT
-    // ========================================================
+    /* =====================================================
+       DISCONNECT
+    ===================================================== */
 
     socket.on('disconnect', reason => {
+
         const username =
             socket.username ||
             onlineUsers.get(socket.id) ||
@@ -562,45 +695,61 @@ io.on('connection', socket => {
             socket.id
         );
 
+        socket.broadcast.emit(
+            'player-removed',
+            socket.id
+        );
+
         broadcastOnlineUsers();
         broadcastPlayers();
     });
+
 });
 
-// ============================================================
-// HTTP SERVER
-// ============================================================
+/* =========================================================
+   HTTP
+========================================================= */
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log('');
-    console.log('====================================');
-    console.log('       EWS SESSIONS SERVER');
-    console.log('====================================');
-    console.log(`HTTP: http://localhost:${PORT}`);
-    console.log(`PORT: ${PORT}`);
-    console.log(`SCREEN HOST: ${SCREEN_HOST}`);
-    console.log('Socket.IO: READY');
-    console.log('EMOTES: READY');
-    console.log('====================================');
-    console.log('');
-});
+server.listen(
+    PORT,
+    '0.0.0.0',
+    () => {
 
-// ============================================================
-// RTMP / HLS SERVER
-// ============================================================
-
-const mediaRoot = path.join(
-    __dirname,
-    'media'
+        console.log('');
+        console.log('====================================');
+        console.log('       EWS SESSIONS SERVER');
+        console.log('====================================');
+        console.log(`HTTP: http://localhost:${PORT}`);
+        console.log(`PORT: ${PORT}`);
+        console.log(`SCREEN HOST: ${SCREEN_HOST}`);
+        console.log('Socket.IO: READY');
+        console.log('EMOTES: READY');
+        console.log('CHAT: READY');
+        console.log('ONLINE: READY');
+        console.log('====================================');
+        console.log('');
+    }
 );
 
+/* =========================================================
+   RTMP / HLS
+========================================================= */
+
+const mediaRoot =
+    path.join(
+        __dirname,
+        'media'
+    );
+
 if (!fs.existsSync(mediaRoot)) {
-    fs.mkdirSync(mediaRoot, {
-        recursive: true
-    });
+    fs.mkdirSync(
+        mediaRoot,
+        { recursive: true }
+    );
 }
 
 const rtmpConfig = {
+
     logType: 3,
 
     rtmp: {
@@ -619,11 +768,15 @@ const rtmpConfig = {
 
     trans: {
         ffmpeg: './ffmpeg',
+
         tasks: [
             {
                 app: 'live',
                 hls: true,
-                hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
+
+                hlsFlags:
+                    '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
+
                 dash: false
             }
         ]
@@ -631,15 +784,28 @@ const rtmpConfig = {
 };
 
 try {
-    const nms = new NodeMediaServer(rtmpConfig);
+
+    const nms =
+        new NodeMediaServer(
+            rtmpConfig
+        );
 
     nms.run();
 
-    console.log('RTMP / HLS server started.');
-    console.log('RTMP: rtmp://YOUR_SERVER/live/STREAM_KEY');
-    console.log('HLS: http://YOUR_SERVER:8000/live/STREAM_KEY/index.m3u8');
+    console.log(
+        'RTMP / HLS server started.'
+    );
+
+    console.log(
+        'RTMP: rtmp://YOUR_SERVER/live/STREAM_KEY'
+    );
+
+    console.log(
+        'HLS: http://YOUR_SERVER:8000/live/STREAM_KEY/index.m3u8'
+    );
 
 } catch (err) {
+
     console.error(
         'RTMP / HLS server error:',
         err
