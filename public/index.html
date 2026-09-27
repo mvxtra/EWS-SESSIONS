@@ -1014,6 +1014,7 @@ let clubSpotlights=[];
 let clubLasers=[];
 let clubSmoke=null;
 let clubSmokeVelocities=[];
+let dubSoundSystems=[];
 
 let particles;
 
@@ -2391,44 +2392,114 @@ function createCeilingBeams(){
 
 function createSpeakers(){
 
-  const mat=new THREE.MeshStandardMaterial({
-    color:0x050505,
-    metalness:.4,
-    roughness:.7
+  // EWS DUB SOUND SYSTEM — large reggae/dub style stacks.
+  // Both stacks face the dance floor and react subtly to the low end.
+  const cabinetMat=new THREE.MeshStandardMaterial({
+    color:0x070707,
+    metalness:.28,
+    roughness:.76
   });
 
-  const positions=[
-    [-8,2,-11],
-    [8,2,-11],
-    [-11,2,-10],
-    [11,2,-10]
-  ];
+  const edgeMat=new THREE.MeshStandardMaterial({
+    color:0x151515,
+    metalness:.5,
+    roughness:.5
+  });
 
-  positions.forEach(p=>{
-    const speaker=new THREE.Group();
-    speaker.position.set(p[0],p[1],p[2]);
+  const coneMat=new THREE.MeshStandardMaterial({
+    color:0x202020,
+    metalness:.15,
+    roughness:.68
+  });
 
-    const body=new THREE.Mesh(
-      new THREE.BoxGeometry(1.2,2.5,.8),
-      mat
-    );
-    speaker.add(body);
+  const dustMat=new THREE.MeshBasicMaterial({color:0x090909});
 
+  const stackPositions=[[-9.2,0,-8.8],[9.2,0,-8.8]];
+
+  stackPositions.forEach((pos,stackIndex)=>{
+    const stack=new THREE.Group();
+    stack.position.set(pos[0],0,pos[2]);
+
+    // Three large bass bins.
     for(let i=0;i<3;i++){
-      const cone=new THREE.Mesh(
-        new THREE.CylinderGeometry(.23,.23,.12,24),
-        new THREE.MeshStandardMaterial({color:0xaaaaaa,metalness:.25,roughness:.55})
+      const cab=new THREE.Mesh(
+        new THREE.BoxGeometry(3.15,1.65,1.65),
+        cabinetMat
       );
-      cone.rotation.x=Math.PI/2;
-      cone.position.set(0,-.7+i*.6,-.45);
-      speaker.add(cone);
+      cab.position.y=.83+i*1.68;
+      cab.castShadow=true;
+      cab.receiveShadow=true;
+      stack.add(cab);
+
+      // Huge bass driver on the front face.
+      const woofer=new THREE.Mesh(
+        new THREE.CylinderGeometry(.62,.62,.18,32),
+        coneMat
+      );
+      woofer.rotation.x=Math.PI/2;
+      woofer.position.set(0,.83+i*1.68,-.91);
+      woofer.userData.isDubWoofer=true;
+      stack.add(woofer);
+
+      const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(.63,.055,10,32),
+        edgeMat
+      );
+      ring.position.set(0,.83+i*1.68,-1.01);
+      ring.rotation.x=Math.PI/2;
+      stack.add(ring);
     }
 
-    // Turn every speaker toward the centre of the dance floor.
-    speaker.lookAt(new THREE.Vector3(0,1,-1));
-    // The speaker cabinet faces its local -Z, so flip it to point into the dance floor.
-    speaker.rotation.y += Math.PI;
-    scene.add(speaker);
+    // Mid/high section on top of the bass bins.
+    const topY=5.25;
+    const topCab=new THREE.Mesh(
+      new THREE.BoxGeometry(2.65,1.55,1.35),
+      cabinetMat
+    );
+    topCab.position.y=topY;
+    topCab.castShadow=true;
+    stack.add(topCab);
+
+    for(let i=0;i<3;i++){
+      const horn=new THREE.Mesh(
+        new THREE.CylinderGeometry(.25,.38,.16,24),
+        edgeMat
+      );
+      horn.rotation.x=Math.PI/2;
+      horn.position.set(-.72+i*.72,topY,-.74);
+      stack.add(horn);
+    }
+
+    // Thin frame lines give the stacks the classic hand-built sound-system look.
+    const frame=new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(3.35,6.95,1.78)),
+      new THREE.LineBasicMaterial({color:0x303030,transparent:true,opacity:.75})
+    );
+    frame.position.y=3.48;
+    stack.add(frame);
+
+    // Small top plate / handle.
+    const plate=new THREE.Mesh(
+      new THREE.BoxGeometry(2.1,.08,1.15),
+      edgeMat
+    );
+    plate.position.y=6.08;
+    stack.add(plate);
+
+    // Point the face directly at the middle of the dance floor.
+    stack.lookAt(new THREE.Vector3(0,2.4,-1));
+    stack.rotation.y+=Math.PI;
+
+    scene.add(stack);
+    dubSoundSystems.push({stack,baseY:stack.position.y,phase:stackIndex*Math.PI});
+  });
+}
+
+function animateDubSoundSystems(bass,level,time){
+  const pulse=Math.max(0,bass)*.055;
+  dubSoundSystems.forEach((s,i)=>{
+    const breathing=1+Math.sin(time*1.7+s.phase)*.006;
+    s.stack.scale.set(1+pulse*breathing,1+pulse*breathing,1+pulse*breathing);
   });
 }
 
@@ -3822,6 +3893,7 @@ function animate(){
 
   animateClubSpotlights(time,bass,level);
   animateClubLasers(time,bass,level);
+  animateDubSoundSystems(bass,level,time);
   animateClubSmoke(time,bass,level);
 
   remotePlayers.forEach(p=>{
