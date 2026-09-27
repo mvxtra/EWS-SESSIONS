@@ -1286,45 +1286,43 @@ function startSession(username){
    CHAT
 ========================================================= */
 
-const chatForm = document.getElementById('chat-form');
-const chatInput = document.getElementById('chat-input');
+document
+  .getElementById('chat-form')
+  .addEventListener(
+    'submit',
+    function(e){
 
-chatForm.addEventListener('submit', function(e){
-  e.preventDefault();
-  if(!socket) return;
-  const text = chatInput.value.trim();
-  if(!text) return;
+      e.preventDefault();
 
-  socket.emit('chat-message', {
-    user: currentUser,
-    text: text,
-    lang: document.getElementById('lang').value
-  });
+      if(!socket)return;
 
-  chatInput.value = '';
-  chatMode = false;
-  keys = {};
-  chatInput.blur();
+      const input =
+        document.getElementById(
+          'chat-input'
+        );
 
-  const canvas = document.getElementById('canvas3d');
-  if(canvas && document.pointerLockElement !== canvas){
-    setTimeout(function(){
-      try{ canvas.requestPointerLock(); }catch(err){}
-    }, 30);
-  }
-});
+      const text =
+        input.value.trim();
 
-chatInput.addEventListener('focus', function(){
-  chatMode = true;
-  keys = {};
-  if(document.pointerLockElement){
-    try{ document.exitPointerLock(); }catch(err){}
-  }
-});
+      if(!text)return;
 
-chatInput.addEventListener('blur', function(){
-  if(!chatMode) keys = {};
-});
+      socket.emit(
+        'chat-message',
+        {
+          user:currentUser,
+          text:text,
+
+          lang:
+            document.getElementById(
+              'lang'
+            ).value
+        }
+      );
+
+      input.value='';
+
+    }
+  );
 
 /* =========================================================
    LANGUAGE
@@ -1673,32 +1671,43 @@ function createDanceFloor(){
 }
 
 function createMainScreen(){
-  screenCanvas=document.createElement('canvas');
-  screenCanvas.width=1024;
-  screenCanvas.height=512;
-  screenCtx=screenCanvas.getContext('2d');
-  screenCtx.fillStyle='#050505';
-  screenCtx.fillRect(0,0,1024,512);
-  screenTexture=new THREE.CanvasTexture(screenCanvas);
-  screenTexture.needsUpdate=true;
-
+  /*
+     ONE physical club screen.
+     The HTML iframe is the only media content shown on it.
+     The 3D mesh is only the fixed black surface/frame.
+  */
   const frame=new THREE.Mesh(
     new THREE.BoxGeometry(14.6,6.6,.42),
-    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
+    new THREE.MeshStandardMaterial({
+      color:0x080808,
+      metalness:.75,
+      roughness:.28
+    })
   );
   frame.position.set(0,3.65,-16.72);
   scene.add(frame);
 
   screenMesh=new THREE.Mesh(
     new THREE.PlaneGeometry(14,6),
-    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
+    new THREE.MeshBasicMaterial({
+      color:0x000000,
+      side:THREE.FrontSide
+    })
   );
-  screenMesh.position.set(0,3.65,-16.48);
+  screenMesh.position.set(0,3.65,-16.47);
   scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
-    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
+  [
+    [14.2,.035,.035,0,6.68,-16.43],
+    [14.2,.035,.035,0,.62,-16.43],
+    [.035,6.1,.035,-7.08,3.65,-16.43],
+    [.035,6.1,.035,7.08,3.65,-16.43]
+  ].forEach(a=>{
+    const m=new THREE.Mesh(
+      new THREE.BoxGeometry(a[0],a[1],a[2]),
+      borderMat
+    );
     m.position.set(a[3],a[4],a[5]);
     scene.add(m);
   });
@@ -2704,95 +2713,134 @@ async function startSSHAudio(){
 
 function setupControls(){
 
-  window.addEventListener('resize', function(){
-    if(!camera || !renderer) return;
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
-  });
+  window.addEventListener(
+    'resize',
+    function(){
 
-  window.addEventListener('keydown', function(e){
-    const target = e.target;
-    const typing = target && (
-      target.tagName === 'INPUT' ||
-      target.tagName === 'TEXTAREA' ||
-      target.isContentEditable
+      if(
+        !camera ||
+        !renderer
+      ){
+        return;
+      }
+
+      camera.aspect=
+        innerWidth/
+        innerHeight;
+
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(
+        innerWidth,
+        innerHeight
+      );
+
+    }
+  );
+
+  window.addEventListener(
+    'keydown',
+    function(e){
+
+      keys[e.code]=true;
+
+      if(
+        e.code==='KeyC'
+      ){
+
+        chatMode=
+          !chatMode;
+
+        toggleChat();
+
+      }
+
+    }
+  );
+
+  window.addEventListener(
+    'keyup',
+    function(e){
+
+      keys[e.code]=false;
+
+    }
+  );
+
+  const canvas =
+    document.getElementById(
+      'canvas3d'
     );
 
-    if(typing) return;
+  canvas.addEventListener(
+    'click',
+    function(){
 
-    if(e.code === 'KeyC'){
-      e.preventDefault();
-      chatMode = !chatMode;
-      toggleChat();
-      return;
-    }
+      if(!chatMode){
 
-    if(e.code === 'Escape'){
-      if(chatMode){
-        e.preventDefault();
-        chatMode = false;
-        keys = {};
-        toggleChat();
+        canvas.requestPointerLock();
+
       }
-      return;
+
     }
+  );
 
-    if(chatMode) return;
+  document.addEventListener(
+    'pointerlockchange',
+    function(){
 
-    if(e.code === 'KeyW' || e.code === 'KeyA' || e.code === 'KeyS' || e.code === 'KeyD'){
-      e.preventDefault();
+      pointerLocked=
+        document.pointerLockElement===
+        canvas;
+
     }
+  );
 
-    keys[e.code] = true;
-  });
+  document.addEventListener(
+    'mousemove',
+    function(e){
 
-  window.addEventListener('keyup', function(e){
-    keys[e.code] = false;
-  });
+      if(!pointerLocked)return;
 
-  const canvas = document.getElementById('canvas3d');
+      yaw-=
+        e.movementX*.002;
 
-  canvas.addEventListener('click', function(){
-    if(chatMode) return;
-    try{ canvas.requestPointerLock(); }catch(err){}
-  });
+      pitch-=
+        e.movementY*.002;
 
-  document.addEventListener('pointerlockchange', function(){
-    pointerLocked = document.pointerLockElement === canvas;
-  });
+      pitch=
+        Math.max(
+          -1.45,
+          Math.min(
+            1.45,
+            pitch
+          )
+        );
 
-  document.addEventListener('mousemove', function(e){
-    if(!pointerLocked || chatMode) return;
-    yaw -= e.movementX * .002;
-    pitch -= e.movementY * .002;
-    pitch = Math.max(-1.45, Math.min(1.45, pitch));
-  });
+    }
+  );
 
 }
 
 function toggleChat(){
 
-  const input = document.getElementById('chat-input');
-  const canvas = document.getElementById('canvas3d');
+  const input =
+    document.getElementById(
+      'chat-input'
+    );
 
   if(chatMode){
-    keys = {};
-    if(document.pointerLockElement){
-      try{ document.exitPointerLock(); }catch(err){}
-    }
-    setTimeout(function(){ input.focus(); }, 30);
-    return;
+
+    document.exitPointerLock();
+
+    input.focus();
+
+  }else{
+
+    input.blur();
+
   }
 
-  input.blur();
-  keys = {};
-
-  setTimeout(function(){
-    if(canvas && !chatMode){
-      try{ canvas.requestPointerLock(); }catch(err){}
-    }
-  }, 30);
 }
 
 
@@ -2910,36 +2958,55 @@ function clearClubScreen(){
 function updateClubScreenOverlay(){
   const panel=document.getElementById('media-screen');
   if(!panel || !screenMesh || !camera || !renderer) return;
+
   if(!screenMediaActive){
     panel.style.display='none';
     return;
   }
+
   const w=renderer.domElement.clientWidth;
   const h=renderer.domElement.clientHeight;
-  if(!w || !h){ panel.style.display='none'; return; }
-
-  const leftPoint=new THREE.Vector3(-7,3.65,-16.47).project(camera);
-  const rightPoint=new THREE.Vector3(7,3.65,-16.47).project(camera);
-  const topPoint=new THREE.Vector3(0,6.65,-16.47).project(camera);
-  const bottomPoint=new THREE.Vector3(0,.65,-16.47).project(camera);
-  const center=new THREE.Vector3(0,3.65,-16.47).project(camera);
-
-  const left=(leftPoint.x*.5+.5)*w;
-  const right=(rightPoint.x*.5+.5)*w;
-  const top=(-topPoint.y*.5+.5)*h;
-  const bottom=(-bottomPoint.y*.5+.5)*h;
-  const cx=(center.x*.5+.5)*w;
-  const cy=(-center.y*.5+.5)*h;
-  const width=Math.abs(right-left);
-  const height=Math.abs(bottom-top);
-
-  if(center.z>1 || width<5 || height<5){
+  if(!w || !h){
     panel.style.display='none';
     return;
   }
+
+  /* Exact corners of the single 14 x 6 screen plane. */
+  const corners=[
+    new THREE.Vector3(-7, 6.65, -16.47),
+    new THREE.Vector3( 7, 6.65, -16.47),
+    new THREE.Vector3( 7, 0.65, -16.47),
+    new THREE.Vector3(-7, 0.65, -16.47)
+  ];
+
+  const projected=corners.map(v=>v.project(camera));
+
+  if(projected.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y)||p.z>1)){
+    panel.style.display='none';
+    return;
+  }
+
+  const pts=projected.map(p=>({
+    x:(p.x*.5+.5)*w,
+    y:(-p.y*.5+.5)*h
+  }));
+
+  const minX=Math.min(...pts.map(p=>p.x));
+  const maxX=Math.max(...pts.map(p=>p.x));
+  const minY=Math.min(...pts.map(p=>p.y));
+  const maxY=Math.max(...pts.map(p=>p.y));
+
+  const width=maxX-minX;
+  const height=maxY-minY;
+
+  if(width<5 || height<5 || width>w*1.5 || height>h*1.5){
+    panel.style.display='none';
+    return;
+  }
+
   panel.style.display='block';
-  panel.style.left=(cx-width/2)+'px';
-  panel.style.top=(cy-height/2)+'px';
+  panel.style.left=minX+'px';
+  panel.style.top=minY+'px';
   panel.style.width=width+'px';
   panel.style.height=height+'px';
 }
@@ -3200,140 +3267,8 @@ function animate(){
     }
   );
 
-  if(screenCtx){
-
-    screenCtx.fillStyle=
-      '#050505';
-
-    screenCtx.fillRect(
-      0,
-      0,
-      1024,
-      512
-    );
-
-    const grd =
-      screenCtx.createLinearGradient(
-        0,
-        0,
-        1024,
-        0
-      );
-
-    const intensity=
-      40+
-      Math.floor(
-        bassLevel*120
-      );
-
-    grd.addColorStop(
-      0,
-      `rgb(${intensity},${intensity},${intensity})`
-    );
-
-    grd.addColorStop(
-      .5,
-      '#050505'
-    );
-
-    grd.addColorStop(
-      1,
-      `rgb(${intensity},${intensity},${intensity})`
-    );
-
-    screenCtx.fillStyle=
-      grd;
-
-    screenCtx.fillRect(
-      0,
-      0,
-      1024,
-      512
-    );
-
-    screenCtx.fillStyle=
-      '#fff';
-
-    screenCtx.font=
-      'bold 80px Arial';
-
-    screenCtx.textAlign=
-      'center';
-
-    screenCtx.fillText(
-      'EWS SESSIONS',
-      512,
-      200
-    );
-
-    screenCtx.font=
-      '22px Arial';
-
-    screenCtx.fillStyle=
-      '#777';
-
-    screenCtx.fillText(
-      'UNDERGROUND CLUB',
-      512,
-      245
-    );
-
-    const bars=48;
-
-    const bw=
-      800/bars;
-
-    for(
-      let i=0;
-      i<bars;
-      i++
-    ){
-
-      let value;
-
-      if(
-        freqData &&
-        audioStarted
-      ){
-
-        value=
-          freqData[
-            Math.floor(
-              i*
-              freqData.length/
-              bars
-            )
-          ]/255;
-
-      }else{
-
-        value=
-          .2+
-          Math.sin(
-            time*4+
-            i*.5
-          )*.15;
-
-      }
-
-      const h=
-        value*180;
-
-      screenCtx.fillStyle=
-        '#fff';
-
-      screenCtx.fillRect(
-        112+i*bw,
-        450-h,
-        bw-3,
-        h
-      );
-
-    }
-
-    screenTexture.needsUpdate=true;
-
-  }
+  /* The club screen is now a single fixed black surface.
+     Media is rendered only by the iframe overlay. */
 
   updateClubScreenOverlay();
 
