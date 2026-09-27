@@ -340,8 +340,8 @@ input:focus{
 ========================================================= */
 
 #screen-control{
-  position:absolute;
-  top:18px;
+  position:fixed;
+  top:108px;
   left:50%;
   transform:translateX(-50%);
   z-index:31;
@@ -363,8 +363,8 @@ input:focus{
 }
 
 #screen-menu{
-  position:absolute;
-  top:62px;
+  position:fixed;
+  top:148px;
   left:50%;
   transform:translateX(-50%);
   z-index:40;
@@ -1152,6 +1152,13 @@ function startSession(username){
     'hud'
   ).style.display='block';
 
+  // SCREEN button is a HUD control and belongs only to mvxtra.
+  clubScreenHost='mvxtra';
+  const screenButton=document.getElementById('screen-control');
+  if(screenButton){
+    screenButton.style.display = String(currentUser).toLowerCase()==='mvxtra' ? 'block' : 'none';
+  }
+
   init3D();
 
   socket=io();
@@ -1167,6 +1174,11 @@ function startSession(username){
       }
     );
 
+    // Explicit snapshot request makes reconnects deterministic.
+    setTimeout(()=>{
+      if(socket && socket.connected) socket.emit('request-players');
+    },120);
+
   });
 
   socket.on(
@@ -1174,7 +1186,8 @@ function startSession(username){
     list=>{
 
       onlineUserList=Array.isArray(list)?list:[];
-      clubScreenHost=onlineUserList.length? (typeof onlineUserList[0]==='string'?onlineUserList[0]:onlineUserList[0].username) : currentUser;
+      // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
+      clubScreenHost='mvxtra';
 
       const ul =
         document.getElementById('online-list');
@@ -1279,13 +1292,64 @@ function startSession(username){
     applyRemoteClubScreen(state);
   });
 
+  // =====================================================
+  // MULTIPLAYER — initial snapshot + live updates
+  // =====================================================
+
+  socket.on('players-state', list=>{
+    if(!Array.isArray(list)) return;
+
+    // Server sends everyone except the current socket.
+    // Rebuild only the missing players so existing objects keep moving smoothly.
+    const alive = new Set();
+
+    list.forEach(data=>{
+      if(!data || !data.id || data.id===socket.id) return;
+      alive.add(data.id);
+      updateRemotePlayer(data);
+    });
+
+    // Remove players that are no longer present in the server snapshot.
+    Array.from(remotePlayers.keys()).forEach(id=>{
+      if(!alive.has(id)) removeRemotePlayer(id);
+    });
+  });
+
+  socket.on('player-joined', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
   socket.on('player-state', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
+  // Compatibility with the older multiplayer event name.
+  socket.on('player-move', data=>{
     if(!data || !data.id || data.id===socket.id) return;
     updateRemotePlayer(data);
   });
 
   socket.on('player-left', id=>{
     removeRemotePlayer(id);
+  });
+
+  socket.on('player-removed', id=>{
+    removeRemotePlayer(id);
+  });
+
+  // Ask the server for a fresh snapshot after every connection.
+  socket.on('joined', ()=>{
+    socket.emit('request-players');
+  });
+
+  socket.on('connect', ()=>{
+    // The server may have already sent the snapshot during join.
+    // This request also makes reconnects deterministic.
+    setTimeout(()=>{
+      if(socket && socket.connected) socket.emit('request-players');
+    }, 100);
   });
 
 }
@@ -1328,6 +1392,15 @@ document
       );
 
       input.value='';
+
+      // Enter sends the message and immediately returns control to the club.
+      chatMode=false;
+      input.blur();
+      keys={};
+      const canvas=document.getElementById('canvas3d');
+      if(canvas && document.pointerLockElement!==canvas){
+        try{ canvas.requestPointerLock(); }catch(err){}
+      }
 
     }
   );
@@ -2739,6 +2812,29 @@ function setupControls(){
     'keydown',
     function(e){
 
+      // While typing, movement keys must never get stuck in the 3D controller.
+      const active=document.activeElement;
+      const typing=active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA');
+
+      if(e.code==='Escape' && chatMode){
+        e.preventDefault();
+        chatMode=false;
+        const input=document.getElementById('chat-input');
+        if(input) input.blur();
+        keys={};
+        return;
+      }
+
+      if(typing && !chatMode){
+        return;
+      }
+
+      if(chatMode && active && active.id==='chat-input'){
+        if(e.code==='KeyW' || e.code==='KeyA' || e.code==='KeyS' || e.code==='KeyD' || e.code==='ArrowUp' || e.code==='ArrowDown' || e.code==='ArrowLeft' || e.code==='ArrowRight'){
+          return;
+        }
+      }
+
       keys[e.code]=true;
 
       if(
@@ -2851,6 +2947,11 @@ function toggleChat(){
   }else{
 
     input.blur();
+    keys={};
+    const canvas=document.getElementById('canvas3d');
+    if(canvas && document.pointerLockElement!==canvas){
+      try{ canvas.requestPointerLock(); }catch(err){}
+    }
 
   }
 
@@ -2926,7 +3027,7 @@ function normalizeClubScreenUrl(raw){
 }
 
 function isClubHost(){
-  return !clubScreenHost || clubScreenHost===currentUser;
+  return String(currentUser||'').trim().toLowerCase()==='mvxtra';
 }
 
 function loadClubScreen(){
@@ -3431,6 +3532,11 @@ function animate(){
    REMOTE PLAYERS / SILHOUETTES
 ========================================================= */
 function createRemotePlayer(data){
+  if(!scene || !data || !data.id || data.id===socket?.id) return;
+
+  // If a stale object exists for this socket, replace it cleanly.
+  if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
+
   const g=new THREE.Group();
   g.userData.username=data.username||'PLAYER';
 
@@ -3462,20 +3568,48 @@ function createRemotePlayer(data){
   const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
   label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
 
-  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y=Number(data.yaw)||0;
+  const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
+  const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
+  const y=Number.isFinite(Number(data.y)) ? Number(data.y) : 0;
+  const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
+
+  g.position.set(x,y,z);
+  g.rotation.y=ry;
+  g.visible=true;
   scene.add(g);
-  remotePlayers.set(data.id,{group:g,last:{x:g.position.x,z:g.position.z,yaw:g.rotation.y},moving:false});
+
+  remotePlayers.set(data.id,{
+    group:g,
+    last:{x,z,yaw:ry},
+    moving:!!data.moving,
+    username:data.username||'PLAYER'
+  });
 }
 
 function updateRemotePlayer(data){
   if(!data.id || data.id===socket?.id) return;
   if(!remotePlayers.has(data.id)) createRemotePlayer(data);
   const p=remotePlayers.get(data.id);
-  const nx=Number(data.x)||0, nz=Number(data.z)||0;
-  const dx=nx-p.group.position.x, dz=nz-p.group.position.z;
-  p.moving=Math.hypot(dx,dz)>.002;
-  p.group.position.x=nx; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
+
+  const rawX=Number(data.x);
+  const rawZ=Number(data.z);
+  const rawY=Number(data.y);
+  const rawYaw=Number(data.yaw ?? data.ry);
+
+  const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
+  const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
+  const ny=Number.isFinite(rawY) ? rawY : p.group.position.y;
+  const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
+
+  const dx=nx-p.group.position.x;
+  const dz=nz-p.group.position.z;
+
+  p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
+  p.group.position.x=nx;
+  p.group.position.y=ny;
+  p.group.position.z=nz;
+  p.group.rotation.y=nyaw;
+  p.last={x:nx,z:nz,yaw:nyaw};
 }
 
 function removeRemotePlayer(id){
@@ -3490,7 +3624,22 @@ function broadcastPlayerState(now){
   if(!socket || !socket.connected || !camera) return;
   if(now-lastPlayerBroadcast<50) return;
   lastPlayerBroadcast=now;
-  socket.emit('player-state',{x:camera.position.x,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser});
+  const moving = Math.abs(camera.position.x-(broadcastPlayerState.lastX ?? camera.position.x)) > 0.0005 ||
+                 Math.abs(camera.position.z-(broadcastPlayerState.lastZ ?? camera.position.z)) > 0.0005;
+
+  broadcastPlayerState.lastX=camera.position.x;
+  broadcastPlayerState.lastZ=camera.position.z;
+
+  socket.emit('player-state',{
+    x:camera.position.x,
+    y:Math.max(0, playerY-1.7),
+    z:camera.position.z,
+    yaw:yaw,
+    pitch:pitch,
+    username:currentUser,
+    moving:moving,
+    jumping:!isGrounded
+  });
 }
 
 function applyRemoteClubScreen(state){

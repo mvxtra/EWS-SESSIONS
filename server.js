@@ -2,12 +2,12 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
 const { Server } = require('socket.io');
 const NodeMediaServer = require('node-media-server');
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
     cors: {
         origin: '*',
@@ -15,35 +15,23 @@ const io = new Server(server, {
     }
 });
 
-/* =========================================================
-   CONFIG
-========================================================= */
-
 const PORT = process.env.PORT || 3000;
 const RTMP_PORT = process.env.RTMP_PORT || 1935;
 const NMS_HTTP_PORT = process.env.NMS_HTTP_PORT || 8000;
 
-const PUBLIC_DIR = path.join(__dirname, 'public');
-const HLS_DIR = path.join(__dirname, 'hls');
-const USERS_FILE = path.join(__dirname, 'users.json');
-
+const ROOT = __dirname;
+const PUBLIC_DIR = path.join(ROOT, 'public');
+const DATA_DIR = path.join(ROOT, 'data');
+const HLS_DIR = path.join(ROOT, 'hls');
 const HLS_STREAM_DIR = path.join(HLS_DIR, 'ews');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
 
-/* =========================================================
-   DIRECTORIES / USERS
-========================================================= */
+const SCREEN_HOST = 'mvxtra';
 
-if (!fs.existsSync(PUBLIC_DIR)) {
-    fs.mkdirSync(PUBLIC_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(HLS_DIR)) {
-    fs.mkdirSync(HLS_DIR, { recursive: true });
-}
-
-if (!fs.existsSync(HLS_STREAM_DIR)) {
-    fs.mkdirSync(HLS_STREAM_DIR, { recursive: true });
-}
+fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(HLS_DIR, { recursive: true });
+fs.mkdirSync(HLS_STREAM_DIR, { recursive: true });
 
 if (!fs.existsSync(USERS_FILE)) {
     fs.writeFileSync(
@@ -52,10 +40,6 @@ if (!fs.existsSync(USERS_FILE)) {
         'utf8'
     );
 }
-
-/* =========================================================
-   EXPRESS
-========================================================= */
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -66,14 +50,20 @@ app.use(
     '/hls',
     express.static(HLS_DIR, {
         setHeaders: (res, filePath) => {
+            res.setHeader(
+                'Access-Control-Allow-Origin',
+                '*'
+            );
+
+            res.setHeader(
+                'Cache-Control',
+                'no-cache, no-store, must-revalidate'
+            );
+
             if (filePath.endsWith('.m3u8')) {
                 res.setHeader(
                     'Content-Type',
                     'application/vnd.apple.mpegurl'
-                );
-                res.setHeader(
-                    'Cache-Control',
-                    'no-cache, no-store, must-revalidate'
                 );
             }
 
@@ -82,16 +72,7 @@ app.use(
                     'Content-Type',
                     'video/mp2t'
                 );
-                res.setHeader(
-                    'Cache-Control',
-                    'no-cache, no-store, must-revalidate'
-                );
             }
-
-            res.setHeader(
-                'Access-Control-Allow-Origin',
-                '*'
-            );
         }
     })
 );
@@ -100,22 +81,46 @@ app.use(
    HELPERS
 ========================================================= */
 
+function cleanUsername(value) {
+    return String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .slice(0, 24);
+}
+
+function validUsername(username) {
+    return (
+        username.length >= 2 &&
+        username.length <= 24 &&
+        /^[a-zA-Z0-9_\-а-яА-ЯёЁ ]+$/.test(username)
+    );
+}
+
+function hashPassword(password) {
+    const crypto = require('crypto');
+
+    return crypto
+        .createHash('sha256')
+        .update(String(password))
+        .digest('hex');
+}
+
 function readUsers() {
     try {
-        const raw = fs.readFileSync(
+        const data = fs.readFileSync(
             USERS_FILE,
             'utf8'
         );
 
-        const users = JSON.parse(raw);
+        const users = JSON.parse(data);
 
         return Array.isArray(users)
             ? users
             : [];
-    } catch (err) {
+    } catch (error) {
         console.error(
             'USERS READ ERROR:',
-            err
+            error.message
         );
 
         return [];
@@ -130,56 +135,39 @@ function saveUsers(users) {
     );
 }
 
-function hashPassword(password) {
-    return crypto
-        .createHash('sha256')
-        .update(String(password))
-        .digest('hex');
-}
-
-function cleanUsername(value) {
-    return String(value || '')
-        .trim()
-        .replace(/\s+/g, ' ')
-        .slice(0, 24);
-}
-
-function isValidUsername(username) {
+function isScreenHost(username) {
     return (
-        username.length >= 2 &&
-        username.length <= 24 &&
-        /^[a-zA-Z0-9_\-а-яА-ЯёЁ ]+$/.test(username)
+        String(username || '')
+            .trim()
+            .toLowerCase() ===
+        SCREEN_HOST
+    );
+}
+
+function clamp(value, min, max) {
+    return Math.max(
+        min,
+        Math.min(max, value)
     );
 }
 
 /* =========================================================
-   STATUS
-========================================================= */
-
-app.get('/api/status', (req, res) => {
-    res.json({
-        ok: true,
-        service: 'EWS SESSIONS',
-        online: onlineUsers.size,
-        stream: true
-    });
-});
-
-/* =========================================================
-   REGISTER
+   USERS API
 ========================================================= */
 
 app.post('/api/register', (req, res) => {
 
-    const username = cleanUsername(
-        req.body.username
-    );
+    const username =
+        cleanUsername(
+            req.body.username
+        );
 
-    const password = String(
-        req.body.password || ''
-    );
+    const password =
+        String(
+            req.body.password || ''
+        );
 
-    if (!isValidUsername(username)) {
+    if (!validUsername(username)) {
         return res.status(400).json({
             ok: false,
             error: 'Некорректное имя пользователя.'
@@ -197,7 +185,8 @@ app.post('/api/register', (req, res) => {
 
     const exists = users.some(
         user =>
-            String(user.username).toLowerCase() ===
+            String(user.username)
+                .toLowerCase() ===
             username.toLowerCase()
     );
 
@@ -222,25 +211,24 @@ app.post('/api/register', (req, res) => {
     });
 });
 
-/* =========================================================
-   LOGIN
-========================================================= */
-
 app.post('/api/login', (req, res) => {
 
-    const username = cleanUsername(
-        req.body.username
-    );
+    const username =
+        cleanUsername(
+            req.body.username
+        );
 
-    const password = String(
-        req.body.password || ''
-    );
+    const password =
+        String(
+            req.body.password || ''
+        );
 
     const users = readUsers();
 
     const user = users.find(
         item =>
-            String(item.username).toLowerCase() ===
+            String(item.username)
+                .toLowerCase() ===
             username.toLowerCase()
     );
 
@@ -251,15 +239,10 @@ app.post('/api/login', (req, res) => {
         });
     }
 
-    /*
-      Поддерживаем обычный SHA-256,
-      который использует этот server.js.
-    */
-
-    const passwordHash =
-        hashPassword(password);
-
-    if (user.password !== passwordHash) {
+    if (
+        user.password !==
+        hashPassword(password)
+    ) {
         return res.status(401).json({
             ok: false,
             error: 'Неверный пароль.'
@@ -272,24 +255,34 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+app.get('/api/status', (req, res) => {
+    res.json({
+        ok: true,
+        service: 'EWS SESSIONS',
+        online: onlineUsers.size,
+        stream: true
+    });
+});
+
 /* =========================================================
    TRANSLATION
 ========================================================= */
 
-async function translateText(text, targetLanguage) {
+async function translateText(
+    text,
+    targetLanguage
+) {
 
     if (!text) {
         return '';
     }
 
-    if (!targetLanguage) {
-        return text;
-    }
-
     const target =
-        String(targetLanguage)
-            .trim()
-            .toLowerCase();
+        String(
+            targetLanguage || ''
+        )
+        .trim()
+        .toLowerCase();
 
     if (
         !target ||
@@ -298,21 +291,17 @@ async function translateText(text, targetLanguage) {
         return text;
     }
 
-    /*
-      Google Translate endpoint.
-      Перевод выполняется сервером отдельно
-      для каждого получателя.
-    */
-
     try {
 
         const url =
             'https://translate.googleapis.com/translate_a/single' +
             '?client=gtx' +
             '&sl=auto' +
-            '&tl=' + encodeURIComponent(target) +
+            '&tl=' +
+            encodeURIComponent(target) +
             '&dt=t' +
-            '&q=' + encodeURIComponent(text);
+            '&q=' +
+            encodeURIComponent(text);
 
         const response =
             await fetch(url);
@@ -340,67 +329,109 @@ async function translateText(text, targetLanguage) {
 
         return text;
 
-    } catch (err) {
+    } catch (error) {
 
         console.error(
             'TRANSLATION ERROR:',
-            err.message
+            error.message
         );
 
         return text;
     }
 }
 
-app.post('/api/translate', async (req, res) => {
+app.post(
+    '/api/translate',
+    async (req, res) => {
 
-    const text =
-        String(req.body.text || '');
+        const text =
+            String(
+                req.body.text || ''
+            );
 
-    const target =
-        String(req.body.target || 'en');
+        const target =
+            String(
+                req.body.target || 'en'
+            );
 
-    if (!text) {
-        return res.json({
+        if (!text) {
+            return res.json({
+                ok: true,
+                text: ''
+            });
+        }
+
+        const translated =
+            await translateText(
+                text,
+                target
+            );
+
+        res.json({
             ok: true,
-            text: ''
+            text: translated
         });
     }
-
-    const translated =
-        await translateText(
-            text,
-            target
-        );
-
-    res.json({
-        ok: true,
-        text: translated
-    });
-});
+);
 
 /* =========================================================
-   SOCKET.IO STATE
+   ONLINE / MULTIPLAYER
 ========================================================= */
 
 const onlineUsers = new Map();
 const players = new Map();
 
-/*
-  ВАЖНО:
-  Экран клуба всегда принадлежит mvxtra.
-  Никаких новых "хостов" при выходе пользователя.
-*/
-
 const clubScreenState = {
     active: false,
     src: '',
     name: '',
-    owner: 'mvxtra'
+    owner: SCREEN_HOST
 };
 
-/* =========================================================
-   ONLINE USERS
-========================================================= */
+const SPAWN_POINTS = [
+    { x: 0, z: 13 },
+    { x: 3, z: 10 },
+    { x: -3, z: 10 },
+    { x: 6, z: 7 },
+    { x: -6, z: 7 },
+    { x: 8, z: 3 },
+    { x: -8, z: 3 }
+];
+
+function getSpawnPoint() {
+
+    for (
+        const point of SPAWN_POINTS
+    ) {
+
+        const occupied =
+            Array.from(
+                players.values()
+            ).some(player =>
+                Math.abs(
+                    player.x - point.x
+                ) < 1.5 &&
+                Math.abs(
+                    player.z - point.z
+                ) < 1.5
+            );
+
+        if (!occupied) {
+            return point;
+        }
+    }
+
+    return {
+        x:
+            Math.round(
+                (Math.random() * 14) - 7
+            ),
+        z:
+            Math.round(
+                (Math.random() * 8) + 5
+            )
+    };
+}
 
 function getOnlineUsers() {
 
@@ -412,18 +443,6 @@ function getOnlineUsers() {
     }));
 }
 
-function broadcastOnline() {
-
-    io.emit(
-        'online-users',
-        getOnlineUsers()
-    );
-}
-
-/* =========================================================
-   PLAYERS
-========================================================= */
-
 function getPlayers() {
 
     return Array.from(
@@ -432,638 +451,642 @@ function getPlayers() {
         id: player.id,
         username: player.username,
         x: player.x,
+        y: player.y,
         z: player.z,
         yaw: player.yaw,
         pitch: player.pitch
     }));
 }
 
-function broadcastPlayersSnapshot(socket) {
+function broadcastOnline() {
 
-    if (!socket) return;
+    io.emit(
+        'online-users',
+        getOnlineUsers()
+    );
+}
+
+function sendPlayersSnapshot(socket) {
 
     socket.emit(
         'players-state',
-        getPlayers()
+        getPlayers().filter(
+            player =>
+                player.id !== socket.id
+        )
     );
 }
 
 /* =========================================================
-   JOIN
+   SOCKET
 ========================================================= */
 
-io.on('connection', socket => {
-
-    console.log(
-        'SOCKET CONNECT:',
-        socket.id
-    );
-
-    /* =====================================================
-       JOIN
-    ===================================================== */
-
-    socket.on('join', data => {
-
-        data = data || {};
-
-        const username =
-            cleanUsername(
-                data.username
-            );
-
-        const language =
-            String(
-                data.language || 'en'
-            ).toLowerCase();
-
-        if (!username) {
-            return;
-        }
-
-        /*
-          Если пользователь уже был подключён
-          этим socket — сначала очищаем.
-        */
-
-        onlineUsers.set(
-            socket.id,
-            {
-                id: socket.id,
-                username,
-                language
-            }
-        );
-
-        /*
-          Начальная позиция игрока.
-        */
-
-        const player = {
-            id: socket.id,
-            username,
-            x: 0,
-            z: 13,
-            yaw: 0,
-            pitch: 0
-        };
-
-        players.set(
-            socket.id,
-            player
-        );
-
-        socket.username = username;
-        socket.language = language;
-
-        /*
-          Говорим клиенту, что управление экраном
-          доступно только mvxtra.
-        */
-
-        socket.emit(
-            'screen-host',
-            {
-                host:
-                    username.toLowerCase() ===
-                    'mvxtra',
-                username: 'mvxtra'
-            }
-        );
-
-        /*
-          Онлайн список.
-        */
-
-        broadcastOnline();
-
-        /*
-          Текущее состояние экрана.
-        */
-
-        socket.emit(
-            'club-screen-state',
-            clubScreenState
-        );
-
-        /*
-          Уже находящиеся игроки.
-        */
-
-        broadcastPlayersSnapshot(socket);
-
-        /*
-          Новый игрок появляется у остальных.
-        */
-
-        socket.broadcast.emit(
-            'player-state',
-            player
-        );
-
-        /*
-          Совместимость.
-        */
-
-        socket.emit(
-            'online',
-            getOnlineUsers()
-        );
+io.on(
+    'connection',
+    socket => {
 
         console.log(
-            'JOIN:',
-            username,
-            '|',
-            language
+            'SOCKET CONNECT:',
+            socket.id
         );
-    });
 
-    /* =====================================================
-       REQUEST ONLINE
-    ===================================================== */
+        /* -------------------------------------------------
+           JOIN
+        ------------------------------------------------- */
 
-    socket.on(
-        'request-online',
-        () => {
-            socket.emit(
-                'online-users',
-                getOnlineUsers()
-            );
-        }
-    );
+        socket.on(
+            'join',
+            data => {
 
-    /* =====================================================
-       REQUEST PLAYERS
-    ===================================================== */
+                data = data || {};
 
-    socket.on(
-        'request-players',
-        () => {
-            broadcastPlayersSnapshot(socket);
-        }
-    );
-
-    /* =====================================================
-       PLAYER STATE
-    ===================================================== */
-
-    socket.on(
-        'player-state',
-        data => {
-
-            if (!socket.username) {
-                return;
-            }
-
-            const player =
-                players.get(socket.id);
-
-            if (!player) {
-                return;
-            }
-
-            data = data || {};
-
-            const x =
-                Number(data.x);
-
-            const z =
-                Number(data.z);
-
-            const yaw =
-                Number(data.yaw);
-
-            const pitch =
-                Number(data.pitch);
-
-            if (Number.isFinite(x)) {
-                player.x =
-                    Math.max(
-                        -16,
-                        Math.min(16, x)
+                const username =
+                    cleanUsername(
+                        data.username
                     );
-            }
 
-            if (Number.isFinite(z)) {
-                player.z =
-                    Math.max(
-                        -15.5,
-                        Math.min(15.5, z)
-                    );
-            }
+                const language =
+                    String(
+                        data.language || 'en'
+                    )
+                    .trim()
+                    .toLowerCase();
 
-            if (Number.isFinite(yaw)) {
-                player.yaw = yaw;
-            }
-
-            if (Number.isFinite(pitch)) {
-                player.pitch = pitch;
-            }
-
-            socket.broadcast.emit(
-                'player-state',
-                {
-                    id: socket.id,
-                    username: player.username,
-                    x: player.x,
-                    z: player.z,
-                    yaw: player.yaw,
-                    pitch: player.pitch
+                if (!username) {
+                    return;
                 }
-            );
-        }
-    );
 
-    /* =====================================================
-       OLD PLAYER MOVE COMPATIBILITY
-    ===================================================== */
+                socket.username =
+                    username;
 
-    socket.on(
-        'player-move',
-        data => {
+                socket.language =
+                    language;
 
-            if (!socket.username) {
-                return;
-            }
+                onlineUsers.set(
+                    socket.id,
+                    {
+                        id: socket.id,
+                        username,
+                        language
+                    }
+                );
 
-            const player =
-                players.get(socket.id);
+                const spawn =
+                    getSpawnPoint();
 
-            if (!player) {
-                return;
-            }
-
-            data = data || {};
-
-            if (
-                Number.isFinite(
-                    Number(data.x)
-                )
-            ) {
-                player.x =
-                    Math.max(
-                        -16,
-                        Math.min(
-                            16,
-                            Number(data.x)
-                        )
-                    );
-            }
-
-            if (
-                Number.isFinite(
-                    Number(data.z)
-                )
-            ) {
-                player.z =
-                    Math.max(
-                        -15.5,
-                        Math.min(
-                            15.5,
-                            Number(data.z)
-                        )
-                    );
-            }
-
-            if (
-                Number.isFinite(
-                    Number(data.yaw)
-                )
-            ) {
-                player.yaw =
-                    Number(data.yaw);
-            }
-
-            if (
-                Number.isFinite(
-                    Number(data.pitch)
-                )
-            ) {
-                player.pitch =
-                    Number(data.pitch);
-            }
-
-            socket.broadcast.emit(
-                'player-state',
-                {
+                const player = {
                     id: socket.id,
-                    username: player.username,
-                    x: player.x,
-                    z: player.z,
-                    yaw: player.yaw,
-                    pitch: player.pitch
-                }
-            );
-        }
-    );
+                    username,
+                    x: spawn.x,
+                    y: 1.7,
+                    z: spawn.z,
+                    yaw: 0,
+                    pitch: 0
+                };
 
-    /* =====================================================
-       CLUB SCREEN REQUEST
-    ===================================================== */
+                players.set(
+                    socket.id,
+                    player
+                );
 
-    socket.on(
-        'request-club-screen',
-        () => {
+                /*
+                  Только mvxtra.
+                */
 
-            socket.emit(
-                'club-screen-state',
-                clubScreenState
-            );
-        }
-    );
+                socket.emit(
+                    'screen-host',
+                    {
+                        host:
+                            isScreenHost(
+                                username
+                            ),
+                        username:
+                            SCREEN_HOST
+                    }
+                );
 
-    /* =====================================================
-       CLUB SCREEN
-       ONLY MVXTRA
-    ===================================================== */
+                /*
+                  Передаём собственную точку спавна.
+                */
 
-    socket.on(
-        'club-screen-state',
-        state => {
+                socket.emit(
+                    'player-spawn',
+                    player
+                );
 
-            if (!socket.username) {
-                return;
-            }
+                /*
+                  Уже существующие игроки.
+                */
 
-            if (
-                socket.username
-                    .toLowerCase() !==
-                'mvxtra'
-            ) {
+                sendPlayersSnapshot(
+                    socket
+                );
+
+                /*
+                  Новый игрок остальным.
+                */
+
+                socket.broadcast.emit(
+                    'player-state',
+                    player
+                );
+
+                /*
+                  Онлайн.
+                */
+
+                broadcastOnline();
+
+                /*
+                  Состояние экрана.
+                */
+
+                socket.emit(
+                    'club-screen-state',
+                    clubScreenState
+                );
+
+                /*
+                  Совместимость.
+                */
+
+                socket.emit(
+                    'online',
+                    getOnlineUsers()
+                );
 
                 console.log(
-                    'SCREEN DENIED:',
-                    socket.username
+                    'JOIN:',
+                    username,
+                    '|',
+                    language
                 );
-
-                return;
             }
+        );
 
-            state = state || {};
+        /* -------------------------------------------------
+           ONLINE
+        ------------------------------------------------- */
 
-            if (
-                state.active === true &&
-                typeof state.src === 'string' &&
-                state.src.length > 0
-            ) {
+        socket.on(
+            'request-online',
+            () => {
 
-                clubScreenState.active = true;
+                socket.emit(
+                    'online-users',
+                    getOnlineUsers()
+                );
+            }
+        );
 
-                clubScreenState.src =
-                    state.src.slice(0, 2000);
+        /* -------------------------------------------------
+           PLAYERS SNAPSHOT
+        ------------------------------------------------- */
 
-                clubScreenState.name =
-                    String(
-                        state.name || 'MEDIA'
-                    ).slice(0, 100);
+        socket.on(
+            'request-players',
+            () => {
+
+                sendPlayersSnapshot(
+                    socket
+                );
+            }
+        );
+
+        /* -------------------------------------------------
+           PLAYER STATE
+        ------------------------------------------------- */
+
+        socket.on(
+            'player-state',
+            data => {
+
+                const player =
+                    players.get(
+                        socket.id
+                    );
+
+                if (!player) {
+                    return;
+                }
+
+                data = data || {};
+
+                const x =
+                    Number(data.x);
+
+                const y =
+                    Number(data.y);
+
+                const z =
+                    Number(data.z);
+
+                const yaw =
+                    Number(data.yaw);
+
+                const pitch =
+                    Number(data.pitch);
+
+                if (Number.isFinite(x)) {
+                    player.x =
+                        clamp(
+                            x,
+                            -16,
+                            16
+                        );
+                }
+
+                if (Number.isFinite(y)) {
+                    player.y =
+                        clamp(
+                            y,
+                            1.7,
+                            8
+                        );
+                }
+
+                if (Number.isFinite(z)) {
+                    player.z =
+                        clamp(
+                            z,
+                            -15.5,
+                            15.5
+                        );
+                }
+
+                if (Number.isFinite(yaw)) {
+                    player.yaw =
+                        yaw;
+                }
+
+                if (Number.isFinite(pitch)) {
+                    player.pitch =
+                        pitch;
+                }
+
+                player.username =
+                    socket.username;
+
+                socket.broadcast.emit(
+                    'player-state',
+                    player
+                );
+            }
+        );
+
+        /* -------------------------------------------------
+           OLD PLAYER MOVE
+        ------------------------------------------------- */
+
+        socket.on(
+            'player-move',
+            data => {
+
+                const player =
+                    players.get(
+                        socket.id
+                    );
+
+                if (!player) {
+                    return;
+                }
+
+                data = data || {};
+
+                if (
+                    Number.isFinite(
+                        Number(data.x)
+                    )
+                ) {
+                    player.x =
+                        clamp(
+                            Number(data.x),
+                            -16,
+                            16
+                        );
+                }
+
+                if (
+                    Number.isFinite(
+                        Number(data.y)
+                    )
+                ) {
+                    player.y =
+                        clamp(
+                            Number(data.y),
+                            1.7,
+                            8
+                        );
+                }
+
+                if (
+                    Number.isFinite(
+                        Number(data.z)
+                    )
+                ) {
+                    player.z =
+                        clamp(
+                            Number(data.z),
+                            -15.5,
+                            15.5
+                        );
+                }
+
+                if (
+                    Number.isFinite(
+                        Number(data.yaw)
+                    )
+                ) {
+                    player.yaw =
+                        Number(data.yaw);
+                }
+
+                if (
+                    Number.isFinite(
+                        Number(data.pitch)
+                    )
+                ) {
+                    player.pitch =
+                        Number(data.pitch);
+                }
+
+                socket.broadcast.emit(
+                    'player-state',
+                    player
+                );
+            }
+        );
+
+        /* -------------------------------------------------
+           SCREEN REQUEST
+        ------------------------------------------------- */
+
+        socket.on(
+            'request-club-screen',
+            () => {
+
+                socket.emit(
+                    'club-screen-state',
+                    clubScreenState
+                );
+            }
+        );
+
+        /* -------------------------------------------------
+           SCREEN CONTROL
+           ONLY MVXTRA
+        ------------------------------------------------- */
+
+        socket.on(
+            'club-screen-state',
+            state => {
+
+                if (
+                    !isScreenHost(
+                        socket.username
+                    )
+                ) {
+
+                    console.log(
+                        'SCREEN DENIED:',
+                        socket.username
+                    );
+
+                    return;
+                }
+
+                state =
+                    state || {};
+
+                if (
+                    state.active === true &&
+                    typeof state.src ===
+                        'string' &&
+                    state.src.trim()
+                ) {
+
+                    clubScreenState.active =
+                        true;
+
+                    clubScreenState.src =
+                        state.src
+                            .trim()
+                            .slice(0, 2000);
+
+                    clubScreenState.name =
+                        String(
+                            state.name ||
+                            'MEDIA'
+                        )
+                        .slice(0, 100);
+
+                } else {
+
+                    clubScreenState.active =
+                        false;
+
+                    clubScreenState.src =
+                        '';
+
+                    clubScreenState.name =
+                        '';
+                }
 
                 clubScreenState.owner =
-                    'mvxtra';
+                    SCREEN_HOST;
 
-            } else {
-
-                clubScreenState.active = false;
-                clubScreenState.src = '';
-                clubScreenState.name = '';
-                clubScreenState.owner = 'mvxtra';
-            }
-
-            /*
-              Всем игрокам одновременно.
-            */
-
-            io.emit(
-                'club-screen-state',
-                clubScreenState
-            );
-
-            console.log(
-                'CLUB SCREEN:',
-                clubScreenState
-            );
-        }
-    );
-
-    /* =====================================================
-       CHAT
-    ===================================================== */
-
-    socket.on(
-        'chat-message',
-        async message => {
-
-            if (!socket.username) {
-                return;
-            }
-
-            message = message || {};
-
-            const originalText =
-                String(
-                    message.text || ''
-                )
-                .trim()
-                .slice(0, 500);
-
-            if (!originalText) {
-                return;
-            }
-
-            /*
-              Язык отправителя.
-              Не используется как глобальный язык.
-            */
-
-            const senderLanguage =
-                String(
-                    socket.language || 'en'
-                ).toLowerCase();
-
-            /*
-              Переводим ОТДЕЛЬНО для каждого пользователя.
-            */
-
-            const recipients =
-                Array.from(
-                    onlineUsers.entries()
+                io.emit(
+                    'club-screen-state',
+                    clubScreenState
                 );
 
-            await Promise.all(
-                recipients.map(
-                    async ([socketId, user]) => {
-
-                        let translated =
-                            originalText;
-
-                        const targetLanguage =
-                            String(
-                                user.language ||
-                                'en'
-                            ).toLowerCase();
-
-                        /*
-                          Если язык совпадает,
-                          перевод не нужен.
-                        */
-
-                        if (
-                            targetLanguage !==
-                            senderLanguage
-                        ) {
-
-                            translated =
-                                await translateText(
-                                    originalText,
-                                    targetLanguage
-                                );
-                        }
-
-                        const targetSocket =
-                            io.sockets.sockets.get(
-                                socketId
-                            );
-
-                        if (!targetSocket) {
-                            return;
-                        }
-
-                        /*
-                          ВАЖНО:
-                          Именно такие поля ждёт
-                          твой оригинальный index.html:
-                            message.user
-                            message.text
-                            message.ts
-                        */
-
-                        targetSocket.emit(
-                            'chat-message',
-                            {
-                                user:
-                                    socket.username,
-
-                                text:
-                                    translated,
-
-                                ts:
-                                    Date.now(),
-
-                                original:
-                                    originalText
-                            }
-                        );
-                    }
-                )
-            );
-        }
-    );
-
-    /* =====================================================
-       LANGUAGE CHANGE
-       Только язык ЭТОГО пользователя.
-    ===================================================== */
-
-    socket.on(
-        'language-change',
-        language => {
-
-            if (!socket.username) {
-                return;
+                console.log(
+                    'CLUB SCREEN:',
+                    clubScreenState
+                );
             }
+        );
 
-            const newLanguage =
-                String(
-                    language || 'en'
-                )
-                .trim()
-                .toLowerCase();
+        /* -------------------------------------------------
+           CHAT
+        ------------------------------------------------- */
 
-            socket.language =
-                newLanguage;
+        socket.on(
+            'chat-message',
+            async message => {
 
-            const user =
-                onlineUsers.get(
+                if (!socket.username) {
+                    return;
+                }
+
+                message =
+                    message || {};
+
+                const original =
+                    String(
+                        message.text || ''
+                    )
+                    .trim()
+                    .slice(0, 500);
+
+                if (!original) {
+                    return;
+                }
+
+                const senderLanguage =
+                    String(
+                        socket.language ||
+                        'en'
+                    )
+                    .toLowerCase();
+
+                const recipients =
+                    Array.from(
+                        onlineUsers.entries()
+                    );
+
+                await Promise.all(
+                    recipients.map(
+                        async ([id, user]) => {
+
+                            const targetLanguage =
+                                String(
+                                    user.language ||
+                                    'en'
+                                )
+                                .toLowerCase();
+
+                            let translated =
+                                original;
+
+                            if (
+                                targetLanguage !==
+                                senderLanguage
+                            ) {
+
+                                translated =
+                                    await translateText(
+                                        original,
+                                        targetLanguage
+                                    );
+                            }
+
+                            const targetSocket =
+                                io.sockets.sockets.get(
+                                    id
+                                );
+
+                            if (!targetSocket) {
+                                return;
+                            }
+
+                            targetSocket.emit(
+                                'chat-message',
+                                {
+                                    user:
+                                        socket.username,
+
+                                    text:
+                                        translated,
+
+                                    ts:
+                                        Date.now(),
+
+                                    original
+                                }
+                            );
+                        }
+                    )
+                );
+            }
+        );
+
+        /* -------------------------------------------------
+           LANGUAGE
+        ------------------------------------------------- */
+
+        socket.on(
+            'language-change',
+            language => {
+
+                if (!socket.username) {
+                    return;
+                }
+
+                const newLanguage =
+                    String(
+                        language || 'en'
+                    )
+                    .trim()
+                    .toLowerCase();
+
+                socket.language =
+                    newLanguage;
+
+                const user =
+                    onlineUsers.get(
+                        socket.id
+                    );
+
+                if (user) {
+                    user.language =
+                        newLanguage;
+                }
+
+                socket.emit(
+                    'language-updated',
+                    {
+                        language:
+                            newLanguage
+                    }
+                );
+
+                broadcastOnline();
+            }
+        );
+
+        /* -------------------------------------------------
+           DISCONNECT
+        ------------------------------------------------- */
+
+        socket.on(
+            'disconnect',
+            reason => {
+
+                const username =
+                    socket.username ||
+                    'unknown';
+
+                onlineUsers.delete(
                     socket.id
                 );
 
-            if (user) {
-                user.language =
-                    newLanguage;
+                players.delete(
+                    socket.id
+                );
+
+                io.emit(
+                    'player-left',
+                    socket.id
+                );
+
+                io.emit(
+                    'player-removed',
+                    socket.id
+                );
+
+                broadcastOnline();
+
+                console.log(
+                    'DISCONNECT:',
+                    username,
+                    '|',
+                    reason
+                );
             }
-
-            /*
-              Другим пользователям ничего
-              менять не надо.
-            */
-
-            socket.emit(
-                'language-updated',
-                {
-                    language:
-                        newLanguage
-                }
-            );
-
-            broadcastOnline();
-        }
-    );
-
-    /* =====================================================
-       DISCONNECT
-    ===================================================== */
-
-    socket.on(
-        'disconnect',
-        reason => {
-
-            const username =
-                socket.username ||
-                'unknown';
-
-            onlineUsers.delete(
-                socket.id
-            );
-
-            players.delete(
-                socket.id
-            );
-
-            /*
-              Удаляем игрока у всех.
-            */
-
-            io.emit(
-                'player-left',
-                socket.id
-            );
-
-            /*
-              Совместимость со старыми клиентами.
-            */
-
-            io.emit(
-                'player-removed',
-                socket.id
-            );
-
-            /*
-              ВАЖНО:
-              НИКАКОГО нового screen host.
-              Управлять экраном всё равно может
-              только mvxtra.
-            */
-
-            broadcastOnline();
-
-            console.log(
-                'DISCONNECT:',
-                username,
-                '|',
-                reason
-            );
-        }
-    );
-});
+        );
+    }
+);
 
 /* =========================================================
    NODE MEDIA SERVER
@@ -1072,23 +1095,31 @@ io.on('connection', socket => {
 const nmsConfig = {
 
     rtmp: {
-        port: Number(RTMP_PORT),
+        port:
+            Number(RTMP_PORT),
 
-        chunk_size: 60000,
+        chunk_size:
+            60000,
 
-        gop_cache: true,
+        gop_cache:
+            true,
 
-        ping: 30,
+        ping:
+            30,
 
-        ping_timeout: 60
+        ping_timeout:
+            60
     },
 
     http: {
-        port: Number(NMS_HTTP_PORT),
+        port:
+            Number(NMS_HTTP_PORT),
 
-        mediaroot: HLS_DIR,
+        mediaroot:
+            HLS_DIR,
 
-        allow_origin: '*'
+        allow_origin:
+            '*'
     },
 
     trans: {
@@ -1100,18 +1131,21 @@ const nmsConfig = {
         tasks: [
 
             {
-                app: 'live',
+                app:
+                    'live',
 
-                hls: true,
+                hls:
+                    true,
 
                 hlsFlags:
                     '[hls_time=2:hls_list_size=6:hls_flags=delete_segments+append_list]',
 
-                hlsKeepSegments: 6,
+                hlsKeepSegments:
+                    6,
 
-                dash: false
+                dash:
+                    false
             }
-
         ]
     }
 };
@@ -1131,51 +1165,45 @@ try {
         'RTMP SERVER READY'
     );
 
-    console.log(
-        `RTMP: rtmp://localhost:${RTMP_PORT}/live`
-    );
-
-} catch (err) {
+} catch (error) {
 
     console.error(
         'NODE MEDIA SERVER ERROR:',
-        err
+        error
     );
 }
 
 /* =========================================================
-   CREATE PUBLIC FOLDER INDEX
+   INDEX
 ========================================================= */
 
-const publicIndex =
-    path.join(
-        PUBLIC_DIR,
-        'index.html'
-    );
+app.get(
+    '/',
+    (req, res) => {
 
-if (!fs.existsSync(publicIndex)) {
+        const index =
+            path.join(
+                PUBLIC_DIR,
+                'index.html'
+            );
 
-    app.get('/', (req, res) => {
+        if (
+            fs.existsSync(index)
+        ) {
+
+            return res.sendFile(
+                index
+            );
+        }
 
         res.status(404).send(
-            'EWS SESSIONS: index.html not found in public folder.'
+            'EWS SESSIONS: index.html not found.'
         );
-
-    });
-
-} else {
-
-    app.get('/', (req, res) => {
-
-        res.sendFile(
-            publicIndex
-        );
-
-    });
-}
+    }
+);
 
 /* =========================================================
-   404 API
+   API 404
 ========================================================= */
 
 app.use(
@@ -1184,31 +1212,8 @@ app.use(
 
         res.status(404).json({
             ok: false,
-            error: 'API endpoint not found.'
-        });
-
-    }
-);
-
-/* =========================================================
-   ERROR HANDLER
-========================================================= */
-
-app.use(
-    (err, req, res, next) => {
-
-        console.error(
-            'EXPRESS ERROR:',
-            err
-        );
-
-        if (res.headersSent) {
-            return next(err);
-        }
-
-        res.status(500).json({
-            ok: false,
-            error: 'Internal server error.'
+            error:
+                'API endpoint not found.'
         });
     }
 );
@@ -1226,47 +1231,33 @@ server.listen(
         console.log(
             '========================================'
         );
-
         console.log(
-            '        EWS SESSIONS SERVER READY'
+            '       EWS SESSIONS SERVER READY'
         );
-
         console.log(
             '========================================'
         );
-
         console.log(
-            `WEB:  http://localhost:${PORT}`
+            `WEB: http://localhost:${PORT}`
         );
-
         console.log(
             `RTMP: rtmp://localhost:${RTMP_PORT}/live`
         );
-
         console.log(
-            `HLS:  http://localhost:${PORT}/hls/`
+            `HLS: http://localhost:${PORT}/hls/`
         );
-
         console.log(
             'SCREEN OWNER: mvxtra'
         );
-
         console.log(
-            'CHAT TRANSLATION: PERSONAL'
+            'CHAT: PERSONAL TRANSLATION'
         );
-
         console.log(
             'MULTIPLAYER: ON'
         );
-
-        console.log(
-            'ONLINE USERS: ON'
-        );
-
         console.log(
             '========================================'
         );
-
         console.log('');
     }
 );
@@ -1287,8 +1278,9 @@ function shutdown() {
             nms.stop();
         }
 
-    } catch (err) {
-        console.error(err);
+    } catch (error) {
+
+        console.error(error);
     }
 
     server.close(
