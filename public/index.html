@@ -9,10 +9,19 @@
   content="width=device-width,initial-scale=1.0"
 >
 
-<title>EWS SESSIONS — FIXED</title>
+<title>EWS SESSIONS</title>
+<!-- EWS SESSIONS MASTER PATCH: logo + floor lock + no CORS textures + hidden audio HUD -->
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+<script>
+/* Three.js r128 has no CapsuleGeometry. Keep compatibility with any
+   legacy avatar code that still asks for it. */
+if(!THREE.CapsuleGeometry){
+  THREE.CapsuleGeometry=function(radius=.25,length=.7,capSegments=4,radialSegments=8){
+    return new THREE.CylinderGeometry(radius,radius,length+radius*2,radialSegments,1);
+  };
+}</script>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
@@ -502,7 +511,8 @@ input:focus{
   letter-spacing:1px;
 }
 
-#stream-indicator{display:none !important;
+#stream-indicator{
+  display:none !important;
   position:absolute;
 
   top:18px;
@@ -570,7 +580,8 @@ input:focus{
   pointer-events:none;
 }
 
-#audio-control{display:none !important;
+#audio-control{
+  display:none !important;
   position:absolute;
 
   top:58px;
@@ -671,7 +682,7 @@ input:focus{
     padding:2px 0;
   }
 
-  #stream-indicator{display:none !important;
+  #stream-indicator{
     top:52px;
     left:12px;
 
@@ -682,7 +693,7 @@ input:focus{
     font-size:8px;
   }
 
-  #audio-control{display:none !important;
+  #audio-control{
     top:84px;
     left:12px;
 
@@ -861,7 +872,18 @@ input:focus{
     EWS
     <span>SESSIONS</span>
   </div>
-<button
+
+  <div id="stream-indicator">
+    AUDIO: READY
+  </div>
+
+  <button
+    id="audio-control"
+    onclick="startSSHAudio()">
+    ▶ AUDIO: START
+  </button>
+
+  <button
     id="screen-control"
     onclick="toggleScreenMenu()">
     SCREEN
@@ -1034,22 +1056,10 @@ let playerBody;
    CC0 seamless textures from ShareTextures
 ========================================================= */
 
-const EWS_TEXTURES = {
-  concrete: null,
-  floor: null
-};
-
-const ewsTextureLoader = new THREE.TextureLoader();
-
-function loadEWSTexture(url, repeatX=4, repeatY=4){
-  const texture = ewsTextureLoader.load(url);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeatX, repeatY);
-  texture.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 8);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
+/* External ShareTextures images are intentionally disabled.
+   The club must not depend on cross-origin textures. */
+const EWS_TEXTURES = { concrete:null, floor:null };
+function loadEWSTexture(){ return null; }
 
 /* =========================================================
    LOGIN
@@ -1584,6 +1594,7 @@ function init3D(){
   createColumns();
   createEntrance();
   createNeonArchitecture();
+  createEWSLogoSign();
   createCeilingBeams();
   createSpeakers();
   createParticles();
@@ -1690,7 +1701,7 @@ function createCeiling(){
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(36,42),
     new THREE.MeshStandardMaterial({
-      color:0x080808,
+        color:0x080808,
       roughness:1
     })
   );
@@ -2161,6 +2172,62 @@ function createNeonArchitecture(){
 
 }
 
+function createEWSLogoSign(){
+
+  /* Circular EWS sign on the far wall. Pure Three.js geometry/canvas:
+     no external image or CORS dependency. */
+  const g=new THREE.Group();
+  g.position.set(0,4.05,-16.70);
+  g.rotation.y=Math.PI;
+
+  const disc=new THREE.Mesh(
+    new THREE.CylinderGeometry(1.55,1.55,.16,64),
+    new THREE.MeshStandardMaterial({
+      color:0x050505,
+      metalness:.35,
+      roughness:.32,
+      emissive:0x111111,
+      emissiveIntensity:.5
+    })
+  );
+  disc.rotation.x=Math.PI/2;
+  g.add(disc);
+
+  const ring=new THREE.Mesh(
+    new THREE.TorusGeometry(1.55,.065,12,64),
+    new THREE.MeshBasicMaterial({color:0xffffff})
+  );
+  ring.position.z=.10;
+  g.add(ring);
+
+  const c=document.createElement('canvas');
+  c.width=1024; c.height=1024;
+  const ctx=c.getContext('2d');
+  ctx.clearRect(0,0,1024,1024);
+  ctx.beginPath(); ctx.arc(512,512,430,0,Math.PI*2);
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=22; ctx.stroke();
+  ctx.font='900 210px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle='#ffffff'; ctx.fillText('EWS',512,500);
+  ctx.font='900 55px Arial'; ctx.letterSpacing='18px'; ctx.fillText('SESSIONS',512,690);
+
+  const tex=new THREE.CanvasTexture(c);
+  tex.needsUpdate=true;
+  const logo=new THREE.Mesh(
+    new THREE.PlaneGeometry(2.75,2.75),
+    new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false})
+  );
+  logo.position.z=.13;
+  g.add(logo);
+
+  scene.add(g);
+  neonObjects.push(ring);
+
+  const glow=new THREE.PointLight(0xffffff,.75,8);
+  glow.position.set(0,4.05,-15.9);
+  scene.add(glow);
+  lightObjects.push(glow);
+}
+
 function createCeilingBeams(){
 
   const mat =
@@ -2365,13 +2432,11 @@ function createPlayer(){
 ========================================================= */
 
 function setupAudio(){
-  // Audio remains active, but the old AUDIO HUD/button is intentionally removed.
   const indicator=document.getElementById('stream-indicator');
   const button=document.getElementById('audio-control');
-  if(indicator) indicator.textContent='';
-  if(button) button.style.display='none';
+  if(indicator){ indicator.textContent=''; indicator.classList.remove('live','error'); }
+  if(button){ button.textContent=''; button.disabled=false; button.classList.remove('live'); }
 }
-
 
 async function unlockEWSAudio(){
 
@@ -2413,7 +2478,10 @@ async function startSSHAudio(){
       'stream-indicator'
     );
 
-  const button = document.getElementById('audio-control');
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
 
   if(!audio)return;
 
@@ -2421,16 +2489,11 @@ async function startSSHAudio(){
     window.location.origin+
     '/hls/ews/index.m3u8';
 
-  indicator.classList.remove(
-    'error'
-  );
+  if(indicator) indicator.classList.remove('error');
 
-  indicator.classList.add(
-    'live'
-  );
+  if(indicator) indicator.classList.add('live');
 
-  indicator.textContent=
-    'AUDIO: CONNECTING...';
+  if(indicator) indicator.textContent='AUDIO: CONNECTING...';
 
   if(button) button.disabled=true;
 
@@ -2528,15 +2591,11 @@ async function startSSHAudio(){
         Hls.Events.MANIFEST_PARSED,
         async function(){
 
-          indicator.textContent=
-            'AUDIO: LIVE';
+          if(indicator) indicator.textContent='AUDIO: LIVE';
 
-          button.textContent=
-            '● AUDIO: LIVE';
+          if(button) button.textContent='● AUDIO: LIVE';
 
-          button.classList.add(
-            'live'
-          );
+          if(button) button.classList.add('live');
 
           if(button) button.disabled=false;
 
@@ -2553,11 +2612,9 @@ async function startSSHAudio(){
               err
             );
 
-            indicator.textContent=
-              'AUDIO: PRESS START';
+            if(indicator) indicator.textContent='AUDIO: PRESS START';
 
-            button.textContent=
-              '▶ AUDIO: START';
+            if(button) button.textContent='▶ AUDIO: START';
 
             button.classList.remove(
               'live'
@@ -2711,7 +2768,8 @@ async function startSSHAudio(){
         'error'
       );
 
-      if(button) button.textContent='● AUDIO: LIVE';
+      button.textContent=
+        '● AUDIO: LIVE';
 
       button.classList.add(
         'live'
@@ -2733,7 +2791,8 @@ async function startSSHAudio(){
         indicator.textContent=
           'AUDIO: PAUSED';
 
-        if(button) button.textContent='▶ AUDIO: RESUME';
+        button.textContent=
+          '▶ AUDIO: RESUME';
 
         button.classList.remove(
           'live'
@@ -2750,20 +2809,20 @@ async function startSSHAudio(){
         audio.error
       );
 
-      indicator.textContent=
-        'AUDIO: ERROR';
+      if(indicator) indicator.textContent='AUDIO: ERROR';
 
       indicator.classList.remove(
         'live'
       );
 
-      indicator.classList.add(
-        'error'
+      if(indicator) indicator.classList.add('error');
+
+      button.textContent=
+        '▶ AUDIO: RETRY';
+
+      button.classList.remove(
+        'live'
       );
-
-      if(button) button.textContent='▶ AUDIO: RETRY';
-
-      if(button) button.classList.remove('live');
 
       if(button) button.disabled=false;
 
@@ -2888,7 +2947,7 @@ function setupControls(){
 
       // SPACE = JUMP
       // Пока открыт чат — пробел остаётся обычным пробелом.
-      if(
+      if(false &&
         e.code==='Space' &&
         !chatMode &&
         pointerLocked &&
@@ -3364,7 +3423,10 @@ function animate(){
       15.5
     );
 
-  camera.position.y=playerY;
+  playerY=GROUND_Y;
+  jumpVelocity=0;
+  isGrounded=true;
+  camera.position.y=GROUND_Y;
 
   camera.rotation.order=
     'YXZ';
@@ -3651,7 +3713,7 @@ function createRemotePlayer(data){
 
   const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
   const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
-  const y=1.7;
+  const y=0;
   const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
 
   g.position.set(x,y,z);
@@ -3667,7 +3729,7 @@ function createRemotePlayer(data){
     dance:Number(data.dance)||0,
     danceStartedAt:Number(data.danceStartedAt)||0,
     parts,
-    baseY:y
+    baseY:0
   });
 }
 
@@ -3683,7 +3745,7 @@ function updateRemotePlayer(data){
 
   const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
   const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
-  const ny=1.7;
+  const ny=0;
   const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
 
   const dx=nx-p.group.position.x;
@@ -3693,7 +3755,7 @@ function updateRemotePlayer(data){
   if(data.dance!==undefined) p.dance=Number(data.dance)||0;
   if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
   p.group.position.x=nx;
-  p.group.position.y=ny;
+  p.group.position.y=0;
   p.group.position.z=nz;
   p.group.rotation.y=nyaw;
   p.last={x:nx,z:nz,yaw:nyaw};
@@ -3719,7 +3781,7 @@ function broadcastPlayerState(now){
 
   socket.emit('player-state',{
     x:camera.position.x,
-    y:Math.max(0, playerY-1.7),
+    y:0,
     z:camera.position.z,
     yaw:yaw,
     pitch:pitch,
@@ -3789,7 +3851,7 @@ function animateRemoteDance(p,time){
     q.head.rotation.y=Math.sin(w*2)*.35;
   }else if(p.dance===5){
     const bounce=Math.abs(Math.sin(w*2))*0.22;
-    p.group.position.y=(p.baseY||p.group.position.y)+bounce;
+    p.group.position.y=0;
     q.leftArm.rotation.z=-.8-Math.sin(w*2)*.3; q.rightArm.rotation.z=.8+Math.sin(w*2)*.3;
   }else if(p.dance===6){
     q.leftArm.rotation.z=-1.35+Math.sin(w*3)*.5; q.rightArm.rotation.z=.15;
@@ -3799,7 +3861,7 @@ function animateRemoteDance(p,time){
 
 function resetRemoteDancePose(p){
   if(!p || !p.parts) return;
-  p.group.position.y=p.baseY||0;
+  p.group.position.y=0;
   const q=p.parts;
   q.torso.rotation.set(0,0,0); q.head.rotation.set(0,0,0);
   q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
@@ -3835,14 +3897,5 @@ window.addEventListener(
 
 </script>
 
-<script>
-// EWS visual safety net: optional avatar/texture failures must not prevent the 3D scene from rendering.
-window.addEventListener('error', function(e){
-  if(String(e.message||'').includes('CapsuleGeometry')){
-    console.warn('[EWS FIX] CapsuleGeometry fallback active');
-    e.preventDefault();
-  }
-});
-</script>
 </body>
 </html>
