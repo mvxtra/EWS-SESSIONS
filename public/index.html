@@ -14,6 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://threejs.org/examples/js/renderers/CSS3DRenderer.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
 <script src="/socket.io/socket.io.js"></script>
 
@@ -420,73 +421,6 @@ input:focus{
   line-height:1.4;
 }
 
-#screen-menu-row{display:flex;gap:7px;}
-#screen-url{flex:1;margin:0;height:38px;}
-.screen-btn{height:38px;padding:0 13px;border:1px solid #444;background:#111;color:#fff;cursor:pointer;font-size:10px;letter-spacing:1px;}
-.screen-btn:hover{background:#fff;color:#000;}
-#screen-status{margin-top:9px;color:#777;font-size:10px;line-height:1.4;}
-@media(max-width:700px){#screen-menu-row{flex-wrap:wrap;}#screen-url{flex-basis:100%;}}
-
-/* =========================================================
-   OTHER HUD
-========================================================= */
-
-#hint{
-  position:absolute;
-
-  right:18px;
-  bottom:18px;
-
-  padding:9px 12px;
-
-  background:rgba(0,0,0,.65);
-
-  border:1px solid #292929;
-
-  color:#777;
-
-  font-size:10px;
-  letter-spacing:1px;
-}
-
-
-#lang-bar{
-  position:absolute;
-
-  right:220px;
-  top:18px;
-
-  pointer-events:auto;
-}
-
-#lang{
-  background:#080808;
-
-  border:1px solid #333;
-
-  color:#aaa;
-
-  padding:7px 10px;
-}
-
-#zone-label{
-  position:absolute;
-
-  left:50%;
-  bottom:90px;
-
-  transform:translateX(-50%);
-
-  font-size:10px;
-
-  letter-spacing:5px;
-
-  color:rgba(255,255,255,.4);
-
-  pointer-events:none;
-}
-
-
 /* =========================================================
    MOBILE
 ========================================================= */
@@ -538,6 +472,29 @@ input:focus{
     padding:2px 0;
   }
 
+  #stream-indicator{
+    top:52px;
+    left:12px;
+
+    transform:none;
+
+    padding:5px 8px;
+
+    font-size:8px;
+  }
+
+  #audio-control{
+    top:84px;
+    left:12px;
+
+    transform:none;
+
+    padding:8px 10px;
+
+    font-size:8px;
+
+    z-index:150;
+  }
 
   #chat{
     left:10px;
@@ -623,6 +580,12 @@ input:focus{
 
 <canvas id="canvas3d"></canvas>
 
+<audio
+  id="ews-audio"
+  crossorigin="anonymous"
+  playsinline
+  preload="none">
+</audio>
 
 <!-- =====================================================
      LOGIN
@@ -694,7 +657,6 @@ input:focus{
     <span>SESSIONS</span>
   </div>
 
-
   <button
     id="screen-control"
     onclick="toggleScreenMenu()">
@@ -713,7 +675,7 @@ input:focus{
       <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
       <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
     </div>
-    <div id="screen-status">Только mvxtra управляет экраном. YouTube / Twitch.</div>
+    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
   </div>
 
   <div id="lang-bar">
@@ -774,6 +736,7 @@ input:focus{
   </div>
 
 
+
   <div id="zone-label">
     MAIN FLOOR
   </div>
@@ -812,15 +775,31 @@ let lightObjects=[];
 
 let particles;
 
+let analyser=null;
+let freqData=null;
+
+let audioLevel=0;
+let bassLevel=0;
+
+let audioContext=null;
+let audioSource=null;
+
+let audioStarted=false;
+
+let hls=null;
 
 let css3dRenderer=null;
-let css3dScene=null;
-let screenDomObject=null;
-let screenMesh=null;
+let css3dScreen=null;
+let screenTexture;
+let screenCanvas;
+let screenCtx;
+let screenMesh;
+let screenMediaActive=false;
+let screenMediaUrl='';
 let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
-let clubScreenHost='mvxtra';
+let clubScreenHost=null;
 
 let playerBody;
 
@@ -975,7 +954,6 @@ function startSession(username){
   ).style.display='block';
 
   init3D();
-  updateScreenHostUI();
 
   socket=io();
 
@@ -997,6 +975,8 @@ function startSession(username){
     list=>{
 
       onlineUserList=Array.isArray(list)?list:[];
+      const ownerEntry=onlineUserList.find(u=>typeof u!=='string' && u && u.owner) || onlineUserList.find(u=>typeof u!=='string' && u && String(u.username||'').toLowerCase()==='mvxtra');
+      clubScreenHost=ownerEntry ? ownerEntry.username : (currentUser && String(currentUser).toLowerCase()==='mvxtra' ? currentUser : 'mvxtra');
 
       const ul =
         document.getElementById('online-list');
@@ -1096,14 +1076,29 @@ function startSession(username){
     }
   );
 
-  socket.on('screen-host', state=>{
-    if(state && state.username){ clubScreenHost=String(state.username).trim(); }
-    else { clubScreenHost='mvxtra'; }
-    updateScreenHostUI();
+  socket.on('screen-host', data=>{
+    clubScreenHost=data && data.username ? data.username : 'mvxtra';
+    const screenButton=document.getElementById('screen-control');
+    if(screenButton) screenButton.style.display=isClubHost()?'block':'none';
   });
 
   socket.on('club-screen-state', state=>{
+    if(!state) return;
     applyRemoteClubScreen(state);
+  });
+
+  socket.on('players-state', list=>{
+    if(!Array.isArray(list)) return;
+    list.forEach(player=>{
+      if(player && player.id && player.id!==socket.id){
+        updateRemotePlayer(player);
+      }
+    });
+  });
+
+  socket.on('player-joined', player=>{
+    if(!player || !player.id || player.id===socket.id) return;
+    updateRemotePlayer(player);
   });
 
   socket.on('player-state', data=>{
@@ -1111,8 +1106,25 @@ function startSession(username){
     updateRemotePlayer(data);
   });
 
+  socket.on('player-move', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
   socket.on('player-left', id=>{
     removeRemotePlayer(id);
+  });
+
+  socket.on('player-removed', id=>{
+    removeRemotePlayer(id);
+  });
+
+  socket.on('joined', ()=>{
+    if(socket && socket.connected){
+      socket.emit('request-players');
+      socket.emit('request-online');
+      socket.emit('request-club-screen');
+    }
   });
 
 }
@@ -1230,17 +1242,6 @@ function init3D(){
     innerHeight
   );
 
-  css3dRenderer=new THREE.CSS3DRenderer();
-  css3dRenderer.setSize(innerWidth,innerHeight);
-  css3dRenderer.domElement.style.position='absolute';
-  css3dRenderer.domElement.style.left='0';
-  css3dRenderer.domElement.style.top='0';
-  css3dRenderer.domElement.style.width='100%';
-  css3dRenderer.domElement.style.height='100%';
-  css3dRenderer.domElement.style.pointerEvents='none';
-  css3dRenderer.domElement.style.zIndex='15';
-  document.getElementById('app').appendChild(css3dRenderer.domElement);
-
   renderer.setPixelRatio(
     Math.min(
       devicePixelRatio,
@@ -1326,7 +1327,10 @@ function init3D(){
   createParticles();
   createPlayer();
 
+  setupAudio();
+
   setupControls();
+  window.addEventListener('pointerdown', ()=>{ try{ startSSHAudio(); }catch(e){} }, {once:true});
 
   animate();
 
@@ -1516,54 +1520,41 @@ function createDanceFloor(){
 
 function createMainScreen(){
   const frame=new THREE.Mesh(
-    new THREE.BoxGeometry(14.8,6.8,.35),
-    new THREE.MeshStandardMaterial({color:0x050505,metalness:.65,roughness:.3})
+    new THREE.BoxGeometry(14.6,6.6,.42),
+    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
   );
-  frame.position.set(0,3.65,-16.72);
-  scene.add(frame);
+  frame.position.set(0,3.65,-16.72); scene.add(frame);
 
-  screenMesh=new THREE.Mesh(
-    new THREE.PlaneGeometry(14.2,6.1),
-    new THREE.MeshBasicMaterial({color:0x000000,side:THREE.DoubleSide,depthTest:false,depthWrite:false})
-  );
-  screenMesh.position.set(0,3.65,-16.48);
-  screenMesh.renderOrder=1000;
-  scene.add(screenMesh);
-
-  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,depthTest:false,depthWrite:false});
-  [[14.35,.08,.08,0,6.72,-16.40],[14.35,.08,.08,0,.58,-16.40],[.08,6.22,.08,-7.13,3.65,-16.40],[.08,6.22,.08,7.13,3.65,-16.40]].forEach(a=>{
+  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
+  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
     const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
-    m.position.set(a[3],a[4],a[5]);
-    m.renderOrder=1001;
-    scene.add(m);
+    m.position.set(a[3],a[4],a[5]); scene.add(m);
   });
 
-  css3dScene=new THREE.Scene();
-  const panel=document.createElement('div');
-  panel.id='club-screen-surface';
-  panel.style.width='1420px';
-  panel.style.height='610px';
-  panel.style.background='#000';
-  panel.style.overflow='hidden';
-  panel.style.pointerEvents='auto';
+  const el=document.createElement('iframe');
+  el.width='1420'; el.height='610';
+  el.src='about:blank';
+  el.allow='autoplay; fullscreen; encrypted-media; picture-in-picture';
+  el.allowFullscreen=true;
+  el.style.width='1420px'; el.style.height='610px'; el.style.border='0'; el.style.background='#000';
+  el.style.display='block';
+  el.style.pointerEvents='auto';
+  css3dScreen=new THREE.CSS3DObject(el);
+  css3dScreen.position.set(0,3.65,-16.38);
+  css3dScreen.scale.set(.01,.01,.01);
+  css3dScreen.visible=false;
+  scene.add(css3dScreen);
 
-  const iframe=document.createElement('iframe');
-  iframe.id='club-screen-iframe';
-  iframe.allow='autoplay; fullscreen; encrypted-media; picture-in-picture; web-share';
-  iframe.allowFullscreen=true;
-  iframe.style.width='100%';
-  iframe.style.height='100%';
-  iframe.style.border='0';
-  iframe.style.display='block';
-  iframe.style.background='#000';
-  panel.appendChild(iframe);
-
-  screenDomObject=new THREE.CSS3DObject(panel);
-  screenDomObject.position.set(0,3.65,-16.35);
-  screenDomObject.rotation.set(0,0,0);
-  screenDomObject.scale.set(.01,.01,.01);
-  screenDomObject.visible=false;
-  css3dScene.add(screenDomObject);
+  if(!css3dRenderer){
+    css3dRenderer=new THREE.CSS3DRenderer();
+    css3dRenderer.setSize(innerWidth,innerHeight);
+    css3dRenderer.domElement.style.position='fixed';
+    css3dRenderer.domElement.style.left='0'; css3dRenderer.domElement.style.top='0';
+    css3dRenderer.domElement.style.width='100%'; css3dRenderer.domElement.style.height='100%';
+    css3dRenderer.domElement.style.pointerEvents='none';
+    css3dRenderer.domElement.style.zIndex='5';
+    document.getElementById('app').appendChild(css3dRenderer.domElement);
+  }
 }
 
 function createStage(){
@@ -2120,6 +2111,447 @@ function createPlayer(){
 }
 
 /* =========================================================
+   AUDIO
+========================================================= */
+
+function setupAudio(){
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  indicator.textContent=
+    'AUDIO: READY';
+
+  indicator.classList.remove(
+    'live',
+    'error'
+  );
+
+  button.textContent=
+    '▶ AUDIO: START';
+
+  button.classList.remove(
+    'live'
+  );
+
+}
+
+async function startSSHAudio(){
+
+  const audio =
+    document.getElementById(
+      'ews-audio'
+    );
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  if(!audio)return;
+
+  const hlsUrl =
+    window.location.origin+
+    '/hls/ews/index.m3u8';
+
+  indicator.classList.remove(
+    'error'
+  );
+
+  indicator.classList.add(
+    'live'
+  );
+
+  indicator.textContent=
+    'AUDIO: CONNECTING...';
+
+  button.disabled=true;
+
+  button.textContent=
+    '● AUDIO: CONNECTING';
+
+  try{
+
+    if(!audioContext){
+
+      audioContext =
+        new(
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+      audioSource =
+        audioContext.createMediaElementSource(
+          audio
+        );
+
+      analyser =
+        audioContext.createAnalyser();
+
+      analyser.fftSize=256;
+
+      analyser.smoothingTimeConstant=.82;
+
+      freqData =
+        new Uint8Array(
+          analyser.frequencyBinCount
+        );
+
+      audioSource.connect(
+        analyser
+      );
+
+      analyser.connect(
+        audioContext.destination
+      );
+
+    }
+
+    if(
+      audioContext.state===
+      'suspended'
+    ){
+
+      await audioContext.resume();
+
+    }
+
+    if(hls){
+
+      try{
+        hls.destroy();
+      }catch(e){}
+
+      hls=null;
+
+    }
+
+    if(
+      window.Hls &&
+      Hls.isSupported()
+    ){
+
+      hls =
+        new Hls({
+
+          enableWorker:true,
+
+          lowLatencyMode:true,
+
+          backBufferLength:30,
+
+          maxBufferLength:10,
+
+          maxMaxBufferLength:20,
+
+          liveSyncDurationCount:3,
+
+          liveMaxLatencyDurationCount:6
+
+        });
+
+      hls.loadSource(
+        hlsUrl
+      );
+
+      hls.attachMedia(
+        audio
+      );
+
+      hls.on(
+        Hls.Events.MANIFEST_PARSED,
+        async function(){
+
+          indicator.textContent=
+            'AUDIO: LIVE';
+
+          button.textContent=
+            '● AUDIO: LIVE';
+
+          button.classList.add(
+            'live'
+          );
+
+          button.disabled=false;
+
+          audioStarted=true;
+
+          try{
+
+            await audio.play();
+
+          }catch(err){
+
+            console.warn(
+              'Audio play blocked:',
+              err
+            );
+
+            indicator.textContent=
+              'AUDIO: PRESS START';
+
+            button.textContent=
+              '▶ AUDIO: START';
+
+            button.classList.remove(
+              'live'
+            );
+
+          }
+
+        }
+      );
+
+      hls.on(
+        Hls.Events.ERROR,
+        function(
+          event,
+          data
+        ){
+
+          console.error(
+            '[HLS]',
+            data
+          );
+
+          if(!data.fatal)return;
+
+          if(
+            data.type===
+            Hls.ErrorTypes.NETWORK_ERROR
+          ){
+
+            indicator.textContent=
+              'AUDIO: RECONNECTING...';
+
+            button.textContent=
+              '● AUDIO: RECONNECTING';
+
+            setTimeout(
+              function(){
+
+                if(hls){
+
+                  try{
+                    hls.startLoad();
+                  }catch(e){}
+
+                }
+
+              },
+              1000
+            );
+
+          }
+
+          else if(
+            data.type===
+            Hls.ErrorTypes.MEDIA_ERROR
+          ){
+
+            indicator.textContent=
+              'AUDIO: RECOVERING...';
+
+            try{
+
+              hls.recoverMediaError();
+
+            }catch(e){
+
+              console.error(e);
+
+            }
+
+          }
+
+          else{
+
+            indicator.textContent=
+              'AUDIO: NO STREAM';
+
+            indicator.classList.remove(
+              'live'
+            );
+
+            indicator.classList.add(
+              'error'
+            );
+
+            button.textContent=
+              '▶ AUDIO: RETRY';
+
+            button.classList.remove(
+              'live'
+            );
+
+            button.disabled=false;
+
+          }
+
+        }
+      );
+
+    }
+
+    else if(
+      audio.canPlayType(
+        'application/vnd.apple.mpegurl'
+      )
+    ){
+
+      audio.src=
+        hlsUrl;
+
+      audio.addEventListener(
+        'loadedmetadata',
+        async function(){
+
+          try{
+
+            await audio.play();
+
+          }catch(err){
+
+            console.error(err);
+
+          }
+
+        },
+        {
+          once:true
+        }
+      );
+
+    }
+
+    else{
+
+      throw new Error(
+        'HLS is not supported by this browser'
+      );
+
+    }
+
+    audio.onplaying=function(){
+
+      indicator.textContent=
+        'AUDIO: LIVE';
+
+      indicator.classList.add(
+        'live'
+      );
+
+      indicator.classList.remove(
+        'error'
+      );
+
+      button.textContent=
+        '● AUDIO: LIVE';
+
+      button.classList.add(
+        'live'
+      );
+
+      button.disabled=false;
+
+      audioStarted=true;
+
+    };
+
+    audio.onpause=function(){
+
+      if(
+        audioStarted &&
+        !audio.ended
+      ){
+
+        indicator.textContent=
+          'AUDIO: PAUSED';
+
+        button.textContent=
+          '▶ AUDIO: RESUME';
+
+        button.classList.remove(
+          'live'
+        );
+
+      }
+
+    };
+
+    audio.onerror=function(){
+
+      console.error(
+        '[AUDIO]',
+        audio.error
+      );
+
+      indicator.textContent=
+        'AUDIO: ERROR';
+
+      indicator.classList.remove(
+        'live'
+      );
+
+      indicator.classList.add(
+        'error'
+      );
+
+      button.textContent=
+        '▶ AUDIO: RETRY';
+
+      button.classList.remove(
+        'live'
+      );
+
+      button.disabled=false;
+
+    };
+
+  }catch(err){
+
+    console.error(
+      '[EWS AUDIO ERROR]',
+      err
+    );
+
+    indicator.textContent=
+      'AUDIO: NO STREAM';
+
+    indicator.classList.remove(
+      'live'
+    );
+
+    indicator.classList.add(
+      'error'
+    );
+
+    button.textContent=
+      '▶ AUDIO: RETRY';
+
+    button.classList.remove(
+      'live'
+    );
+
+    button.disabled=false;
+
+  }
+
+}
+
+/* =========================================================
    CONTROLS
 ========================================================= */
 
@@ -2142,7 +2574,10 @@ function setupControls(){
 
       camera.updateProjectionMatrix();
 
-      renderer.setSize(innerWidth,innerHeight);
+      renderer.setSize(
+        innerWidth,
+        innerHeight
+      );
       if(css3dRenderer) css3dRenderer.setSize(innerWidth,innerHeight);
 
     }
@@ -2255,115 +2690,85 @@ function toggleChat(){
 
 
 /* =========================================================
-   CLUB SCREEN — ONE PHYSICAL WALL SCREEN
+   CLUB SCREEN MEDIA — ONE PHYSICAL 3D SCREEN
 ========================================================= */
-
-function isClubHost(){
-  return String(currentUser||'').trim().toLowerCase()==='mvxtra';
-}
-
-function updateScreenHostUI(){
-  const b=document.getElementById('screen-control');
-  if(b) b.style.display=isClubHost()?'block':'none';
-}
-
 function toggleScreenMenu(){
-  if(!isClubHost()) return;
   const menu=document.getElementById('screen-menu');
   if(!menu) return;
   menu.classList.toggle('open');
   if(menu.classList.contains('open')){
     const input=document.getElementById('screen-url');
-    setTimeout(()=>input&&input.focus(),40);
+    setTimeout(()=>input && input.focus(),40);
   }
 }
-
 function setScreenStatus(text){
   const el=document.getElementById('screen-status');
   if(el) el.textContent=text;
 }
-
 function youtubeEmbed(url){
   try{
-    const u=new URL(url);
-    let id='';
+    const u=new URL(url); let id='';
     if(u.hostname.includes('youtu.be')) id=u.pathname.split('/').filter(Boolean)[0]||'';
     else if(u.hostname.includes('youtube.com')){
       id=u.searchParams.get('v')||'';
-      if(!id&&u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
-      if(!id&&u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
+      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
+      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
     }
-    return id?'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1':null;
-  }catch(e){return null;}
+    return id ? 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1' : null;
+  }catch(e){ return null; }
 }
-
 function twitchEmbed(url){
   try{
     const u=new URL(url);
     if(!u.hostname.includes('twitch.tv')) return null;
-    const parts=u.pathname.split('/').filter(Boolean);
-    if(!parts.length) return null;
-    const parent=location.hostname;
-    if(!parent) return null;
-    if(parts[0]==='videos'&&parts[1]) return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+    const parts=u.pathname.split('/').filter(Boolean); if(!parts.length) return null;
+    const parent=location.hostname || 'localhost';
+    if(parts[0].toLowerCase()==='videos' && parts[1]) return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
     return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-  }catch(e){return null;}
+  }catch(e){ return null; }
 }
-
 function normalizeClubScreenUrl(raw){
-  const value=String(raw||'').trim();
-  if(!value) return null;
-  const yt=youtubeEmbed(value);
-  if(yt) return {src:yt,name:'YOUTUBE'};
-  const tw=twitchEmbed(value);
-  if(tw) return {src:tw,name:'TWITCH'};
+  const value=String(raw||'').trim(); if(!value) return null;
+  const yt=youtubeEmbed(value); if(yt) return {src:yt,name:'YOUTUBE'};
+  const tw=twitchEmbed(value); if(tw) return {src:tw,name:'TWITCH'};
   return null;
 }
-
+function isClubHost(){ return String(currentUser||'').toLowerCase()==='mvxtra'; }
 function showWallScreen(src){
-  if(!screenDomObject) return;
-  const iframe=screenDomObject.element.querySelector('#club-screen-iframe');
-  if(!iframe) return;
-  iframe.src=src;
-  screenDomObject.visible=true;
+  if(!css3dScreen) return;
+  css3dScreen.element.src=src;
+  css3dScreen.visible=true;
   screenMediaActive=true;
   screenMediaUrl=src;
-  if(screenMesh) screenMesh.visible=false;
 }
-
 function clearWallScreen(){
-  if(!screenDomObject) return;
-  const iframe=screenDomObject.element.querySelector('#club-screen-iframe');
-  if(iframe) iframe.src='about:blank';
-  screenDomObject.visible=false;
+  if(!css3dScreen) return;
+  css3dScreen.element.src='about:blank';
+  css3dScreen.visible=false;
   screenMediaActive=false;
   screenMediaUrl='';
-  if(screenMesh) screenMesh.visible=true;
 }
-
 function loadClubScreen(){
-  if(!isClubHost()){ setScreenStatus('Только mvxtra может управлять экраном.'); return; }
-  const input=document.getElementById('screen-url');
-  const result=normalizeClubScreenUrl(input&&input.value);
-  if(!result){ setScreenStatus('Нужна ссылка на YouTube или Twitch.'); return; }
+  if(!isClubHost()){ setScreenStatus('Только mvxtra может включать экран.'); return; }
+  const input=document.getElementById('screen-url'); if(!input) return;
+  const result=normalizeClubScreenUrl(input.value);
+  if(!result){ setScreenStatus('Нужна ссылка YouTube или Twitch.'); return; }
   showWallScreen(result.src);
-  setScreenStatus(result.name+' LOADED');
-  if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,type:'iframe',active:true,owner:'mvxtra'});
-  const menu=document.getElementById('screen-menu');
-  if(menu) menu.classList.remove('open');
+  setScreenStatus(result.name+' LOADED — звук идёт из плеера на экране.');
+  if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
+  const menu=document.getElementById('screen-menu'); if(menu) menu.classList.remove('open');
 }
-
 function clearClubScreen(){
   if(!isClubHost()) return;
   clearWallScreen();
-  if(socket) socket.emit('club-screen-state',{active:false,owner:'mvxtra'});
-  setScreenStatus('SCREEN CLEARED');
+  if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
+  setScreenStatus('Экран очищен.');
+}
+function applyRemoteClubScreen(state){
+  if(!state || !state.active){ clearWallScreen(); return; }
+  if(state.src && state.src!==screenMediaUrl) showWallScreen(state.src);
 }
 
-function applyRemoteClubScreen(state){
-  if(!state||!state.active||!state.src){ clearWallScreen(); return; }
-  if(state.src!==screenMediaUrl) showWallScreen(state.src);
-}
 /* =========================================================
    ANIMATION
 ========================================================= */
@@ -2385,8 +2790,80 @@ function animate(){
   const time =
     performance.now()/1000;
 
-  const bass=0.25;
+  let bass=.2;
+  let level=.2;
 
+  if(
+    analyser &&
+    freqData &&
+    audioStarted
+  ){
+
+    analyser.getByteFrequencyData(
+      freqData
+    );
+
+    let b=0;
+
+    for(
+      let i=0;
+      i<10 &&
+      i<freqData.length;
+      i++
+    ){
+
+      b+=freqData[i];
+
+    }
+
+    bass=
+      b/
+      (
+        Math.min(
+          10,
+          freqData.length
+        )*255
+      );
+
+    let total=0;
+
+    for(
+      let i=0;
+      i<freqData.length;
+      i++
+    ){
+
+      total+=freqData[i];
+
+    }
+
+    level=
+      total/
+      (
+        freqData.length*255
+      );
+
+  }
+
+  else{
+
+    bass=
+      .25+
+      Math.sin(time*3)*.12;
+
+    level=
+      .25+
+      Math.sin(time*1.5)*.08;
+
+  }
+
+  bassLevel=
+    bassLevel*.82+
+    bass*.18;
+
+  audioLevel=
+    audioLevel*.88+
+    level*.12;
 
   const speed=
     chatMode
@@ -2496,7 +2973,8 @@ function animate(){
       .00015;
 
     particles.material.opacity=
-      .22;
+      .22+
+      audioLevel*.18;
 
   }
 
@@ -2538,6 +3016,7 @@ function animate(){
 
       light.intensity=
         1+
+        bassLevel*2+
         Math.sin(
           time*2+
           index
@@ -2546,12 +3025,146 @@ function animate(){
     }
   );
 
+  if(screenCtx){
+
+    screenCtx.fillStyle=
+      '#050505';
+
+    screenCtx.fillRect(
+      0,
+      0,
+      1024,
+      512
+    );
+
+    const grd =
+      screenCtx.createLinearGradient(
+        0,
+        0,
+        1024,
+        0
+      );
+
+    const intensity=
+      40+
+      Math.floor(
+        bassLevel*120
+      );
+
+    grd.addColorStop(
+      0,
+      `rgb(${intensity},${intensity},${intensity})`
+    );
+
+    grd.addColorStop(
+      .5,
+      '#050505'
+    );
+
+    grd.addColorStop(
+      1,
+      `rgb(${intensity},${intensity},${intensity})`
+    );
+
+    screenCtx.fillStyle=
+      grd;
+
+    screenCtx.fillRect(
+      0,
+      0,
+      1024,
+      512
+    );
+
+    screenCtx.fillStyle=
+      '#fff';
+
+    screenCtx.font=
+      'bold 80px Arial';
+
+    screenCtx.textAlign=
+      'center';
+
+    screenCtx.fillText(
+      'EWS SESSIONS',
+      512,
+      200
+    );
+
+    screenCtx.font=
+      '22px Arial';
+
+    screenCtx.fillStyle=
+      '#777';
+
+    screenCtx.fillText(
+      'UNDERGROUND CLUB',
+      512,
+      245
+    );
+
+    const bars=48;
+
+    const bw=
+      800/bars;
+
+    for(
+      let i=0;
+      i<bars;
+      i++
+    ){
+
+      let value;
+
+      if(
+        freqData &&
+        audioStarted
+      ){
+
+        value=
+          freqData[
+            Math.floor(
+              i*
+              freqData.length/
+              bars
+            )
+          ]/255;
+
+      }else{
+
+        value=
+          .2+
+          Math.sin(
+            time*4+
+            i*.5
+          )*.15;
+
+      }
+
+      const h=
+        value*180;
+
+      screenCtx.fillStyle=
+        '#fff';
+
+      screenCtx.fillRect(
+        112+i*bw,
+        450-h,
+        bw-3,
+        h
+      );
+
+    }
+
+    screenTexture.needsUpdate=true;
+
+  }
+
   renderer.render(
     scene,
     camera
   );
-
-  if(css3dRenderer&&css3dScene) css3dRenderer.render(css3dScene,camera);
+  if(css3dRenderer) css3dRenderer.render(scene,camera);
 
 }
 
@@ -2590,8 +3203,8 @@ function createRemotePlayer(data){
   const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
   label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
 
-  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y=Number(data.yaw)||0;
+  g.position.set(Number(data.x)||0,Number(data.y)||0,Number(data.z)||0);
+  g.rotation.y=Number(data.yaw ?? data.ry)||0;
   scene.add(g);
   remotePlayers.set(data.id,{group:g,last:{x:g.position.x,z:g.position.z,yaw:g.rotation.y},moving:false});
 }
@@ -2600,10 +3213,11 @@ function updateRemotePlayer(data){
   if(!data.id || data.id===socket?.id) return;
   if(!remotePlayers.has(data.id)) createRemotePlayer(data);
   const p=remotePlayers.get(data.id);
-  const nx=Number(data.x)||0, nz=Number(data.z)||0;
+  const nx=Number(data.x)||0, ny=Number(data.y)||0, nz=Number(data.z)||0;
   const dx=nx-p.group.position.x, dz=nz-p.group.position.z;
-  p.moving=Math.hypot(dx,dz)>.002;
-  p.group.position.x=nx; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
+  p.moving=!!data.moving || Math.hypot(dx,dz)>.002;
+  p.group.position.x=nx; p.group.position.y=ny; p.group.position.z=nz;
+  p.group.rotation.y=Number(data.yaw ?? data.ry)||0;
 }
 
 function removeRemotePlayer(id){
@@ -2620,6 +3234,45 @@ function broadcastPlayerState(now){
   lastPlayerBroadcast=now;
   socket.emit('player-state',{x:camera.position.x,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser});
 }
+
+function applyRemoteClubScreen(state){
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('media-screen');
+  if(!frame || !panel) return;
+  if(!state.active){
+    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl=''; return;
+  }
+  if(state.src && state.src!==screenMediaUrl){
+    frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
+  }
+}
+
+/* =========================================================
+   CLEANUP
+========================================================= */
+
+window.addEventListener(
+  'beforeunload',
+  function(){
+
+    try{
+
+      if(hls){
+        hls.destroy();
+      }
+
+    }catch(e){}
+
+    try{
+
+      if(audioContext){
+        audioContext.close();
+      }
+
+    }catch(e){}
+
+  }
+);
 
 </script>
 
