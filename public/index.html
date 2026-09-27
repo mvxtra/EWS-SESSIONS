@@ -12,8 +12,8 @@
 <title>EWS SESSIONS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://threejs.org/examples/js/renderers/CSS3DRenderer.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 
 <script src="/socket.io/socket.io.js"></script>
 
@@ -341,36 +341,39 @@ input:focus{
 
 #screen-control{
   position:absolute;
-  top:58px;
+  top:18px;
   left:50%;
   transform:translateX(-50%);
-  display:none;
-  z-index:120;
+  z-index:31;
   pointer-events:auto;
-  padding:9px 16px;
+  height:34px;
+  padding:0 18px;
   border:1px solid #444;
-  background:#080808;
+  background:rgba(0,0,0,.78);
   color:#fff;
-  cursor:pointer;
-  font-family:monospace;
   font-size:10px;
-  letter-spacing:2px;
+  font-weight:bold;
+  letter-spacing:3px;
+  cursor:pointer;
 }
 
-#screen-control:hover{background:#fff;color:#000;}
+#screen-control:hover{
+  background:#fff;
+  color:#000;
+}
 
 #screen-menu{
   position:absolute;
-  top:96px;
+  top:62px;
   left:50%;
   transform:translateX(-50%);
-  z-index:121;
+  z-index:40;
+  width:min(560px,calc(100vw - 30px));
+  padding:16px;
+  background:rgba(4,4,4,.96);
+  border:1px solid #444;
+  box-shadow:0 20px 70px rgba(0,0,0,.7);
   display:none;
-  width:min(720px,calc(100vw - 24px));
-  padding:14px;
-  background:rgba(5,5,5,.96);
-  border:1px solid #333;
-  box-shadow:0 15px 50px rgba(0,0,0,.7);
   pointer-events:auto;
 }
 
@@ -383,12 +386,20 @@ input:focus{
   margin-bottom:10px;
 }
 
-#screen-menu-row{display:flex;gap:7px;}
-#screen-url{flex:1;margin:0;height:38px;}
+#screen-menu-row{
+  display:flex;
+  gap:7px;
+}
+
+#screen-url{
+  flex:1;
+  margin:0;
+  height:38px;
+}
 
 .screen-btn{
   height:38px;
-  padding:0 15px;
+  padding:0 13px;
   border:1px solid #444;
   background:#111;
   color:#fff;
@@ -396,36 +407,25 @@ input:focus{
   font-size:10px;
   letter-spacing:1px;
 }
+
+.screen-btn:hover{
+  background:#fff;
+  color:#000;
+}
+
+#screen-status{
+  margin-top:9px;
+  color:#777;
+  font-size:10px;
+  line-height:1.4;
+}
+
+#screen-menu-row{display:flex;gap:7px;}
+#screen-url{flex:1;margin:0;height:38px;}
+.screen-btn{height:38px;padding:0 13px;border:1px solid #444;background:#111;color:#fff;cursor:pointer;font-size:10px;letter-spacing:1px;}
 .screen-btn:hover{background:#fff;color:#000;}
-
 #screen-status{margin-top:9px;color:#777;font-size:10px;line-height:1.4;}
-
-/* ONE PHYSICAL 3D CLUB SCREEN */
-#media-screen{
-  width:1420px;
-  height:610px;
-  display:none;
-  position:relative;
-  overflow:hidden;
-  background:#000;
-  border:0;
-  pointer-events:auto;
-  box-shadow:none;
-}
-
-#media-screen iframe{
-  width:100%;
-  height:100%;
-  border:0;
-  display:block;
-  background:#000;
-  pointer-events:auto;
-}
-
-@media(max-width:700px){
-  #screen-menu-row{flex-wrap:wrap;}
-  #screen-url{flex-basis:100%;}
-}
+@media(max-width:700px){#screen-menu-row{flex-wrap:wrap;}#screen-url{flex-basis:100%;}}
 
 /* =========================================================
    OTHER HUD
@@ -618,29 +618,6 @@ input:focus{
     padding:2px 0;
   }
 
-  #stream-indicator{
-    top:52px;
-    left:12px;
-
-    transform:none;
-
-    padding:5px 8px;
-
-    font-size:8px;
-  }
-
-  #audio-control{
-    top:84px;
-    left:12px;
-
-    transform:none;
-
-    padding:8px 10px;
-
-    font-size:8px;
-
-    z-index:150;
-  }
 
   #chat{
     left:10px;
@@ -726,12 +703,6 @@ input:focus{
 
 <canvas id="canvas3d"></canvas>
 
-<audio
-  id="ews-audio"
-  crossorigin="anonymous"
-  playsinline
-  preload="none">
-</audio>
 
 <!-- =====================================================
      LOGIN
@@ -803,15 +774,6 @@ input:focus{
     <span>SESSIONS</span>
   </div>
 
-  <div id="stream-indicator">
-    AUDIO: READY
-  </div>
-
-  <button
-    id="audio-control"
-    onclick="startSSHAudio()">
-    ▶ AUDIO: START
-  </button>
 
   <button
     id="screen-control"
@@ -831,7 +793,7 @@ input:focus{
       <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
       <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
     </div>
-    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
+    <div id="screen-status">Только mvxtra управляет экраном. YouTube / Twitch.</div>
   </div>
 
   <div id="lang-bar">
@@ -891,9 +853,6 @@ input:focus{
 
   </div>
 
-  <div id="media-screen">
-    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-  </div>
 
   <div id="zone-label">
     MAIN FLOOR
@@ -933,29 +892,19 @@ let lightObjects=[];
 
 let particles;
 
-let analyser=null;
-let freqData=null;
-
 let audioLevel=0;
 let bassLevel=0;
 
-let audioContext=null;
-let audioSource=null;
-
-let audioStarted=false;
-
-let hls=null;
-
-let screenMesh;
-let screenDomObject=null;
-let css3dScene=null;
 let css3dRenderer=null;
+let css3dScene=null;
+let screenDomObject=null;
+let screenMesh=null;
 let screenMediaActive=false;
 let screenMediaUrl='';
 let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
-let clubScreenHost=null;
+let clubScreenHost='mvxtra';
 
 let playerBody;
 
@@ -1100,7 +1049,6 @@ async function doLogin(){
 function startSession(username){
 
   currentUser=username;
-  clubScreenHost = String(currentUser||'').trim().toLowerCase()==='mvxtra' ? 'mvxtra' : clubScreenHost;
 
   document.getElementById(
     'login'
@@ -1111,6 +1059,7 @@ function startSession(username){
   ).style.display='block';
 
   init3D();
+  updateScreenHostUI();
 
   socket=io();
 
@@ -1138,7 +1087,8 @@ function startSession(username){
 
       ul.innerHTML='';
 
-      updateScreenHostUI();
+      const screenButton=document.getElementById('screen-control');
+      if(screenButton){ screenButton.style.display=isClubHost()?'block':'none'; }
 
       if(!Array.isArray(list)) return;
 
@@ -1230,24 +1180,13 @@ function startSession(username){
     }
   );
 
-  socket.on('joined', data=>{
-    if(data && data.owner && data.username){
-      clubScreenHost=String(data.username).trim();
-      updateScreenHostUI();
-    }
-  });
-
   socket.on('screen-host', state=>{
-    if(state && state.online && state.username){
-      clubScreenHost=String(state.username).trim();
-    }else{
-      clubScreenHost='';
-    }
+    if(state && state.username){ clubScreenHost=String(state.username).trim(); }
+    else { clubScreenHost='mvxtra'; }
     updateScreenHostUI();
   });
 
   socket.on('club-screen-state', state=>{
-    if(!state || !state.src) return;
     applyRemoteClubScreen(state);
   });
 
@@ -1375,6 +1314,17 @@ function init3D(){
     innerHeight
   );
 
+  css3dRenderer=new THREE.CSS3DRenderer();
+  css3dRenderer.setSize(innerWidth,innerHeight);
+  css3dRenderer.domElement.style.position='absolute';
+  css3dRenderer.domElement.style.left='0';
+  css3dRenderer.domElement.style.top='0';
+  css3dRenderer.domElement.style.width='100%';
+  css3dRenderer.domElement.style.height='100%';
+  css3dRenderer.domElement.style.pointerEvents='none';
+  css3dRenderer.domElement.style.zIndex='15';
+  document.getElementById('app').appendChild(css3dRenderer.domElement);
+
   renderer.setPixelRatio(
     Math.min(
       devicePixelRatio,
@@ -1386,19 +1336,6 @@ function init3D(){
 
   renderer.shadowMap.type =
     THREE.PCFSoftShadowMap;
-
-  css3dScene = new THREE.Scene();
-  css3dRenderer = new THREE.CSS3DRenderer();
-  css3dRenderer.setSize(innerWidth, innerHeight);
-  css3dRenderer.domElement.id='css3d-screen-layer';
-  css3dRenderer.domElement.style.position='absolute';
-  css3dRenderer.domElement.style.left='0';
-  css3dRenderer.domElement.style.top='0';
-  css3dRenderer.domElement.style.width='100%';
-  css3dRenderer.domElement.style.height='100%';
-  css3dRenderer.domElement.style.pointerEvents='none';
-  css3dRenderer.domElement.style.zIndex='50';
-  document.getElementById('app').appendChild(css3dRenderer.domElement);
 
   const ambient =
     new THREE.AmbientLight(
@@ -1472,8 +1409,6 @@ function init3D(){
   createSpeakers();
   createParticles();
   createPlayer();
-
-  setupAudio();
 
   setupControls();
 
@@ -1664,52 +1599,55 @@ function createDanceFloor(){
 }
 
 function createMainScreen(){
-  // One permanent physical screen mounted directly on the back wall.
-  const frameMat=new THREE.MeshStandardMaterial({
-    color:0x080808,
-    metalness:.75,
-    roughness:.28
-  });
-
   const frame=new THREE.Mesh(
-    new THREE.BoxGeometry(14.8,6.8,.34),
-    frameMat
+    new THREE.BoxGeometry(14.8,6.8,.35),
+    new THREE.MeshStandardMaterial({color:0x050505,metalness:.65,roughness:.3})
   );
-  frame.position.set(0,3.65,-16.74);
+  frame.position.set(0,3.65,-16.72);
   scene.add(frame);
 
   screenMesh=new THREE.Mesh(
-    new THREE.BoxGeometry(14.2,6.1,.08),
-    new THREE.MeshBasicMaterial({color:0x000000,side:THREE.DoubleSide})
+    new THREE.PlaneGeometry(14.2,6.1),
+    new THREE.MeshBasicMaterial({color:0x000000,side:THREE.DoubleSide,depthTest:false,depthWrite:false})
   );
-  screenMesh.position.set(0,3.65,-16.52);
+  screenMesh.position.set(0,3.65,-16.48);
+  screenMesh.renderOrder=1000;
   scene.add(screenMesh);
 
-  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
-  [
-    [14.35,.10,.10,0,6.73,-16.45],
-    [14.35,.10,.10,0,.57,-16.45],
-    [.10,6.25,.10,-7.12,3.65,-16.45],
-    [.10,6.25,.10,7.12,3.65,-16.45]
-  ].forEach(a=>{
+  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,depthTest:false,depthWrite:false});
+  [[14.35,.08,.08,0,6.72,-16.40],[14.35,.08,.08,0,.58,-16.40],[.08,6.22,.08,-7.13,3.65,-16.40],[.08,6.22,.08,7.13,3.65,-16.40]].forEach(a=>{
     const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
     m.position.set(a[3],a[4],a[5]);
+    m.renderOrder=1001;
     scene.add(m);
   });
 
-  const panel=document.getElementById('media-screen');
-  if(panel && css3dScene){
-    panel.style.display='none';
-    panel.style.width='1420px';
-    panel.style.height='610px';
+  css3dScene=new THREE.Scene();
+  const panel=document.createElement('div');
+  panel.id='club-screen-surface';
+  panel.style.width='1420px';
+  panel.style.height='610px';
+  panel.style.background='#000';
+  panel.style.overflow='hidden';
+  panel.style.pointerEvents='auto';
 
-    screenDomObject=new THREE.CSS3DObject(panel);
-    screenDomObject.position.set(0,3.65,-16.43);
-    screenDomObject.rotation.set(0,0,0);
-    screenDomObject.scale.set(.01,.01,.01);
-    screenDomObject.visible=false;
-    css3dScene.add(screenDomObject);
-  }
+  const iframe=document.createElement('iframe');
+  iframe.id='club-screen-iframe';
+  iframe.allow='autoplay; fullscreen; encrypted-media; picture-in-picture; web-share';
+  iframe.allowFullscreen=true;
+  iframe.style.width='100%';
+  iframe.style.height='100%';
+  iframe.style.border='0';
+  iframe.style.display='block';
+  iframe.style.background='#000';
+  panel.appendChild(iframe);
+
+  screenDomObject=new THREE.CSS3DObject(panel);
+  screenDomObject.position.set(0,3.65,-16.35);
+  screenDomObject.rotation.set(0,0,0);
+  screenDomObject.scale.set(.01,.01,.01);
+  screenDomObject.visible=false;
+  css3dScene.add(screenDomObject);
 }
 
 function createStage(){
@@ -2266,447 +2204,6 @@ function createPlayer(){
 }
 
 /* =========================================================
-   AUDIO
-========================================================= */
-
-function setupAudio(){
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  indicator.textContent=
-    'AUDIO: READY';
-
-  indicator.classList.remove(
-    'live',
-    'error'
-  );
-
-  button.textContent=
-    '▶ AUDIO: START';
-
-  button.classList.remove(
-    'live'
-  );
-
-}
-
-async function startSSHAudio(){
-
-  const audio =
-    document.getElementById(
-      'ews-audio'
-    );
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  if(!audio)return;
-
-  const hlsUrl =
-    window.location.origin+
-    '/hls/ews/index.m3u8';
-
-  indicator.classList.remove(
-    'error'
-  );
-
-  indicator.classList.add(
-    'live'
-  );
-
-  indicator.textContent=
-    'AUDIO: CONNECTING...';
-
-  button.disabled=true;
-
-  button.textContent=
-    '● AUDIO: CONNECTING';
-
-  try{
-
-    if(!audioContext){
-
-      audioContext =
-        new(
-          window.AudioContext ||
-          window.webkitAudioContext
-        )();
-
-      audioSource =
-        audioContext.createMediaElementSource(
-          audio
-        );
-
-      analyser =
-        audioContext.createAnalyser();
-
-      analyser.fftSize=256;
-
-      analyser.smoothingTimeConstant=.82;
-
-      freqData =
-        new Uint8Array(
-          analyser.frequencyBinCount
-        );
-
-      audioSource.connect(
-        analyser
-      );
-
-      analyser.connect(
-        audioContext.destination
-      );
-
-    }
-
-    if(
-      audioContext.state===
-      'suspended'
-    ){
-
-      await audioContext.resume();
-
-    }
-
-    if(hls){
-
-      try{
-        hls.destroy();
-      }catch(e){}
-
-      hls=null;
-
-    }
-
-    if(
-      window.Hls &&
-      Hls.isSupported()
-    ){
-
-      hls =
-        new Hls({
-
-          enableWorker:true,
-
-          lowLatencyMode:true,
-
-          backBufferLength:30,
-
-          maxBufferLength:10,
-
-          maxMaxBufferLength:20,
-
-          liveSyncDurationCount:3,
-
-          liveMaxLatencyDurationCount:6
-
-        });
-
-      hls.loadSource(
-        hlsUrl
-      );
-
-      hls.attachMedia(
-        audio
-      );
-
-      hls.on(
-        Hls.Events.MANIFEST_PARSED,
-        async function(){
-
-          indicator.textContent=
-            'AUDIO: LIVE';
-
-          button.textContent=
-            '● AUDIO: LIVE';
-
-          button.classList.add(
-            'live'
-          );
-
-          button.disabled=false;
-
-          audioStarted=true;
-
-          try{
-
-            await audio.play();
-
-          }catch(err){
-
-            console.warn(
-              'Audio play blocked:',
-              err
-            );
-
-            indicator.textContent=
-              'AUDIO: PRESS START';
-
-            button.textContent=
-              '▶ AUDIO: START';
-
-            button.classList.remove(
-              'live'
-            );
-
-          }
-
-        }
-      );
-
-      hls.on(
-        Hls.Events.ERROR,
-        function(
-          event,
-          data
-        ){
-
-          console.error(
-            '[HLS]',
-            data
-          );
-
-          if(!data.fatal)return;
-
-          if(
-            data.type===
-            Hls.ErrorTypes.NETWORK_ERROR
-          ){
-
-            indicator.textContent=
-              'AUDIO: RECONNECTING...';
-
-            button.textContent=
-              '● AUDIO: RECONNECTING';
-
-            setTimeout(
-              function(){
-
-                if(hls){
-
-                  try{
-                    hls.startLoad();
-                  }catch(e){}
-
-                }
-
-              },
-              1000
-            );
-
-          }
-
-          else if(
-            data.type===
-            Hls.ErrorTypes.MEDIA_ERROR
-          ){
-
-            indicator.textContent=
-              'AUDIO: RECOVERING...';
-
-            try{
-
-              hls.recoverMediaError();
-
-            }catch(e){
-
-              console.error(e);
-
-            }
-
-          }
-
-          else{
-
-            indicator.textContent=
-              'AUDIO: NO STREAM';
-
-            indicator.classList.remove(
-              'live'
-            );
-
-            indicator.classList.add(
-              'error'
-            );
-
-            button.textContent=
-              '▶ AUDIO: RETRY';
-
-            button.classList.remove(
-              'live'
-            );
-
-            button.disabled=false;
-
-          }
-
-        }
-      );
-
-    }
-
-    else if(
-      audio.canPlayType(
-        'application/vnd.apple.mpegurl'
-      )
-    ){
-
-      audio.src=
-        hlsUrl;
-
-      audio.addEventListener(
-        'loadedmetadata',
-        async function(){
-
-          try{
-
-            await audio.play();
-
-          }catch(err){
-
-            console.error(err);
-
-          }
-
-        },
-        {
-          once:true
-        }
-      );
-
-    }
-
-    else{
-
-      throw new Error(
-        'HLS is not supported by this browser'
-      );
-
-    }
-
-    audio.onplaying=function(){
-
-      indicator.textContent=
-        'AUDIO: LIVE';
-
-      indicator.classList.add(
-        'live'
-      );
-
-      indicator.classList.remove(
-        'error'
-      );
-
-      button.textContent=
-        '● AUDIO: LIVE';
-
-      button.classList.add(
-        'live'
-      );
-
-      button.disabled=false;
-
-      audioStarted=true;
-
-    };
-
-    audio.onpause=function(){
-
-      if(
-        audioStarted &&
-        !audio.ended
-      ){
-
-        indicator.textContent=
-          'AUDIO: PAUSED';
-
-        button.textContent=
-          '▶ AUDIO: RESUME';
-
-        button.classList.remove(
-          'live'
-        );
-
-      }
-
-    };
-
-    audio.onerror=function(){
-
-      console.error(
-        '[AUDIO]',
-        audio.error
-      );
-
-      indicator.textContent=
-        'AUDIO: ERROR';
-
-      indicator.classList.remove(
-        'live'
-      );
-
-      indicator.classList.add(
-        'error'
-      );
-
-      button.textContent=
-        '▶ AUDIO: RETRY';
-
-      button.classList.remove(
-        'live'
-      );
-
-      button.disabled=false;
-
-    };
-
-  }catch(err){
-
-    console.error(
-      '[EWS AUDIO ERROR]',
-      err
-    );
-
-    indicator.textContent=
-      'AUDIO: NO STREAM';
-
-    indicator.classList.remove(
-      'live'
-    );
-
-    indicator.classList.add(
-      'error'
-    );
-
-    button.textContent=
-      '▶ AUDIO: RETRY';
-
-    button.classList.remove(
-      'live'
-    );
-
-    button.disabled=false;
-
-  }
-
-}
-
-/* =========================================================
    CONTROLS
 ========================================================= */
 
@@ -2729,11 +2226,7 @@ function setupControls(){
 
       camera.updateProjectionMatrix();
 
-      renderer.setSize(
-        innerWidth,
-        innerHeight
-      );
-
+      renderer.setSize(innerWidth,innerHeight);
       if(css3dRenderer) css3dRenderer.setSize(innerWidth,innerHeight);
 
     }
@@ -2846,20 +2339,26 @@ function toggleChat(){
 
 
 /* =========================================================
-   CLUB SCREEN MEDIA
+   CLUB SCREEN — ONE PHYSICAL WALL SCREEN
 ========================================================= */
 
+function isClubHost(){
+  return String(currentUser||'').trim().toLowerCase()==='mvxtra';
+}
+
+function updateScreenHostUI(){
+  const b=document.getElementById('screen-control');
+  if(b) b.style.display=isClubHost()?'block':'none';
+}
+
 function toggleScreenMenu(){
-  if(!isClubHost()){
-    setScreenStatus('Только mvxtra может управлять экраном.');
-    return;
-  }
+  if(!isClubHost()) return;
   const menu=document.getElementById('screen-menu');
   if(!menu) return;
   menu.classList.toggle('open');
   if(menu.classList.contains('open')){
     const input=document.getElementById('screen-url');
-    setTimeout(()=>input && input.focus(),40);
+    setTimeout(()=>input&&input.focus(),40);
   }
 }
 
@@ -2868,23 +2367,17 @@ function setScreenStatus(text){
   if(el) el.textContent=text;
 }
 
-function updateScreenHostUI(){
-  const b=document.getElementById('screen-control');
-  if(b) b.style.display=isClubHost()?'block':'none';
-}
-
 function youtubeEmbed(url){
   try{
     const u=new URL(url);
     let id='';
     if(u.hostname.includes('youtu.be')) id=u.pathname.split('/').filter(Boolean)[0]||'';
-    if(u.hostname.includes('youtube.com')){
+    else if(u.hostname.includes('youtube.com')){
       id=u.searchParams.get('v')||'';
-      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
-      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
+      if(!id&&u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
+      if(!id&&u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
     }
-    if(!id) return null;
-    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
+    return id?'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1':null;
   }catch(e){return null;}
 }
 
@@ -2894,10 +2387,9 @@ function twitchEmbed(url){
     if(!u.hostname.includes('twitch.tv')) return null;
     const parts=u.pathname.split('/').filter(Boolean);
     if(!parts.length) return null;
-    const parent=location.hostname||'localhost';
-    if(parts[0]==='videos' && parts[1]){
-      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-    }
+    const parent=location.hostname;
+    if(!parent) return null;
+    if(parts[0]==='videos'&&parts[1]) return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
     return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
   }catch(e){return null;}
 }
@@ -2912,90 +2404,50 @@ function normalizeClubScreenUrl(raw){
   return null;
 }
 
-function isClubHost(){
-  return String(clubScreenHost||'').trim().toLowerCase()==='mvxtra' &&
-         String(currentUser||'').trim().toLowerCase()==='mvxtra';
-}
-
-function showPhysicalScreen(){
-  if(screenDomObject){
-    screenDomObject.visible=true;
-    screenDomObject.element.style.display='block';
-  }
+function showWallScreen(src){
+  if(!screenDomObject) return;
+  const iframe=screenDomObject.element.querySelector('#club-screen-iframe');
+  if(!iframe) return;
+  iframe.src=src;
+  screenDomObject.visible=true;
+  screenMediaActive=true;
+  screenMediaUrl=src;
   if(screenMesh) screenMesh.visible=false;
 }
 
-function hidePhysicalScreen(){
-  if(screenDomObject){
-    screenDomObject.visible=false;
-    screenDomObject.element.style.display='none';
-  }
+function clearWallScreen(){
+  if(!screenDomObject) return;
+  const iframe=screenDomObject.element.querySelector('#club-screen-iframe');
+  if(iframe) iframe.src='about:blank';
+  screenDomObject.visible=false;
+  screenMediaActive=false;
+  screenMediaUrl='';
   if(screenMesh) screenMesh.visible=true;
 }
 
 function loadClubScreen(){
-  if(!isClubHost()){
-    setScreenStatus('Только mvxtra может включать экран.');
-    return;
-  }
+  if(!isClubHost()){ setScreenStatus('Только mvxtra может управлять экраном.'); return; }
   const input=document.getElementById('screen-url');
-  const frame=document.getElementById('media-screen-frame');
-  if(!input || !frame) return;
-
-  const result=normalizeClubScreenUrl(input.value);
-  if(!result){
-    setScreenStatus('Нужна ссылка на YouTube или Twitch.');
-    return;
-  }
-
-  showPhysicalScreen();
-  frame.src=result.src;
-  screenMediaActive=true;
-  screenMediaUrl=result.src;
-  setScreenStatus(result.name+' — экран включён в клубе.');
-
-  if(socket){
-    socket.emit('club-screen-state',{
-      src:result.src,
-      name:result.name,
-      active:true,
-      owner:'mvxtra'
-    });
-  }
-
+  const result=normalizeClubScreenUrl(input&&input.value);
+  if(!result){ setScreenStatus('Нужна ссылка на YouTube или Twitch.'); return; }
+  showWallScreen(result.src);
+  setScreenStatus(result.name+' LOADED');
+  if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,type:'iframe',active:true,owner:'mvxtra'});
   const menu=document.getElementById('screen-menu');
   if(menu) menu.classList.remove('open');
 }
 
 function clearClubScreen(){
   if(!isClubHost()) return;
-  const frame=document.getElementById('media-screen-frame');
-  if(frame) frame.src='about:blank';
-  screenMediaActive=false;
-  screenMediaUrl='';
-  hidePhysicalScreen();
+  clearWallScreen();
   if(socket) socket.emit('club-screen-state',{active:false,owner:'mvxtra'});
-  setScreenStatus('Экран очищен.');
+  setScreenStatus('SCREEN CLEARED');
 }
 
 function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  if(!frame) return;
-  if(!state || !state.active || !state.src){
-    frame.src='about:blank';
-    screenMediaActive=false;
-    screenMediaUrl='';
-    hidePhysicalScreen();
-    return;
-  }
-  if(state.src!==screenMediaUrl){
-    frame.src=state.src;
-    screenMediaUrl=state.src;
-  }
-  screenMediaActive=true;
-  showPhysicalScreen();
+  if(!state||!state.active||!state.src){ clearWallScreen(); return; }
+  if(state.src!==screenMediaUrl) showWallScreen(state.src);
 }
-
 /* =========================================================
    ANIMATION
 ========================================================= */
@@ -3257,9 +2709,7 @@ function animate(){
     camera
   );
 
-  if(css3dRenderer && css3dScene){
-    css3dRenderer.render(css3dScene,camera);
-  }
+  if(css3dRenderer&&css3dScene) css3dRenderer.render(css3dScene,camera);
 
 }
 
