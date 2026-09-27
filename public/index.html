@@ -12,6 +12,7 @@
 <title>EWS SESSIONS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
@@ -421,7 +422,7 @@ input:focus{
 }
 
 #media-screen{
-  position:fixed;
+  position:absolute;
   z-index:15;
   display:none;
   overflow:hidden;
@@ -952,6 +953,9 @@ let currentUser=null;
 let scene;
 let camera;
 let renderer;
+let css3dRenderer;
+let css3dScene;
+let screenDomObject;
 
 let keys={};
 
@@ -1418,6 +1422,21 @@ function init3D(){
     )
   );
 
+  // Второй рендер-слой только для HTML-экрана.
+  // Сам экран является CSS3D-объектом внутри 3D-сцены,
+  // поэтому он физически закреплён на стене и не гуляет.
+  css3dScene = new THREE.Scene();
+  css3dRenderer = new THREE.CSS3DRenderer();
+  css3dRenderer.setSize(innerWidth, innerHeight);
+  css3dRenderer.domElement.id = 'css3d-screen-layer';
+  css3dRenderer.domElement.style.position = 'absolute';
+  css3dRenderer.domElement.style.left = '0';
+  css3dRenderer.domElement.style.top = '0';
+  css3dRenderer.domElement.style.width = '100%';
+  css3dRenderer.domElement.style.height = '100%';
+  css3dRenderer.domElement.style.pointerEvents = 'none';
+  document.getElementById('app').appendChild(css3dRenderer.domElement);
+
   renderer.shadowMap.enabled=true;
 
   renderer.shadowMap.type =
@@ -1687,6 +1706,7 @@ function createDanceFloor(){
 }
 
 function createMainScreen(){
+  // Физическая панель/рамка на задней стене клуба.
   screenCanvas=document.createElement('canvas');
   screenCanvas.width=1024;
   screenCanvas.height=512;
@@ -1716,6 +1736,28 @@ function createMainScreen(){
     m.position.set(a[3],a[4],a[5]);
     scene.add(m);
   });
+
+  // Настоящий экран с iframe. Он находится в CSS3D-сцене
+  // на тех же координатах, что и физическая панель стены.
+  const panel=document.getElementById('media-screen');
+  if(panel && css3dScene){
+    panel.style.position='absolute';
+    panel.style.left='0';
+    panel.style.top='0';
+    panel.style.width='1400px';
+    panel.style.height='600px';
+    panel.style.display='none';
+
+    screenDomObject=new THREE.CSS3DObject(panel);
+    screenDomObject.position.set(0,3.65,-16.40);
+    screenDomObject.rotation.set(0,0,0);
+    screenDomObject.scale.set(.01,.01,.01);
+    screenDomObject.visible=false;
+    css3dScene.add(screenDomObject);
+
+    const frameEl=document.getElementById('media-screen-frame');
+    if(frameEl) frameEl.style.pointerEvents='auto';
+  }
 }
 
 function createStage(){
@@ -2740,6 +2782,10 @@ function setupControls(){
         innerHeight
       );
 
+      if(css3dRenderer){
+        css3dRenderer.setSize(innerWidth,innerHeight);
+      }
+
     }
   );
 
@@ -2936,8 +2982,7 @@ function loadClubScreen(){
   }
   const input=document.getElementById('screen-url');
   const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(!input || !frame || !panel) return;
+  if(!input || !frame) return;
 
   const result=normalizeClubScreenUrl(input.value);
   if(!result){
@@ -2946,11 +2991,16 @@ function loadClubScreen(){
   }
 
   frame.src=result.src;
-  panel.classList.add('active');
   screenMediaActive=true;
-  if(screenMesh) screenMesh.visible=false;
   screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — звук управляется плеером на экране.');
+
+  if(screenDomObject){
+    screenDomObject.visible=true;
+    screenDomObject.element.style.display='block';
+  }
+  if(screenMesh) screenMesh.visible=false;
+
+  setScreenStatus(result.name+' LOADED — экран приклеен к стене.');
   if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
 
   const menu=document.getElementById('screen-menu');
@@ -2960,36 +3010,18 @@ function loadClubScreen(){
 function clearClubScreen(){
   if(!isClubHost()) return;
   const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
   if(frame) frame.src='about:blank';
-  if(panel) panel.classList.remove('active');
   screenMediaActive=false;
   screenMediaUrl='';
+  if(screenDomObject){
+    screenDomObject.visible=false;
+    screenDomObject.element.style.display='none';
+  }
   if(screenMesh) screenMesh.visible=true;
   if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
   setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
 }
 
-function updateClubScreenOverlay(){
-  const panel=document.getElementById('media-screen');
-  if(!panel) return;
-
-  if(!screenMediaActive){
-    panel.style.display='none';
-    if(screenMesh) screenMesh.visible=true;
-    return;
-  }
-
-  // Видеоплеер больше НЕ привязан к камере/3D-проекции.
-  // Поэтому он не гуляет и не прыгает по экрану при движении игрока.
-  panel.style.display='block';
-  panel.style.left='50%';
-  panel.style.top='50%';
-  panel.style.width='min(78vw, 1100px)';
-  panel.style.height='min(44vw, 680px)';
-  panel.style.transform='translate(-50%, -50%)';
-  if(screenMesh) screenMesh.visible=false;
-}
 
 /* =========================================================
    ANIMATION
@@ -3396,12 +3428,14 @@ function animate(){
 
   }
 
-  updateClubScreenOverlay();
-
   renderer.render(
     scene,
     camera
   );
+
+  if(css3dRenderer && css3dScene){
+    css3dRenderer.render(css3dScene,camera);
+  }
 
 }
 
@@ -3473,13 +3507,27 @@ function broadcastPlayerState(now){
 
 function applyRemoteClubScreen(state){
   const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(!frame || !panel) return;
+  if(!frame) return;
   if(!state.active){
-    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl=''; return;
+    frame.src='about:blank';
+    screenMediaActive=false;
+    screenMediaUrl='';
+    if(screenDomObject){
+      screenDomObject.visible=false;
+      screenDomObject.element.style.display='none';
+    }
+    if(screenMesh) screenMesh.visible=true;
+    return;
   }
   if(state.src && state.src!==screenMediaUrl){
-    frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
+    frame.src=state.src;
+    screenMediaUrl=state.src;
+    screenMediaActive=true;
+    if(screenDomObject){
+      screenDomObject.visible=true;
+      screenDomObject.element.style.display='block';
+    }
+    if(screenMesh) screenMesh.visible=false;
   }
 }
 
