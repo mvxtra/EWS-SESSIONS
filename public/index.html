@@ -3721,17 +3721,7 @@ function broadcastPlayerState(now){
   });
 }
 
-function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(!frame || !panel) return;
-  if(!state.active){
-    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl=''; return;
-  }
-  if(state.src && state.src!==screenMediaUrl){
-    frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
-  }
-}
+
 
 /* =========================================================
    CLEANUP
