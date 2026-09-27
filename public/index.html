@@ -12,6 +12,7 @@
 <title>EWS SESSIONS</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
@@ -340,8 +341,8 @@ input:focus{
 ========================================================= */
 
 #screen-control{
-  position:fixed;
-  top:108px;
+  position:absolute;
+  top:18px;
   left:50%;
   transform:translateX(-50%);
   z-index:31;
@@ -363,8 +364,8 @@ input:focus{
 }
 
 #screen-menu{
-  position:fixed;
-  top:148px;
+  position:absolute;
+  top:62px;
   left:50%;
   transform:translateX(-50%);
   z-index:40;
@@ -420,22 +421,33 @@ input:focus{
   line-height:1.4;
 }
 
-#media-screen{
+#css3d-screen-layer{
   position:absolute;
-  z-index:15;
-  display:none;
+  inset:0;
+  z-index:10;
+  pointer-events:none;
+  overflow:hidden;
+}
+
+#media-screen{
+  width:1400px;
+  height:600px;
   overflow:hidden;
   background:#000;
-  border:1px solid #222;
+  border:2px solid #222;
   box-shadow:0 0 45px rgba(0,0,0,.9);
   pointer-events:auto;
+  display:none;
 }
 
 #media-screen.active{display:block;}
 
 #media-screen iframe{
-  width:100%;
-  height:100%;
+  position:absolute;
+  left:0;
+  top:0;
+  width:1400px;
+  height:600px;
   border:0;
   display:block;
   background:#000;
@@ -955,14 +967,6 @@ let renderer;
 
 let keys={};
 
-// JUMP / GRAVITY
-let jumpVelocity=0;
-let playerY=1.7;
-const GROUND_Y=1.7;
-const JUMP_FORCE=7.2;
-const GRAVITY=18;
-let isGrounded=true;
-
 let yaw=0;
 let pitch=0;
 
@@ -993,6 +997,9 @@ let screenTexture;
 let screenCanvas;
 let screenCtx;
 let screenMesh;
+let cssScene=null;
+let cssRenderer=null;
+let cssScreenObject=null;
 let screenMediaActive=false;
 let screenMediaUrl='';
 let onlineUserList=[];
@@ -1152,13 +1159,6 @@ function startSession(username){
     'hud'
   ).style.display='block';
 
-  // SCREEN button is a HUD control and belongs only to mvxtra.
-  clubScreenHost='mvxtra';
-  const screenButton=document.getElementById('screen-control');
-  if(screenButton){
-    screenButton.style.display = String(currentUser).toLowerCase()==='mvxtra' ? 'block' : 'none';
-  }
-
   init3D();
 
   socket=io();
@@ -1174,11 +1174,6 @@ function startSession(username){
       }
     );
 
-    // Explicit snapshot request makes reconnects deterministic.
-    setTimeout(()=>{
-      if(socket && socket.connected) socket.emit('request-players');
-    },120);
-
   });
 
   socket.on(
@@ -1186,8 +1181,7 @@ function startSession(username){
     list=>{
 
       onlineUserList=Array.isArray(list)?list:[];
-      // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
-      clubScreenHost='mvxtra';
+      clubScreenHost=onlineUserList.length? (typeof onlineUserList[0]==='string'?onlineUserList[0]:onlineUserList[0].username) : currentUser;
 
       const ul =
         document.getElementById('online-list');
@@ -1288,36 +1282,7 @@ function startSession(username){
   );
 
   socket.on('club-screen-state', state=>{
-    if(!state || !state.src) return;
     applyRemoteClubScreen(state);
-  });
-
-  // =====================================================
-  // MULTIPLAYER — initial snapshot + live updates
-  // =====================================================
-
-  socket.on('players-state', list=>{
-    if(!Array.isArray(list)) return;
-
-    // Server sends everyone except the current socket.
-    // Rebuild only the missing players so existing objects keep moving smoothly.
-    const alive = new Set();
-
-    list.forEach(data=>{
-      if(!data || !data.id || data.id===socket.id) return;
-      alive.add(data.id);
-      updateRemotePlayer(data);
-    });
-
-    // Remove players that are no longer present in the server snapshot.
-    Array.from(remotePlayers.keys()).forEach(id=>{
-      if(!alive.has(id)) removeRemotePlayer(id);
-    });
-  });
-
-  socket.on('player-joined', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
   });
 
   socket.on('player-state', data=>{
@@ -1325,31 +1290,8 @@ function startSession(username){
     updateRemotePlayer(data);
   });
 
-  // Compatibility with the older multiplayer event name.
-  socket.on('player-move', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
-
   socket.on('player-left', id=>{
     removeRemotePlayer(id);
-  });
-
-  socket.on('player-removed', id=>{
-    removeRemotePlayer(id);
-  });
-
-  // Ask the server for a fresh snapshot after every connection.
-  socket.on('joined', ()=>{
-    socket.emit('request-players');
-  });
-
-  socket.on('connect', ()=>{
-    // The server may have already sent the snapshot during join.
-    // This request also makes reconnects deterministic.
-    setTimeout(()=>{
-      if(socket && socket.connected) socket.emit('request-players');
-    }, 100);
   });
 
 }
@@ -1392,15 +1334,6 @@ document
       );
 
       input.value='';
-
-      // Enter sends the message and immediately returns control to the club.
-      chatMode=false;
-      input.blur();
-      keys={};
-      const canvas=document.getElementById('canvas3d');
-      if(canvas && document.pointerLockElement!==canvas){
-        try{ canvas.requestPointerLock(); }catch(err){}
-      }
 
     }
   );
@@ -1487,6 +1420,21 @@ function init3D(){
 
   renderer.shadowMap.type =
     THREE.PCFSoftShadowMap;
+
+  // CSS3D layer: the media iframe is a real 3D object,
+  // locked to the same camera/world as the club geometry.
+  cssScene = new THREE.Scene();
+  cssRenderer = new THREE.CSS3DRenderer();
+  cssRenderer.setSize(innerWidth, innerHeight);
+  cssRenderer.domElement.id='css3d-renderer';
+  cssRenderer.domElement.style.position='absolute';
+  cssRenderer.domElement.style.left='0';
+  cssRenderer.domElement.style.top='0';
+  cssRenderer.domElement.style.width='100%';
+  cssRenderer.domElement.style.height='100%';
+  cssRenderer.domElement.style.zIndex='10';
+  cssRenderer.domElement.style.pointerEvents='none';
+  document.getElementById('css3d-screen-layer').appendChild(cssRenderer.domElement);
 
   const ambient =
     new THREE.AmbientLight(
@@ -1774,6 +1722,16 @@ function createMainScreen(){
   );
   screenMesh.position.set(0,3.65,-16.48);
   scene.add(screenMesh);
+
+  // The HTML media panel is attached directly to the 3D wall.
+  // 1400x600 DOM pixels * 0.01 = 14x6 world units.
+  const mediaPanel=document.getElementById('media-screen');
+  if(mediaPanel && cssScene){
+    cssScreenObject=new THREE.CSS3DObject(mediaPanel);
+    cssScreenObject.position.set(0,3.65,-16.455);
+    cssScreenObject.scale.set(0.01,0.01,0.01);
+    cssScene.add(cssScreenObject);
+  }
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
   [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
@@ -2805,35 +2763,16 @@ function setupControls(){
         innerHeight
       );
 
+      if(cssRenderer){
+        cssRenderer.setSize(innerWidth,innerHeight);
+      }
+
     }
   );
 
   window.addEventListener(
     'keydown',
     function(e){
-
-      // While typing, movement keys must never get stuck in the 3D controller.
-      const active=document.activeElement;
-      const typing=active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA');
-
-      if(e.code==='Escape' && chatMode){
-        e.preventDefault();
-        chatMode=false;
-        const input=document.getElementById('chat-input');
-        if(input) input.blur();
-        keys={};
-        return;
-      }
-
-      if(typing && !chatMode){
-        return;
-      }
-
-      if(chatMode && active && active.id==='chat-input'){
-        if(e.code==='KeyW' || e.code==='KeyA' || e.code==='KeyS' || e.code==='KeyD' || e.code==='ArrowUp' || e.code==='ArrowDown' || e.code==='ArrowLeft' || e.code==='ArrowRight'){
-          return;
-        }
-      }
 
       keys[e.code]=true;
 
@@ -2845,22 +2784,6 @@ function setupControls(){
           !chatMode;
 
         toggleChat();
-
-      }
-
-      // SPACE = JUMP
-      // Пока открыт чат — пробел остаётся обычным пробелом.
-      if(
-        e.code==='Space' &&
-        !chatMode &&
-        pointerLocked &&
-        isGrounded
-      ){
-
-        e.preventDefault();
-
-        jumpVelocity=JUMP_FORCE;
-        isGrounded=false;
 
       }
 
@@ -2947,11 +2870,6 @@ function toggleChat(){
   }else{
 
     input.blur();
-    keys={};
-    const canvas=document.getElementById('canvas3d');
-    if(canvas && document.pointerLockElement!==canvas){
-      try{ canvas.requestPointerLock(); }catch(err){}
-    }
 
   }
 
@@ -3027,7 +2945,7 @@ function normalizeClubScreenUrl(raw){
 }
 
 function isClubHost(){
-  return String(currentUser||'').trim().toLowerCase()==='mvxtra';
+  return String(currentUser||'').toLowerCase()==='mvxtra';
 }
 
 function loadClubScreen(){
@@ -3049,6 +2967,7 @@ function loadClubScreen(){
   frame.src=result.src;
   panel.classList.add('active');
   screenMediaActive=true;
+  if(cssScreenObject) cssScreenObject.visible=true;
   screenMediaUrl=result.src;
   setScreenStatus(result.name+' LOADED — звук управляется плеером на экране.');
   if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
@@ -3065,46 +2984,19 @@ function clearClubScreen(){
   if(panel) panel.classList.remove('active');
   screenMediaActive=false;
   screenMediaUrl='';
+  if(cssScreenObject) cssScreenObject.visible=false;
   if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
   setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
 }
 
 function updateClubScreenOverlay(){
-  const panel=document.getElementById('media-screen');
-  if(!panel || !screenMesh || !camera || !renderer) return;
-  if(!screenMediaActive){
-    panel.style.display='none';
-    return;
-  }
-  const w=renderer.domElement.clientWidth;
-  const h=renderer.domElement.clientHeight;
-  if(!w || !h){ panel.style.display='none'; return; }
-
-  const leftPoint=new THREE.Vector3(-7,3.65,-16.47).project(camera);
-  const rightPoint=new THREE.Vector3(7,3.65,-16.47).project(camera);
-  const topPoint=new THREE.Vector3(0,6.65,-16.47).project(camera);
-  const bottomPoint=new THREE.Vector3(0,.65,-16.47).project(camera);
-  const center=new THREE.Vector3(0,3.65,-16.47).project(camera);
-
-  const left=(leftPoint.x*.5+.5)*w;
-  const right=(rightPoint.x*.5+.5)*w;
-  const top=(-topPoint.y*.5+.5)*h;
-  const bottom=(-bottomPoint.y*.5+.5)*h;
-  const cx=(center.x*.5+.5)*w;
-  const cy=(-center.y*.5+.5)*h;
-  const width=Math.abs(right-left);
-  const height=Math.abs(bottom-top);
-
-  if(center.z>1 || width<5 || height<5){
-    panel.style.display='none';
-    return;
-  }
-  panel.style.display='block';
-  panel.style.left=(cx-width/2)+'px';
-  panel.style.top=(cy-height/2)+'px';
-  panel.style.width=width+'px';
-  panel.style.height=height+'px';
+  // Kept as a compatibility function. The screen is no longer
+  // projected from 3D coordinates into HTML every frame.
+  // CSS3DRenderer keeps it physically attached to the wall.
+  if(!cssScreenObject) return;
+  cssScreenObject.visible=!!screenMediaActive;
 }
+
 
 /* =========================================================
    ANIMATION
@@ -3234,28 +3126,6 @@ function animate(){
     side+=1;
   }
 
-  // =========================
-  // JUMP PHYSICS
-  // =========================
-
-  if(!chatMode){
-
-    jumpVelocity-=
-      GRAVITY*dt;
-
-    playerY+=
-      jumpVelocity*dt;
-
-    if(playerY<=GROUND_Y){
-
-      playerY=GROUND_Y;
-      jumpVelocity=0;
-      isGrounded=true;
-
-    }
-
-  }
-
   if(
     pointerLocked &&
     !chatMode
@@ -3301,7 +3171,7 @@ function animate(){
       15.5
     );
 
-  camera.position.y=playerY;
+  camera.position.y=1.7;
 
   camera.rotation.order=
     'YXZ';
@@ -3526,17 +3396,16 @@ function animate(){
     camera
   );
 
+  if(cssRenderer && cssScene){
+    cssRenderer.render(cssScene,camera);
+  }
+
 }
 
 /* =========================================================
    REMOTE PLAYERS / SILHOUETTES
 ========================================================= */
 function createRemotePlayer(data){
-  if(!scene || !data || !data.id || data.id===socket?.id) return;
-
-  // If a stale object exists for this socket, replace it cleanly.
-  if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
-
   const g=new THREE.Group();
   g.userData.username=data.username||'PLAYER';
 
@@ -3568,48 +3437,20 @@ function createRemotePlayer(data){
   const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
   label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
 
-  const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
-  const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
-  const y=Number.isFinite(Number(data.y)) ? Number(data.y) : 0;
-  const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
-
-  g.position.set(x,y,z);
-  g.rotation.y=ry;
-  g.visible=true;
+  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
+  g.rotation.y=Number(data.yaw)||0;
   scene.add(g);
-
-  remotePlayers.set(data.id,{
-    group:g,
-    last:{x,z,yaw:ry},
-    moving:!!data.moving,
-    username:data.username||'PLAYER'
-  });
+  remotePlayers.set(data.id,{group:g,last:{x:g.position.x,z:g.position.z,yaw:g.rotation.y},moving:false});
 }
 
 function updateRemotePlayer(data){
   if(!data.id || data.id===socket?.id) return;
   if(!remotePlayers.has(data.id)) createRemotePlayer(data);
   const p=remotePlayers.get(data.id);
-
-  const rawX=Number(data.x);
-  const rawZ=Number(data.z);
-  const rawY=Number(data.y);
-  const rawYaw=Number(data.yaw ?? data.ry);
-
-  const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
-  const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
-  const ny=Number.isFinite(rawY) ? rawY : p.group.position.y;
-  const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
-
-  const dx=nx-p.group.position.x;
-  const dz=nz-p.group.position.z;
-
-  p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
-  p.group.position.x=nx;
-  p.group.position.y=ny;
-  p.group.position.z=nz;
-  p.group.rotation.y=nyaw;
-  p.last={x:nx,z:nz,yaw:nyaw};
+  const nx=Number(data.x)||0, nz=Number(data.z)||0;
+  const dx=nx-p.group.position.x, dz=nz-p.group.position.z;
+  p.moving=Math.hypot(dx,dz)>.002;
+  p.group.position.x=nx; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
 }
 
 function removeRemotePlayer(id){
@@ -3624,30 +3465,17 @@ function broadcastPlayerState(now){
   if(!socket || !socket.connected || !camera) return;
   if(now-lastPlayerBroadcast<50) return;
   lastPlayerBroadcast=now;
-  const moving = Math.abs(camera.position.x-(broadcastPlayerState.lastX ?? camera.position.x)) > 0.0005 ||
-                 Math.abs(camera.position.z-(broadcastPlayerState.lastZ ?? camera.position.z)) > 0.0005;
-
-  broadcastPlayerState.lastX=camera.position.x;
-  broadcastPlayerState.lastZ=camera.position.z;
-
-  socket.emit('player-state',{
-    x:camera.position.x,
-    y:Math.max(0, playerY-1.7),
-    z:camera.position.z,
-    yaw:yaw,
-    pitch:pitch,
-    username:currentUser,
-    moving:moving,
-    jumping:!isGrounded
-  });
+  socket.emit('player-state',{x:camera.position.x,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser});
 }
 
 function applyRemoteClubScreen(state){
   const frame=document.getElementById('media-screen-frame');
   const panel=document.getElementById('media-screen');
   if(!frame || !panel) return;
-  if(!state.active){
-    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl=''; return;
+  if(!state || !state.active){
+    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl='';
+    if(cssScreenObject) cssScreenObject.visible=false;
+    return;
   }
   if(state.src && state.src!==screenMediaUrl){
     frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
