@@ -1623,7 +1623,7 @@ function init3D(){
   createMainScreen();
   createStage();
   createBar();
-  createLounge();
+  createBartender();
   createColumns();
   createEntrance();
   createNeonArchitecture();
@@ -1631,7 +1631,6 @@ function init3D(){
   createSpeakers();
   createRealisticLighting();
   createClubLogo();
-  createSeats();
   createCollisionMap();
   createParticles();
   createPlayer();
@@ -1952,56 +1951,60 @@ function createBar(){
 
 }
 
-function createLounge(){
+function createBartender(){
+  // Static low-poly club bartender: behind the bar, facing the dancefloor.
+  const skin=new THREE.MeshStandardMaterial({color:0x8a5f4b,roughness:.9});
+  const shirt=new THREE.MeshStandardMaterial({color:0x171717,roughness:.8});
+  const apron=new THREE.MeshStandardMaterial({color:0x292929,roughness:.85});
+  const pants=new THREE.MeshStandardMaterial({color:0x090909,roughness:.9});
 
-  const sofaMat =
-    new THREE.MeshStandardMaterial({
-      color:0x181818,
-      roughness:.9
-    });
+  const npc=new THREE.Group();
+  npc.position.set(-12,0,6.05);
+  npc.rotation.y=Math.PI;
 
-  createBox(
-    6,.8,1.6,
-    11,.7,8,
-    sofaMat
-  );
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.72,1.05,.42),shirt);
+  body.position.y=1.25;
+  npc.add(body);
 
-  createBox(
-    1.6,1.4,5.5,
-    14,1.2,8,
-    sofaMat
-  );
+  const apronMesh=new THREE.Mesh(new THREE.BoxGeometry(.55,.72,.025),apron);
+  apronMesh.position.set(0,1.18,.225);
+  npc.add(apronMesh);
 
-  for(
-    let i=0;
-    i<3;
-    i++
-  ){
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.29,16,12),skin);
+  head.position.y=2.05;
+  npc.add(head);
 
-    const table =
-      new THREE.Mesh(
-        new THREE.CylinderGeometry(
-          .65,
-          .65,
-          .08,
-          32
-        ),
-        new THREE.MeshStandardMaterial({
-          color:0x101010,
-          metalness:.7
-        })
-      );
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(.30,16,8,0,Math.PI*2,0,Math.PI*.48),
+    new THREE.MeshStandardMaterial({color:0x111111,roughness:1}));
+  hair.position.y=2.15;
+  npc.add(hair);
 
-    table.position.set(
-      8+i*3,
-      .75,
-      4
-    );
-
-    scene.add(table);
-
+  for(const x of [-.22,.22]){
+    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.075,.09,.72,10),skin);
+    arm.position.set(x,1.38,.02);
+    arm.rotation.z=x<0?-.28:.28;
+    npc.add(arm);
   }
 
+  for(const x of [-.18,.18]){
+    const leg=new THREE.Mesh(new THREE.BoxGeometry(.18,.85,.22),pants);
+    leg.position.set(x,.43,0);
+    npc.add(leg);
+  }
+
+  const nameCanvas=document.createElement('canvas');
+  nameCanvas.width=256; nameCanvas.height=64;
+  const nctx=nameCanvas.getContext('2d');
+  nctx.fillStyle='rgba(0,0,0,.65)'; nctx.fillRect(8,12,240,40);
+  nctx.fillStyle='#fff'; nctx.font='bold 22px Arial'; nctx.textAlign='center';
+  nctx.fillText('BARTENDER',128,39);
+  const nameTex=new THREE.CanvasTexture(nameCanvas);
+  const name=new THREE.Sprite(new THREE.SpriteMaterial({map:nameTex,transparent:true,depthWrite:false}));
+  name.position.set(0,2.62,0); name.scale.set(1.55,.39,1);
+  npc.add(name);
+
+  scene.add(npc);
+  npc.userData.npc=true;
 }
 
 function createColumns(){
@@ -2266,34 +2269,14 @@ function createRealisticLighting(){
   }
   scene.add(hazeGroup);
 }
-function createSeats(){
-  seatPoints=[
-    {id:'bar-1',x:-14.8,z:8.9,yaw:Math.PI},
-    {id:'bar-2',x:-12.8,z:8.9,yaw:Math.PI},
-    {id:'bar-3',x:-10.8,z:8.9,yaw:Math.PI},
-    {id:'lounge-1',x:9.2,z:6.0,yaw:0},
-    {id:'lounge-2',x:12.2,z:6.0,yaw:0}
-  ];
-  const chairMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:.8,metalness:.15});
-  seatPoints.forEach(s=>{
-    createBox(.75,.42,.75,s.x,.42,s.z,chairMat);
-    createBox(.75,.75,.12,s.x,.78,s.z+.3,chairMat);
-  });
-}
-
 function createCollisionMap(){
   collisionBoxes=[
     {minX:-8.8,maxX:8.8,minZ:-14.2,maxZ:-10.9},
     {minX:-16,maxX:-8,minZ:5.8,maxZ:8.3},
-    {minX:7.5,maxX:14.5,minZ:7.0,maxZ:9.0},
-    {minX:13.2,maxX:15.2,minZ:5.0,maxZ:11.0},
     {minX:-15.7,maxX:-14.3,minZ:-5.7,maxZ:-4.3},
     {minX:14.3,maxX:15.7,minZ:-5.7,maxZ:-4.3},
     {minX:-15.7,maxX:-14.3,minZ:4.3,maxZ:5.7},
-    {minX:14.3,maxX:15.7,minZ:4.3,maxZ:5.7},
-    {minX:6.8,maxX:9.2,minZ:3.2,maxZ:4.8},
-    {minX:9.8,maxX:12.2,minZ:3.2,maxZ:4.8},
-    {minX:12.8,maxX:15.2,minZ:3.2,maxZ:4.8}
+    {minX:14.3,maxX:15.7,minZ:4.3,maxZ:5.7}
   ];
 }
 
@@ -2423,67 +2406,58 @@ function createCeilingBeams(){
 }
 
 function createSpeakers(){
+  // Four realistic club PA stacks placed in the room corners.
+  const cabinetMat=new THREE.MeshStandardMaterial({color:0x090909,metalness:.18,roughness:.72});
+  const edgeMat=new THREE.MeshStandardMaterial({color:0x151515,metalness:.35,roughness:.5});
+  const coneMat=new THREE.MeshStandardMaterial({color:0x242424,metalness:.15,roughness:.6});
+  const hornMat=new THREE.MeshStandardMaterial({color:0x050505,metalness:.2,roughness:.45});
+  const grilleMat=new THREE.MeshStandardMaterial({color:0x080808,metalness:.05,roughness:.92});
 
-  const mat =
-    new THREE.MeshStandardMaterial({
-      color:0x050505,
-      metalness:.4,
-      roughness:.7
-    });
-
-  const positions=[
-    [-8,2,-11],
-    [8,2,-11],
-    [-11,2,-10],
-    [11,2,-10]
+  const stacks=[
+    [-14.3,0,-11.7, 0],
+    [14.3,0,-11.7, 0],
+    [-14.3,0,3.2, Math.PI],
+    [14.3,0,3.2, Math.PI]
   ];
 
-  positions.forEach(
-    p=>{
+  stacks.forEach(([x,_,z,rot])=>{
+    const group=new THREE.Group();
+    group.position.set(x,0,z); group.rotation.y=rot;
 
-      createBox(
-        1.2,2.5,.8,
-        p[0],
-        p[1],
-        p[2],
-        mat
-      );
+    const sub=new THREE.Mesh(new THREE.BoxGeometry(1.75,2.15,1.25),cabinetMat);
+    sub.position.y=1.08; group.add(sub);
+    const top=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.35,1.05),cabinetMat);
+    top.position.y=2.82; group.add(top);
 
-      for(
-        let i=0;
-        i<3;
-        i++
-      ){
+    // Front grilles.
+    const grille=new THREE.Mesh(new THREE.PlaneGeometry(1.48,1.85),grilleMat);
+    grille.position.set(0,1.1,.638); group.add(grille);
+    const topGrille=new THREE.Mesh(new THREE.PlaneGeometry(1.28,1.08),grilleMat);
+    topGrille.position.set(0,2.82,.538); group.add(topGrille);
 
-        const cone =
-          new THREE.Mesh(
-            new THREE.CylinderGeometry(
-              .23,
-              .23,
-              .12,
-              24
-            ),
-            new THREE.MeshBasicMaterial({
-              color:0xaaaaaa
-            })
-          );
+    // Large woofer + smaller driver.
+    const woofer=new THREE.Mesh(new THREE.CylinderGeometry(.42,.42,.07,32),coneMat);
+    woofer.rotation.x=Math.PI/2; woofer.position.set(0,1.05,.69); group.add(woofer);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.44,.035,8,32),edgeMat);
+    ring.rotation.x=Math.PI/2; ring.position.set(0,1.05,.735); group.add(ring);
+    const driver=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.06,24),coneMat);
+    driver.rotation.x=Math.PI/2; driver.position.set(0,3.02,.58); group.add(driver);
 
-        cone.rotation.x=
-          Math.PI/2;
+    // Horn / tweeter.
+    const horn=new THREE.Mesh(new THREE.CylinderGeometry(.24,.12,.28,16),hornMat);
+    horn.rotation.x=Math.PI/2; horn.position.set(0,2.58,.63); group.add(horn);
 
-        cone.position.set(
-          p[0],
-          1.3+i*.6,
-          p[2]-.45
-        );
+    // Small metal corners and feet.
+    [[-.82,.12],[.82,.12],[-.82,2.04],[.82,2.04]].forEach(([cx,cy])=>{
+      const c=new THREE.Mesh(new THREE.BoxGeometry(.07,.07,.07),edgeMat);
+      c.position.set(cx,cy,.66); group.add(c);
+    });
 
-        scene.add(cone);
+    const led=new THREE.Mesh(new THREE.BoxGeometry(.07,.34,.03),new THREE.MeshBasicMaterial({color:0x5577ff,transparent:true,opacity:.55}));
+    led.position.set(.63,2.82,.56); group.add(led);
 
-      }
-
-    }
-  );
-
+    scene.add(group);
+  });
 }
 
 function createParticles(){
