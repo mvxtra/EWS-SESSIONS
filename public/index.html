@@ -449,37 +449,6 @@ input:focus{
   letter-spacing:1px;
 }
 
-#stream-indicator{
-  position:absolute;
-
-  top:18px;
-  left:50%;
-
-  transform:translateX(-50%);
-
-  padding:6px 12px;
-
-  background:rgba(0,0,0,.75);
-
-  border:1px solid #333;
-
-  color:#777;
-
-  font-family:monospace;
-
-  font-size:10px;
-  letter-spacing:2px;
-}
-
-#stream-indicator.live{
-  color:#fff;
-  border-color:#aaa;
-}
-
-#stream-indicator.error{
-  color:#ff5555;
-  border-color:#ff5555;
-}
 
 #lang-bar{
   position:absolute;
@@ -517,55 +486,6 @@ input:focus{
   pointer-events:none;
 }
 
-#audio-control{
-  position:absolute;
-
-  top:58px;
-  left:50%;
-
-  transform:translateX(-50%);
-
-  z-index:100;
-
-  pointer-events:auto;
-
-  padding:9px 14px;
-
-  border:1px solid #444;
-
-  background:rgba(0,0,0,.78);
-
-  color:#aaa;
-
-  font-family:monospace;
-
-  font-size:10px;
-
-  letter-spacing:2px;
-
-  cursor:pointer;
-}
-
-#audio-control.live{
-  color:#fff;
-  border-color:#aaa;
-}
-
-#audio-control:disabled{
-  opacity:.7;
-  cursor:wait;
-}
-
-#ews-audio{
-  position:absolute;
-
-  width:1px;
-  height:1px;
-
-  opacity:0;
-
-  pointer-events:none;
-}
 
 /* =========================================================
    MOBILE
@@ -892,15 +812,11 @@ let lightObjects=[];
 
 let particles;
 
-let audioLevel=0;
-let bassLevel=0;
 
 let css3dRenderer=null;
 let css3dScene=null;
 let screenDomObject=null;
 let screenMesh=null;
-let screenMediaActive=false;
-let screenMediaUrl='';
 let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
@@ -2469,80 +2385,8 @@ function animate(){
   const time =
     performance.now()/1000;
 
-  let bass=.2;
-  let level=.2;
+  const bass=0.25;
 
-  if(
-    analyser &&
-    freqData &&
-    audioStarted
-  ){
-
-    analyser.getByteFrequencyData(
-      freqData
-    );
-
-    let b=0;
-
-    for(
-      let i=0;
-      i<10 &&
-      i<freqData.length;
-      i++
-    ){
-
-      b+=freqData[i];
-
-    }
-
-    bass=
-      b/
-      (
-        Math.min(
-          10,
-          freqData.length
-        )*255
-      );
-
-    let total=0;
-
-    for(
-      let i=0;
-      i<freqData.length;
-      i++
-    ){
-
-      total+=freqData[i];
-
-    }
-
-    level=
-      total/
-      (
-        freqData.length*255
-      );
-
-  }
-
-  else{
-
-    bass=
-      .25+
-      Math.sin(time*3)*.12;
-
-    level=
-      .25+
-      Math.sin(time*1.5)*.08;
-
-  }
-
-  bassLevel=
-    bassLevel*.82+
-    bass*.18;
-
-  audioLevel=
-    audioLevel*.88+
-    level*.12;
 
   const speed=
     chatMode
@@ -2652,8 +2496,7 @@ function animate(){
       .00015;
 
     particles.material.opacity=
-      .22+
-      audioLevel*.18;
+      .22;
 
   }
 
@@ -2695,7 +2538,6 @@ function animate(){
 
       light.intensity=
         1+
-        bassLevel*2+
         Math.sin(
           time*2+
           index
@@ -2778,45 +2620,6 @@ function broadcastPlayerState(now){
   lastPlayerBroadcast=now;
   socket.emit('player-state',{x:camera.position.x,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser});
 }
-
-function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('media-screen');
-  if(!frame || !panel) return;
-  if(!state.active){
-    frame.src='about:blank'; panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl=''; return;
-  }
-  if(state.src && state.src!==screenMediaUrl){
-    frame.src=state.src; screenMediaUrl=state.src; screenMediaActive=true; panel.classList.add('active');
-  }
-}
-
-/* =========================================================
-   CLEANUP
-========================================================= */
-
-window.addEventListener(
-  'beforeunload',
-  function(){
-
-    try{
-
-      if(hls){
-        hls.destroy();
-      }
-
-    }catch(e){}
-
-    try{
-
-      if(audioContext){
-        audioContext.close();
-      }
-
-    }catch(e){}
-
-  }
-);
 
 </script>
 
