@@ -1305,7 +1305,8 @@ function init3D(){
   css3dRenderer.domElement.style.height = '100%';
   css3dRenderer.domElement.style.pointerEvents = 'none';
   css3dRenderer.domElement.style.overflow = 'visible';
-  css3dRenderer.domElement.style.zIndex = '30';
+  css3dRenderer.domElement.style.zIndex = '50';
+  css3dRenderer.domElement.style.pointerEvents = 'none';
   css3dRenderer.domElement.style.transformStyle = 'preserve-3d';
   document.getElementById('app').appendChild(css3dRenderer.domElement);
 
@@ -1586,7 +1587,7 @@ function createMainScreen(){
       roughness:.28
     })
   );
-  frame.position.set(0,3.65,-16.48);
+  frame.position.set(0,3.65,-15.95);
   frame.renderOrder=999;
   scene.add(frame);
 
@@ -1600,17 +1601,17 @@ function createMainScreen(){
       depthWrite:false
     })
   );
-  screenMesh.position.set(0,3.65,-16.18);
+  screenMesh.position.set(0,3.65,-15.70);
   screenMesh.renderOrder=1000;
   screenMesh.visible=true;
   scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
   [
-    [14.25,.10,.08,0,6.68,-16.10],
-    [14.25,.10,.08,0,.62,-16.10],
-    [.10,6.1,.08,-7.08,3.65,-16.10],
-    [.10,6.1,.08,7.08,3.65,-16.10]
+    [14.25,.10,.08,0,6.68,-15.62],
+    [14.25,.10,.08,0,.62,-15.62],
+    [.10,6.1,.08,-7.08,3.65,-15.62],
+    [.10,6.1,.08,7.08,3.65,-15.62]
   ].forEach(a=>{
     const m=new THREE.Mesh(
       new THREE.BoxGeometry(a[0],a[1],a[2]),
@@ -1632,7 +1633,7 @@ function createMainScreen(){
     panel.style.pointerEvents='auto';
 
     screenDomObject=new THREE.CSS3DObject(panel);
-    screenDomObject.position.set(0,3.65,-16.02);
+    screenDomObject.position.set(0,3.65,-15.55);
     screenDomObject.rotation.set(0,0,0);
     screenDomObject.scale.set(.01,.01,.01);
     screenDomObject.visible=false;
