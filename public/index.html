@@ -43,6 +43,7 @@ body{
 
 #canvas3d{
   position:absolute;
+  z-index:1;
   inset:0;
   width:100%;
   height:100%;
@@ -1305,7 +1306,7 @@ function init3D(){
   css3dRenderer.domElement.style.height = '100%';
   css3dRenderer.domElement.style.pointerEvents = 'none';
   css3dRenderer.domElement.style.overflow = 'visible';
-  css3dRenderer.domElement.style.zIndex = '50';
+  css3dRenderer.domElement.style.zIndex = '20';
   css3dRenderer.domElement.style.pointerEvents = 'none';
   css3dRenderer.domElement.style.transformStyle = 'preserve-3d';
   document.getElementById('app').appendChild(css3dRenderer.domElement);
@@ -1577,55 +1578,53 @@ function createDanceFloor(){
 }
 
 function createMainScreen(){
-  // ЕДИНСТВЕННЫЙ экран клуба: физически закреплён на задней стене.
-  // Никакого отдельного HTML-окна перед камерой.
+  // ФИЗИЧЕСКИЙ ЭКРАН НА ЗАДНЕЙ СТЕНЕ.
+  // Стена: z=-17. Экран стоит прямо перед её лицевой стороной.
   const frame=new THREE.Mesh(
-    new THREE.BoxGeometry(14.6,6.6,.42),
-    new THREE.MeshStandardMaterial({
-      color:0x080808,
-      metalness:.75,
-      roughness:.28
+    new THREE.BoxGeometry(14.8,6.8,.30),
+    new THREE.MeshBasicMaterial({
+      color:0x050505,
+      side:THREE.DoubleSide
     })
   );
-  frame.position.set(0,3.65,-15.95);
-  frame.renderOrder=999;
+  frame.position.set(0,3.65,-16.58);
+  frame.renderOrder=900;
   scene.add(frame);
 
-  // Чёрная поверхность экрана. Она остаётся на стене, пока ссылка не загружена.
+  // ЧЁРНАЯ ПОВЕРХНОСТЬ ВСЕГДА ВИДНА, даже когда стрим выключен.
   screenMesh=new THREE.Mesh(
-    new THREE.PlaneGeometry(14,6),
+    new THREE.BoxGeometry(14.2,6.1,.08),
     new THREE.MeshBasicMaterial({
-      color:0x080808,
-      side:THREE.FrontSide,
+      color:0x000000,
+      side:THREE.DoubleSide,
       depthTest:false,
       depthWrite:false
     })
   );
-  screenMesh.position.set(0,3.65,-15.70);
+  screenMesh.position.set(0,3.65,-16.37);
   screenMesh.renderOrder=1000;
   screenMesh.visible=true;
   scene.add(screenMesh);
 
-  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
+  // Белая рамка.
+  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,depthTest:false,depthWrite:false});
   [
-    [14.25,.10,.08,0,6.68,-15.62],
-    [14.25,.10,.08,0,.62,-15.62],
-    [.10,6.1,.08,-7.08,3.65,-15.62],
-    [.10,6.1,.08,7.08,3.65,-15.62]
+    [14.35,.10,.10,0,6.73,-16.30],
+    [14.35,.10,.10,0,.57,-16.30],
+    [.10,6.25,.10,-7.12,3.65,-16.30],
+    [.10,6.25,.10,7.12,3.65,-16.30]
   ].forEach(a=>{
-    const m=new THREE.Mesh(
-      new THREE.BoxGeometry(a[0],a[1],a[2]),
-      borderMat
-    );
+    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
     m.position.set(a[3],a[4],a[5]);
+    m.renderOrder=1001;
     scene.add(m);
   });
 
-  // HTML iframe становится частью CSS3D-сцены и получает те же 3D-координаты.
+  // HTML-видео появляется точно в той же позиции.
   const panel=document.getElementById('media-screen');
   if(panel){
-    panel.style.width='1400px';
-    panel.style.height='600px';
+    panel.style.width='1420px';
+    panel.style.height='610px';
     panel.style.display='none';
     panel.style.background='#000';
     panel.style.border='0';
@@ -1633,7 +1632,7 @@ function createMainScreen(){
     panel.style.pointerEvents='auto';
 
     screenDomObject=new THREE.CSS3DObject(panel);
-    screenDomObject.position.set(0,3.65,-15.55);
+    screenDomObject.position.set(0,3.65,-16.27);
     screenDomObject.rotation.set(0,0,0);
     screenDomObject.scale.set(.01,.01,.01);
     screenDomObject.visible=false;
