@@ -1011,6 +1011,7 @@ let clock=new THREE.Clock();
 let neonObjects=[];
 let lightObjects=[];
 let clubSpotlights=[];
+let clubLasers=[];
 
 let particles;
 
@@ -1587,6 +1588,7 @@ function init3D(){
   );
 
   createClubSpotlights();
+  createClubLasers();
 
   createFloor();
   createCeiling();
@@ -1718,6 +1720,63 @@ function animateClubSpotlights(time,bass,level){
     s.light.intensity=1.5+pulse+Math.sin(time*2.2+s.phase)*0.45;
     const hue=(time*0.055+i*0.19+Math.max(bass,0)*0.15)%1;
     s.light.color.setHSL(hue,0.82,0.62);
+  });
+}
+
+function createClubLasers(){
+  // Thin white club-style laser beams. They are intentionally separate from
+  // the existing spotlights so the rest of the lighting remains unchanged.
+  const positions=[
+    [-8.5,5.65,-8.5],
+    [8.5,5.65,-8.5],
+    [-8.5,5.65,6.5],
+    [8.5,5.65,6.5]
+  ];
+
+  positions.forEach((pos,i)=>{
+    const group=new THREE.Group();
+    group.position.set(pos[0],pos[1],pos[2]);
+
+    const beamMat=new THREE.MeshBasicMaterial({
+      color:0xffffff,
+      transparent:true,
+      opacity:.18,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending,
+      side:THREE.DoubleSide
+    });
+
+    const beam=new THREE.Mesh(
+      new THREE.CylinderGeometry(.012,.16,13,16,1,true),
+      beamMat
+    );
+    beam.position.y=-6.5;
+    group.add(beam);
+
+    // Small bright emitter at the source.
+    const emitter=new THREE.Mesh(
+      new THREE.SphereGeometry(.055,12,12),
+      new THREE.MeshBasicMaterial({color:0xffffff})
+    );
+    group.add(emitter);
+
+    scene.add(group);
+    clubLasers.push({group,beam,baseOpacity:.14+i*.012,phase:i*Math.PI/2});
+  });
+}
+
+function animateClubLasers(time,bass,level){
+  clubLasers.forEach((laser,i)=>{
+    const phase=laser.phase;
+    const sweepX=Math.sin(time*.55+phase)*2.8;
+    const sweepZ=Math.cos(time*.42+phase)*2.2;
+    const target=new THREE.Vector3(sweepX,0,-1+sweepZ);
+    laser.group.lookAt(target);
+
+    const pulse=.75+Math.max(bass,level)*2.2;
+    laser.beam.material.opacity=Math.min(.42,laser.baseOpacity*pulse);
+    laser.beam.scale.x=1+Math.max(bass,0)*1.8;
+    laser.beam.scale.z=1+Math.max(bass,0)*1.8;
   });
 }
 
@@ -2285,6 +2344,8 @@ function createSpeakers(){
 
     // Turn every speaker toward the centre of the dance floor.
     speaker.lookAt(new THREE.Vector3(0,1,-1));
+    // The speaker cabinet faces its local -Z, so flip it to point into the dance floor.
+    speaker.rotation.y += Math.PI;
     scene.add(speaker);
   });
 }
@@ -3652,6 +3713,7 @@ function animate(){
 
 
   animateClubSpotlights(time,bass,level);
+  animateClubLasers(time,bass,level);
 
   remotePlayers.forEach(p=>{
     if(p.mixer) p.mixer.update(dt);
