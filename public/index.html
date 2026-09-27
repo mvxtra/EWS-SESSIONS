@@ -421,7 +421,7 @@ input:focus{
 }
 
 #media-screen{
-  position:absolute;
+  position:fixed;
   z-index:15;
   display:none;
   overflow:hidden;
@@ -991,6 +991,8 @@ let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
 let clubScreenHost=null;
+let jumpVelocity=0;
+let grounded=true;
 
 let playerBody;
 
@@ -1161,7 +1163,14 @@ function startSession(username){
 
   });
 
-  socket.on('screen-host', state=>{
+  socket.on('joined', data=>{
+  if(data && data.owner && data.username){
+    clubScreenHost=String(data.username).trim();
+    updateScreenHostUI();
+  }
+});
+
+socket.on('screen-host', state=>{
     if(state && state.online && state.username){
       clubScreenHost=String(state.username).trim();
     }else{
@@ -2939,6 +2948,7 @@ function loadClubScreen(){
   frame.src=result.src;
   panel.classList.add('active');
   screenMediaActive=true;
+  if(screenMesh) screenMesh.visible=false;
   screenMediaUrl=result.src;
   setScreenStatus(result.name+' LOADED — звук управляется плеером на экране.');
   if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
@@ -2955,45 +2965,30 @@ function clearClubScreen(){
   if(panel) panel.classList.remove('active');
   screenMediaActive=false;
   screenMediaUrl='';
+  if(screenMesh) screenMesh.visible=true;
   if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
   setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
 }
 
 function updateClubScreenOverlay(){
   const panel=document.getElementById('media-screen');
-  if(!panel || !screenMesh || !camera || !renderer) return;
+  if(!panel) return;
+
   if(!screenMediaActive){
     panel.style.display='none';
+    if(screenMesh) screenMesh.visible=true;
     return;
   }
-  const w=renderer.domElement.clientWidth;
-  const h=renderer.domElement.clientHeight;
-  if(!w || !h){ panel.style.display='none'; return; }
 
-  const leftPoint=new THREE.Vector3(-7,3.65,-16.47).project(camera);
-  const rightPoint=new THREE.Vector3(7,3.65,-16.47).project(camera);
-  const topPoint=new THREE.Vector3(0,6.65,-16.47).project(camera);
-  const bottomPoint=new THREE.Vector3(0,.65,-16.47).project(camera);
-  const center=new THREE.Vector3(0,3.65,-16.47).project(camera);
-
-  const left=(leftPoint.x*.5+.5)*w;
-  const right=(rightPoint.x*.5+.5)*w;
-  const top=(-topPoint.y*.5+.5)*h;
-  const bottom=(-bottomPoint.y*.5+.5)*h;
-  const cx=(center.x*.5+.5)*w;
-  const cy=(-center.y*.5+.5)*h;
-  const width=Math.abs(right-left);
-  const height=Math.abs(bottom-top);
-
-  if(center.z>1 || width<5 || height<5){
-    panel.style.display='none';
-    return;
-  }
+  // Видеоплеер больше НЕ привязан к камере/3D-проекции.
+  // Поэтому он не гуляет и не прыгает по экрану при движении игрока.
   panel.style.display='block';
-  panel.style.left=(cx-width/2)+'px';
-  panel.style.top=(cy-height/2)+'px';
-  panel.style.width=width+'px';
-  panel.style.height=height+'px';
+  panel.style.left='50%';
+  panel.style.top='50%';
+  panel.style.width='min(78vw, 1100px)';
+  panel.style.height='min(44vw, 680px)';
+  panel.style.transform='translate(-50%, -50%)';
+  if(screenMesh) screenMesh.visible=false;
 }
 
 /* =========================================================
@@ -3169,7 +3164,21 @@ function animate(){
       15.5
     );
 
-  camera.position.y=1.7;
+  // Прыжок: Space, с нормальным падением обратно на пол.
+  if(!chatMode){
+    jumpVelocity-=16*dt;
+    camera.position.y+=jumpVelocity*dt;
+
+    if(camera.position.y<=1.7){
+      camera.position.y=1.7;
+      jumpVelocity=0;
+      grounded=true;
+    }
+  }else{
+    camera.position.y=1.7;
+    jumpVelocity=0;
+    grounded=true;
+  }
 
   camera.rotation.order=
     'YXZ';
@@ -3431,7 +3440,7 @@ function createRemotePlayer(data){
   const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
   label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
 
-  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
+  g.position.set(Number(data.x)||0,Number(data.y)||0,Number(data.z)||0);
   g.rotation.y=Number(data.yaw)||0;
   scene.add(g);
   remotePlayers.set(data.id,{group:g,last:{x:g.position.x,z:g.position.z,yaw:g.rotation.y},moving:false});
@@ -3441,10 +3450,10 @@ function updateRemotePlayer(data){
   if(!data.id || data.id===socket?.id) return;
   if(!remotePlayers.has(data.id)) createRemotePlayer(data);
   const p=remotePlayers.get(data.id);
-  const nx=Number(data.x)||0, nz=Number(data.z)||0;
+  const nx=Number(data.x)||0, ny=Number(data.y)||0, nz=Number(data.z)||0;
   const dx=nx-p.group.position.x, dz=nz-p.group.position.z;
   p.moving=Math.hypot(dx,dz)>.002;
-  p.group.position.x=nx; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
+  p.group.position.x=nx; p.group.position.y=ny; p.group.position.z=nz; p.group.rotation.y=Number(data.yaw)||0;
 }
 
 function removeRemotePlayer(id){
@@ -3459,7 +3468,7 @@ function broadcastPlayerState(now){
   if(!socket || !socket.connected || !camera) return;
   if(now-lastPlayerBroadcast<50) return;
   lastPlayerBroadcast=now;
-  socket.emit('player-state',{x:camera.position.x,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser});
+  socket.emit('player-state',{x:camera.position.x,y:camera.position.y-1.7,z:camera.position.z,yaw:yaw,pitch:pitch,username:currentUser,jumping:!grounded,moving:!!(forward||side)});
 }
 
 function applyRemoteClubScreen(state){
