@@ -15,6 +15,7 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
 <style>
 
@@ -434,13 +435,17 @@ input:focus{
 
 #media-screen.active{display:block;}
 
-#media-screen iframe{
+#media-screen iframe,
+#media-screen video{
   width:100%;
   height:100%;
   border:0;
   display:block;
   background:#000;
+  object-fit:contain;
 }
+
+#media-screen video{display:none;}
 
 #media-screen-close{
   display:none;
@@ -808,6 +813,7 @@ input:focus{
   </div>
 
   <div id="media-screen">
+    <video id="media-screen-video" playsinline controls autoplay></video>
     <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe>
   </div>
 
@@ -859,6 +865,8 @@ let particles;
 
 let screenTexture;
 let screenMesh;
+let screenHls=null;
+let screenMediaType="";
 let screenMediaActive=false;
 let screenMediaUrl='';
 let onlineUserList=[];
@@ -1306,7 +1314,7 @@ function init3D(){
   css3dRenderer.domElement.style.height = '100%';
   css3dRenderer.domElement.style.pointerEvents = 'none';
   css3dRenderer.domElement.style.overflow = 'visible';
-  css3dRenderer.domElement.style.zIndex = '20';
+  css3dRenderer.domElement.style.zIndex = '50';
   css3dRenderer.domElement.style.pointerEvents = 'none';
   css3dRenderer.domElement.style.transformStyle = 'preserve-3d';
   document.getElementById('app').appendChild(css3dRenderer.domElement);
@@ -1630,6 +1638,14 @@ function createMainScreen(){
     panel.style.border='0';
     panel.style.overflow='hidden';
     panel.style.pointerEvents='auto';
+
+    const video=document.getElementById('media-screen-video');
+    if(video){
+      video.style.display='none';
+      video.muted=false;
+      video.volume=1;
+      video.setAttribute('playsinline','');
+    }
 
     screenDomObject=new THREE.CSS3DObject(panel);
     screenDomObject.position.set(0,3.65,-16.27);
@@ -2358,6 +2374,59 @@ function updateScreenHostUI(){
   }
 }
 
+function isDirectMediaUrl(src){
+  try{
+    const u=new URL(src);
+    const path=u.pathname.toLowerCase();
+    return /\.(m3u8|mp4|webm|ogg|ogv|mov)(?:$|\?)/.test(path) || u.searchParams.has('m3u8');
+  }catch(e){ return false; }
+}
+
+function stopScreenMedia(){
+  const frame=document.getElementById('media-screen-frame');
+  const video=document.getElementById('media-screen-video');
+  if(screenHls){ try{screenHls.destroy();}catch(e){} screenHls=null; }
+  if(video){
+    try{video.pause();}catch(e){}
+    video.removeAttribute('src');
+    video.load();
+    video.style.display='none';
+  }
+  if(frame){ frame.src='about:blank'; frame.style.display='none'; }
+  screenMediaType='';
+}
+
+function playDirectScreenMedia(src){
+  const video=document.getElementById('media-screen-video');
+  const frame=document.getElementById('media-screen-frame');
+  if(!video || !frame) return false;
+  stopScreenMedia();
+  video.style.display='block';
+  video.muted=false;
+  video.volume=1;
+  screenMediaType='video';
+
+  if(/\.m3u8(?:$|\?)/i.test(src)){
+    if(video.canPlayType('application/vnd.apple.mpegurl')){
+      video.src=src;
+    }else if(window.Hls && Hls.isSupported()){
+      screenHls=new Hls({enableWorker:true,lowLatencyMode:true});
+      screenHls.loadSource(src);
+      screenHls.attachMedia(video);
+    }else{
+      setScreenStatus('Этот браузер не поддерживает HLS (.m3u8).');
+      return false;
+    }
+  }else{
+    video.src=src;
+  }
+  video.load();
+  video.play().catch(()=>{
+    setScreenStatus('Видео загружено. Нажми PLAY на экране — браузер может блокировать автозвук.');
+  });
+  return true;
+}
+
 function loadClubScreen(){
   if(!isClubHost()){
     setScreenStatus('Только главный пользователь клуба может включать экран.');
@@ -2365,44 +2434,45 @@ function loadClubScreen(){
   }
   const input=document.getElementById('screen-url');
   const frame=document.getElementById('media-screen-frame');
-  if(!input || !frame) return;
+  const video=document.getElementById('media-screen-video');
+  if(!input || !frame || !video) return;
 
-  const result=normalizeClubScreenUrl(input.value);
+  const raw=String(input.value||'').trim();
+  const result=normalizeClubScreenUrl(raw);
   if(!result){
-    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');
+    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch, https:// сайт или прямой .m3u8/.mp4 поток.');
     return;
   }
 
-  frame.src=result.src;
-  screenMediaActive=true;
-  screenMediaUrl=result.src;
+  stopScreenMedia();
+  let ok=true;
+  if(isDirectMediaUrl(raw)){
+    ok=playDirectScreenMedia(raw);
+    if(ok) setScreenStatus('DIRECT STREAM LOADED — видео на экране. Если звук не стартовал, нажми PLAY.');
+  }else{
+    frame.src=result.src;
+    frame.style.display='block';
+    video.style.display='none';
+    screenMediaType=result.name;
+    setScreenStatus(result.name+' LOADED — экран приклеен к стене.');
+  }
+  if(!ok) return;
 
+  screenMediaActive=true;
+  screenMediaUrl=isDirectMediaUrl(raw)?raw:result.src;
   if(screenDomObject){
     screenDomObject.visible=true;
     screenDomObject.element.style.display='block';
   }
   if(screenMesh) screenMesh.visible=false;
-
-  setScreenStatus(result.name+' LOADED — экран приклеен к стене.');
-  if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
-
+  if(socket) socket.emit('club-screen-state',{src:screenMediaUrl,name:isDirectMediaUrl(raw)?'DIRECT':result.name,active:true,owner:currentUser});
   const menu=document.getElementById('screen-menu');
   if(menu) menu.classList.remove('open');
-
-  // Первый клик по LOAD является пользовательским действием браузера.
-  // Пытаемся сразу запустить видео со звуком.
-  setTimeout(()=>{
-    try{
-      frame.focus();
-      frame.contentWindow.postMessage({event:'command',func:'playVideo',args:[]}, '*');
-    }catch(e){}
-  }, 250);
 }
 
 function clearClubScreen(){
   if(!isClubHost()) return;
-  const frame=document.getElementById('media-screen-frame');
-  if(frame) frame.src='about:blank';
+  stopScreenMedia();
   screenMediaActive=false;
   screenMediaUrl='';
   if(screenDomObject){
@@ -2411,9 +2481,8 @@ function clearClubScreen(){
   }
   if(screenMesh) screenMesh.visible=true;
   if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
-  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
+  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch, сайт или прямой поток.');
 }
-
 
 /* =========================================================
    ANIMATION
@@ -2687,9 +2756,10 @@ function broadcastPlayerState(now){
 
 function applyRemoteClubScreen(state){
   const frame=document.getElementById('media-screen-frame');
-  if(!frame) return;
+  const video=document.getElementById('media-screen-video');
+  if(!frame || !video) return;
   if(!state.active){
-    frame.src='about:blank';
+    stopScreenMedia();
     screenMediaActive=false;
     screenMediaUrl='';
     if(screenDomObject){
@@ -2700,7 +2770,13 @@ function applyRemoteClubScreen(state){
     return;
   }
   if(state.src && state.src!==screenMediaUrl){
-    frame.src=state.src;
+    stopScreenMedia();
+    if(isDirectMediaUrl(state.src)){
+      playDirectScreenMedia(state.src);
+    }else{
+      frame.src=state.src;
+      frame.style.display='block';
+    }
     screenMediaUrl=state.src;
     screenMediaActive=true;
     if(screenDomObject){
@@ -2710,7 +2786,6 @@ function applyRemoteClubScreen(state){
     if(screenMesh) screenMesh.visible=false;
   }
 }
-
 /* =========================================================
    CLEANUP
 ========================================================= */
