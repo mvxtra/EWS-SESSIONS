@@ -13,8 +13,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
@@ -74,17 +72,11 @@ body{
   box-shadow:0 0 45px rgba(0,0,0,.9);
   pointer-events:auto;
   overflow:hidden;
-  display:block;
-  visibility:hidden;
-  opacity:0;
-  transform:translateZ(0);
-  backface-visibility:hidden;
-  will-change:transform,opacity;
+  display:none;
 }
 
 #css3d-screen.active{
-  visibility:visible;
-  opacity:1;
+  display:block;
 }
 
 #css3d-screen iframe{
@@ -510,7 +502,37 @@ input:focus{
   letter-spacing:1px;
 }
 
-#stream-indicator,#audio-control{display:none !important;}
+#stream-indicator{
+  position:absolute;
+
+  top:18px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  padding:6px 12px;
+
+  background:rgba(0,0,0,.75);
+
+  border:1px solid #333;
+
+  color:#777;
+
+  font-family:monospace;
+
+  font-size:10px;
+  letter-spacing:2px;
+}
+
+#stream-indicator.live{
+  color:#fff;
+  border-color:#aaa;
+}
+
+#stream-indicator.error{
+  color:#ff5555;
+  border-color:#ff5555;
+}
 
 #lang-bar{
   position:absolute;
@@ -767,9 +789,7 @@ input:focus{
   id="ews-audio"
   crossorigin="anonymous"
   playsinline
-  preload="auto"
-  autoplay
-  volume="1">
+  preload="auto">
 </audio>
 
 <!-- =====================================================
@@ -841,6 +861,16 @@ input:focus{
     EWS
     <span>SESSIONS</span>
   </div>
+
+  <div id="stream-indicator">
+    AUDIO: READY
+  </div>
+
+  <button
+    id="audio-control"
+    onclick="startSSHAudio()">
+    ▶ AUDIO: START
+  </button>
 
   <button
     id="screen-control"
@@ -933,12 +963,9 @@ input:focus{
   </div>
 
 
-  <div id="zone-label">
-    MAIN FLOOR
-  </div>
 
   <div id="hint">
-    WASD MOVE · MOUSE LOOK · ENTER CHAT
+    WASD MOVE · MOUSE LOOK · C CHAT
   </div>
 
 </div>
@@ -1009,22 +1036,6 @@ let activeDance=0;
 let danceStartedAt=0;
 
 let playerBody;
-let avatarLoader=null;
-let avatarTemplates={male:null,female:null};
-let avatarLoadStarted=false;
-let collisionBoxes=[];
-let seatPoints=[];
-let sitting=false;
-let currentSeatId=null;
-let lastSitAttempt=0;
-let logoSign=null;
-let bartenderRoot=null;
-let clubLasers=[];
-let movingHeads=[];
-let laserDevices=[];
-let smokeCannons=[];
-let smokeParticles=[];
-let hazeGroup=null;
 
 /* =========================================================
    EWS TEXTURES
@@ -1168,10 +1179,6 @@ function startSession(username){
 
   currentUser=username;
 
-  const savedLanguage=localStorage.getItem('ews-language');
-  const langSelect=document.getElementById('lang');
-  if(langSelect && savedLanguage) langSelect.value=savedLanguage;
-
   document.getElementById(
     'login'
   ).style.display='none';
@@ -1189,8 +1196,6 @@ function startSession(username){
 
   init3D();
 
-  // The saved language is restored before socket.io joins.
-
   socket=io();
 
   socket.on('connect',function(){
@@ -1199,34 +1204,15 @@ function startSession(username){
       'join',
       {
         username: currentUser,
-        language: (document.getElementById('lang')?.value || 'ru')
+        language:
+          document.getElementById('lang').value
       }
     );
 
-    socket.emit('language-change',document.getElementById('lang')?.value || 'ru');
-
-    // Refresh the multiplayer snapshot after the server has registered this player.
-    // This also fixes reconnects where the initial snapshot can arrive before the
-    // browser has finished rebuilding the 3D scene.
-    setTimeout(()=>{
-      if(socket && socket.connected){
-        socket.emit('request-players');
-        socket.emit('request-club-screen');
-      }
-    },350);
-
-  });
-
-  socket.on('language-updated',data=>{
-    if(data && data.language){
-      const lang=document.getElementById('lang');
-      if(lang) lang.value=data.language;
-      localStorage.setItem('ews-language',data.language);
-    }
   });
 
   socket.on(
-    'online',
+    'online-users',
     list=>{
 
       onlineUserList=Array.isArray(list)?list:[];
@@ -1267,30 +1253,7 @@ function startSession(username){
 
   socket.on(
     'chat-message',
-    async message=>{
-
-      // The server normally sends a translation for each user's selected
-      // language. If an external translation request failed upstream and
-      // the translated text is still identical to the original, use the
-      // public /api/translate endpoint as a client-side safety net.
-      let displayText=String(message?.text||'');
-      const selectedLanguage=document.getElementById('lang')?.value||'ru';
-      const originalText=String(message?.original||'');
-      if(message?.translated===true && message?.targetLanguage===selectedLanguage &&
-         originalText && displayText===originalText && /[A-Za-zА-Яа-яЁё]/.test(originalText) &&
-         !/^[\s\d\W_]+$/.test(originalText)){
-        try{
-          const response=await fetch('/api/translate',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({text:originalText,target:selectedLanguage})
-          });
-          const data=await response.json();
-          if(data?.ok && typeof data.text==='string' && data.text.trim()) displayText=data.text;
-        }catch(err){
-          console.warn('[EWS TRANSLATOR FALLBACK]',err);
-        }
-      }
+    message=>{
 
       const el =
         document.createElement(
@@ -1322,7 +1285,7 @@ function startSession(username){
       text.className='t';
 
       text.textContent=
-        ' '+time+' '+displayText;
+        ' '+time+' '+message.text;
 
       el.appendChild(user);
 
@@ -1377,9 +1340,7 @@ function startSession(username){
     updateRemotePlayer(data);
   });
 
-  // The current server uses player-spawn for the joining player and some
-  // server versions also use it for a fresh multiplayer snapshot.
-  socket.on('player-spawn', data=>{
+  socket.on('player-state', data=>{
     if(!data || !data.id || data.id===socket.id) return;
     updateRemotePlayer(data);
   });
@@ -1402,19 +1363,6 @@ function startSession(username){
   socket.on('joined', ()=>{
     socket.emit('request-players');
     socket.emit('request-club-screen');
-  });
-
-  socket.on('seat-occupied', data=>{
-    if(data && data.seatId) console.log('Seat occupied:',data.seatId);
-  });
-
-  socket.on('player-state', data=>{
-    if(data && data.id===socket.id){
-      sitting=!!data.sitting;
-      currentSeatId=data.seatId||null;
-    }
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
   });
 
 }
@@ -1474,10 +1422,23 @@ document
    LANGUAGE
 ========================================================= */
 
-document.getElementById('lang').addEventListener('change',function(){
-  localStorage.setItem('ews-language',this.value);
-  if(socket && socket.connected) socket.emit('language-change',this.value);
-});
+document
+  .getElementById('lang')
+  .addEventListener(
+    'change',
+    function(){
+
+      if(socket){
+
+        socket.emit(
+          'language-change',
+          this.value
+        );
+
+      }
+
+    }
+  );
 
 /* =========================================================
    THREE.JS
@@ -1496,7 +1457,7 @@ function init3D(){
   scene.fog =
     new THREE.FogExp2(
       0x000000,
-      0.060
+      0.045
     );
 
   camera =
@@ -1566,7 +1527,7 @@ function init3D(){
   const ambient =
     new THREE.AmbientLight(
       0xffffff,
-      0.022
+      0.045
     );
 
   scene.add(ambient);
@@ -1574,7 +1535,7 @@ function init3D(){
   const ceilingLight =
     new THREE.PointLight(
       0xffffff,
-      0.38,
+      0.65,
       40
     );
 
@@ -1627,19 +1588,14 @@ function init3D(){
   createMainScreen();
   createStage();
   createBar();
-  createBartender();
+  createLounge();
   createColumns();
   createEntrance();
   createNeonArchitecture();
   createCeilingBeams();
   createSpeakers();
-  createSmokeCannons();
-  createRealisticLighting();
-  createClubLogo();
-  createCollisionMap();
   createParticles();
   createPlayer();
-  loadAvatarModels();
 
   setupAudio();
 
@@ -1833,38 +1789,34 @@ function createDanceFloor(){
 
 function createMainScreen(){
   screenCanvas=document.createElement('canvas');
-  screenCanvas.width=1024; screenCanvas.height=512;
+  screenCanvas.width=1024;
+  screenCanvas.height=512;
   screenCtx=screenCanvas.getContext('2d');
-  screenCtx.fillStyle='#050505'; screenCtx.fillRect(0,0,1024,512);
-  screenTexture=new THREE.CanvasTexture(screenCanvas); screenTexture.needsUpdate=true;
+  screenCtx.fillStyle='#050505';
+  screenCtx.fillRect(0,0,1024,512);
+  screenTexture=new THREE.CanvasTexture(screenCanvas);
+  screenTexture.needsUpdate=true;
 
-  const frame=new THREE.Mesh(new THREE.BoxGeometry(14.65,6.65,.42),new THREE.MeshStandardMaterial({color:0x080808,metalness:.78,roughness:.24}));
-  frame.position.set(0,3.65,-16.72); scene.add(frame);
+  const frame=new THREE.Mesh(
+    new THREE.BoxGeometry(14.6,6.6,.42),
+    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
+  );
+  frame.position.set(0,3.65,-16.72);
+  scene.add(frame);
 
-  screenMesh=new THREE.Mesh(new THREE.PlaneGeometry(14,6),new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide,transparent:true,opacity:0}));
-  screenMesh.position.set(0,3.65,-16.48); scene.add(screenMesh);
+  screenMesh=new THREE.Mesh(
+    new THREE.PlaneGeometry(14,6),
+    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide,transparent:true,opacity:0})
+  );
+  screenMesh.position.set(0,3.65,-16.48);
+  scene.add(screenMesh);
 
-  // Thick neon tube frame around the screen.
-  const neonMat=new THREE.MeshBasicMaterial({color:0x73a7ff,transparent:true,opacity:.95});
-  const glowMat=new THREE.MeshBasicMaterial({color:0xff3f72,transparent:true,opacity:.45});
-  const tubes=[];
-  tubes.push(new THREE.Mesh(new THREE.BoxGeometry(14.25,.075,.075),neonMat));
-  tubes.push(new THREE.Mesh(new THREE.BoxGeometry(14.25,.075,.075),neonMat));
-  tubes.push(new THREE.Mesh(new THREE.BoxGeometry(.075,6.15,.075),neonMat));
-  tubes.push(new THREE.Mesh(new THREE.BoxGeometry(.075,6.15,.075),neonMat));
-  tubes[0].position.set(0,6.68,-16.39); tubes[1].position.set(0,.62,-16.39);
-  tubes[2].position.set(-7.12,3.65,-16.39); tubes[3].position.set(7.12,3.65,-16.39);
-  tubes.forEach(t=>{scene.add(t); neonObjects.push(t);});
-
-  const glowFrame=new THREE.Group();
-  const topGlow=new THREE.Mesh(new THREE.BoxGeometry(14.35,.12,.045),glowMat);
-  const bottomGlow=topGlow.clone();
-  const leftGlow=new THREE.Mesh(new THREE.BoxGeometry(.12,6.2,.045),glowMat);
-  const rightGlow=leftGlow.clone();
-  topGlow.position.set(0,6.68,-16.34); bottomGlow.position.set(0,.62,-16.34);
-  leftGlow.position.set(-7.12,3.65,-16.34); rightGlow.position.set(7.12,3.65,-16.34);
-  [topGlow,bottomGlow,leftGlow,rightGlow].forEach(m=>glowFrame.add(m));
-  scene.add(glowFrame); glowFrame.userData.neon=true;
+  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
+  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
+    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
+    m.position.set(a[3],a[4],a[5]);
+    scene.add(m);
+  });
 }
 
 function createStage(){
@@ -1904,107 +1856,273 @@ function createStage(){
 
 function createBar(){
 
-  const wood =
-    new THREE.MeshStandardMaterial({
-      color:0x141414,
-      metalness:.3,
-      roughness:.55
-    });
+  // REALISTIC CLUB BAR
+  // The visitor side is the front (towards the dance floor).
+  // The bartender stands BEHIND the counter in a separate low-fenced work zone.
 
+  const darkMat = new THREE.MeshStandardMaterial({
+    color:0x101010,
+    metalness:.45,
+    roughness:.5
+  });
+
+  const counterMat = new THREE.MeshStandardMaterial({
+    color:0x191919,
+    metalness:.55,
+    roughness:.3
+  });
+
+  const topMat = new THREE.MeshStandardMaterial({
+    color:0x262626,
+    metalness:.7,
+    roughness:.22
+  });
+
+  const railMat = new THREE.MeshStandardMaterial({
+    color:0x252525,
+    metalness:.75,
+    roughness:.2
+  });
+
+  // Main bar body — solid front, not a hollow box.
   createBox(
-    8,1.1,2,
-    -12,.65,7,
-    wood
+    9.2,1.05,1.15,
+    -12,.72,7,
+    counterMat
+  );
+
+  // Heavy countertop.
+  createBox(
+    9.45,.16,1.45,
+    -12,1.32,7,
+    topMat
+  );
+
+  // Dark recessed front panel for depth.
+  createBox(
+    8.55,.68,.08,
+    -12,.78,6.40,
+    darkMat,
+    false,
+    false
+  );
+
+  // Subtle illuminated strip under the countertop.
+  const barGlow = createBox(
+    8.7,.035,.035,
+    -12,1.235,6.34,
+    new THREE.MeshBasicMaterial({color:0x9d7cff}),
+    false,
+    false
+  );
+  neonObjects.push(barGlow);
+
+  // Separate bartender work area behind the counter.
+  // Low railings visually define the service zone without making it look fenced-in.
+  const workBackZ = 9.35;
+  const workSideZ = 8.15;
+  const railY = 1.05;
+  const railH = .72;
+
+  // Back rail.
+  createBox(
+    9.0,.10,.10,
+    -12,railY,workBackZ,
+    railMat,
+    false,
+    false
+  );
+
+  // Side rails.
+  createBox(
+    .10,.10,2.55,
+    -16.48,railY,workSideZ,
+    railMat,
+    false,
+    false
   );
 
   createBox(
-    8.5,.15,2.3,
-    -12,1.25,7,
+    .10,.10,2.55,
+    -7.52,railY,workSideZ,
+    railMat,
+    false,
+    false
+  );
+
+  // Upright posts for the low barrier.
+  [-16.48,-12,-7.52].forEach(x=>{
+    createBox(
+      .12,railH,.12,
+      x,railH/2,workBackZ,
+      railMat,
+      false,
+      false
+    );
+  });
+
+  [-16.48,-7.52].forEach(x=>{
+    createBox(
+      .12,railH,.12,
+      x,railH/2,workSideZ,
+      railMat,
+      false,
+      false
+    );
+  });
+
+  // Back bar / bottle shelf.
+  createBox(
+    8.2,.12,.65,
+    -12,1.75,9.0,
+    darkMat
+  );
+
+  createBox(
+    8.2,.10,.10,
+    -12,2.08,8.72,
+    railMat,
+    false,
+    false
+  );
+
+  // Bottles and glasses on the back shelf.
+  for(let i=0;i<9;i++){
+    const bottle = new THREE.Mesh(
+      new THREE.CylinderGeometry(.07,.09,.58,12),
+      new THREE.MeshStandardMaterial({
+        color: i%3===0 ? 0x555555 : 0x888888,
+        metalness:.55,
+        roughness:.25
+      })
+    );
+    bottle.position.set(-15.4+i*.85,2.10,8.88);
+    scene.add(bottle);
+
+    const neck = new THREE.Mesh(
+      new THREE.CylinderGeometry(.035,.045,.18,10),
+      bottle.material
+    );
+    neck.position.set(-15.4+i*.85,2.48,8.88);
+    scene.add(neck);
+  }
+
+  // Three simple bar stools on the visitor side.
+  const stoolMat = new THREE.MeshStandardMaterial({
+    color:0x151515,
+    metalness:.6,
+    roughness:.35
+  });
+
+  [-14.5,-12,-9.5].forEach(x=>{
+    const seat = new THREE.Mesh(
+      new THREE.CylinderGeometry(.34,.34,.12,20),
+      stoolMat
+    );
+    seat.position.set(x,.95,5.15);
+    scene.add(seat);
+
+    createBox(.07,.9,.07,x,.48,5.15,stoolMat,false,false);
+
+    const foot = new THREE.Mesh(
+      new THREE.TorusGeometry(.25,.025,8,20),
+      stoolMat
+    );
+    foot.rotation.x=Math.PI/2;
+    foot.position.set(x,.30,5.15);
+    scene.add(foot);
+  });
+
+  // BARTENDER — behind the counter, inside the work zone.
+  const skinMat = new THREE.MeshStandardMaterial({color:0x8a6b5a,roughness:.8});
+  const shirtMat = new THREE.MeshStandardMaterial({color:0x161616,metalness:.1,roughness:.8});
+  const apronMat = new THREE.MeshStandardMaterial({color:0x303030,roughness:.75});
+
+  // Legs.
+  createBox(.24,.85,.24,-12.30,.55,8.25,shirtMat);
+  createBox(.24,.85,.24,-11.70,.55,8.25,shirtMat);
+
+  // Torso + apron.
+  createBox(.72,.9,.38,-12,1.28,8.25,shirtMat);
+  createBox(.48,.55,.40,-12,1.22,8.04,apronMat,false,false);
+
+  // Head + hair.
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(.23,16,12),
+    skinMat
+  );
+  head.position.set(-12,1.98,8.25);
+  scene.add(head);
+
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(.235,16,12,0,Math.PI*2,0,Math.PI*.48),
+    new THREE.MeshStandardMaterial({color:0x080808,roughness:.9})
+  );
+  hair.position.set(-12,2.04,8.25);
+  scene.add(hair);
+
+  // Arms angled forward toward the bar.
+  const armL = createBox(.16,.62,.16,-12.40,1.40,7.78,shirtMat);
+  armL.rotation.z=-.25;
+  const armR = createBox(.16,.62,.16,-11.60,1.40,7.78,shirtMat);
+  armR.rotation.z=.25;
+
+  // Small service light above the working area.
+  const barLight = new THREE.PointLight(0x9d7cff,1.15,8);
+  barLight.position.set(-12,3.0,8.2);
+  scene.add(barLight);
+}
+
+function createLounge(){
+
+  const sofaMat =
     new THREE.MeshStandardMaterial({
-      color:0xdddddd,
-      metalness:.7,
-      roughness:.25
-    })
+      color:0x181818,
+      roughness:.9
+    });
+
+  createBox(
+    6,.8,1.6,
+    11,.7,8,
+    sofaMat
+  );
+
+  createBox(
+    1.6,1.4,5.5,
+    14,1.2,8,
+    sofaMat
   );
 
   for(
     let i=0;
-    i<5;
+    i<3;
     i++
   ){
 
-    const bottle =
+    const table =
       new THREE.Mesh(
         new THREE.CylinderGeometry(
-          .07,
-          .09,
           .65,
-          12
+          .65,
+          .08,
+          32
         ),
         new THREE.MeshStandardMaterial({
-          color:0x888888,
-          metalness:.6,
-          roughness:.25
+          color:0x101010,
+          metalness:.7
         })
       );
 
-    bottle.position.set(
-      -15+i*.8,
-      1.7,
-      6.5
+    table.position.set(
+      8+i*3,
+      .75,
+      4
     );
 
-    scene.add(bottle);
+    scene.add(table);
 
   }
 
-}
-
-function createBartender(){
-  bartenderRoot=new THREE.Group();
-  bartenderRoot.position.set(-12,0,8.62);
-  bartenderRoot.rotation.y=Math.PI;
-
-  const placeholderMat=new THREE.MeshStandardMaterial({color:0x17191b,roughness:.78,metalness:.08});
-  const placeholder=new THREE.Mesh(new THREE.CapsuleGeometry(.34,.92,8,16),placeholderMat);
-  placeholder.position.y=1.02; placeholder.scale.z=.72;
-  bartenderRoot.add(placeholder);
-  bartenderRoot.userData.placeholder=placeholder;
-
-  const railMat=new THREE.MeshStandardMaterial({color:0x14171a,metalness:.82,roughness:.28});
-  const brassMat=new THREE.MeshStandardMaterial({color:0x9b7a3b,metalness:.9,roughness:.22});
-  const zone=new THREE.Group(); zone.position.set(-12,0,8.62);
-  for(const x of [-3.25,3.25]){
-    const post=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,.88,14),brassMat);
-    post.position.set(x,.44,.55); zone.add(post);
-    const cap=new THREE.Mesh(new THREE.SphereGeometry(.075,12,8),brassMat);
-    cap.position.set(x,.89,.55); zone.add(cap);
-  }
-  const rail=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,6.5,14),brassMat);
-  rail.rotation.z=Math.PI/2; rail.position.set(0,.67,.55); zone.add(rail);
-  const lower=new THREE.Mesh(new THREE.BoxGeometry(6.5,.55,.06),railMat);
-  lower.position.set(0,.32,.78); zone.add(lower);
-  const shelf=new THREE.Mesh(new THREE.BoxGeometry(5.8,.07,.52),railMat);
-  shelf.position.set(0,1.32,.18); zone.add(shelf);
-  scene.add(zone); scene.add(bartenderRoot); bartenderRoot.userData.npc=true;
-}
-
-function upgradeBartenderToHuman(){
-  if(!bartenderRoot) return;
-  const tpl=avatarTemplates.male||avatarTemplates.female;
-  if(!tpl) return;
-  if(bartenderRoot.userData.avatar) bartenderRoot.remove(bartenderRoot.userData.avatar);
-  const avatar=THREE.SkeletonUtils&&THREE.SkeletonUtils.clone?THREE.SkeletonUtils.clone(tpl.scene):tpl.scene.clone(true);
-  avatar.traverse(o=>{
-    if(o.isMesh){ o.castShadow=true; o.receiveShadow=true;
-      if(o.material){ const mats=Array.isArray(o.material)?o.material:[o.material]; mats.forEach(m=>{ if(m.color)m.color.multiplyScalar(.72); if('roughness' in m)m.roughness=Math.max(.35,m.roughness); }); }
-    }
-  });
-  const box=new THREE.Box3().setFromObject(avatar), size=new THREE.Vector3(); box.getSize(size);
-  avatar.scale.setScalar(1.82/Math.max(.01,size.y));
-  const box2=new THREE.Box3().setFromObject(avatar); avatar.position.y=-box2.min.y; avatar.rotation.y=Math.PI;
-  bartenderRoot.add(avatar); bartenderRoot.userData.avatar=avatar;
-  if(bartenderRoot.userData.placeholder) bartenderRoot.userData.placeholder.visible=false;
 }
 
 function createColumns(){
@@ -2149,172 +2267,6 @@ function createEntrance(){
 
 }
 
-
-function createClubLogo(){
-  const tex=ewsTextureLoader.load('/assets/logo.png');
-  tex.colorSpace=THREE.SRGBColorSpace;
-  const mat=new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide});
-
-  logoSign=new THREE.Mesh(new THREE.CircleGeometry(1.55,64),mat);
-  // Move the logo farther away from the main screen, toward the right rear wall.
-  logoSign.position.set(11.9,3.12,-16.55);
-  logoSign.rotation.y=0;
-  scene.add(logoSign);
-
-  const outer=new THREE.Mesh(
-    new THREE.TorusGeometry(1.64,.075,16,72),
-    new THREE.MeshBasicMaterial({color:0x6ea8ff,transparent:true,opacity:.95})
-  );
-  outer.position.copy(logoSign.position);
-  scene.add(outer);
-  neonObjects.push(outer);
-
-  const inner=new THREE.Mesh(
-    new THREE.TorusGeometry(1.51,.025,10,72),
-    new THREE.MeshBasicMaterial({color:0xff426d,transparent:true,opacity:.75})
-  );
-  inner.position.copy(logoSign.position);
-  scene.add(inner);
-  neonObjects.push(inner);
-
-  const glow=new THREE.PointLight(0x6fa8ff,2.2,9);
-  glow.position.set(11.9,3.12,-15.7);
-  scene.add(glow);
-  lightObjects.push(glow);
-  logoSign.userData.glowLight=glow;
-  logoSign.userData.outer=outer;
-  logoSign.userData.inner=inner;
-}
-
-function createRealisticLighting(){
-  const headColors=[0xffffff,0x6f9cff,0xff4968,0xa56cff,0x53dfff,0xffffff];
-  laserDevices=[];
-
-  // Moving heads mounted directly to the front truss.
-  for(let i=0;i<8;i++){
-    const x=-14+i*4;
-    const housing=new THREE.Mesh(
-      new THREE.BoxGeometry(.48,.34,.68),
-      new THREE.MeshStandardMaterial({color:0x050505,metalness:.94,roughness:.16})
-    );
-    housing.position.set(x,5.12,-5.2);
-    scene.add(housing);
-
-    const yoke=new THREE.Mesh(new THREE.TorusGeometry(.24,.035,8,20),new THREE.MeshStandardMaterial({color:0x26282a,metalness:.9,roughness:.22}));
-    yoke.rotation.x=Math.PI/2;
-    yoke.position.set(x,5.18,-5.2);
-    scene.add(yoke);
-
-    const spot=new THREE.SpotLight(headColors[i%headColors.length],2.35,34,Math.PI/11,.5,1.2);
-    spot.position.set(x,5.02,-5.2);
-    spot.target.position.set((i-3.5)*1.6,.15,-1.5);
-    scene.add(spot,spot.target);
-    movingHeads.push({spot,baseX:x,baseZ:-5.2,phase:i*.73});
-    lightObjects.push(spot);
-  }
-
-  // Compact laser fixtures: each beam originates from the actual fixture body.
-  const laserColors=[0x00ffff,0xff00ff,0xa800ff,0x39ff00,0xff1744,0x00ffb7];
-  for(let i=0;i<10;i++){
-    const x=-13.5+i*3;
-    const z=i%2===0?-5.2:4.2;
-    const device=new THREE.Group();
-    device.position.set(x,5.72,z);
-
-    const body=new THREE.Mesh(
-      new THREE.BoxGeometry(.42,.24,.34),
-      new THREE.MeshStandardMaterial({color:0x070707,metalness:.9,roughness:.2})
-    );
-    device.add(body);
-    const lens=new THREE.Mesh(
-      new THREE.CylinderGeometry(.075,.09,.055,16),
-      new THREE.MeshBasicMaterial({color:laserColors[i%laserColors.length],transparent:true,opacity:.95})
-    );
-    lens.rotation.x=Math.PI/2;
-    lens.position.z=.19;
-    device.add(lens);
-    scene.add(device);
-
-    const beam=new THREE.Mesh(
-      new THREE.CylinderGeometry(.008,.018,1,6,1,true),
-      new THREE.MeshBasicMaterial({color:laserColors[i%laserColors.length],transparent:true,opacity:.72,depthWrite:false,blending:THREE.AdditiveBlending})
-    );
-    scene.add(beam);
-    clubLasers.push(beam);
-    laserDevices.push({device,lens,phase:i*.71});
-  }
-
-  const washPos=[[-12,3.2,1],[12,3.2,1],[-8,3,-6],[8,3,-6]];
-  washPos.forEach((p,i)=>{
-    const l=new THREE.PointLight([0x4f72ff,0xff3e62,0x9b58ff,0x45c9e8][i],.72,15);
-    l.position.set(p[0],p[1],p[2]);
-    scene.add(l); lightObjects.push(l);
-  });
-
-  hazeGroup=new THREE.Group();
-  const hazeCanvas=document.createElement('canvas'); hazeCanvas.width=128; hazeCanvas.height=128;
-  const hctx=hazeCanvas.getContext('2d');
-  const grad=hctx.createRadialGradient(64,64,2,64,64,62);
-  grad.addColorStop(0,'rgba(255,255,255,.22)');
-  grad.addColorStop(.28,'rgba(220,225,235,.13)');
-  grad.addColorStop(.62,'rgba(180,190,205,.045)');
-  grad.addColorStop(1,'rgba(255,255,255,0)');
-  hctx.fillStyle=grad; hctx.fillRect(0,0,128,128);
-  const hazeTex=new THREE.CanvasTexture(hazeCanvas);
-  for(let i=0;i<115;i++){
-    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:hazeTex,transparent:true,opacity:.10+Math.random()*.09,depthWrite:false}));
-    sprite.position.set((Math.random()-.5)*31,.45+Math.random()*4.8,(Math.random()-.5)*28);
-    const sc=1+Math.random()*3.8; sprite.scale.set(sc*1.35,sc,1);
-    sprite.userData.phase=Math.random()*Math.PI*2; sprite.userData.speed=.18+Math.random()*.28; sprite.userData.baseOpacity=sprite.material.opacity;
-    hazeGroup.add(sprite);
-  }
-  scene.add(hazeGroup);
-}
-
-function createCollisionMap(){
-  collisionBoxes=[
-    {minX:-8.8,maxX:8.8,minZ:-14.2,maxZ:-10.9},
-    {minX:-16,maxX:-8,minZ:5.8,maxZ:8.3},
-    {minX:-15.7,maxX:-14.3,minZ:-5.7,maxZ:-4.3},
-    {minX:14.3,maxX:15.7,minZ:-5.7,maxZ:-4.3},
-    {minX:-15.7,maxX:-14.3,minZ:4.3,maxZ:5.7},
-    {minX:14.3,maxX:15.7,minZ:4.3,maxZ:5.7}
-  ];
-}
-
-function collides(x,z){
-  const r=.38;
-  return collisionBoxes.some(b=>x> b.minX-r && x< b.maxX+r && z> b.minZ-r && z< b.maxZ+r);
-}
-
-function tryMove(dx,dz){
-  const nx=THREE.MathUtils.clamp(camera.position.x+dx,-16.6,16.6);
-  const nz=THREE.MathUtils.clamp(camera.position.z+dz,-15.6,15.6);
-  if(!collides(nx,camera.position.z)) camera.position.x=nx;
-  if(!collides(camera.position.x,nz)) camera.position.z=nz;
-}
-
-function nearestSeat(){
-  let best=null,dist=Infinity;
-  seatPoints.forEach(s=>{const d=Math.hypot(camera.position.x-s.x,camera.position.z-s.z); if(d<dist){dist=d;best=s;}});
-  return dist<1.45?best:null;
-}
-
-function sitDown(){
-  if(chatMode||!socket||sitting)return;
-  const seat=nearestSeat();
-  if(!seat || performance.now()-lastSitAttempt<500)return;
-  lastSitAttempt=performance.now();
-  socket.emit('sit',{seatId:seat.id});
-}
-
-function standUp(){
-  if(!sitting)return;
-  sitting=false; currentSeatId=null;
-  socket && socket.emit('stand');
-  camera.position.y=GROUND_Y;
-}
-
 function createNeonArchitecture(){
 
   const mat =
@@ -2383,94 +2335,92 @@ function createNeonArchitecture(){
 }
 
 function createCeilingBeams(){
-  const trussMat=new THREE.MeshStandardMaterial({color:0x101214,metalness:.92,roughness:.24});
-  const jointMat=new THREE.MeshStandardMaterial({color:0x25282b,metalness:.95,roughness:.2});
 
-  // Main rectangular aluminium truss above the dancefloor.
-  createBox(30,.22,.22,0,5.58,-5.2,trussMat);
-  createBox(30,.22,.22,0,5.58,4.2,trussMat);
-  createBox(.22,.22,9.8,-15,5.58,-.5,trussMat);
-  createBox(.22,.22,9.8,15,5.58,-.5,trussMat);
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x151515,
+      metalness:.8,
+      roughness:.3
+    });
 
-  // Cross braces make the ceiling rig read as an actual lighting truss.
-  for(let x=-14;x<=14;x+=2){
-    createBox(.075,.075,9.6,x,5.58,-.5,jointMat,false,false);
-    createBox(.055,.055,9.6,x+.7,5.72,-.5,trussMat,false,false);
+  for(
+    let x=-14;
+    x<=14;
+    x+=4
+  ){
+
+    createBox(
+      .3,.3,34,
+      x,5.7,0,
+      mat
+    );
+
   }
 
-  // Vertical drops for fixtures.
-  for(const x of [-13,-7,0,7,13]){
-    createBox(.12,.48,.12,x,5.25,-5.2,jointMat);
-    createBox(.12,.48,.12,x,5.25,4.2,jointMat);
-  }
 }
 
 function createSpeakers(){
-  // Realistic compact club PA: four suspended line-array clusters, kept clear of the screen.
-  const cabinetMat=new THREE.MeshStandardMaterial({color:0x08090a,metalness:.62,roughness:.38});
-  const edgeMat=new THREE.MeshStandardMaterial({color:0x1b1d20,metalness:.82,roughness:.24});
-  const grilleMat=new THREE.MeshStandardMaterial({color:0x050505,metalness:.08,roughness:.92});
-  const coneMat=new THREE.MeshStandardMaterial({color:0x1c2024,metalness:.28,roughness:.5});
-  const logoMat=new THREE.MeshBasicMaterial({color:0x79a9ff,transparent:true,opacity:.8});
 
-  const clusters=[[-13.7,4.85,-5.0,.16],[13.7,4.85,-5.0,-.16],[-13.7,4.85,3.9,.10],[13.7,4.85,3.9,-.10]];
-  clusters.forEach(([x,y,z,tilt],ci)=>{
-    const group=new THREE.Group(); group.position.set(x,y,z); group.rotation.y=tilt;
-    const mount=new THREE.Mesh(new THREE.BoxGeometry(.22,.34,.22),edgeMat); mount.position.y=.18; group.add(mount);
-    const cable=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.72,8),edgeMat); cable.position.y=.53; group.add(cable);
-    for(let n=0;n<4;n++){
-      const cab=new THREE.Mesh(new THREE.BoxGeometry(1.28,.56,.52),cabinetMat);
-      cab.position.set(0,.88+n*.53,0);
-      cab.rotation.x=(n-1.5)*.065;
-      cab.castShadow=true; group.add(cab);
-      const rim=new THREE.Mesh(new THREE.BoxGeometry(1.12,.44,.025),edgeMat);
-      rim.position.set(0,cab.position.y,.275); rim.rotation.x=cab.rotation.x; group.add(rim);
-      const grille=new THREE.Mesh(new THREE.PlaneGeometry(1.03,.37),grilleMat);
-      grille.position.set(0,cab.position.y,.291); grille.rotation.x=cab.rotation.x; group.add(grille);
-      for(const dx of [-.27,.27]){
-        const woofer=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.04,20),coneMat);
-        woofer.rotation.x=Math.PI/2; woofer.position.set(dx,cab.position.y,.318); group.add(woofer);
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x050505,
+      metalness:.4,
+      roughness:.7
+    });
+
+  const positions=[
+    [-8,2,-11],
+    [8,2,-11],
+    [-11,2,-10],
+    [11,2,-10]
+  ];
+
+  positions.forEach(
+    p=>{
+
+      createBox(
+        1.2,2.5,.8,
+        p[0],
+        p[1],
+        p[2],
+        mat
+      );
+
+      for(
+        let i=0;
+        i<3;
+        i++
+      ){
+
+        const cone =
+          new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              .23,
+              .23,
+              .12,
+              24
+            ),
+            new THREE.MeshBasicMaterial({
+              color:0xaaaaaa
+            })
+          );
+
+        cone.rotation.x=
+          Math.PI/2;
+
+        cone.position.set(
+          p[0],
+          1.3+i*.6,
+          p[2]-.45
+        );
+
+        scene.add(cone);
+
       }
-    }
-    const top=new THREE.Mesh(new THREE.BoxGeometry(1.38,.08,.58),edgeMat); top.position.y=2.58; group.add(top);
-    const logoPlate=new THREE.Mesh(new THREE.BoxGeometry(.28,.055,.025),logoMat); logoPlate.position.set(0,2.60,.31); group.add(logoPlate);
-    scene.add(group);
-  });
-}
 
-function createSmokeCannons(){
-  const bodyMat=new THREE.MeshStandardMaterial({color:0x090a0c,metalness:.88,roughness:.22});
-  const rimMat=new THREE.MeshStandardMaterial({color:0x35383c,metalness:.94,roughness:.16});
-  const nozzleMat=new THREE.MeshBasicMaterial({color:0xf4fbff,transparent:true,opacity:.98});
-  smokeCannons=[];
-  const positions=[[-5.4,.56,-10.55,.10],[5.4,.56,-10.55,-.10]];
-  positions.forEach(([x,y,z,turn])=>{
-    const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.y=turn;
-    const base=new THREE.Mesh(new THREE.BoxGeometry(1.28,.28,.88),bodyMat); base.position.y=.14; g.add(base);
-    const housing=new THREE.Mesh(new THREE.CylinderGeometry(.30,.37,.68,20),bodyMat); housing.rotation.x=Math.PI/2; housing.position.set(0,.48,.16); g.add(housing);
-    const rim=new THREE.Mesh(new THREE.TorusGeometry(.31,.055,10,32),rimMat); rim.rotation.x=Math.PI/2; rim.position.set(0,.48,.52); g.add(rim);
-    const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.15,.18,.065,20),nozzleMat); nozzle.rotation.x=Math.PI/2; nozzle.position.set(0,.48,.57); g.add(nozzle);
-    const glow=new THREE.PointLight(0xe9f7ff,.75,2.8); glow.position.set(0,.48,.61); g.add(glow);
-    scene.add(g); smokeCannons.push({group:g,nozzle,glow});
-  });
-  const canvas=document.createElement('canvas'); canvas.width=192; canvas.height=192;
-  const c=canvas.getContext('2d'); const grad=c.createRadialGradient(96,96,3,96,96,92);
-  grad.addColorStop(0,'rgba(255,255,255,.72)'); grad.addColorStop(.16,'rgba(248,250,252,.60)'); grad.addColorStop(.38,'rgba(232,238,243,.43)'); grad.addColorStop(.68,'rgba(205,214,222,.20)'); grad.addColorStop(1,'rgba(180,190,200,0)');
-  c.fillStyle=grad; c.fillRect(0,0,192,192); const tex=new THREE.CanvasTexture(canvas);
-  smokeParticles=[];
-  for(let i=0;i<300;i++){
-    const ci=i%2, ox=ci===0?-5.4:5.4, oz=-9.98;
-    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0,depthWrite:false}));
-    const life=Math.random(); sp.position.set(ox+(Math.random()-.5)*.30,.52+Math.random()*.55,oz+Math.random()*.30);
-    const size=.65+Math.random()*1.35; sp.scale.set(size*1.15,size,1);
-    sp.userData={life,speed:.13+Math.random()*.18,originX:ox,originZ:oz,spread:(ci===0?-1:1)*(.12+Math.random()*.28),phase:Math.random()*6.28,size,ci};
-    scene.add(sp); smokeParticles.push(sp);
-  }
-  for(let i=0;i<90;i++){
-    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0,depthWrite:false}));
-    sp.userData={life:Math.random(),speed:.08+Math.random()*.08,originX:(Math.random()-.5)*9,originZ:-9.3+Math.random()*1.2,spread:(Math.random()-.5)*.15,phase:Math.random()*6.28,size:1.2+Math.random()*1.7,ci:2};
-    scene.add(sp); smokeParticles.push(sp);
-  }
+    }
+  );
+
 }
 
 function createParticles(){
@@ -2588,17 +2538,38 @@ function createPlayer(){
 ========================================================= */
 
 function setupAudio(){
-  const indicator=document.getElementById('stream-indicator');
-  const button=document.getElementById('audio-control');
-  if(indicator){ indicator.textContent='AUDIO: READY'; indicator.classList.remove('live','error'); }
-  if(button){ button.textContent='▶ AUDIO: START'; button.classList.remove('live'); }
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  indicator.textContent=
+    'AUDIO: READY';
+
+  indicator.classList.remove(
+    'live',
+    'error'
+  );
+
+  button.textContent=
+    '▶ AUDIO: START';
+
+  button.classList.remove(
+    'live'
+  );
+
 }
 
 async function unlockEWSAudio(){
 
   const audio = document.getElementById('ews-audio');
   if(!audio) return false;
-  audio.muted=false; audio.volume=1;
 
   try{
     if(audioContext && audioContext.state === 'suspended'){
@@ -2631,29 +2602,36 @@ async function startSSHAudio(){
     );
 
   const indicator =
-    document.getElementById('stream-indicator') ||
-    {textContent:'',classList:{add(){},remove(){}}};
+    document.getElementById(
+      'stream-indicator'
+    );
 
   const button =
-    document.getElementById('audio-control') ||
-    {textContent:'',disabled:false,classList:{add(){},remove(){}}};
+    document.getElementById(
+      'audio-control'
+    );
 
   if(!audio)return;
-  audio.muted=false; audio.volume=1; audio.autoplay=true;
 
   const hlsUrl =
     window.location.origin+
     '/hls/ews/index.m3u8';
 
-  if(indicator) indicator.classList.remove('error');
+  indicator.classList.remove(
+    'error'
+  );
 
-  if(indicator) indicator.classList.add('live');
+  indicator.classList.add(
+    'live'
+  );
 
-  if(indicator) indicator.textContent='AUDIO: CONNECTING...';
+  indicator.textContent=
+    'AUDIO: CONNECTING...';
 
-  if(button) button.disabled=true;
+  button.disabled=true;
 
-  if(button) button.textContent='● AUDIO: CONNECTING';
+  button.textContent=
+    '● AUDIO: CONNECTING';
 
   try{
 
@@ -2747,13 +2725,17 @@ async function startSSHAudio(){
         Hls.Events.MANIFEST_PARSED,
         async function(){
 
-          if(indicator) indicator.textContent='AUDIO: LIVE';
+          indicator.textContent=
+            'AUDIO: LIVE';
 
-          if(button) button.textContent='● AUDIO: LIVE';
+          button.textContent=
+            '● AUDIO: LIVE';
 
-          if(button) button.classList.add('live');
+          button.classList.add(
+            'live'
+          );
 
-          if(button) button.disabled=false;
+          button.disabled=false;
 
           audioStarted=true;
 
@@ -2865,7 +2847,7 @@ async function startSSHAudio(){
               'live'
             );
 
-            if(button) button.disabled=false;
+            button.disabled=false;
 
           }
 
@@ -2933,7 +2915,7 @@ async function startSSHAudio(){
         'live'
       );
 
-      if(button) button.disabled=false;
+      button.disabled=false;
 
       audioStarted=true;
 
@@ -2985,7 +2967,7 @@ async function startSSHAudio(){
         'live'
       );
 
-      if(button) button.disabled=false;
+      button.disabled=false;
 
     };
 
@@ -2999,15 +2981,22 @@ async function startSSHAudio(){
     indicator.textContent=
       'AUDIO: NO STREAM';
 
-    if(indicator) indicator.classList.remove('live');
+    indicator.classList.remove(
+      'live'
+    );
 
-    if(indicator) indicator.classList.add('error');
+    indicator.classList.add(
+      'error'
+    );
 
-    if(button) button.textContent='▶ AUDIO: RETRY';
+    button.textContent=
+      '▶ AUDIO: RETRY';
 
-    if(button) button.classList.remove('live');
+    button.classList.remove(
+      'live'
+    );
 
-    if(button) button.disabled=false;
+    button.disabled=false;
 
   }
 
@@ -3076,16 +3065,6 @@ function setupControls(){
       }
 
       if(!chatMode){
-        if(e.code==='KeyE'){
-          if(sitting) standUp(); else sitDown();
-          e.preventDefault();
-          return;
-        }
-        if(e.code==='Space' && sitting){
-          standUp();
-          e.preventDefault();
-          return;
-        }
         if(e.code==='KeyB'){ toggleEmotesMenu(); e.preventDefault(); return; }
         if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
         if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
@@ -3098,16 +3077,15 @@ function setupControls(){
 
       keys[e.code]=true;
 
-      if(e.code==='Enter' && chatMode && active && active.id==='chat-input'){
-        return; // the chat form handles Enter -> send
-      }
-      if(e.code==='Enter'){
-        e.preventDefault();
-        chatMode=true;
+      if(
+        e.code==='KeyC'
+      ){
+
+        chatMode=
+          !chatMode;
+
         toggleChat();
-        const input=document.getElementById('chat-input');
-        if(input){ input.focus(); }
-        return;
+
       }
 
       // SPACE = JUMP
@@ -3212,12 +3190,6 @@ function setupControls(){
   document.addEventListener('pointerdown',unlock,{passive:true});
   document.addEventListener('touchstart',unlock,{passive:true});
   document.addEventListener('keydown',unlock,{passive:true});
-  document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden && audioStarted){
-      const a=document.getElementById('ews-audio');
-      if(a && a.paused) a.play().catch(()=>{});
-    }
-  });
 })();
 
 function toggleChat(){
@@ -3324,7 +3296,7 @@ function loadClubScreen(){
   const input=document.getElementById('screen-url'); const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
   if(!input||!frame||!panel)return; const result=normalizeClubScreenUrl(input.value);
   if(!result){setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');return;}
-  frame.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture'); frame.setAttribute('allowfullscreen',''); frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
+  frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
   setScreenStatus(result.name+' LOADED — экран закреплён. Нажми ESC, чтобы выйти из управления камерой и кликать по плееру.');
   if(socket)socket.emit('club-screen-state',{src:result.src,url:input.value.trim(),name:result.name,active:true,owner:currentUser});
   const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
@@ -3364,12 +3336,11 @@ function applyRemoteClubScreen(state){
 
   state=state || {};
 
-  if(state.active !== true || (!state.src && !state.url)){
-    if(!screenMediaActive){
-      frame.src='about:blank';
-      panel.classList.remove('active');
-      screenMediaUrl='';
-    }
+  if(state.active !== true || !state.src){
+    frame.src='about:blank';
+    panel.classList.remove('active');
+    screenMediaActive=false;
+    screenMediaUrl='';
     return;
   }
 
@@ -3497,7 +3468,7 @@ function animate(){
     level*.12;
 
   const speed=
-    chatMode || activeDance || sitting
+    chatMode || activeDance
       ?0
       :5*dt;
 
@@ -3567,10 +3538,17 @@ function animate(){
     const rz=
       -Math.sin(yaw);
 
-    tryMove(
-      (fx*forward+rx*side)*speed,
-      (fz*forward+rz*side)*speed
-    );
+    camera.position.x+=
+      (
+        fx*forward+
+        rx*side
+      )*speed;
+
+    camera.position.z+=
+      (
+        fz*forward+
+        rz*side
+      )*speed;
 
   }
 
@@ -3626,72 +3604,10 @@ function animate(){
 
   remotePlayers.forEach(p=>{
     const t=performance.now()/1000;
-    if(p.avatar && p.moving && !p.sitting){
-      p.avatar.position.y=Math.abs(Math.sin(t*8))*.035;
-      p.avatar.rotation.z=Math.sin(t*8)*.025;
-    }else if(p.avatar){
-      p.avatar.position.y=0; p.avatar.rotation.z=0;
-    }
-    if(p.parts && !p.avatar){
-      const swing=p.moving?Math.sin(t*8)*.35:0;
-      p.parts.leftArm.rotation.x=swing; p.parts.rightArm.rotation.x=-swing;
-      p.parts.leftLeg.rotation.x=-swing; p.parts.rightLeg.rotation.x=swing;
-    }
+    const swing=p.moving?Math.sin(t*8)*.35:0;
+    const limbs=p.group.children.filter(o=>o.isMesh);
+    if(limbs.length>=5){ limbs[2].rotation.x=swing; limbs[3].rotation.x=-swing; limbs[4].rotation.x=-swing; }
   });
-  movingHeads.forEach((h,i)=>{
-    h.spot.intensity=1.45+bassLevel*2.4;
-    h.spot.target.position.x=Math.sin(time*.65+h.phase)*8;
-    h.spot.target.position.y=.12+Math.sin(time*1.1+h.phase)*.22;
-    h.spot.target.position.z=-2+Math.cos(time*.5+h.phase)*9;
-    h.spot.target.updateMatrixWorld();
-  });
-
-  // Sweep lasers from the real fixtures mounted on the truss.
-  clubLasers.forEach((b,i)=>{
-    const fixture=laserDevices[i];
-    if(!fixture) return;
-    const source=new THREE.Vector3();
-    fixture.device.getWorldPosition(source);
-    source.z += .18;
-    const target=new THREE.Vector3(
-      Math.sin(time*(.55+(i%3)*.08)+fixture.phase)*7.2 + Math.cos(i)*2.0,
-      .08,
-      -1.0 + Math.cos(time*.48+fixture.phase)*7.0
-    );
-    const dir=new THREE.Vector3().subVectors(target,source);
-    const length=dir.length();
-    b.position.copy(source).add(target).multiplyScalar(.5);
-    b.scale.set(1,Math.max(.1,length),1);
-    b.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
-    b.material.opacity=.58+bassLevel*.32+(.5+.5*Math.sin(time*8+i*1.7))*.20;
-    b.material.needsUpdate=true;
-    fixture.lens.material.opacity=.82+bassLevel*.18;
-  });
-
-  smokeParticles.forEach((sp)=>{
-    const u=sp.userData; u.life+=dt*u.speed*(1+bassLevel*.22); if(u.life>1)u.life-=1;
-    const p=u.life, plume=p*p, widen=.10+plume*1.25;
-    sp.position.x=u.originX+u.spread*plume+Math.sin(time*.8+u.phase)*widen;
-    sp.position.z=u.originZ+p*8.0;
-    sp.position.y=(u.ci===2?.55:.55+p*2.15)+Math.sin(time*.55+u.phase)*.06;
-    const fadeIn=Math.min(1,p/.08), fadeOut=Math.min(1,(1-p)/.14);
-    sp.material.opacity=Math.min(.48,(u.ci===2?.18:.34)*fadeIn*fadeOut*(.92+bassLevel*.35));
-    const growth=u.size*(.72+p*2.7)*(1+bassLevel*.16);
-    sp.scale.set(growth*(u.ci===2?1.45:1.18),growth*(u.ci===2?.62:1),1);
-  });
-  smokeCannons.forEach((c,i)=>{
-    if(c.nozzle && c.nozzle.material) c.nozzle.material.opacity=.88+bassLevel*.12;
-    if(c.glow) c.glow.intensity=.55+bassLevel*1.8;
-  });
-
-  if(hazeGroup){
-    hazeGroup.rotation.y+=.00009;
-    hazeGroup.children.forEach((p)=>{
-      p.position.y += Math.sin(time*p.userData.speed+p.userData.phase)*.0012;
-      p.position.x += Math.sin(time*.055+p.userData.phase)*.0008;
-      p.material.opacity=Math.min(.23,p.userData.baseOpacity + bassLevel*.075);
-    });
-  }
 
   neonObjects.forEach(
     (obj,index)=>{
@@ -3732,13 +3648,6 @@ function animate(){
 
     }
   );
-
-  if(logoSign && logoSign.userData.glowLight){
-    const lp=1.5+bassLevel*2.0+Math.sin(time*3.2)*.18;
-    logoSign.userData.glowLight.intensity=lp;
-    if(logoSign.userData.outer) logoSign.userData.outer.material.opacity=.72+bassLevel*.22;
-    if(logoSign.userData.inner) logoSign.userData.inner.material.opacity=.55+bassLevel*.2;
-  }
 
   if(screenCtx){
 
@@ -3903,70 +3812,65 @@ function animate(){
 /* =========================================================
    REMOTE PLAYERS / SILHOUETTES
 ========================================================= */
-function loadAvatarModels(){
-  if(avatarLoadStarted || !window.THREE || !THREE.GLTFLoader) return;
-  avatarLoadStarted=true;
-  avatarLoader=new THREE.GLTFLoader();
-  const load=(key,file)=>new Promise(resolve=>{
-    avatarLoader.load('/assets/characters/'+file,g=>{ avatarTemplates[key]=g; resolve(g); },undefined,err=>{ console.warn('[EWS AVATAR]',file,err); resolve(null); });
-  });
-  Promise.all([
-    load('male','Superhero_Male_FullBody.gltf'),
-    load('female','Superhero_Female_FullBody.gltf')
-  ]).then(()=>{
-    console.log('[EWS AVATAR] models ready:',!!(avatarTemplates.male||avatarTemplates.female));
-    remotePlayers.forEach(p=>applyAvatarToRemote(p));
-    upgradeBartenderToHuman();
-  });
-}
-
-function makeNameLabel(username){
-  const c=document.createElement('canvas'); c.width=256; c.height=64;
-  const ctx=c.getContext('2d'); ctx.clearRect(0,0,256,64); ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.fillText(username,128,32);
-  const tex=new THREE.CanvasTexture(c);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  label.scale.set(1.7,.42,1); label.position.y=2.05; return label;
-}
-
-function applyAvatarToRemote(p){
-  if(!p || !p.group) return;
-  const key=(String(p.username||'').length%2===0)?'male':'female';
-  const tpl=avatarTemplates[key]||avatarTemplates.male||avatarTemplates.female;
-  if(!tpl) return;
-  if(p.avatar){ p.group.remove(p.avatar); }
-  const avatar=THREE.SkeletonUtils && THREE.SkeletonUtils.clone ? THREE.SkeletonUtils.clone(tpl.scene) : tpl.scene.clone(true);
-  avatar.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; }});
-  const box=new THREE.Box3().setFromObject(avatar); const size=new THREE.Vector3(); box.getSize(size);
-  const targetH=1.8; const scale=targetH/Math.max(.01,size.y); avatar.scale.setScalar(scale);
-  const box2=new THREE.Box3().setFromObject(avatar); avatar.position.y=-box2.min.y;
-  p.group.add(avatar); p.avatar=avatar;
-  // Hide the old placeholder once the real Quaternius character is ready.
-  if(p.placeholder) p.placeholder.visible=false;
-  p.parts=null;
-}
-
 function createRemotePlayer(data){
   if(!scene || !data || !data.id || data.id===socket?.id) return;
+
+  // If a stale object exists for this socket, replace it cleanly.
   if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
-  const g=new THREE.Group(); g.userData.username=data.username||'PLAYER';
-  const placeholder=new THREE.Group();
-  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1});
-  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat); torso.position.y=.78; placeholder.add(torso);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat); head.position.y=1.42; placeholder.add(head);
-  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6), legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
-  const leftArm=new THREE.Mesh(armGeo,mat); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; placeholder.add(leftArm);
-  const rightArm=new THREE.Mesh(armGeo,mat); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; placeholder.add(rightArm);
-  const leftLeg=new THREE.Mesh(legGeo,mat); leftLeg.position.set(-.13,.30,0); placeholder.add(leftLeg);
-  const rightLeg=new THREE.Mesh(legGeo,mat); rightLeg.position.set(.13,.30,0); placeholder.add(rightLeg);
-  g.add(placeholder);
-  const label=makeNameLabel(g.userData.username); g.add(label);
-  const x=Number.isFinite(Number(data.x))?Number(data.x):0, z=Number.isFinite(Number(data.z))?Number(data.z):13, y=0;
-  const ry=Number.isFinite(Number(data.yaw??data.ry))?Number(data.yaw??data.ry):0;
-  g.position.set(x,y,z); g.rotation.y=ry; scene.add(g);
-  const p={group:g,last:{x,z,yaw:ry},moving:!!data.moving,username:data.username||'PLAYER',dance:Number(data.dance)||0,danceStartedAt:Number(data.danceStartedAt)||0,parts:{torso,head,leftArm,rightArm,leftLeg,rightLeg},baseY:0,sitting:!!data.sitting,seatId:data.seatId||null,avatar:null,placeholder};
-  placeholder.visible=true;
-  remotePlayers.set(data.id,p);
-  applyAvatarToRemote(p);
+
+  const g=new THREE.Group();
+  g.userData.username=data.username||'PLAYER';
+
+  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
+  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
+
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
+  torso.position.y=.78;
+  g.add(torso);
+
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
+  head.position.y=1.42;
+  g.add(head);
+
+  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
+  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
+  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
+  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
+  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
+  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
+
+  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg};
+
+  const labelCanvas=document.createElement('canvas');
+  labelCanvas.width=256; labelCanvas.height=64;
+  const ctx=labelCanvas.getContext('2d');
+  ctx.clearRect(0,0,256,64);
+  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
+  ctx.fillText(g.userData.username,128,32);
+  const tex=new THREE.CanvasTexture(labelCanvas);
+  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+
+  const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
+  const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
+  const y=Number.isFinite(Number(data.y)) ? Number(data.y) : 0;
+  const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
+
+  g.position.set(x,y,z);
+  g.rotation.y=ry;
+  g.visible=true;
+  scene.add(g);
+
+  remotePlayers.set(data.id,{
+    group:g,
+    last:{x,z,yaw:ry},
+    moving:!!data.moving,
+    username:data.username||'PLAYER',
+    dance:Number(data.dance)||0,
+    danceStartedAt:Number(data.danceStartedAt)||0,
+    parts,
+    baseY:y
+  });
 }
 
 function updateRemotePlayer(data){
@@ -3981,8 +3885,7 @@ function updateRemotePlayer(data){
 
   const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
   const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
-  // server y is eye/camera height; avatar root stays on floor
-  const ny=0;
+  const ny=Number.isFinite(rawY) ? rawY : p.group.position.y;
   const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
 
   const dx=nx-p.group.position.x;
@@ -3995,8 +3898,6 @@ function updateRemotePlayer(data){
   p.group.position.y=ny;
   p.group.position.z=nz;
   p.group.rotation.y=nyaw;
-  p.sitting=!!data.sitting; p.seatId=data.seatId||null;
-  if(p.avatar) p.avatar.rotation.x=p.sitting ? -0.02 : 0;
   p.last={x:nx,z:nz,yaw:nyaw};
 }
 
@@ -4028,9 +3929,7 @@ function broadcastPlayerState(now){
     moving:moving,
     jumping:!isGrounded,
     dance:activeDance,
-    danceStartedAt:danceStartedAt,
-    sitting:sitting,
-    seatId:currentSeatId
+    danceStartedAt:danceStartedAt
   });
 }
 
