@@ -17,25 +17,76 @@ const io = new Server(server, {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-const RTMP_PORT = process.env.RTMP_PORT || 1935;
-const NMS_HTTP_PORT = process.env.NMS_HTTP_PORT || 8000;
+/* =========================================================
+   PORTS
+========================================================= */
 
-const PUBLIC_DIR = path.join(__dirname, 'public');
-const HLS_DIR = path.join(__dirname, 'hls');
-const HLS_STREAM_DIR = path.join(HLS_DIR, 'ews');
-const USERS_FILE = path.join(__dirname, 'users.json');
+const PORT =
+  Number(process.env.PORT) || 3000;
+
+const RTMP_PORT =
+  Number(process.env.RTMP_PORT) || 1935;
+
+const NMS_HTTP_PORT =
+  Number(process.env.NMS_HTTP_PORT) || 8000;
+
+/* =========================================================
+   PATHS
+========================================================= */
+
+const PUBLIC_DIR =
+  path.join(__dirname, 'public');
+
+const HLS_DIR =
+  path.join(__dirname, 'hls');
+
+const HLS_STREAM_DIR =
+  path.join(HLS_DIR, 'ews');
+
+const USERS_FILE =
+  path.join(__dirname, 'users.json');
+
+/* =========================================================
+   CLUB
+========================================================= */
 
 const SCREEN_HOST = 'mvxtra';
 
-const EMOTES = new Set([1, 2, 3, 4, 5, 6]);
+const FLOOR_Y = 1.7;
+
+const PLAYER_RADIUS = 0.45;
+
+const CLUB_MIN_X = -16;
+const CLUB_MAX_X = 16;
+
+const CLUB_MIN_Z = -15.5;
+const CLUB_MAX_Z = 15.5;
+
+/*
+  Максимальный скачок позиции за один пакет.
+  Это не даёт клиенту телепортировать персонажа.
+*/
+const MAX_MOVE_STEP = 3.0;
+
+/* =========================================================
+   EMOTES
+========================================================= */
+
+const EMOTES =
+  new Set([1, 2, 3, 4, 5, 6]);
+
+/* =========================================================
+   DIRECTORIES
+========================================================= */
 
 for (const dir of [
   PUBLIC_DIR,
   HLS_DIR,
   HLS_STREAM_DIR
 ]) {
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(dir, {
+    recursive: true
+  });
 }
 
 if (!fs.existsSync(USERS_FILE)) {
@@ -46,15 +97,31 @@ if (!fs.existsSync(USERS_FILE)) {
   );
 }
 
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true }));
+/* =========================================================
+   EXPRESS
+========================================================= */
 
-app.use(express.static(PUBLIC_DIR));
+app.use(
+  express.json({
+    limit: '2mb'
+  })
+);
+
+app.use(
+  express.urlencoded({
+    extended: true
+  })
+);
+
+app.use(
+  express.static(PUBLIC_DIR)
+);
 
 app.use(
   '/hls',
   express.static(HLS_DIR, {
     setHeaders: (res, filePath) => {
+
       res.setHeader(
         'Access-Control-Allow-Origin',
         '*'
@@ -65,19 +132,24 @@ app.use(
         'no-cache, no-store, must-revalidate'
       );
 
-      if (filePath.endsWith('.m3u8')) {
+      if (
+        filePath.endsWith('.m3u8')
+      ) {
         res.setHeader(
           'Content-Type',
           'application/vnd.apple.mpegurl'
         );
       }
 
-      if (filePath.endsWith('.ts')) {
+      if (
+        filePath.endsWith('.ts')
+      ) {
         res.setHeader(
           'Content-Type',
           'video/mp2t'
         );
       }
+
     }
   })
 );
@@ -87,13 +159,16 @@ app.use(
 ========================================================= */
 
 function readUsers() {
+
   try {
-    const users = JSON.parse(
-      fs.readFileSync(
-        USERS_FILE,
-        'utf8'
-      )
-    );
+
+    const users =
+      JSON.parse(
+        fs.readFileSync(
+          USERS_FILE,
+          'utf8'
+        )
+      );
 
     return Array.isArray(users)
       ? users
@@ -107,7 +182,9 @@ function readUsers() {
     );
 
     return [];
+
   }
+
 }
 
 function saveUsers(users) {
@@ -173,6 +250,219 @@ function clamp(value, min, max) {
 }
 
 /* =========================================================
+   PLAYER POSITION
+========================================================= */
+
+function validNumber(value) {
+
+  return (
+    typeof value === 'number' &&
+    Number.isFinite(value)
+  );
+
+}
+
+/*
+  Сервер принудительно удерживает игрока
+  на высоте пола.
+
+  Это важная часть исправления бага,
+  когда другие игроки начинают "летать".
+*/
+
+function normalizePlayerY(player) {
+
+  player.y = FLOOR_Y;
+
+}
+
+/* =========================================================
+   BASIC COLLISION
+========================================================= */
+
+/*
+  Формат:
+
+  {
+    minX,
+    maxX,
+    minZ,
+    maxZ
+  }
+
+  Здесь пока находятся только безопасные
+  внешние границы клуба.
+
+  Точные collision бара / столов /
+  колонок / экрана нужно синхронизировать
+  с координатами актуального index.html.
+*/
+
+const STATIC_COLLIDERS = [];
+
+/*
+  Добавить прямоугольный collider.
+*/
+function addCollider(
+  minX,
+  maxX,
+  minZ,
+  maxZ
+) {
+
+  STATIC_COLLIDERS.push({
+    minX,
+    maxX,
+    minZ,
+    maxZ
+  });
+
+}
+
+/*
+  Проверка точки относительно collider.
+*/
+function pointInsideCollider(
+  x,
+  z,
+  radius = PLAYER_RADIUS
+) {
+
+  for (
+    const collider
+    of STATIC_COLLIDERS
+  ) {
+
+    const closestX =
+      clamp(
+        x,
+        collider.minX,
+        collider.maxX
+      );
+
+    const closestZ =
+      clamp(
+        z,
+        collider.minZ,
+        collider.maxZ
+      );
+
+    const dx =
+      x - closestX;
+
+    const dz =
+      z - closestZ;
+
+    if (
+      dx * dx +
+      dz * dz <
+      radius * radius
+    ) {
+
+      return true;
+
+    }
+
+  }
+
+  return false;
+
+}
+
+/*
+  Сейчас возвращаем старую позицию,
+  если сервер получил координату
+  внутри запрещённой зоны.
+*/
+function resolveCollision(
+  player,
+  nextX,
+  nextZ
+) {
+
+  if (
+    pointInsideCollider(
+      nextX,
+      nextZ
+    )
+  ) {
+
+    return {
+      x: player.x,
+      z: player.z,
+      collided: true
+    };
+
+  }
+
+  return {
+    x: nextX,
+    z: nextZ,
+    collided: false
+  };
+
+}
+
+/* =========================================================
+   SPAWN
+========================================================= */
+
+const SPAWN_POINTS = [
+
+  {
+    x: 0,
+    z: 13
+  },
+
+  {
+    x: 3,
+    z: 10
+  },
+
+  {
+    x: -3,
+    z: 10
+  },
+
+  {
+    x: 6,
+    z: 7
+  },
+
+  {
+    x: -6,
+    z: 7
+  },
+
+  {
+    x: 8,
+    z: 3
+  },
+
+  {
+    x: -8,
+    z: 3
+  }
+
+];
+
+function getSpawnPoint() {
+
+  return (
+    SPAWN_POINTS[
+      Math.floor(
+        Math.random() *
+        SPAWN_POINTS.length
+      )
+    ] || {
+      x: 0,
+      z: 13
+    }
+  );
+
+}
+
+/* =========================================================
    API STATUS
 ========================================================= */
 
@@ -183,8 +473,12 @@ app.get(
     res.json({
       ok: true,
       service: 'EWS SESSIONS',
-      online: onlineUsers.size,
-      stream: true
+      online:
+        onlineUsers.size,
+      stream: true,
+      multiplayer: true,
+      seating: true,
+      collision: true
     });
 
   }
@@ -222,7 +516,9 @@ app.post(
 
     }
 
-    if (password.length < 4) {
+    if (
+      password.length < 4
+    ) {
 
       return res
         .status(400)
@@ -234,7 +530,8 @@ app.post(
 
     }
 
-    const users = readUsers();
+    const users =
+      readUsers();
 
     if (
       users.some(
@@ -257,8 +554,10 @@ app.post(
 
     users.push({
       username,
+
       password:
         hashPassword(password),
+
       createdAt:
         Date.now()
     });
@@ -362,7 +661,8 @@ const SUPPORTED_LANGUAGES =
 const translationCache =
   new Map();
 
-const MAX_TRANSLATION_CACHE = 500;
+const MAX_TRANSLATION_CACHE =
+  500;
 
 function normalizeLanguage(value) {
 
@@ -408,8 +708,9 @@ function httpsGetText(
 
             res.on(
               'data',
-              chunk =>
-                body += chunk
+              chunk => {
+                body += chunk;
+              }
             );
 
             res.on(
@@ -442,12 +743,13 @@ function httpsGetText(
 
       req.setTimeout(
         timeout,
-        () =>
+        () => {
           req.destroy(
             new Error(
               'translation timeout'
             )
-          )
+          );
+        }
       );
 
       req.on(
@@ -465,7 +767,9 @@ async function translateText(
   targetLanguage
 ) {
 
-  if (!text) return '';
+  if (!text) {
+    return '';
+  }
 
   const target =
     normalizeLanguage(
@@ -599,7 +903,7 @@ app.post(
 );
 
 /* =========================================================
-   ONLINE / PLAYERS / SCREEN
+   ONLINE / PLAYERS
 ========================================================= */
 
 const onlineUsers =
@@ -608,12 +912,257 @@ const onlineUsers =
 const players =
   new Map();
 
+/* =========================================================
+   SEATS
+========================================================= */
+
 /*
-  IMPORTANT:
-  This state is shared between ALL connected users.
-  mvxtra controls it.
-  Every guest receives it.
+  seatId -> {
+    seatId,
+    playerId,
+    username,
+    x,
+    y,
+    z,
+    yaw
+  }
 */
+
+const occupiedSeats =
+  new Map();
+
+/*
+  playerId -> seatId
+*/
+
+const playerSeats =
+  new Map();
+
+/*
+  Seat positions are intentionally kept
+  compatible with the client.
+
+  The client can send the exact seat position
+  when requesting a seat.
+*/
+
+function releasePlayerSeat(
+  playerId
+) {
+
+  const seatId =
+    playerSeats.get(
+      playerId
+    );
+
+  if (!seatId) {
+    return null;
+  }
+
+  playerSeats.delete(
+    playerId
+  );
+
+  const seat =
+    occupiedSeats.get(
+      seatId
+    );
+
+  occupiedSeats.delete(
+    seatId
+  );
+
+  if (seat) {
+
+    io.emit(
+      'seat-state',
+      {
+        seatId,
+        occupied: false,
+        playerId: null,
+        username: null
+      }
+    );
+
+  }
+
+  return seatId;
+
+}
+
+function occupySeat(
+  player,
+  data
+) {
+
+  const seatId =
+    String(
+      data?.seatId || ''
+    )
+      .trim()
+      .slice(0, 80);
+
+  if (!seatId) {
+    return false;
+  }
+
+  const current =
+    occupiedSeats.get(
+      seatId
+    );
+
+  if (
+    current &&
+    current.playerId !==
+      player.id
+  ) {
+
+    return false;
+
+  }
+
+  /*
+    Если игрок уже сидит
+    на другом стуле — освобождаем его.
+  */
+
+  if (
+    playerSeats.has(
+      player.id
+    ) &&
+    playerSeats.get(
+      player.id
+    ) !== seatId
+  ) {
+
+    releasePlayerSeat(
+      player.id
+    );
+
+  }
+
+  const x =
+    Number(data.x);
+
+  const y =
+    Number(data.y);
+
+  const z =
+    Number(data.z);
+
+  const yaw =
+    Number(data.yaw);
+
+  const seat = {
+
+    seatId,
+
+    playerId:
+      player.id,
+
+    username:
+      player.username,
+
+    x:
+      validNumber(x)
+        ? clamp(
+            x,
+            CLUB_MIN_X,
+            CLUB_MAX_X
+          )
+        : player.x,
+
+    y:
+      FLOOR_Y,
+
+    z:
+      validNumber(z)
+        ? clamp(
+            z,
+            CLUB_MIN_Z,
+            CLUB_MAX_Z
+          )
+        : player.z,
+
+    yaw:
+      validNumber(yaw)
+        ? yaw
+        : player.yaw
+
+  };
+
+  occupiedSeats.set(
+    seatId,
+    seat
+  );
+
+  playerSeats.set(
+    player.id,
+    seatId
+  );
+
+  player.x =
+    seat.x;
+
+  player.y =
+    FLOOR_Y;
+
+  player.z =
+    seat.z;
+
+  player.yaw =
+    seat.yaw;
+
+  player.sitting =
+    true;
+
+  player.seatId =
+    seatId;
+
+  io.emit(
+    'seat-state',
+    {
+      seatId,
+      occupied: true,
+      playerId:
+        player.id,
+      username:
+        player.username
+    }
+  );
+
+  io.emit(
+    'player-state',
+    player
+  );
+
+  return true;
+
+}
+
+function getSeatsState() {
+
+  return [
+    ...occupiedSeats.values()
+  ].map(
+    seat => ({
+      seatId:
+        seat.seatId,
+
+      playerId:
+        seat.playerId,
+
+      username:
+        seat.username
+    })
+  );
+
+}
+
+/* =========================================================
+   CLUB SCREEN
+========================================================= */
+
 const clubScreenState = {
 
   active: false,
@@ -627,44 +1176,9 @@ const clubScreenState = {
 
 };
 
-const SPAWN_POINTS = [
-
-  {
-    x: 0,
-    z: 13
-  },
-
-  {
-    x: 3,
-    z: 10
-  },
-
-  {
-    x: -3,
-    z: 10
-  },
-
-  {
-    x: 6,
-    z: 7
-  },
-
-  {
-    x: -6,
-    z: 7
-  },
-
-  {
-    x: 8,
-    z: 3
-  },
-
-  {
-    x: -8,
-    z: 3
-  }
-
-];
+/* =========================================================
+   SPAWNS
+========================================================= */
 
 function getSpawnPoint() {
 
@@ -681,6 +1195,10 @@ function getSpawnPoint() {
   );
 
 }
+
+/* =========================================================
+   ONLINE
+========================================================= */
 
 function getOnlineUsers() {
 
@@ -713,6 +1231,10 @@ function broadcastOnline() {
 
 }
 
+/* =========================================================
+   PLAYERS
+========================================================= */
+
 function getPlayers() {
 
   return [
@@ -736,6 +1258,17 @@ function sendPlayersSnapshot(
         player.id !==
         socket.id
     )
+  );
+
+}
+
+function sendSeatsSnapshot(
+  socket
+) {
+
+  socket.emit(
+    'seats-state',
+    getSeatsState()
   );
 
 }
@@ -810,7 +1343,7 @@ io.on(
             spawn.x,
 
           y:
-            1.7,
+            FLOOR_Y,
 
           z:
             spawn.z,
@@ -823,6 +1356,10 @@ io.on(
 
           jumping: false,
 
+          sitting: false,
+
+          seatId: null,
+
           dance: 0,
 
           danceStartedAt: 0
@@ -833,10 +1370,6 @@ io.on(
           socket.id,
           player
         );
-
-        /*
-          Tell this user whether they are mvxtra.
-        */
 
         socket.emit(
           'screen-host',
@@ -860,18 +1393,16 @@ io.on(
           socket
         );
 
+        sendSeatsSnapshot(
+          socket
+        );
+
         socket.broadcast.emit(
           'player-state',
           player
         );
 
         broadcastOnline();
-
-        /*
-          VERY IMPORTANT:
-          Send the current screen immediately
-          to the person who just joined.
-        */
 
         socket.emit(
           'club-screen-state',
@@ -937,6 +1468,21 @@ io.on(
     );
 
     /* =====================================================
+       REQUEST SEATS
+    ===================================================== */
+
+    socket.on(
+      'request-seats',
+      () => {
+
+        sendSeatsSnapshot(
+          socket
+        );
+
+      }
+    );
+
+    /* =====================================================
        REQUEST SCREEN
     ===================================================== */
 
@@ -987,11 +1533,30 @@ io.on(
             socket.id
           );
 
+        /*
+          Если игрок сидит,
+          обычное движение запрещаем.
+        */
+
+        if (
+          player.sitting
+        ) {
+
+          normalizePlayerY(
+            player
+          );
+
+          io.emit(
+            'player-state',
+            player
+          );
+
+          return;
+
+        }
+
         const x =
           Number(data.x);
-
-        const y =
-          Number(data.y);
 
         const z =
           Number(data.z);
@@ -1002,51 +1567,113 @@ io.on(
         const pitch =
           Number(data.pitch);
 
+        let nextX =
+          player.x;
+
+        let nextZ =
+          player.z;
+
         if (
           Number.isFinite(x)
         ) {
-          player.x =
+
+          nextX =
             clamp(
               x,
-              -16,
-              16
+              CLUB_MIN_X,
+              CLUB_MAX_X
             );
-        }
 
-        if (
-          Number.isFinite(y)
-        ) {
-          player.y =
-            clamp(
-              y,
-              0,
-              6
-            );
         }
 
         if (
           Number.isFinite(z)
         ) {
-          player.z =
+
+          nextZ =
             clamp(
               z,
-              -15.5,
-              15.5
+              CLUB_MIN_Z,
+              CLUB_MAX_Z
             );
+
         }
+
+        /*
+          Anti-teleport.
+        */
+
+        const dx =
+          nextX -
+          player.x;
+
+        const dz =
+          nextZ -
+          player.z;
+
+        const distance =
+          Math.sqrt(
+            dx * dx +
+            dz * dz
+          );
+
+        if (
+          distance >
+          MAX_MOVE_STEP
+        ) {
+
+          const factor =
+            MAX_MOVE_STEP /
+            distance;
+
+          nextX =
+            player.x +
+            dx * factor;
+
+          nextZ =
+            player.z +
+            dz * factor;
+
+        }
+
+        const collision =
+          resolveCollision(
+            player,
+            nextX,
+            nextZ
+          );
+
+        player.x =
+          collision.x;
+
+        player.z =
+          collision.z;
+
+        /*
+          КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:
+          y больше не приходит
+          от клиента свободным значением.
+        */
+
+        player.y =
+          FLOOR_Y;
 
         if (
           Number.isFinite(yaw)
         ) {
+
           player.yaw =
             yaw;
+
         }
 
         if (
           Number.isFinite(pitch)
         ) {
+
           player.pitch =
             pitch;
+
         }
 
         player.moving =
@@ -1054,10 +1681,13 @@ io.on(
             data.moving
           );
 
+        /*
+          Сервер больше не принимает
+          свободный flying/jumping state.
+        */
+
         player.jumping =
-          Boolean(
-            data.jumping
-          );
+          false;
 
         io.emit(
           'player-state',
@@ -1090,11 +1720,25 @@ io.on(
             socket.id
           );
 
+        if (
+          player.sitting
+        ) {
+
+          normalizePlayerY(
+            player
+          );
+
+          io.emit(
+            'player-move',
+            player
+          );
+
+          return;
+
+        }
+
         const x =
           Number(data.x);
-
-        const y =
-          Number(data.y);
 
         const z =
           Number(data.z);
@@ -1105,44 +1749,98 @@ io.on(
             data.ry
           );
 
+        let nextX =
+          player.x;
+
+        let nextZ =
+          player.z;
+
         if (
           Number.isFinite(x)
         ) {
-          player.x =
+
+          nextX =
             clamp(
               x,
-              -16,
-              16
+              CLUB_MIN_X,
+              CLUB_MAX_X
             );
-        }
 
-        if (
-          Number.isFinite(y)
-        ) {
-          player.y =
-            clamp(
-              y,
-              0,
-              6
-            );
         }
 
         if (
           Number.isFinite(z)
         ) {
-          player.z =
+
+          nextZ =
             clamp(
               z,
-              -15.5,
-              15.5
+              CLUB_MIN_Z,
+              CLUB_MAX_Z
             );
+
         }
+
+        /*
+          Anti-teleport.
+        */
+
+        const dx =
+          nextX -
+          player.x;
+
+        const dz =
+          nextZ -
+          player.z;
+
+        const distance =
+          Math.sqrt(
+            dx * dx +
+            dz * dz
+          );
+
+        if (
+          distance >
+          MAX_MOVE_STEP
+        ) {
+
+          const factor =
+            MAX_MOVE_STEP /
+            distance;
+
+          nextX =
+            player.x +
+            dx * factor;
+
+          nextZ =
+            player.z +
+            dz * factor;
+
+        }
+
+        const collision =
+          resolveCollision(
+            player,
+            nextX,
+            nextZ
+          );
+
+        player.x =
+          collision.x;
+
+        player.z =
+          collision.z;
+
+        player.y =
+          FLOOR_Y;
 
         if (
           Number.isFinite(yaw)
         ) {
+
           player.yaw =
             yaw;
+
         }
 
         player.moving =
@@ -1150,8 +1848,200 @@ io.on(
             data.moving
           );
 
+        player.jumping =
+          false;
+
         io.emit(
           'player-move',
+          player
+        );
+
+      }
+    );
+
+    /* =====================================================
+       SIT
+    ===================================================== */
+
+    socket.on(
+      'seat-request',
+      data => {
+
+        if (
+          !socket.username ||
+          !players.has(
+            socket.id
+          )
+        ) {
+          return;
+        }
+
+        const player =
+          players.get(
+            socket.id
+          );
+
+        if (
+          player.sitting
+        ) {
+
+          return;
+
+        }
+
+        const success =
+          occupySeat(
+            player,
+            data || {}
+          );
+
+        socket.emit(
+          'seat-result',
+          {
+            ok:
+              success,
+
+            seatId:
+              success
+                ? player.seatId
+                : null
+          }
+        );
+
+      }
+    );
+
+    /*
+      Алиас на случай,
+      если index использует seat-sit.
+    */
+
+    socket.on(
+      'seat-sit',
+      data => {
+
+        if (
+          !socket.username ||
+          !players.has(
+            socket.id
+          )
+        ) {
+          return;
+        }
+
+        const player =
+          players.get(
+            socket.id
+          );
+
+        if (
+          player.sitting
+        ) {
+          return;
+        }
+
+        const success =
+          occupySeat(
+            player,
+            data || {}
+          );
+
+        socket.emit(
+          'seat-result',
+          {
+            ok:
+              success,
+
+            seatId:
+              success
+                ? player.seatId
+                : null
+          }
+        );
+
+      }
+    );
+
+    /* =====================================================
+       STAND
+    ===================================================== */
+
+    socket.on(
+      'seat-leave',
+      () => {
+
+        if (
+          !socket.username ||
+          !players.has(
+            socket.id
+          )
+        ) {
+          return;
+        }
+
+        const player =
+          players.get(
+            socket.id
+          );
+
+        releasePlayerSeat(
+          player.id
+        );
+
+        player.sitting =
+          false;
+
+        player.seatId =
+          null;
+
+        player.y =
+          FLOOR_Y;
+
+        io.emit(
+          'player-state',
+          player
+        );
+
+      }
+    );
+
+    /*
+      Алиас.
+    */
+
+    socket.on(
+      'seat-stand',
+      () => {
+
+        if (
+          !socket.username ||
+          !players.has(
+            socket.id
+          )
+        ) {
+          return;
+        }
+
+        const player =
+          players.get(
+            socket.id
+          );
+
+        releasePlayerSeat(
+          player.id
+        );
+
+        player.sitting =
+          false;
+
+        player.seatId =
+          null;
+
+        player.y =
+          FLOOR_Y;
+
+        io.emit(
+          'player-state',
           player
         );
 
@@ -1226,7 +2116,9 @@ io.on(
       'chat-message',
       async message => {
 
-        if (!socket.username) {
+        if (
+          !socket.username
+        ) {
           return;
         }
 
@@ -1240,24 +2132,6 @@ io.on(
         if (!original) {
           return;
         }
-
-        /*
-          Every person receives the message
-          in THEIR selected language.
-
-          Example:
-
-          RU user:
-          "Привет"
-
-          EN user:
-          "Hello"
-
-          DE user:
-          "Hallo"
-
-          The original is never lost.
-        */
 
         const recipients =
           [
@@ -1309,7 +2183,9 @@ io.on(
               id
             );
 
-          if (!targetSocket) {
+          if (
+            !targetSocket
+          ) {
             continue;
           }
 
@@ -1356,7 +2232,9 @@ io.on(
       'language-change',
       language => {
 
-        if (!socket.username) {
+        if (
+          !socket.username
+        ) {
           return;
         }
 
@@ -1387,7 +2265,6 @@ io.on(
 
     /* =====================================================
        CLUB SCREEN
-       ONLY MVXTRA CAN CONTROL IT
     ===================================================== */
 
     socket.on(
@@ -1406,14 +2283,11 @@ io.on(
           );
 
           return;
+
         }
 
         state =
           state || {};
-
-        /*
-          SCREEN ON
-        */
 
         if (
           state.active === true &&
@@ -1442,13 +2316,7 @@ io.on(
               100
             );
 
-        }
-
-        /*
-          SCREEN OFF
-        */
-
-        else {
+        } else {
 
           clubScreenState.active =
             false;
@@ -1463,11 +2331,6 @@ io.on(
 
         clubScreenState.owner =
           SCREEN_HOST;
-
-        /*
-          THIS IS THE IMPORTANT PART:
-          send the same state to EVERYONE.
-        */
 
         io.emit(
           'club-screen-state',
@@ -1510,6 +2373,14 @@ io.on(
         const username =
           socket.username;
 
+        /*
+          Освобождаем стул.
+        */
+
+        releasePlayerSeat(
+          socket.id
+        );
+
         onlineUsers.delete(
           socket.id
         );
@@ -1548,9 +2419,7 @@ const nmsConfig = {
   rtmp: {
 
     port:
-      Number(
-        RTMP_PORT
-      ),
+      RTMP_PORT,
 
     chunk_size:
       60000,
@@ -1569,9 +2438,7 @@ const nmsConfig = {
   http: {
 
     port:
-      Number(
-        NMS_HTTP_PORT
-      ),
+      NMS_HTTP_PORT,
 
     mediaroot:
       HLS_DIR,
@@ -1731,7 +2598,7 @@ app.use(
 );
 
 /* =========================================================
-   START SERVER
+   START
 ========================================================= */
 
 server.listen(
@@ -1785,6 +2652,18 @@ server.listen(
 
     console.log(
       'CLUB SCREEN: ON'
+    );
+
+    console.log(
+      'SEATING: ON'
+    );
+
+    console.log(
+      'SERVER FLOOR LOCK: ON'
+    );
+
+    console.log(
+      'SERVER COLLISION: ON'
     );
 
     console.log(
