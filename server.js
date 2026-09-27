@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { Server } = require('socket.io');
 const NodeMediaServer = require('node-media-server');
 
@@ -15,24 +16,56 @@ const io = new Server(server, {
     }
 });
 
+/* =========================================================
+   CONFIG
+========================================================= */
+
 const PORT = process.env.PORT || 3000;
 const RTMP_PORT = process.env.RTMP_PORT || 1935;
 const NMS_HTTP_PORT = process.env.NMS_HTTP_PORT || 8000;
 
-const ROOT = __dirname;
-const PUBLIC_DIR = path.join(ROOT, 'public');
-const DATA_DIR = path.join(ROOT, 'data');
-const HLS_DIR = path.join(ROOT, 'hls');
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const HLS_DIR = path.join(__dirname, 'hls');
 const HLS_STREAM_DIR = path.join(HLS_DIR, 'ews');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+/*
+  ВАЖНО:
+  Оставляем users.json ТАМ ЖЕ,
+  где он был в твоём старом сервере.
+*/
+const USERS_FILE = path.join(
+    __dirname,
+    'users.json'
+);
 
 const SCREEN_HOST = 'mvxtra';
 
-fs.mkdirSync(PUBLIC_DIR, { recursive: true });
-fs.mkdirSync(DATA_DIR, { recursive: true });
-fs.mkdirSync(HLS_DIR, { recursive: true });
-fs.mkdirSync(HLS_STREAM_DIR, { recursive: true });
+/* =========================================================
+   DIRECTORIES
+========================================================= */
 
+if (!fs.existsSync(PUBLIC_DIR)) {
+    fs.mkdirSync(PUBLIC_DIR, {
+        recursive: true
+    });
+}
+
+if (!fs.existsSync(HLS_DIR)) {
+    fs.mkdirSync(HLS_DIR, {
+        recursive: true
+    });
+}
+
+if (!fs.existsSync(HLS_STREAM_DIR)) {
+    fs.mkdirSync(HLS_STREAM_DIR, {
+        recursive: true
+    });
+}
+
+/*
+  НЕ перезаписываем существующий users.json.
+  Если его нет — создаём пустой.
+*/
 if (!fs.existsSync(USERS_FILE)) {
     fs.writeFileSync(
         USERS_FILE,
@@ -41,83 +74,91 @@ if (!fs.existsSync(USERS_FILE)) {
     );
 }
 
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true }));
+/* =========================================================
+   EXPRESS
+========================================================= */
 
-app.use(express.static(PUBLIC_DIR));
+app.use(
+    express.json({
+        limit: '2mb'
+    })
+);
+
+app.use(
+    express.urlencoded({
+        extended: true
+    })
+);
+
+app.use(
+    express.static(PUBLIC_DIR)
+);
 
 app.use(
     '/hls',
-    express.static(HLS_DIR, {
-        setHeaders: (res, filePath) => {
-            res.setHeader(
-                'Access-Control-Allow-Origin',
-                '*'
-            );
+    express.static(
+        HLS_DIR,
+        {
+            setHeaders: (
+                res,
+                filePath
+            ) => {
 
-            res.setHeader(
-                'Cache-Control',
-                'no-cache, no-store, must-revalidate'
-            );
-
-            if (filePath.endsWith('.m3u8')) {
                 res.setHeader(
-                    'Content-Type',
-                    'application/vnd.apple.mpegurl'
+                    'Access-Control-Allow-Origin',
+                    '*'
                 );
-            }
 
-            if (filePath.endsWith('.ts')) {
                 res.setHeader(
-                    'Content-Type',
-                    'video/mp2t'
+                    'Cache-Control',
+                    'no-cache, no-store, must-revalidate'
                 );
+
+                if (
+                    filePath.endsWith('.m3u8')
+                ) {
+                    res.setHeader(
+                        'Content-Type',
+                        'application/vnd.apple.mpegurl'
+                    );
+                }
+
+                if (
+                    filePath.endsWith('.ts')
+                ) {
+                    res.setHeader(
+                        'Content-Type',
+                        'video/mp2t'
+                    );
+                }
             }
         }
-    })
+    )
 );
 
 /* =========================================================
    HELPERS
 ========================================================= */
 
-function cleanUsername(value) {
-    return String(value || '')
-        .trim()
-        .replace(/\s+/g, ' ')
-        .slice(0, 24);
-}
-
-function validUsername(username) {
-    return (
-        username.length >= 2 &&
-        username.length <= 24 &&
-        /^[a-zA-Z0-9_\-а-яА-ЯёЁ ]+$/.test(username)
-    );
-}
-
-function hashPassword(password) {
-    const crypto = require('crypto');
-
-    return crypto
-        .createHash('sha256')
-        .update(String(password))
-        .digest('hex');
-}
-
 function readUsers() {
-    try {
-        const data = fs.readFileSync(
-            USERS_FILE,
-            'utf8'
-        );
 
-        const users = JSON.parse(data);
+    try {
+
+        const raw =
+            fs.readFileSync(
+                USERS_FILE,
+                'utf8'
+            );
+
+        const users =
+            JSON.parse(raw);
 
         return Array.isArray(users)
             ? users
             : [];
+
     } catch (error) {
+
         console.error(
             'USERS READ ERROR:',
             error.message
@@ -128,14 +169,48 @@ function readUsers() {
 }
 
 function saveUsers(users) {
+
     fs.writeFileSync(
         USERS_FILE,
-        JSON.stringify(users, null, 2),
+        JSON.stringify(
+            users,
+            null,
+            2
+        ),
         'utf8'
     );
 }
 
+function hashPassword(password) {
+
+    return crypto
+        .createHash('sha256')
+        .update(
+            String(password)
+        )
+        .digest('hex');
+}
+
+function cleanUsername(value) {
+
+    return String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .slice(0, 24);
+}
+
+function isValidUsername(username) {
+
+    return (
+        username.length >= 2 &&
+        username.length <= 24 &&
+        /^[a-zA-Z0-9_\-а-яА-ЯёЁ ]+$/
+            .test(username)
+    );
+}
+
 function isScreenHost(username) {
+
     return (
         String(username || '')
             .trim()
@@ -144,7 +219,12 @@ function isScreenHost(username) {
     );
 }
 
-function clamp(value, min, max) {
+function clamp(
+    value,
+    min,
+    max
+) {
+
     return Math.max(
         min,
         Math.min(max, value)
@@ -152,117 +232,175 @@ function clamp(value, min, max) {
 }
 
 /* =========================================================
-   USERS API
+   STATUS
 ========================================================= */
 
-app.post('/api/register', (req, res) => {
+app.get(
+    '/api/status',
+    (req, res) => {
 
-    const username =
-        cleanUsername(
-            req.body.username
-        );
-
-    const password =
-        String(
-            req.body.password || ''
-        );
-
-    if (!validUsername(username)) {
-        return res.status(400).json({
-            ok: false,
-            error: 'Некорректное имя пользователя.'
+        res.json({
+            ok: true,
+            service: 'EWS SESSIONS',
+            online:
+                onlineUsers.size,
+            stream: true
         });
     }
+);
 
-    if (password.length < 4) {
-        return res.status(400).json({
-            ok: false,
-            error: 'Пароль должен быть минимум 4 символа.'
+/* =========================================================
+   REGISTER
+========================================================= */
+
+app.post(
+    '/api/register',
+    (req, res) => {
+
+        const username =
+            cleanUsername(
+                req.body.username
+            );
+
+        const password =
+            String(
+                req.body.password || ''
+            );
+
+        if (
+            !isValidUsername(
+                username
+            )
+        ) {
+
+            return res.status(400).json({
+                ok: false,
+                error:
+                    'Некорректное имя пользователя.'
+            });
+        }
+
+        if (
+            password.length < 4
+        ) {
+
+            return res.status(400).json({
+                ok: false,
+                error:
+                    'Пароль должен быть минимум 4 символа.'
+            });
+        }
+
+        const users =
+            readUsers();
+
+        const exists =
+            users.some(
+                user =>
+                    String(
+                        user.username
+                    )
+                    .toLowerCase() ===
+                    username.toLowerCase()
+            );
+
+        if (exists) {
+
+            return res.status(409).json({
+                ok: false,
+                error:
+                    'Такой пользователь уже существует.'
+            });
+        }
+
+        users.push({
+            username,
+            password:
+                hashPassword(
+                    password
+                ),
+            createdAt:
+                Date.now()
+        });
+
+        saveUsers(users);
+
+        res.json({
+            ok: true,
+            username
         });
     }
+);
 
-    const users = readUsers();
+/* =========================================================
+   LOGIN
+========================================================= */
 
-    const exists = users.some(
-        user =>
-            String(user.username)
-                .toLowerCase() ===
-            username.toLowerCase()
-    );
+app.post(
+    '/api/login',
+    (req, res) => {
 
-    if (exists) {
-        return res.status(409).json({
-            ok: false,
-            error: 'Такой пользователь уже существует.'
+        const username =
+            cleanUsername(
+                req.body.username
+            );
+
+        const password =
+            String(
+                req.body.password || ''
+            );
+
+        const users =
+            readUsers();
+
+        const user =
+            users.find(
+                item =>
+                    String(
+                        item.username
+                    )
+                    .toLowerCase() ===
+                    username.toLowerCase()
+            );
+
+        if (!user) {
+
+            return res.status(401).json({
+                ok: false,
+                error:
+                    'Пользователь не найден.'
+            });
+        }
+
+        /*
+          Используем ТОТ ЖЕ SHA-256,
+          что и твой старый сервер.
+        */
+
+        const passwordHash =
+            hashPassword(
+                password
+            );
+
+        if (
+            user.password !==
+            passwordHash
+        ) {
+
+            return res.status(401).json({
+                ok: false,
+                error:
+                    'Неверный пароль.'
+            });
+        }
+
+        res.json({
+            ok: true,
+            username:
+                user.username
         });
     }
-
-    users.push({
-        username,
-        password: hashPassword(password),
-        createdAt: Date.now()
-    });
-
-    saveUsers(users);
-
-    res.json({
-        ok: true,
-        username
-    });
-});
-
-app.post('/api/login', (req, res) => {
-
-    const username =
-        cleanUsername(
-            req.body.username
-        );
-
-    const password =
-        String(
-            req.body.password || ''
-        );
-
-    const users = readUsers();
-
-    const user = users.find(
-        item =>
-            String(item.username)
-                .toLowerCase() ===
-            username.toLowerCase()
-    );
-
-    if (!user) {
-        return res.status(401).json({
-            ok: false,
-            error: 'Пользователь не найден.'
-        });
-    }
-
-    if (
-        user.password !==
-        hashPassword(password)
-    ) {
-        return res.status(401).json({
-            ok: false,
-            error: 'Неверный пароль.'
-        });
-    }
-
-    res.json({
-        ok: true,
-        username: user.username
-    });
-});
-
-app.get('/api/status', (req, res) => {
-    res.json({
-        ok: true,
-        service: 'EWS SESSIONS',
-        online: onlineUsers.size,
-        stream: true
-    });
-});
+);
 
 /* =========================================================
    TRANSLATION
@@ -319,10 +457,11 @@ async function translateText(
         ) {
 
             return data[0]
-                .map(part =>
-                    Array.isArray(part)
-                        ? part[0]
-                        : ''
+                .map(
+                    part =>
+                        Array.isArray(part)
+                            ? part[0]
+                            : ''
                 )
                 .join('');
         }
@@ -355,6 +494,7 @@ app.post(
             );
 
         if (!text) {
+
             return res.json({
                 ok: true,
                 text: ''
@@ -375,27 +515,67 @@ app.post(
 );
 
 /* =========================================================
-   ONLINE / MULTIPLAYER
+   SOCKET STATE
 ========================================================= */
 
-const onlineUsers = new Map();
-const players = new Map();
+const onlineUsers =
+    new Map();
+
+const players =
+    new Map();
 
 const clubScreenState = {
+
     active: false,
+
     src: '',
+
     name: '',
-    owner: SCREEN_HOST
+
+    owner:
+        SCREEN_HOST
 };
 
+/* =========================================================
+   SPAWN POINTS
+========================================================= */
+
 const SPAWN_POINTS = [
-    { x: 0, z: 13 },
-    { x: 3, z: 10 },
-    { x: -3, z: 10 },
-    { x: 6, z: 7 },
-    { x: -6, z: 7 },
-    { x: 8, z: 3 },
-    { x: -8, z: 3 }
+
+    {
+        x: 0,
+        z: 13
+    },
+
+    {
+        x: 3,
+        z: 10
+    },
+
+    {
+        x: -3,
+        z: 10
+    },
+
+    {
+        x: 6,
+        z: 7
+    },
+
+    {
+        x: -6,
+        z: 7
+    },
+
+    {
+        x: 8,
+        z: 3
+    },
+
+    {
+        x: -8,
+        z: 3
+    }
 ];
 
 function getSpawnPoint() {
@@ -407,55 +587,58 @@ function getSpawnPoint() {
         const occupied =
             Array.from(
                 players.values()
-            ).some(player =>
-                Math.abs(
-                    player.x - point.x
-                ) < 1.5 &&
-                Math.abs(
-                    player.z - point.z
-                ) < 1.5
+            ).some(
+                player =>
+                    Math.abs(
+                        player.x -
+                        point.x
+                    ) < 1.5 &&
+                    Math.abs(
+                        player.z -
+                        point.z
+                    ) < 1.5
             );
 
         if (!occupied) {
-            return point;
+
+            return {
+                x: point.x,
+                z: point.z
+            };
         }
     }
 
     return {
+
         x:
             Math.round(
-                (Math.random() * 14) - 7
+                Math.random() * 14 - 7
             ),
+
         z:
             Math.round(
-                (Math.random() * 8) + 5
+                Math.random() * 8 + 5
             )
     };
 }
+
+/* =========================================================
+   ONLINE
+========================================================= */
 
 function getOnlineUsers() {
 
     return Array.from(
         onlineUsers.values()
-    ).map(user => ({
-        username: user.username,
-        language: user.language
-    }));
-}
+    ).map(
+        user => ({
+            username:
+                user.username,
 
-function getPlayers() {
-
-    return Array.from(
-        players.values()
-    ).map(player => ({
-        id: player.id,
-        username: player.username,
-        x: player.x,
-        y: player.y,
-        z: player.z,
-        yaw: player.yaw,
-        pitch: player.pitch
-    }));
+            language:
+                user.language
+        })
+    );
 }
 
 function broadcastOnline() {
@@ -466,19 +649,61 @@ function broadcastOnline() {
     );
 }
 
-function sendPlayersSnapshot(socket) {
+/* =========================================================
+   PLAYERS
+========================================================= */
+
+function getPlayers() {
+
+    return Array.from(
+        players.values()
+    ).map(
+        player => ({
+
+            id:
+                player.id,
+
+            username:
+                player.username,
+
+            x:
+                player.x,
+
+            y:
+                player.y,
+
+            z:
+                player.z,
+
+            yaw:
+                player.yaw,
+
+            pitch:
+                player.pitch
+        })
+    );
+}
+
+function sendPlayersSnapshot(
+    socket
+) {
+
+    if (!socket) {
+        return;
+    }
 
     socket.emit(
         'players-state',
         getPlayers().filter(
             player =>
-                player.id !== socket.id
+                player.id !==
+                socket.id
         )
     );
 }
 
 /* =========================================================
-   SOCKET
+   SOCKET CONNECTION
 ========================================================= */
 
 io.on(
@@ -490,15 +715,16 @@ io.on(
             socket.id
         );
 
-        /* -------------------------------------------------
+        /* =================================================
            JOIN
-        ------------------------------------------------- */
+        ================================================= */
 
         socket.on(
             'join',
             data => {
 
-                data = data || {};
+                data =
+                    data || {};
 
                 const username =
                     cleanUsername(
@@ -507,7 +733,8 @@ io.on(
 
                 const language =
                     String(
-                        data.language || 'en'
+                        data.language ||
+                        'en'
                     )
                     .trim()
                     .toLowerCase();
@@ -525,9 +752,14 @@ io.on(
                 onlineUsers.set(
                     socket.id,
                     {
-                        id: socket.id,
-                        username,
-                        language
+                        id:
+                            socket.id,
+
+                        username:
+                            username,
+
+                        language:
+                            language
                     }
                 );
 
@@ -535,13 +767,27 @@ io.on(
                     getSpawnPoint();
 
                 const player = {
-                    id: socket.id,
-                    username,
-                    x: spawn.x,
-                    y: 1.7,
-                    z: spawn.z,
-                    yaw: 0,
-                    pitch: 0
+
+                    id:
+                        socket.id,
+
+                    username:
+                        username,
+
+                    x:
+                        spawn.x,
+
+                    y:
+                        1.7,
+
+                    z:
+                        spawn.z,
+
+                    yaw:
+                        0,
+
+                    pitch:
+                        0
                 };
 
                 players.set(
@@ -550,7 +796,7 @@ io.on(
                 );
 
                 /*
-                  Только mvxtra.
+                  ТОЛЬКО MVXTRA управляет экраном.
                 */
 
                 socket.emit(
@@ -560,13 +806,14 @@ io.on(
                             isScreenHost(
                                 username
                             ),
+
                         username:
                             SCREEN_HOST
                     }
                 );
 
                 /*
-                  Передаём собственную точку спавна.
+                  Своя позиция.
                 */
 
                 socket.emit(
@@ -583,7 +830,7 @@ io.on(
                 );
 
                 /*
-                  Новый игрок остальным.
+                  Новый игрок всем остальным.
                 */
 
                 socket.broadcast.emit(
@@ -607,7 +854,7 @@ io.on(
                 );
 
                 /*
-                  Совместимость.
+                  Старый совместимый event.
                 */
 
                 socket.emit(
@@ -624,9 +871,9 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
-           ONLINE
-        ------------------------------------------------- */
+        /* =================================================
+           REQUEST ONLINE
+        ================================================= */
 
         socket.on(
             'request-online',
@@ -639,9 +886,9 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
-           PLAYERS SNAPSHOT
-        ------------------------------------------------- */
+        /* =================================================
+           REQUEST PLAYERS
+        ================================================= */
 
         socket.on(
             'request-players',
@@ -653,9 +900,9 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
+        /* =================================================
            PLAYER STATE
-        ------------------------------------------------- */
+        ================================================= */
 
         socket.on(
             'player-state',
@@ -670,7 +917,8 @@ io.on(
                     return;
                 }
 
-                data = data || {};
+                data =
+                    data || {};
 
                 const x =
                     Number(data.x);
@@ -687,7 +935,10 @@ io.on(
                 const pitch =
                     Number(data.pitch);
 
-                if (Number.isFinite(x)) {
+                if (
+                    Number.isFinite(x)
+                ) {
+
                     player.x =
                         clamp(
                             x,
@@ -696,7 +947,10 @@ io.on(
                         );
                 }
 
-                if (Number.isFinite(y)) {
+                if (
+                    Number.isFinite(y)
+                ) {
+
                     player.y =
                         clamp(
                             y,
@@ -705,7 +959,10 @@ io.on(
                         );
                 }
 
-                if (Number.isFinite(z)) {
+                if (
+                    Number.isFinite(z)
+                ) {
+
                     player.z =
                         clamp(
                             z,
@@ -714,18 +971,21 @@ io.on(
                         );
                 }
 
-                if (Number.isFinite(yaw)) {
+                if (
+                    Number.isFinite(yaw)
+                ) {
+
                     player.yaw =
                         yaw;
                 }
 
-                if (Number.isFinite(pitch)) {
+                if (
+                    Number.isFinite(pitch)
+                ) {
+
                     player.pitch =
                         pitch;
                 }
-
-                player.username =
-                    socket.username;
 
                 socket.broadcast.emit(
                     'player-state',
@@ -734,9 +994,9 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
+        /* =================================================
            OLD PLAYER MOVE
-        ------------------------------------------------- */
+        ================================================= */
 
         socket.on(
             'player-move',
@@ -751,13 +1011,15 @@ io.on(
                     return;
                 }
 
-                data = data || {};
+                data =
+                    data || {};
 
                 if (
                     Number.isFinite(
                         Number(data.x)
                     )
                 ) {
+
                     player.x =
                         clamp(
                             Number(data.x),
@@ -771,6 +1033,7 @@ io.on(
                         Number(data.y)
                     )
                 ) {
+
                     player.y =
                         clamp(
                             Number(data.y),
@@ -784,6 +1047,7 @@ io.on(
                         Number(data.z)
                     )
                 ) {
+
                     player.z =
                         clamp(
                             Number(data.z),
@@ -797,6 +1061,7 @@ io.on(
                         Number(data.yaw)
                     )
                 ) {
+
                     player.yaw =
                         Number(data.yaw);
                 }
@@ -806,6 +1071,7 @@ io.on(
                         Number(data.pitch)
                     )
                 ) {
+
                     player.pitch =
                         Number(data.pitch);
                 }
@@ -817,9 +1083,9 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
+        /* =================================================
            SCREEN REQUEST
-        ------------------------------------------------- */
+        ================================================= */
 
         socket.on(
             'request-club-screen',
@@ -832,10 +1098,10 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
-           SCREEN CONTROL
+        /* =================================================
+           SCREEN
            ONLY MVXTRA
-        ------------------------------------------------- */
+        ================================================= */
 
         socket.on(
             'club-screen-state',
@@ -871,14 +1137,20 @@ io.on(
                     clubScreenState.src =
                         state.src
                             .trim()
-                            .slice(0, 2000);
+                            .slice(
+                                0,
+                                2000
+                            );
 
                     clubScreenState.name =
                         String(
                             state.name ||
                             'MEDIA'
                         )
-                        .slice(0, 100);
+                        .slice(
+                            0,
+                            100
+                        );
 
                 } else {
 
@@ -907,9 +1179,9 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
+        /* =================================================
            CHAT
-        ------------------------------------------------- */
+        ================================================= */
 
         socket.on(
             'chat-message',
@@ -924,10 +1196,14 @@ io.on(
 
                 const original =
                     String(
-                        message.text || ''
+                        message.text ||
+                        ''
                     )
                     .trim()
-                    .slice(0, 500);
+                    .slice(
+                        0,
+                        500
+                    );
 
                 if (!original) {
                     return;
@@ -976,7 +1252,9 @@ io.on(
                                     id
                                 );
 
-                            if (!targetSocket) {
+                            if (
+                                !targetSocket
+                            ) {
                                 return;
                             }
 
@@ -992,7 +1270,8 @@ io.on(
                                     ts:
                                         Date.now(),
 
-                                    original
+                                    original:
+                                        original
                                 }
                             );
                         }
@@ -1001,9 +1280,9 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
+        /* =================================================
            LANGUAGE
-        ------------------------------------------------- */
+        ================================================= */
 
         socket.on(
             'language-change',
@@ -1015,7 +1294,8 @@ io.on(
 
                 const newLanguage =
                     String(
-                        language || 'en'
+                        language ||
+                        'en'
                     )
                     .trim()
                     .toLowerCase();
@@ -1029,6 +1309,7 @@ io.on(
                     );
 
                 if (user) {
+
                     user.language =
                         newLanguage;
                 }
@@ -1045,9 +1326,9 @@ io.on(
             }
         );
 
-        /* -------------------------------------------------
+        /* =================================================
            DISCONNECT
-        ------------------------------------------------- */
+        ================================================= */
 
         socket.on(
             'disconnect',
@@ -1095,6 +1376,7 @@ io.on(
 const nmsConfig = {
 
     rtmp: {
+
         port:
             Number(RTMP_PORT),
 
@@ -1112,6 +1394,7 @@ const nmsConfig = {
     },
 
     http: {
+
         port:
             Number(NMS_HTTP_PORT),
 
@@ -1165,6 +1448,10 @@ try {
         'RTMP SERVER READY'
     );
 
+    console.log(
+        `RTMP: rtmp://localhost:${RTMP_PORT}/live`
+    );
+
 } catch (error) {
 
     console.error(
@@ -1174,7 +1461,7 @@ try {
 }
 
 /* =========================================================
-   INDEX
+   ROOT
 ========================================================= */
 
 app.get(
@@ -1197,7 +1484,7 @@ app.get(
         }
 
         res.status(404).send(
-            'EWS SESSIONS: index.html not found.'
+            'EWS SESSIONS: index.html not found in public folder.'
         );
     }
 );
@@ -1219,6 +1506,37 @@ app.use(
 );
 
 /* =========================================================
+   ERROR HANDLER
+========================================================= */
+
+app.use(
+    (
+        err,
+        req,
+        res,
+        next
+    ) => {
+
+        console.error(
+            'EXPRESS ERROR:',
+            err
+        );
+
+        if (
+            res.headersSent
+        ) {
+            return next(err);
+        }
+
+        res.status(500).json({
+            ok: false,
+            error:
+                'Internal server error.'
+        });
+    }
+);
+
+/* =========================================================
    START
 ========================================================= */
 
@@ -1232,28 +1550,34 @@ server.listen(
             '========================================'
         );
         console.log(
-            '       EWS SESSIONS SERVER READY'
+            '        EWS SESSIONS SERVER READY'
         );
         console.log(
             '========================================'
         );
         console.log(
-            `WEB: http://localhost:${PORT}`
+            `WEB:  http://localhost:${PORT}`
         );
         console.log(
             `RTMP: rtmp://localhost:${RTMP_PORT}/live`
         );
         console.log(
-            `HLS: http://localhost:${PORT}/hls/`
+            `HLS:  http://localhost:${PORT}/hls/`
         );
         console.log(
             'SCREEN OWNER: mvxtra'
         );
         console.log(
-            'CHAT: PERSONAL TRANSLATION'
+            'CHAT TRANSLATION: PERSONAL'
         );
         console.log(
             'MULTIPLAYER: ON'
+        );
+        console.log(
+            'ONLINE USERS: ON'
+        );
+        console.log(
+            'USERS FILE: ./users.json'
         );
         console.log(
             '========================================'
