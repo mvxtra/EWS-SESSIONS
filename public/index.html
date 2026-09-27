@@ -74,11 +74,17 @@ body{
   box-shadow:0 0 45px rgba(0,0,0,.9);
   pointer-events:auto;
   overflow:hidden;
-  display:none;
+  display:block;
+  visibility:hidden;
+  opacity:0;
+  transform:translateZ(0);
+  backface-visibility:hidden;
+  will-change:transform,opacity;
 }
 
 #css3d-screen.active{
-  display:block;
+  visibility:visible;
+  opacity:1;
 }
 
 #css3d-screen iframe{
@@ -761,7 +767,9 @@ input:focus{
   id="ews-audio"
   crossorigin="anonymous"
   playsinline
-  preload="auto">
+  preload="auto"
+  autoplay
+  volume="1">
 </audio>
 
 <!-- =====================================================
@@ -1156,6 +1164,10 @@ function startSession(username){
 
   currentUser=username;
 
+  const savedLanguage=localStorage.getItem('ews-language');
+  const langSelect=document.getElementById('lang');
+  if(langSelect && savedLanguage) langSelect.value=savedLanguage;
+
   document.getElementById(
     'login'
   ).style.display='none';
@@ -1181,8 +1193,7 @@ function startSession(username){
       'join',
       {
         username: currentUser,
-        language:
-          document.getElementById('lang').value
+        language: (document.getElementById('lang')?.value || 'ru')
       }
     );
 
@@ -1196,6 +1207,14 @@ function startSession(username){
       }
     },350);
 
+  });
+
+  socket.on('language-updated',data=>{
+    if(data && data.language){
+      const lang=document.getElementById('lang');
+      if(lang) lang.value=data.language;
+      localStorage.setItem('ews-language',data.language);
+    }
   });
 
   socket.on(
@@ -1424,31 +1443,10 @@ document
    LANGUAGE
 ========================================================= */
 
-document
-  .getElementById('lang')
-  .addEventListener(
-    'change',
-    function(){
-
-      if(socket){
-
-        socket.emit(
-          'language-change',
-          this.value
-        );
-
-      }
-
-    }
-  );
-
-  socket && socket.on && socket.on('language-updated',data=>{
-    if(data && data.language){
-      const lang=document.getElementById('lang');
-      if(lang) lang.value=data.language;
-      localStorage.setItem('ews-language',data.language);
-    }
-  });
+document.getElementById('lang').addEventListener('change',function(){
+  localStorage.setItem('ews-language',this.value);
+  if(socket && socket.connected) socket.emit('language-change',this.value);
+});
 
 /* =========================================================
    THREE.JS
@@ -2545,6 +2543,7 @@ async function unlockEWSAudio(){
 
   const audio = document.getElementById('ews-audio');
   if(!audio) return false;
+  audio.muted=false; audio.volume=1;
 
   try{
     if(audioContext && audioContext.state === 'suspended'){
@@ -2585,6 +2584,7 @@ async function startSSHAudio(){
     {textContent:'',disabled:false,classList:{add(){},remove(){}}};
 
   if(!audio)return;
+  audio.muted=false; audio.volume=1; audio.autoplay=true;
 
   const hlsUrl =
     window.location.origin+
@@ -3156,6 +3156,12 @@ function setupControls(){
   document.addEventListener('pointerdown',unlock,{passive:true});
   document.addEventListener('touchstart',unlock,{passive:true});
   document.addEventListener('keydown',unlock,{passive:true});
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden && audioStarted){
+      const a=document.getElementById('ews-audio');
+      if(a && a.paused) a.play().catch(()=>{});
+    }
+  });
 })();
 
 function toggleChat(){
@@ -3302,11 +3308,12 @@ function applyRemoteClubScreen(state){
 
   state=state || {};
 
-  if(state.active !== true || !state.src){
-    frame.src='about:blank';
-    panel.classList.remove('active');
-    screenMediaActive=false;
-    screenMediaUrl='';
+  if(state.active !== true || (!state.src && !state.url)){
+    if(!screenMediaActive){
+      frame.src='about:blank';
+      panel.classList.remove('active');
+      screenMediaUrl='';
+    }
     return;
   }
 
@@ -3807,6 +3814,7 @@ function loadAvatarModels(){
     load('male','Superhero_Male_FullBody.gltf'),
     load('female','Superhero_Female_FullBody.gltf')
   ]).then(()=>{
+    console.log('[EWS AVATAR] models ready:',!!(avatarTemplates.male||avatarTemplates.female));
     remotePlayers.forEach(p=>applyAvatarToRemote(p));
   });
 }
@@ -3855,6 +3863,7 @@ function createRemotePlayer(data){
   const ry=Number.isFinite(Number(data.yaw??data.ry))?Number(data.yaw??data.ry):0;
   g.position.set(x,y,z); g.rotation.y=ry; scene.add(g);
   const p={group:g,last:{x,z,yaw:ry},moving:!!data.moving,username:data.username||'PLAYER',dance:Number(data.dance)||0,danceStartedAt:Number(data.danceStartedAt)||0,parts:{torso,head,leftArm,rightArm,leftLeg,rightLeg},baseY:0,sitting:!!data.sitting,seatId:data.seatId||null,avatar:null,placeholder};
+  placeholder.visible=true;
   remotePlayers.set(data.id,p);
   applyAvatarToRemote(p);
 }
@@ -3871,7 +3880,8 @@ function updateRemotePlayer(data){
 
   const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
   const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
-  const ny=(data.sitting ? 0 : (Number.isFinite(rawY) ? Math.max(0,rawY) : p.group.position.y));
+  // server y is eye/camera height; avatar root stays on floor
+  const ny=0;
   const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
 
   const dx=nx-p.group.position.x;
