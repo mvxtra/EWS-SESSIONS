@@ -38,6 +38,7 @@ body{
   position:relative;
   width:100vw;
   height:100vh;
+  overflow:hidden;
 }
 
 #canvas3d{
@@ -806,7 +807,7 @@ input:focus{
   </div>
 
   <div id="media-screen">
-    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe>
   </div>
 
   <div id="zone-label">
@@ -1303,7 +1304,9 @@ function init3D(){
   css3dRenderer.domElement.style.width = '100%';
   css3dRenderer.domElement.style.height = '100%';
   css3dRenderer.domElement.style.pointerEvents = 'none';
-  css3dRenderer.domElement.style.zIndex = '12';
+  css3dRenderer.domElement.style.overflow = 'visible';
+  css3dRenderer.domElement.style.zIndex = '30';
+  css3dRenderer.domElement.style.transformStyle = 'preserve-3d';
   document.getElementById('app').appendChild(css3dRenderer.domElement);
 
   renderer.shadowMap.enabled=true;
@@ -1583,7 +1586,7 @@ function createMainScreen(){
       roughness:.28
     })
   );
-  frame.position.set(0,3.65,-16.72);
+  frame.position.set(0,3.65,-16.62);
   scene.add(frame);
 
   // Чёрная поверхность экрана. Она остаётся на стене, пока ссылка не загружена.
@@ -1594,15 +1597,15 @@ function createMainScreen(){
       side:THREE.FrontSide
     })
   );
-  screenMesh.position.set(0,3.65,-16.47);
+  screenMesh.position.set(0,3.65,-16.34);
   scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
   [
-    [14.2,.035,.035,0,6.68,-16.43],
-    [14.2,.035,.035,0,.62,-16.43],
-    [.035,6.1,.035,-7.08,3.65,-16.43],
-    [.035,6.1,.035,7.08,3.65,-16.43]
+    [14.25,.10,.06,0,6.68,-16.28],
+    [14.25,.10,.06,0,.62,-16.28],
+    [.10,6.1,.06,-7.08,3.65,-16.28],
+    [.10,6.1,.06,7.08,3.65,-16.28]
   ].forEach(a=>{
     const m=new THREE.Mesh(
       new THREE.BoxGeometry(a[0],a[1],a[2]),
@@ -1624,7 +1627,7 @@ function createMainScreen(){
     panel.style.pointerEvents='auto';
 
     screenDomObject=new THREE.CSS3DObject(panel);
-    screenDomObject.position.set(0,3.65,-16.30);
+    screenDomObject.position.set(0,3.65,-16.20);
     screenDomObject.rotation.set(0,0,0);
     screenDomObject.scale.set(.01,.01,.01);
     screenDomObject.visible=false;
@@ -2301,7 +2304,7 @@ function youtubeEmbed(url){
       if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
     }
     if(!id) return null;
-    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
+    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&mute=0&controls=1&rel=0&playsinline=1';
   }catch(e){ return null; }
 }
 
@@ -2313,9 +2316,9 @@ function twitchEmbed(url){
     if(!parts.length) return null;
     const parent=location.hostname || 'ews-sessions.onrender.com';
     if(parts[0]==='videos' && parts[1]){
-      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true&muted=false';
     }
-    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true&muted=false';
   }catch(e){ return null; }
 }
 
@@ -2380,6 +2383,15 @@ function loadClubScreen(){
 
   const menu=document.getElementById('screen-menu');
   if(menu) menu.classList.remove('open');
+
+  // Первый клик по LOAD является пользовательским действием браузера.
+  // Пытаемся сразу запустить видео со звуком.
+  setTimeout(()=>{
+    try{
+      frame.focus();
+      frame.contentWindow.postMessage({event:'command',func:'playVideo',args:[]}, '*');
+    }catch(e){}
+  }, 250);
 }
 
 function clearClubScreen(){
