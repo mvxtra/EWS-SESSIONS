@@ -3718,6 +3718,9 @@ function createRemotePlayer(data){
 
   ewsAvatarLoader.load(EWS_AVATAR_URL,gltf=>{
     const avatar=gltf.scene;
+    // RobotExpressive GLB faces the opposite direction from EWS player yaw.
+    // Keep the player's network rotation unchanged and correct only the model.
+    avatar.rotation.y=Math.PI;
     avatar.scale.setScalar(1.05);
     avatar.position.y=0;
     avatar.traverse(o=>{
@@ -3770,9 +3773,9 @@ function updateRemotePlayer(data){
   const dx=nx-p.group.position.x;
   const dz=nz-p.group.position.z;
 
+  p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
   const oldMoving=p.moving;
   const oldDance=p.dance;
-  p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
   if(data.dance!==undefined) p.dance=Number(data.dance)||0;
   if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
   if(oldMoving!==p.moving || oldDance!==p.dance) setRemoteAvatarAnimation(p);
