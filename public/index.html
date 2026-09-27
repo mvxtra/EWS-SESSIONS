@@ -955,9 +955,7 @@ input:focus{
         placeholder="write something..."
       >
 
-      <button id="chat-send">
-        →
-      </button>
+      <button id="chat-send" type="submit">SEND</button>
 
     </form>
 
@@ -1005,6 +1003,8 @@ let pitch=0;
 
 let pointerLocked=false;
 let chatMode=false;
+
+let chatInputFocused=false;
 
 let clock=new THREE.Clock();
 
@@ -1414,6 +1414,8 @@ document
 
       // Enter sends the message and immediately returns control to the club.
       chatMode=false;
+
+let chatInputFocused=false;
       input.blur();
       keys={};
       const canvas=document.getElementById('canvas3d');
@@ -2933,6 +2935,22 @@ async function startSSHAudio(){
    CONTROLS
 ========================================================= */
 
+document.addEventListener('DOMContentLoaded',()=>{
+  const input=document.getElementById('chat-input');
+  if(input){
+    input.addEventListener('focus',()=>{ chatInputFocused=true; chatMode=true; });
+    input.addEventListener('blur',()=>{ chatInputFocused=false; });
+    input.addEventListener('keydown',e=>{
+      e.stopPropagation();
+      if(e.key==='Enter'){
+        e.preventDefault();
+        const form=document.getElementById('chat-form');
+        if(form) form.requestSubmit();
+      }
+    });
+  }
+});
+
 function setupControls(){
 
   window.addEventListener(
@@ -2975,6 +2993,8 @@ function setupControls(){
       if(e.code==='Escape' && chatMode){
         e.preventDefault();
         chatMode=false;
+
+let chatInputFocused=false;
         const input=document.getElementById('chat-input');
         if(input) input.blur();
         keys={};
