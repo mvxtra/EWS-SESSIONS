@@ -1960,83 +1960,76 @@ function createBar(){
 }
 
 function createBartender(){
-  // Bartender is placed on the far side of the bar, behind the counter.
-  const skin=new THREE.MeshStandardMaterial({color:0x8a5f4b,roughness:.88});
-  const shirt=new THREE.MeshStandardMaterial({color:0x151515,roughness:.72,metalness:.05});
-  const apron=new THREE.MeshStandardMaterial({color:0x343434,roughness:.82});
-  const pants=new THREE.MeshStandardMaterial({color:0x080808,roughness:.92});
-  const hairMat=new THREE.MeshStandardMaterial({color:0x101010,roughness:1});
+  // More natural club bartender: full-body proportions, dark workwear, waist apron,
+  // hands positioned at the counter and a dedicated staff zone behind the bar.
+  const skin=new THREE.MeshStandardMaterial({color:0x9a6a52,roughness:.82});
+  const shirt=new THREE.MeshStandardMaterial({color:0x101112,roughness:.72});
+  const apron=new THREE.MeshStandardMaterial({color:0x252729,roughness:.82});
+  const pants=new THREE.MeshStandardMaterial({color:0x08090a,roughness:.9});
+  const shoe=new THREE.MeshStandardMaterial({color:0x030303,roughness:.55,metalness:.15});
+  const hairMat=new THREE.MeshStandardMaterial({color:0x171412,roughness:.92});
 
   const npc=new THREE.Group();
-  npc.position.set(-12,0,8.72);
-  npc.rotation.y=0;
+  // Bar occupies x -16..-8, z 6..8. Put bartender behind it, not inside it.
+  npc.position.set(-12,0,8.55);
+  npc.rotation.y=Math.PI;
 
-  const body=new THREE.Mesh(new THREE.CylinderGeometry(.34,.39,1.42,16),shirt);
-  body.position.y=1.25;
-  body.castShadow=true;
-  npc.add(body);
-
-  const apronMesh=new THREE.Mesh(new THREE.BoxGeometry(.55,.74,.035),apron);
-  apronMesh.position.set(0,1.18,-.24);
-  apronMesh.castShadow=true;
-  npc.add(apronMesh);
-
+  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.34,.78,6,12),shirt);
+  torso.position.y=1.25; torso.scale.z=.72; torso.castShadow=true; npc.add(torso);
+  const apronMesh=new THREE.Mesh(new THREE.BoxGeometry(.54,.78,.035),apron);
+  apronMesh.position.set(0,1.22,-.27); apronMesh.castShadow=true; npc.add(apronMesh);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(.115,.13,.16,12),skin);
+  neck.position.y=1.82; npc.add(neck);
   const head=new THREE.Mesh(new THREE.SphereGeometry(.29,20,14),skin);
-  head.position.y=2.04;
-  head.castShadow=true;
-  npc.add(head);
+  head.position.y=2.08; head.scale.set(1,.98,.92); head.castShadow=true; npc.add(head);
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(.30,20,12,0,Math.PI*2,0,Math.PI*.5),hairMat);
+  hair.position.y=2.18; npc.add(hair);
 
-  const hair=new THREE.Mesh(new THREE.SphereGeometry(.30,20,10,0,Math.PI*2,0,Math.PI*.48),hairMat);
-  hair.position.y=2.14;
-  npc.add(hair);
+  // Subtle face features so it reads as a person rather than a primitive mannequin.
+  const eyeMat=new THREE.MeshBasicMaterial({color:0x171717});
+  for(const x of [-.095,.095]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),eyeMat);
+    eye.position.set(x,2.10,-.265); npc.add(eye);
+  }
 
+  // Arms rest naturally toward the counter.
   for(const x of [-.22,.22]){
-    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.07,.085,.70,10),skin);
-    arm.position.set(x,1.38,-.03);
-    arm.rotation.z=x<0?-.22:.22;
-    arm.castShadow=true;
-    npc.add(arm);
+    const upper=new THREE.Mesh(new THREE.CapsuleGeometry(.065,.34,5,8),shirt);
+    upper.position.set(x,1.48,-.06); upper.rotation.z=x<0?-.18:.18; upper.rotation.x=-.22; npc.add(upper);
+    const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.055,.32,5,8),skin);
+    fore.position.set(x,1.28,-.23); fore.rotation.x=-.35; npc.add(fore);
+    const hand=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),skin);
+    hand.position.set(x,1.12,-.34); npc.add(hand);
   }
-
   for(const x of [-.17,.17]){
-    const leg=new THREE.Mesh(new THREE.BoxGeometry(.17,.82,.2),pants);
-    leg.position.set(x,.43,0);
-    leg.castShadow=true;
-    npc.add(leg);
+    const leg=new THREE.Mesh(new THREE.CapsuleGeometry(.09,.62,5,8),pants);
+    leg.position.set(x,.50,0); npc.add(leg);
+    const foot=new THREE.Mesh(new THREE.BoxGeometry(.19,.10,.34),shoe);
+    foot.position.set(x,.12,-.09); npc.add(foot);
   }
 
-  const bottle=new THREE.Mesh(new THREE.CylinderGeometry(.055,.07,.34,12),new THREE.MeshStandardMaterial({color:0x526b5b,roughness:.35,metalness:.25}));
-  bottle.position.set(.28,1.08,-.32);
-  npc.add(bottle);
+  // A bottle and shaker on the working surface.
+  const bottleMat=new THREE.MeshStandardMaterial({color:0x314a42,roughness:.28,metalness:.2});
+  const bottle=new THREE.Mesh(new THREE.CylinderGeometry(.055,.075,.34,16),bottleMat);
+  bottle.position.set(.30,1.35,-.34); npc.add(bottle);
+  const shaker=new THREE.Mesh(new THREE.CylinderGeometry(.07,.055,.25,16),new THREE.MeshStandardMaterial({color:0x9da2a6,metalness:.82,roughness:.2}));
+  shaker.position.set(-.28,1.30,-.34); npc.add(shaker);
 
-  const nameCanvas=document.createElement('canvas');
-  nameCanvas.width=256; nameCanvas.height=64;
-  const nctx=nameCanvas.getContext('2d');
-  nctx.fillStyle='rgba(0,0,0,.7)'; nctx.fillRect(8,12,240,40);
-  nctx.fillStyle='#fff'; nctx.font='bold 22px Arial'; nctx.textAlign='center';
-  nctx.fillText('BARTENDER',128,39);
-  const nameTex=new THREE.CanvasTexture(nameCanvas);
-  const name=new THREE.Sprite(new THREE.SpriteMaterial({map:nameTex,transparent:true,depthWrite:false}));
-  name.position.set(0,2.62,0); name.scale.set(1.5,.37,1);
-  npc.add(name);
-
-  // Dedicated bartender zone: low brass rail + posts, keeping the NPC clearly behind the bar.
-  const railMat=new THREE.MeshStandardMaterial({color:0x242424,metalness:.78,roughness:.28});
+  // Staff area: a low rail and two posts, visually separating the working space.
+  const railMat=new THREE.MeshStandardMaterial({color:0x1b1d20,metalness:.78,roughness:.3});
   const brassMat=new THREE.MeshStandardMaterial({color:0xb08a42,metalness:.88,roughness:.22});
-  const zone=new THREE.Group();
-  zone.position.set(-12,0,8.72);
-  for(const x of [-3.0,3.0]){
-    const post=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,.92,12),brassMat);
-    post.position.set(x,.46,0); zone.add(post);
-    const cap=new THREE.Mesh(new THREE.SphereGeometry(.085,12,8),brassMat);
-    cap.position.set(x,.94,0); zone.add(cap);
+  const zone=new THREE.Group(); zone.position.set(-12,0,8.55);
+  for(const x of [-3.15,3.15]){
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,.95,12),brassMat);
+    post.position.set(x,.48,.45); zone.add(post);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(.08,12,8),brassMat);
+    cap.position.set(x,.98,.45); zone.add(cap);
   }
-  const rail=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,6,12),brassMat);
-  rail.rotation.z=Math.PI/2; rail.position.set(0,.72,0); zone.add(rail);
-  const back=new THREE.Mesh(new THREE.BoxGeometry(6.2,.95,.08),railMat);
-  back.position.set(0,.48,.38); zone.add(back);
+  const rail=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,6.3,12),brassMat);
+  rail.rotation.z=Math.PI/2; rail.position.set(0,.70,.45); zone.add(rail);
+  const back=new THREE.Mesh(new THREE.BoxGeometry(6.4,.82,.07),railMat);
+  back.position.set(0,.41,.75); zone.add(back);
   scene.add(zone);
-
   scene.add(npc);
   npc.userData.npc=true;
 }
@@ -2473,29 +2466,50 @@ function createSpeakers(){
 }
 
 function createSmokeCannons(){
-  const bodyMat=new THREE.MeshStandardMaterial({color:0x111214,metalness:.78,roughness:.28});
-  const rimMat=new THREE.MeshStandardMaterial({color:0x25282b,metalness:.9,roughness:.2});
-  const nozzleMat=new THREE.MeshBasicMaterial({color:0xb7d7ff,transparent:true,opacity:.85});
+  // Stage-mounted fog cannons: visible hardware + dense layered plume aimed toward the dancefloor.
+  const bodyMat=new THREE.MeshStandardMaterial({color:0x0b0c0e,metalness:.84,roughness:.25});
+  const rimMat=new THREE.MeshStandardMaterial({color:0x292c30,metalness:.92,roughness:.18});
+  const nozzleMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.95});
   smokeCannons=[];
-  const positions=[[-5.8,.72,-10.35,.12],[5.8,.72,-10.35,-.12]];
+  const positions=[[-5.2,.62,-10.95,.12],[5.2,.62,-10.95,-.12]];
   positions.forEach(([x,y,z,turn])=>{
     const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.y=turn;
-    const base=new THREE.Mesh(new THREE.BoxGeometry(1.05,.28,.78),bodyMat); base.position.y=.14; g.add(base);
-    const housing=new THREE.Mesh(new THREE.CylinderGeometry(.28,.34,.55,16),bodyMat); housing.rotation.z=Math.PI/2; housing.position.set(0,.46,0); g.add(housing);
-    const rim=new THREE.Mesh(new THREE.TorusGeometry(.285,.045,10,24),rimMat); rim.rotation.y=Math.PI/2; rim.position.set(0,.46,.28); g.add(rim);
-    const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.05,16),nozzleMat); nozzle.rotation.x=Math.PI/2; nozzle.position.set(0,.46,.33); g.add(nozzle);
-    scene.add(g); smokeCannons.push({group:g,nozzle});
+    const base=new THREE.Mesh(new THREE.BoxGeometry(1.15,.30,.86),bodyMat); base.position.y=.15; g.add(base);
+    const housing=new THREE.Mesh(new THREE.CylinderGeometry(.29,.36,.62,18),bodyMat); housing.rotation.x=Math.PI/2; housing.position.set(0,.48,.18); g.add(housing);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(.30,.05,10,28),rimMat); rim.rotation.x=Math.PI/2; rim.position.set(0,.48,.51); g.add(rim);
+    const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.135,.17,.055,18),nozzleMat); nozzle.rotation.x=Math.PI/2; nozzle.position.set(0,.48,.56); g.add(nozzle);
+    const glow=new THREE.PointLight(0xddeaff,.5,2.2); glow.position.set(0,.48,.58); g.add(glow);
+    scene.add(g); smokeCannons.push({group:g,nozzle,glow});
   });
 
-  const texCanvas=document.createElement('canvas'); texCanvas.width=96; texCanvas.height=96;
-  const c=texCanvas.getContext('2d'); const grad=c.createRadialGradient(48,48,2,48,48,46);
-  grad.addColorStop(0,'rgba(245,245,245,.28)'); grad.addColorStop(.25,'rgba(225,230,235,.16)'); grad.addColorStop(.7,'rgba(190,200,210,.055)'); grad.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle=grad; c.fillRect(0,0,96,96);
-  const tex=new THREE.CanvasTexture(texCanvas); smokeParticles=[];
-  for(let i=0;i<34;i++){
+  const texCanvas=document.createElement('canvas'); texCanvas.width=128; texCanvas.height=128;
+  const c=texCanvas.getContext('2d');
+  const grad=c.createRadialGradient(64,64,2,64,64,62);
+  grad.addColorStop(0,'rgba(255,255,255,.62)');
+  grad.addColorStop(.18,'rgba(245,248,250,.48)');
+  grad.addColorStop(.46,'rgba(225,232,238,.28)');
+  grad.addColorStop(.72,'rgba(190,202,214,.10)');
+  grad.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=grad; c.fillRect(0,0,128,128);
+  const tex=new THREE.CanvasTexture(texCanvas);
+  smokeParticles=[];
+  for(let i=0;i<115;i++){
+    const side=i%2===0?-1:1;
     const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0,blending:THREE.NormalBlending});
-    const sp=new THREE.Sprite(m); const side=i%2===0?-1:1;
-    sp.position.set(side*(5.2+Math.random()*2.8),1.0+Math.random()*1.2,-9.9-Math.random()*1.2);
-    sp.scale.set(1.0+Math.random()*.9,1.0+Math.random()*.9,1); sp.userData={side,phase:Math.random()*6.28,speed:.35+Math.random()*.3,life:Math.random()};
+    const sp=new THREE.Sprite(m);
+    sp.position.set(side*(5.0+Math.random()*1.15),.92+Math.random()*1.0,-10.25+Math.random()*.45);
+    const sc=.8+Math.random()*1.25;
+    sp.scale.set(sc,sc,1);
+    sp.userData={side,phase:Math.random()*6.28,speed:.25+Math.random()*.30,life:Math.random(),drift:Math.random()*.012};
+    scene.add(sp); smokeParticles.push(sp);
+  }
+  // Extra broad low haze gives the dense festival-floor look without covering the screen.
+  for(let i=0;i<42;i++){
+    const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0,blending:THREE.NormalBlending});
+    const sp=new THREE.Sprite(m);
+    sp.position.set((Math.random()-.5)*9.5,.45+Math.random()*.8,-9.7+Math.random()*4.8);
+    const sc=1.5+Math.random()*2.0; sp.scale.set(sc*1.5,sc*.65,1);
+    sp.userData={side:0,phase:Math.random()*6.28,speed:.08+Math.random()*.12,life:Math.random(),drift:.004};
     scene.add(sp); smokeParticles.push(sp);
   }
 }
@@ -3697,13 +3711,29 @@ function animate(){
 
   smokeParticles.forEach((sp,i)=>{
     const u=sp.userData;
-    const t=(time*u.speed+u.phase)%6.5;
-    sp.position.y=.95+t*.52;
-    sp.position.x += Math.sin(time*.7+u.phase)*.004;
-    sp.position.z += -.012;
-    sp.material.opacity=Math.max(0,Math.min(.115,t<1.0?t*.11:(6.5-t)*.026));
-    const pulse=1+t*.24+bassLevel*.12;
-    sp.scale.set(pulse,pulse,1);
+    const cycle=7.5;
+    const t=(time*u.speed+u.phase)%cycle;
+    const progress=t/cycle;
+    // Smoke travels from the stage toward the dancefloor (+Z), not toward the screen.
+    sp.position.z += .018 + bassLevel*.010;
+    sp.position.x += Math.sin(time*.55+u.phase)*u.drift;
+    sp.position.y += .0035 + bassLevel*.0015;
+    const rise=Math.sin(progress*Math.PI);
+    const fadeIn=Math.min(1,progress*5);
+    const fadeOut=Math.max(0,(1-progress)*1.35);
+    sp.material.opacity=Math.min(.34, .34*fadeIn*fadeOut*(.72+.28*rise));
+    const pulse=1+progress*1.65+bassLevel*.20;
+    sp.scale.set(pulse*(u.side===0?1.35:1),pulse*(u.side===0?.72:1),1);
+    if(progress>.985){
+      sp.position.x=(u.side|| (i%2?1:-1))*(5.0+Math.random()*1.1);
+      sp.position.y=.85+Math.random()*1.1;
+      sp.position.z=-10.2+Math.random()*.5;
+      u.phase=Math.random()*6.28;
+    }
+  });
+  smokeCannons.forEach((c,i)=>{
+    if(c.nozzle && c.nozzle.material) c.nozzle.material.opacity=.72+bassLevel*.28;
+    if(c.glow) c.glow.intensity=.35+bassLevel*1.2;
   });
 
   if(hazeGroup){
