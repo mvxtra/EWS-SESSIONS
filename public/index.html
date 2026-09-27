@@ -955,6 +955,14 @@ let renderer;
 
 let keys={};
 
+// JUMP / GRAVITY
+let jumpVelocity=0;
+let playerY=1.7;
+const GROUND_Y=1.7;
+const JUMP_FORCE=7.2;
+const GRAVITY=18;
+let isGrounded=true;
+
 let yaw=0;
 let pitch=0;
 
@@ -1166,7 +1174,7 @@ function startSession(username){
     list=>{
 
       onlineUserList=Array.isArray(list)?list:[];
-      clubScreenHost='mvxtra';
+      clubScreenHost=onlineUserList.length? (typeof onlineUserList[0]==='string'?onlineUserList[0]:onlineUserList[0].username) : currentUser;
 
       const ul =
         document.getElementById('online-list');
@@ -1267,15 +1275,8 @@ function startSession(username){
   );
 
   socket.on('club-screen-state', state=>{
-    if(!state) return;
+    if(!state || !state.src) return;
     applyRemoteClubScreen(state);
-  });
-
-  socket.on('players-state', list=>{
-    if(!Array.isArray(list)) return;
-    list.forEach(data=>{
-      if(data && data.id && data.id!==socket.id) updateRemotePlayer(data);
-    });
   });
 
   socket.on('player-state', data=>{
@@ -2751,6 +2752,22 @@ function setupControls(){
 
       }
 
+      // SPACE = JUMP
+      // Пока открыт чат — пробел остаётся обычным пробелом.
+      if(
+        e.code==='Space' &&
+        !chatMode &&
+        pointerLocked &&
+        isGrounded
+      ){
+
+        e.preventDefault();
+
+        jumpVelocity=JUMP_FORCE;
+        isGrounded=false;
+
+      }
+
     }
   );
 
@@ -2909,7 +2926,7 @@ function normalizeClubScreenUrl(raw){
 }
 
 function isClubHost(){
-  return String(currentUser||'').toLowerCase()==='mvxtra';
+  return !clubScreenHost || clubScreenHost===currentUser;
 }
 
 function loadClubScreen(){
@@ -3116,6 +3133,28 @@ function animate(){
     side+=1;
   }
 
+  // =========================
+  // JUMP PHYSICS
+  // =========================
+
+  if(!chatMode){
+
+    jumpVelocity-=
+      GRAVITY*dt;
+
+    playerY+=
+      jumpVelocity*dt;
+
+    if(playerY<=GROUND_Y){
+
+      playerY=GROUND_Y;
+      jumpVelocity=0;
+      isGrounded=true;
+
+    }
+
+  }
+
   if(
     pointerLocked &&
     !chatMode
@@ -3161,7 +3200,7 @@ function animate(){
       15.5
     );
 
-  camera.position.y=1.7;
+  camera.position.y=playerY;
 
   camera.rotation.order=
     'YXZ';
