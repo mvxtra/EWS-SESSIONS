@@ -423,7 +423,7 @@ input:focus{
 
 #media-screen{
   position:absolute;
-  z-index:15;
+  z-index:0;
   display:none;
   overflow:hidden;
   background:#000;
@@ -1736,7 +1736,7 @@ function createMainScreen(){
     new THREE.PlaneGeometry(14,6),
     new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
   );
-  screenMesh.position.set(0,3.65,-16.69);
+  screenMesh.position.set(0,3.65,-16.35);
   scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
@@ -1758,12 +1758,12 @@ function createMainScreen(){
     panel.style.display='none';
 
     screenDomObject=new THREE.CSS3DObject(panel);
-    screenDomObject.position.set(0,3.65,-16.69);
+    screenDomObject.position.set(0,3.65,-16.36);
     screenDomObject.rotation.set(0,0,0);
     screenDomObject.scale.set(.01,.01,.01);
     screenDomObject.element.style.transformStyle='preserve-3d';
     screenDomObject.visible=false;
-    scene.add(screenDomObject);
+    css3dScene.add(screenDomObject);
 
     const frameEl=document.getElementById('media-screen-frame');
     if(frameEl) frameEl.style.pointerEvents='auto';
@@ -1996,64 +1996,9 @@ function createEntrance(){
     false
   );
 
-  const signCanvas =
-    document.createElement(
-      'canvas'
-    );
 
-  signCanvas.width=600;
-  signCanvas.height=160;
-
-  const ctx =
-    signCanvas.getContext(
-      '2d'
-    );
-
-  ctx.fillStyle='#050505';
-
-  ctx.fillRect(
-    0,
-    0,
-    600,
-    160
-  );
-
-  ctx.fillStyle='#fff';
-
-  ctx.font=
-    'bold 58px Arial';
-
-  ctx.textAlign='center';
-
-  ctx.fillText(
-    'EWS SESSIONS',
-    300,
-    95
-  );
-
-  const tex =
-    new THREE.CanvasTexture(
-      signCanvas
-    );
-
-  const sign =
-    new THREE.Mesh(
-      new THREE.PlaneGeometry(
-        5,
-        1.35
-      ),
-      new THREE.MeshBasicMaterial({
-        map:tex
-      })
-    );
-
-  sign.position.set(
-    0,
-    5.4,
-    15.65
-  );
-
-  scene.add(sign);
+  // Старый баннер EWS SESSIONS удалён.
+  // На этой стене используется только SCREEN.
 
 }
 
@@ -3444,7 +3389,7 @@ function animate(){
   );
 
   if(css3dRenderer && css3dScene){
-    css3dRenderer.render(scene,camera);
+    css3dRenderer.render(css3dScene,camera);
   }
 
 }
