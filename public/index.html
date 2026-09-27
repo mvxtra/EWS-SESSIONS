@@ -13,7 +13,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
@@ -955,7 +954,9 @@ input:focus{
         placeholder="write something..."
       >
 
-      <button id="chat-send" type="submit">SEND</button>
+      <button id="chat-send">
+        →
+      </button>
 
     </form>
 
@@ -1004,17 +1005,10 @@ let pitch=0;
 let pointerLocked=false;
 let chatMode=false;
 
-let chatInputFocused=false;
-
 let clock=new THREE.Clock();
 
 let neonObjects=[];
 let lightObjects=[];
-let clubSpotlights=[];
-let clubLasers=[];
-let clubSmoke=null;
-let clubSmokeVelocities=[];
-let dubSoundSystems=[];
 
 let particles;
 
@@ -1417,8 +1411,6 @@ document
 
       // Enter sends the message and immediately returns control to the club.
       chatMode=false;
-
-let chatInputFocused=false;
       input.blur();
       keys={};
       const canvas=document.getElementById('canvas3d');
@@ -1592,10 +1584,6 @@ function init3D(){
     14
   );
 
-  createClubSpotlights();
-  createClubLasers();
-  createClubSmoke();
-
   createFloor();
   createCeiling();
   createWalls();
@@ -1684,183 +1672,6 @@ function createLight(
 
   return light;
 
-}
-
-function createClubSpotlights(){
-  const target=new THREE.Object3D();
-  target.position.set(0,0,-1);
-  scene.add(target);
-
-  const fixtures=[
-    [-9,5.6,-9,0x55aaff],
-    [9,5.6,-9,0xff4fd8],
-    [-8,5.6,7,0x8dff6a],
-    [8,5.6,7,0xffb84d]
-  ];
-
-  fixtures.forEach((f,i)=>{
-    const light=new THREE.SpotLight(f[3],3.2,28,Math.PI/7,0.55,1.2);
-    light.position.set(f[0],f[1],f[2]);
-    light.target=target;
-    light.castShadow=true;
-    light.shadow.mapSize.width=512;
-    light.shadow.mapSize.height=512;
-    scene.add(light);
-
-    const fixture=new THREE.Mesh(
-      new THREE.CylinderGeometry(.13,.20,.42,12),
-      new THREE.MeshStandardMaterial({color:0x111111,metalness:.85,roughness:.28})
-    );
-    fixture.position.copy(light.position);
-    fixture.lookAt(target.position);
-    scene.add(fixture);
-
-    clubSpotlights.push({light,fixture,base:f[3],phase:i*Math.PI/2});
-  });
-}
-
-function animateClubSpotlights(time,bass,level){
-  if(!clubSpotlights.length) return;
-  clubSpotlights.forEach((s,i)=>{
-    const pulse=0.55+Math.max(bass,level)*2.2;
-    s.light.intensity=1.5+pulse+Math.sin(time*2.2+s.phase)*0.45;
-    const hue=(time*0.055+i*0.19+Math.max(bass,0)*0.15)%1;
-    s.light.color.setHSL(hue,0.82,0.62);
-  });
-}
-
-function createClubLasers(){
-  // Thin white club-style laser beams. They are intentionally separate from
-  // the existing spotlights so the rest of the lighting remains unchanged.
-  const positions=[
-    [-8.5,5.65,-8.5],
-    [8.5,5.65,-8.5],
-    [-8.5,5.65,6.5],
-    [8.5,5.65,6.5]
-  ];
-
-  positions.forEach((pos,i)=>{
-    const group=new THREE.Group();
-    group.position.set(pos[0],pos[1],pos[2]);
-
-    const beamMat=new THREE.MeshBasicMaterial({
-      color:0xffffff,
-      transparent:true,
-      opacity:.18,
-      depthWrite:false,
-      blending:THREE.AdditiveBlending,
-      side:THREE.DoubleSide
-    });
-
-    const beam=new THREE.Mesh(
-      new THREE.CylinderGeometry(.012,.16,13,16,1,true),
-      beamMat
-    );
-    beam.position.y=-6.5;
-    group.add(beam);
-
-    // Small bright emitter at the source.
-    const emitter=new THREE.Mesh(
-      new THREE.SphereGeometry(.055,12,12),
-      new THREE.MeshBasicMaterial({color:0xffffff})
-    );
-    group.add(emitter);
-
-    scene.add(group);
-    clubLasers.push({group,beam,baseOpacity:.14+i*.012,phase:i*Math.PI/2});
-  });
-}
-
-function createClubSmoke(){
-  // Soft volumetric-looking smoke made from many translucent sprites.
-  // It stays inside the club and does not change the existing geometry.
-  const count=260;
-  const positions=new Float32Array(count*3);
-  clubSmokeVelocities=[];
-
-  const textureCanvas=document.createElement('canvas');
-  textureCanvas.width=128;
-  textureCanvas.height=128;
-  const ctx=textureCanvas.getContext('2d');
-  const grad=ctx.createRadialGradient(64,64,4,64,64,62);
-  grad.addColorStop(0,'rgba(255,255,255,.20)');
-  grad.addColorStop(.35,'rgba(230,230,230,.12)');
-  grad.addColorStop(1,'rgba(255,255,255,0)');
-  ctx.fillStyle=grad;
-  ctx.fillRect(0,0,128,128);
-  const texture=new THREE.CanvasTexture(textureCanvas);
-  texture.needsUpdate=true;
-
-  for(let i=0;i<count;i++){
-    positions[i*3]=(Math.random()-.5)*30;
-    positions[i*3+1]=.25+Math.random()*4.7;
-    positions[i*3+2]=(Math.random()-.5)*28-1;
-    clubSmokeVelocities.push({
-      x:(Math.random()-.5)*.018,
-      y:.004+Math.random()*.012,
-      z:(Math.random()-.5)*.018,
-      phase:Math.random()*Math.PI*2,
-      size:.55+Math.random()*1.1
-    });
-  }
-
-  const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
-
-  const mat=new THREE.PointsMaterial({
-    map:texture,
-    color:0xd9d9d9,
-    size:.9,
-    transparent:true,
-    opacity:.16,
-    depthWrite:false,
-    blending:THREE.NormalBlending,
-    sizeAttenuation:true
-  });
-
-  clubSmoke=new THREE.Points(geo,mat);
-  clubSmoke.renderOrder=2;
-  scene.add(clubSmoke);
-}
-
-function animateClubSmoke(time,bass,level){
-  if(!clubSmoke) return;
-  const attr=clubSmoke.geometry.attributes.position;
-  const a=attr.array;
-  const lift=.008+Math.max(bass,level)*.018;
-
-  for(let i=0;i<clubSmokeVelocities.length;i++){
-    const v=clubSmokeVelocities[i];
-    const n=i*3;
-    a[n]+=v.x+Math.sin(time*.35+v.phase)*.0025;
-    a[n+1]+=v.y+lift*.35;
-    a[n+2]+=v.z+Math.cos(time*.28+v.phase)*.0025;
-
-    if(a[n]>15) a[n]=-15;
-    if(a[n]<-15) a[n]=15;
-    if(a[n+1]>5.4) a[n+1]=.18+Math.random()*.35;
-    if(a[n+2]>15) a[n+2]=-15;
-    if(a[n+2]<-15) a[n+2]=15;
-  }
-
-  attr.needsUpdate=true;
-  clubSmoke.material.opacity=.11+Math.min(.14,Math.max(bass,level)*.22);
-  clubSmoke.material.size=.78+Math.max(bass,0)*.55;
-}
-
-function animateClubLasers(time,bass,level){
-  clubLasers.forEach((laser,i)=>{
-    const phase=laser.phase;
-    const sweepX=Math.sin(time*.55+phase)*2.8;
-    const sweepZ=Math.cos(time*.42+phase)*2.2;
-    const target=new THREE.Vector3(sweepX,0,-1+sweepZ);
-    laser.group.lookAt(target);
-
-    const pulse=.75+Math.max(bass,level)*2.2;
-    laser.beam.material.opacity=Math.min(.42,laser.baseOpacity*pulse);
-    laser.beam.scale.x=1+Math.max(bass,0)*1.8;
-    laser.beam.scale.z=1+Math.max(bass,0)*1.8;
-  });
 }
 
 function createFloor(){
@@ -2392,1089 +2203,119 @@ function createCeilingBeams(){
 
 function createSpeakers(){
 
-  // EWS DUB SOUND SYSTEM — large reggae/dub style stacks.
-  // Both stacks face the dance floor and react subtly to the low end.
-  const cabinetMat=new THREE.MeshStandardMaterial({
-    color:0x070707,
-    metalness:.28,
-    roughness:.76
+  // DUB / REGGAE SOUND SYSTEMS
+  // Fixed on the floor, perfectly straight, facing the dance floor.
+  const cabinetMat = new THREE.MeshStandardMaterial({
+    color:0x050505,
+    metalness:.18,
+    roughness:.78
+  });
+  const edgeMat = new THREE.MeshStandardMaterial({
+    color:0x171717,
+    metalness:.35,
+    roughness:.55
+  });
+  const coneMat = new THREE.MeshStandardMaterial({
+    color:0x090909,
+    metalness:.05,
+    roughness:.9
   });
 
-  const edgeMat=new THREE.MeshStandardMaterial({
-    color:0x151515,
-    metalness:.5,
-    roughness:.5
-  });
+  window.dubSpeakerDrivers = [];
 
-  const coneMat=new THREE.MeshStandardMaterial({
-    color:0x202020,
-    metalness:.15,
-    roughness:.68
-  });
-
-  const dustMat=new THREE.MeshBasicMaterial({color:0x090909});
-
-  const stackPositions=[[-9.2,0,-8.8],[9.2,0,-8.8]];
-
-  stackPositions.forEach((pos,stackIndex)=>{
-    const stack=new THREE.Group();
-    stack.position.set(pos[0],0,pos[2]);
-
-    // Three large bass bins.
-    for(let i=0;i<3;i++){
-      const cab=new THREE.Mesh(
-        new THREE.BoxGeometry(3.15,1.65,1.65),
-        cabinetMat
-      );
-      cab.position.y=.83+i*1.68;
-      cab.castShadow=true;
-      cab.receiveShadow=true;
-      stack.add(cab);
-
-      // Huge bass driver on the front face.
-      const woofer=new THREE.Mesh(
-        new THREE.CylinderGeometry(.62,.62,.18,32),
-        coneMat
-      );
-      woofer.rotation.x=Math.PI/2;
-      woofer.position.set(0,.83+i*1.68,-.91);
-      woofer.userData.isDubWoofer=true;
-      stack.add(woofer);
-
-      const ring=new THREE.Mesh(
-        new THREE.TorusGeometry(.63,.055,10,32),
-        edgeMat
-      );
-      ring.position.set(0,.83+i*1.68,-1.01);
-      ring.rotation.x=Math.PI/2;
-      stack.add(ring);
-    }
-
-    // Mid/high section on top of the bass bins.
-    const topY=5.25;
-    const topCab=new THREE.Mesh(
-      new THREE.BoxGeometry(2.65,1.55,1.35),
-      cabinetMat
+  function addDriver(group, x, y, z, radius){
+    const driver = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius, radius, .16, 32),
+      coneMat
     );
-    topCab.position.y=topY;
-    topCab.castShadow=true;
-    stack.add(topCab);
+    // Cylinder axis is Y; turn it so the speaker face points forward (+Z).
+    driver.rotation.x = Math.PI/2;
+    driver.position.set(x,y,z);
+    group.add(driver);
+    window.dubSpeakerDrivers.push({mesh:driver, baseZ:z, radius});
 
-    for(let i=0;i<3;i++){
-      const horn=new THREE.Mesh(
-        new THREE.CylinderGeometry(.25,.38,.16,24),
-        edgeMat
-      );
-      horn.rotation.x=Math.PI/2;
-      horn.position.set(-.72+i*.72,topY,-.74);
-      stack.add(horn);
-    }
-
-    // Thin frame lines give the stacks the classic hand-built sound-system look.
-    const frame=new THREE.LineSegments(
-      new THREE.EdgesGeometry(new THREE.BoxGeometry(3.35,6.95,1.78)),
-      new THREE.LineBasicMaterial({color:0x303030,transparent:true,opacity:.75})
-    );
-    frame.position.y=3.48;
-    stack.add(frame);
-
-    // Small top plate / handle.
-    const plate=new THREE.Mesh(
-      new THREE.BoxGeometry(2.1,.08,1.15),
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(radius*.72, .035, 8, 32),
       edgeMat
     );
-    plate.position.y=6.08;
-    stack.add(plate);
-
-    // Point the face directly at the middle of the dance floor.
-    stack.lookAt(new THREE.Vector3(0,2.4,-1));
-    stack.rotation.y+=Math.PI;
-
-    scene.add(stack);
-    dubSoundSystems.push({stack,baseY:stack.position.y,phase:stackIndex*Math.PI});
-  });
-}
-
-function animateDubSoundSystems(bass,level,time){
-  const pulse=Math.max(0,bass)*.055;
-  dubSoundSystems.forEach((s,i)=>{
-    const breathing=1+Math.sin(time*1.7+s.phase)*.006;
-    s.stack.scale.set(1+pulse*breathing,1+pulse*breathing,1+pulse*breathing);
-  });
-}
-
-function createParticles(){
-
-  const count=900;
-
-  const geo =
-    new THREE.BufferGeometry();
-
-  const pos =
-    new Float32Array(
-      count*3
-    );
-
-  for(
-    let i=0;
-    i<count;
-    i++
-  ){
-
-    pos[i*3]=
-      (Math.random()-.5)*34;
-
-    pos[i*3+1]=
-      Math.random()*5.8;
-
-    pos[i*3+2]=
-      (Math.random()-.5)*34;
-
+    ring.rotation.x = Math.PI/2;
+    ring.position.set(x,y,z-.09);
+    group.add(ring);
   }
 
-  geo.setAttribute(
-    'position',
-    new THREE.BufferAttribute(
-      pos,
-      3
-    )
-  );
+  function addStack(x){
+    const group = new THREE.Group();
+    group.position.set(x,0,-6.5);
+    // Both stacks are perfectly straight. Front faces point toward +Z,
+    // i.e. directly toward the centre of the dance floor.
+    group.rotation.y = 0;
+    scene.add(group);
 
-  particles =
-    new THREE.Points(
-      geo,
-      new THREE.PointsMaterial({
-        color:0xffffff,
-        size:.035,
-        transparent:true,
-        opacity:.28
-      })
+    // Bottom bass bins — fixed directly on the floor.
+    const sub1 = new THREE.Mesh(new THREE.BoxGeometry(3.2,1.65,1.65), cabinetMat);
+    sub1.position.set(0,.825,0);
+    group.add(sub1);
+    const sub2 = new THREE.Mesh(new THREE.BoxGeometry(3.2,1.65,1.65), cabinetMat);
+    sub2.position.set(0,2.47,0);
+    group.add(sub2);
+
+    // Heavy middle cabinet.
+    const mid = new THREE.Mesh(new THREE.BoxGeometry(3.0,1.45,1.55), cabinetMat);
+    mid.position.set(0,4.02,0);
+    group.add(mid);
+
+    // High-frequency top cabinet.
+    const top = new THREE.Mesh(new THREE.BoxGeometry(2.5,1.15,1.4), edgeMat);
+    top.position.set(0,5.32,0);
+    group.add(top);
+
+    // Bass drivers.
+    addDriver(group,-.72,.82,.86,.58);
+    addDriver(group,.72,.82,.86,.58);
+    addDriver(group,-.72,2.47,.86,.58);
+    addDriver(group,.72,2.47,.86,.58);
+
+    // Mid drivers.
+    addDriver(group,-.62,4.02,.81,.46);
+    addDriver(group,.62,4.02,.81,.46);
+
+    // Highs / horns.
+    const hornL = new THREE.Mesh(
+      new THREE.CylinderGeometry(.27,.42,.25,4),
+      coneMat
     );
+    hornL.rotation.x=Math.PI/2;
+    hornL.position.set(-.62,5.32,.74);
+    group.add(hornL);
 
-  scene.add(
-    particles
-  );
+    const hornR = hornL.clone();
+    hornR.position.x=.62;
+    group.add(hornR);
 
-}
-
-function createPlayer(){
-
-  playerBody =
-    new THREE.Group();
-
-  const body =
-    new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        .25,
-        .32,
-        1,
-        12
-      ),
-      new THREE.MeshStandardMaterial({
-        color:0xffffff,
-        roughness:.7
-      })
-    );
-
-  body.position.y=.5;
-
-  playerBody.add(
-    body
-  );
-
-  const head =
-    new THREE.Mesh(
-      new THREE.SphereGeometry(
-        .23,
-        16,
-        16
-      ),
-      new THREE.MeshStandardMaterial({
-        color:0xdddddd,
-        roughness:.7
-      })
-    );
-
-  head.position.y=1.25;
-
-  playerBody.add(
-    head
-  );
-
-  playerBody.position.set(
-    0,
-    0,
-    13
-  );
-
-  scene.add(
-    playerBody
-  );
-
-}
-
-/* =========================================================
-   AUDIO
-========================================================= */
-
-function setupAudio(){
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  indicator.textContent=
-    'AUDIO: READY';
-
-  indicator.classList.remove(
-    'live',
-    'error'
-  );
-
-  button.textContent=
-    '▶ AUDIO: START';
-
-  button.classList.remove(
-    'live'
-  );
-
-}
-
-async function unlockEWSAudio(){
-
-  const audio = document.getElementById('ews-audio');
-  if(!audio) return false;
-
-  try{
-    if(audioContext && audioContext.state === 'suspended'){
-      await audioContext.resume();
+    // Front frame / grille bars for the classic stacked sound-system look.
+    for(let y=0.12;y<6.0;y+=.48){
+      const bar=new THREE.Mesh(
+        new THREE.BoxGeometry(3.28,.055,.08),
+        edgeMat
+      );
+      bar.position.set(0,y,.9);
+      group.add(bar);
     }
 
-    if(audioStarted && audio.paused){
-      await audio.play();
-      return true;
+    // Feet keep the whole stack visually planted on the floor.
+    for(const fx of [-1.25,1.25]){
+      const foot=new THREE.Mesh(
+        new THREE.BoxGeometry(.34,.18,.7),
+        cabinetMat
+      );
+      foot.position.set(fx,.09,.18);
+      group.add(foot);
     }
-
-    // If the stream was blocked by autoplay policy, retry the full
-    // HLS startup from this real user interaction.
-    if(!audioStarted){
-      await startSSHAudio();
-      return true;
-    }
-  }catch(err){
-    console.warn('[EWS AUDIO UNLOCK]', err);
   }
 
-  return false;
-}
-
-async function startSSHAudio(){
-
-  const audio =
-    document.getElementById(
-      'ews-audio'
-    );
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  if(!audio)return;
-
-  const hlsUrl =
-    window.location.origin+
-    '/hls/ews/index.m3u8';
-
-  indicator.classList.remove(
-    'error'
-  );
-
-  indicator.classList.add(
-    'live'
-  );
-
-  indicator.textContent=
-    'AUDIO: CONNECTING...';
-
-  button.disabled=true;
-
-  button.textContent=
-    '● AUDIO: CONNECTING';
-
-  try{
-
-    if(!audioContext){
-
-      audioContext =
-        new(
-          window.AudioContext ||
-          window.webkitAudioContext
-        )();
-
-      audioSource =
-        audioContext.createMediaElementSource(
-          audio
-        );
-
-      analyser =
-        audioContext.createAnalyser();
-
-      analyser.fftSize=256;
-
-      analyser.smoothingTimeConstant=.82;
-
-      freqData =
-        new Uint8Array(
-          analyser.frequencyBinCount
-        );
-
-      audioSource.connect(
-        analyser
-      );
-
-      analyser.connect(
-        audioContext.destination
-      );
-
-    }
-
-    if(
-      audioContext.state===
-      'suspended'
-    ){
-
-      await audioContext.resume();
-
-    }
-
-    if(hls){
-
-      try{
-        hls.destroy();
-      }catch(e){}
-
-      hls=null;
-
-    }
-
-    if(
-      window.Hls &&
-      Hls.isSupported()
-    ){
-
-      hls =
-        new Hls({
-
-          enableWorker:true,
-
-          lowLatencyMode:true,
-
-          backBufferLength:30,
-
-          maxBufferLength:10,
-
-          maxMaxBufferLength:20,
-
-          liveSyncDurationCount:3,
-
-          liveMaxLatencyDurationCount:6
-
-        });
-
-      hls.loadSource(
-        hlsUrl
-      );
-
-      hls.attachMedia(
-        audio
-      );
-
-      hls.on(
-        Hls.Events.MANIFEST_PARSED,
-        async function(){
-
-          indicator.textContent=
-            'AUDIO: LIVE';
-
-          button.textContent=
-            '● AUDIO: LIVE';
-
-          button.classList.add(
-            'live'
-          );
-
-          button.disabled=false;
-
-          audioStarted=true;
-
-          try{
-
-            await audio.play();
-
-          }catch(err){
-
-            console.warn(
-              'Audio play blocked:',
-              err
-            );
-
-            indicator.textContent=
-              'AUDIO: PRESS START';
-
-            button.textContent=
-              '▶ AUDIO: START';
-
-            button.classList.remove(
-              'live'
-            );
-
-          }
-
-        }
-      );
-
-      hls.on(
-        Hls.Events.ERROR,
-        function(
-          event,
-          data
-        ){
-
-          console.error(
-            '[HLS]',
-            data
-          );
-
-          if(!data.fatal)return;
-
-          if(
-            data.type===
-            Hls.ErrorTypes.NETWORK_ERROR
-          ){
-
-            indicator.textContent=
-              'AUDIO: RECONNECTING...';
-
-            button.textContent=
-              '● AUDIO: RECONNECTING';
-
-            setTimeout(
-              function(){
-
-                if(hls){
-
-                  try{
-                    hls.startLoad();
-                  }catch(e){}
-
-                }
-
-              },
-              1000
-            );
-
-          }
-
-          else if(
-            data.type===
-            Hls.ErrorTypes.MEDIA_ERROR
-          ){
-
-            indicator.textContent=
-              'AUDIO: RECOVERING...';
-
-            try{
-
-              hls.recoverMediaError();
-
-            }catch(e){
-
-              console.error(e);
-
-            }
-
-          }
-
-          else{
-
-            indicator.textContent=
-              'AUDIO: NO STREAM';
-
-            indicator.classList.remove(
-              'live'
-            );
-
-            indicator.classList.add(
-              'error'
-            );
-
-            button.textContent=
-              '▶ AUDIO: RETRY';
-
-            button.classList.remove(
-              'live'
-            );
-
-            button.disabled=false;
-
-          }
-
-        }
-      );
-
-    }
-
-    else if(
-      audio.canPlayType(
-        'application/vnd.apple.mpegurl'
-      )
-    ){
-
-      audio.src=
-        hlsUrl;
-
-      audio.addEventListener(
-        'loadedmetadata',
-        async function(){
-
-          try{
-
-            await audio.play();
-
-          }catch(err){
-
-            console.error(err);
-
-          }
-
-        },
-        {
-          once:true
-        }
-      );
-
-    }
-
-    else{
-
-      throw new Error(
-        'HLS is not supported by this browser'
-      );
-
-    }
-
-    audio.onplaying=function(){
-
-      indicator.textContent=
-        'AUDIO: LIVE';
-
-      indicator.classList.add(
-        'live'
-      );
-
-      indicator.classList.remove(
-        'error'
-      );
-
-      button.textContent=
-        '● AUDIO: LIVE';
-
-      button.classList.add(
-        'live'
-      );
-
-      button.disabled=false;
-
-      audioStarted=true;
-
-    };
-
-    audio.onpause=function(){
-
-      if(
-        audioStarted &&
-        !audio.ended
-      ){
-
-        indicator.textContent=
-          'AUDIO: PAUSED';
-
-        button.textContent=
-          '▶ AUDIO: RESUME';
-
-        button.classList.remove(
-          'live'
-        );
-
-      }
-
-    };
-
-    audio.onerror=function(){
-
-      console.error(
-        '[AUDIO]',
-        audio.error
-      );
-
-      indicator.textContent=
-        'AUDIO: ERROR';
-
-      indicator.classList.remove(
-        'live'
-      );
-
-      indicator.classList.add(
-        'error'
-      );
-
-      button.textContent=
-        '▶ AUDIO: RETRY';
-
-      button.classList.remove(
-        'live'
-      );
-
-      button.disabled=false;
-
-    };
-
-  }catch(err){
-
-    console.error(
-      '[EWS AUDIO ERROR]',
-      err
-    );
-
-    indicator.textContent=
-      'AUDIO: NO STREAM';
-
-    indicator.classList.remove(
-      'live'
-    );
-
-    indicator.classList.add(
-      'error'
-    );
-
-    button.textContent=
-      '▶ AUDIO: RETRY';
-
-    button.classList.remove(
-      'live'
-    );
-
-    button.disabled=false;
-
-  }
-
-}
-
-/* =========================================================
-   CONTROLS
-========================================================= */
-
-document.addEventListener('DOMContentLoaded',()=>{
-  const input=document.getElementById('chat-input');
-  if(input){
-    input.addEventListener('focus',()=>{ chatInputFocused=true; chatMode=true; });
-    input.addEventListener('blur',()=>{ chatInputFocused=false; });
-    input.addEventListener('keydown',e=>{
-      e.stopPropagation();
-      if(e.key==='Enter'){
-        e.preventDefault();
-        const form=document.getElementById('chat-form');
-        if(form) form.requestSubmit();
-      }
-    });
-  }
-});
-
-function setupControls(){
-
-  window.addEventListener(
-    'resize',
-    function(){
-
-      if(
-        !camera ||
-        !renderer
-      ){
-        return;
-      }
-
-      camera.aspect=
-        innerWidth/
-        innerHeight;
-
-      camera.updateProjectionMatrix();
-
-      renderer.setSize(
-        innerWidth,
-        innerHeight
-      );
-
-      if(cssRenderer){
-        cssRenderer.setSize(innerWidth,innerHeight);
-      }
-
-    }
-  );
-
-  window.addEventListener(
-    'keydown',
-    function(e){
-
-      // While typing, movement keys must never get stuck in the 3D controller.
-      const active=document.activeElement;
-      const typing=active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA');
-
-      if(e.code==='Escape' && chatMode){
-        e.preventDefault();
-        chatMode=false;
-
-let chatInputFocused=false;
-        const input=document.getElementById('chat-input');
-        if(input) input.blur();
-        keys={};
-        return;
-      }
-
-      if(typing && !chatMode){
-        return;
-      }
-
-      if(chatMode && active && active.id==='chat-input'){
-        if(e.code==='KeyW' || e.code==='KeyA' || e.code==='KeyS' || e.code==='KeyD' || e.code==='ArrowUp' || e.code==='ArrowDown' || e.code==='ArrowLeft' || e.code==='ArrowRight'){
-          return;
-        }
-      }
-
-      if(!chatMode){
-        if(e.code==='KeyB'){ toggleEmotesMenu(); e.preventDefault(); return; }
-        if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
-        if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
-        if(e.code==='Digit3'){ playDance(3); e.preventDefault(); return; }
-        if(e.code==='Digit4'){ playDance(4); e.preventDefault(); return; }
-        if(e.code==='Digit5'){ playDance(5); e.preventDefault(); return; }
-        if(e.code==='Digit6'){ playDance(6); e.preventDefault(); return; }
-        if(['KeyW','KeyA','KeyS','KeyD','Space'].includes(e.code) && activeDance){ stopDance(); }
-      }
-
-      keys[e.code]=true;
-
-      if(
-        e.code==='KeyC'
-      ){
-
-        // C opens/closes chat. Prevent the same key from being
-        // inserted into the input when focus is moved during this keydown.
-        e.preventDefault();
-        e.stopPropagation();
-
-        chatMode=
-          !chatMode;
-
-        toggleChat();
-
-        keys={};
-        return;
-
-      }
-
-      // SPACE = JUMP
-      // Пока открыт чат — пробел остаётся обычным пробелом.
-      if(
-        e.code==='Space' &&
-        !chatMode &&
-        pointerLocked &&
-        isGrounded
-      ){
-
-        e.preventDefault();
-
-        jumpVelocity=JUMP_FORCE;
-        isGrounded=false;
-
-      }
-
-    }
-  );
-
-  window.addEventListener(
-    'keyup',
-    function(e){
-
-      keys[e.code]=false;
-
-    }
-  );
-
-  const canvas =
-    document.getElementById(
-      'canvas3d'
-    );
-
-  canvas.addEventListener(
-    'click',
-    function(){
-
-      if(!chatMode){
-
-        canvas.requestPointerLock();
-
-      }
-
-    }
-  );
-
-  document.addEventListener(
-    'pointerlockchange',
-    function(){
-
-      pointerLocked=
-        document.pointerLockElement===
-        canvas;
-
-    }
-  );
-
-  document.addEventListener(
-    'mousemove',
-    function(e){
-
-      if(!pointerLocked)return;
-
-      yaw-=
-        e.movementX*.002;
-
-      pitch-=
-        e.movementY*.002;
-
-      pitch=
-        Math.max(
-          -1.45,
-          Math.min(
-            1.45,
-            pitch
-          )
-        );
-
-    }
-  );
-
-}
-
-/* =========================================================
-   AUDIO AUTOPLAY UNLOCK
-   Browsers may block live audio after a reconnect/re-entry.
-   The first click/touch/key interaction gives the page a real
-   user gesture, so we use it to resume the existing HLS audio.
-========================================================= */
-(function(){
-  const unlock=async function(){
-    const ok=await unlockEWSAudio();
-    if(ok){
-      document.removeEventListener('pointerdown',unlock);
-      document.removeEventListener('touchstart',unlock);
-      document.removeEventListener('keydown',unlock);
-    }
-  };
-
-  document.addEventListener('pointerdown',unlock,{passive:true});
-  document.addEventListener('touchstart',unlock,{passive:true});
-  document.addEventListener('keydown',unlock,{passive:true});
-})();
-
-function toggleChat(){
-
-  const input =
-    document.getElementById(
-      'chat-input'
-    );
-
-  if(chatMode){
-
-    if(document.pointerLockElement) document.exitPointerLock();
-
-    input.focus();
-
-  }else{
-
-    input.blur();
-    keys={};
-    const canvas=document.getElementById('canvas3d');
-    if(canvas && document.pointerLockElement!==canvas){
-      try{ canvas.requestPointerLock(); }catch(err){}
-    }
-
-  }
-
-}
-
-
-/* =========================================================
-   CLUB SCREEN MEDIA
-========================================================= */
-
-function toggleScreenMenu(){
-  const menu=document.getElementById('screen-menu');
-  if(!menu) return;
-  menu.classList.toggle('open');
-  if(menu.classList.contains('open')){
-    const input=document.getElementById('screen-url');
-    setTimeout(()=>input && input.focus(),40);
-  }
-}
-
-function setScreenStatus(text){
-  const el=document.getElementById('screen-status');
-  if(el) el.textContent=text;
-}
-
-function youtubeEmbed(url){
-  try{
-    const u=new URL(url);
-    let id='';
-    if(u.hostname.includes('youtu.be')){
-      id=u.pathname.split('/').filter(Boolean)[0]||'';
-    }else if(u.hostname.includes('youtube.com')){
-      id=u.searchParams.get('v')||'';
-      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
-      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
-    }
-    if(!id) return null;
-    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
-  }catch(e){ return null; }
-}
-
-function twitchEmbed(url){
-  try{
-    const u=new URL(url);
-    if(!u.hostname.includes('twitch.tv')) return null;
-    const parts=u.pathname.split('/').filter(Boolean);
-    if(!parts.length) return null;
-    const parent=location.hostname || 'ews-sessions.onrender.com';
-    if(parts[0]==='videos' && parts[1]){
-      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-    }
-    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-  }catch(e){ return null; }
-}
-
-function normalizeClubScreenUrl(raw){
-  const value=String(raw||'').trim();
-  if(!value) return null;
-
-  const yt=youtubeEmbed(value);
-  if(yt) return {src:yt,name:'YOUTUBE'};
-
-  const tw=twitchEmbed(value);
-  if(tw) return {src:tw,name:'TWITCH'};
-
-  try{
-    const u=new URL(value);
-    if(u.protocol!=='http:' && u.protocol!=='https:') return null;
-    return {src:u.href,name:'WEBSITE'};
-  }catch(e){
-    return null;
-  }
-}
-
-function isClubHost(){
-  return String(currentUser||'').trim().toLowerCase()==='mvxtra';
-}
-
-function loadClubScreen(){
-  if(!isClubHost()){ setScreenStatus('Только главный пользователь клуба может включать экран.'); return; }
-  const input=document.getElementById('screen-url'); const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
-  if(!input||!frame||!panel)return; const result=normalizeClubScreenUrl(input.value);
-  if(!result){setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');return;}
-  frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — экран закреплён. Нажми ESC, чтобы выйти из управления камерой и кликать по плееру.');
-  if(socket)socket.emit('club-screen-state',{src:result.src,url:input.value.trim(),name:result.name,active:true,owner:currentUser});
-  const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
-}
-
-function clearClubScreen(){
-  if(!isClubHost())return; const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
-  if(frame)frame.src='about:blank'; if(panel)panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl='';
-  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser}); setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
-}
-
-// When the user wants to click the embedded player, release pointer lock first.
-// The 3D screen remains physically fixed to the wall; only mouse control is released.
-function enableScreenInteraction(){
-  if(document.pointerLockElement){
-    try{ document.exitPointerLock(); }catch(e){}
-  }
-  const panel=document.getElementById('css3d-screen');
-  if(panel){ panel.style.pointerEvents='auto'; }
-}
-
-document.addEventListener('mousedown',function(e){
-  const screen=e.target && e.target.closest ? e.target.closest('#css3d-screen') : null;
-  if(screen) enableScreenInteraction();
-});
-
-/* =========================================================
-   REMOTE CLUB SCREEN
-   The server sends one shared screen state to every guest.
-   This function is intentionally separate from loadClubScreen()
-   because friends must never need to be the host to display it.
-========================================================= */
-function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('css3d-screen');
-  if(!frame || !panel) return;
-
-  state=state || {};
-
-  if(state.active !== true || !state.src){
-    frame.src='about:blank';
-    panel.classList.remove('active');
-    screenMediaActive=false;
-    screenMediaUrl='';
-    return;
-  }
-
-  // Prefer the original URL so every guest builds its own embed URL.
-  // This is important for Twitch because the embed parent must match the
-  // hostname used by the guest's browser, not the host's browser.
-  let src='';
-  const originalUrl=String(state.url||'').trim();
-  if(originalUrl){
-    const normalized=normalizeClubScreenUrl(originalUrl);
-    src=normalized ? normalized.src : originalUrl;
-  }else{
-    src=String(state.src||'').trim();
-  }
-  if(!src) return;
-
-  // Do not reload the iframe every time a duplicate Socket.IO event arrives.
-  if(screenMediaUrl !== src){
-    frame.src=src;
-    screenMediaUrl=src;
-  }
-
-  screenMediaActive=true;
-  panel.classList.add('active');
-
-  // Make sure the iframe can play media on every guest browser.
-  frame.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture');
-  frame.setAttribute('allowfullscreen','');
+  // Symmetrical, straight left/right placement.
+  addStack(-8.2);
+  addStack(8.2);
 }
 
 /* =========================================================
@@ -3572,6 +2413,15 @@ function animate(){
   audioLevel=
     audioLevel*.88+
     level*.12;
+
+  // Dub stacks stay planted; only the speaker cones react slightly to bass.
+  if(window.dubSpeakerDrivers){
+    window.dubSpeakerDrivers.forEach(d=>{
+      const pulse=1+bassLevel*.045;
+      d.mesh.scale.set(pulse,pulse,1);
+      d.mesh.position.z=d.baseZ+bassLevel*.035;
+    });
+  }
 
   const speed=
     chatMode || activeDance
@@ -3891,13 +2741,7 @@ function animate(){
   }
 
 
-  animateClubSpotlights(time,bass,level);
-  animateClubLasers(time,bass,level);
-  animateDubSoundSystems(bass,level,time);
-  animateClubSmoke(time,bass,level);
-
   remotePlayers.forEach(p=>{
-    if(p.mixer) p.mixer.update(dt);
     if(p.dance) animateRemoteDance(p,time);
     else resetRemoteDancePose(p);
   });
@@ -3924,78 +2768,65 @@ function animate(){
 /* =========================================================
    REMOTE PLAYERS / SILHOUETTES
 ========================================================= */
-const EWS_AVATAR_URL='https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb';
-const ewsAvatarLoader=new THREE.GLTFLoader();
-
-function createAvatarLabel(username){
-  const c=document.createElement('canvas'); c.width=256; c.height=64;
-  const ctx=c.getContext('2d');
-  ctx.clearRect(0,0,256,64);
-  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
-  ctx.shadowColor='#000000'; ctx.shadowBlur=8;
-  ctx.fillText(username||'PLAYER',128,32);
-  const tex=new THREE.CanvasTexture(c);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  label.scale.set(1.8,.45,1); label.position.y=2.25;
-  return label;
-}
-
 function createRemotePlayer(data){
   if(!scene || !data || !data.id || data.id===socket?.id) return;
+
+  // If a stale object exists for this socket, replace it cleanly.
   if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
 
   const g=new THREE.Group();
   g.userData.username=data.username||'PLAYER';
-  const label=createAvatarLabel(g.userData.username);
-  g.add(label);
+
+  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
+  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
+
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
+  torso.position.y=.78;
+  g.add(torso);
+
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
+  head.position.y=1.42;
+  g.add(head);
+
+  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
+  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
+  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
+  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
+  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
+  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
+
+  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg};
+
+  const labelCanvas=document.createElement('canvas');
+  labelCanvas.width=256; labelCanvas.height=64;
+  const ctx=labelCanvas.getContext('2d');
+  ctx.clearRect(0,0,256,64);
+  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
+  ctx.fillText(g.userData.username,128,32);
+  const tex=new THREE.CanvasTexture(labelCanvas);
+  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+
+  const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
+  const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
+  const y=Number.isFinite(Number(data.y)) ? Number(data.y) : 0;
+  const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
+
+  g.position.set(x,y,z);
+  g.rotation.y=ry;
+  g.visible=true;
   scene.add(g);
 
-  const x=Number.isFinite(Number(data.x))?Number(data.x):0;
-  const z=Number.isFinite(Number(data.z))?Number(data.z):13;
-  const y=Number.isFinite(Number(data.y))?Number(data.y):0;
-  const ry=Number.isFinite(Number(data.yaw??data.ry))?Number(data.yaw??data.ry):0;
-  g.position.set(x,y,z); g.rotation.y=ry;
-
-  const entry={group:g,last:{x,z,yaw:ry},moving:!!data.moving,username:data.username||'PLAYER',dance:Number(data.dance)||0,danceStartedAt:Number(data.danceStartedAt)||0,mixer:null,actions:{},ready:false,baseY:y};
-  remotePlayers.set(data.id,entry);
-
-  ewsAvatarLoader.load(EWS_AVATAR_URL,gltf=>{
-    const avatar=gltf.scene;
-    // RobotExpressive GLB faces the opposite direction from EWS player yaw.
-    // Keep the player's network rotation unchanged and correct only the model.
-    avatar.rotation.y=Math.PI;
-    avatar.scale.setScalar(1.05);
-    avatar.position.y=0;
-    avatar.traverse(o=>{
-      if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; }
-    });
-    entry.avatar=avatar;
-    g.add(avatar);
-
-    entry.mixer=new THREE.AnimationMixer(avatar);
-    (gltf.animations||[]).forEach(clip=>{
-      entry.actions[clip.name.toLowerCase()]=entry.mixer.clipAction(clip);
-    });
-    entry.ready=true;
-    setRemoteAvatarAnimation(entry);
-  },undefined,err=>{
-    console.warn('EWS avatar load failed',err);
+  remotePlayers.set(data.id,{
+    group:g,
+    last:{x,z,yaw:ry},
+    moving:!!data.moving,
+    username:data.username||'PLAYER',
+    dance:Number(data.dance)||0,
+    danceStartedAt:Number(data.danceStartedAt)||0,
+    parts,
+    baseY:y
   });
-}
-
-function setRemoteAvatarAnimation(p){
-  if(!p?.mixer || !p.ready) return;
-  Object.values(p.actions).forEach(a=>a.stop());
-  const names=Object.keys(p.actions);
-  let wanted='idle';
-  if(p.dance){
-    const danceNames=names.filter(n=>n.includes('dance'));
-    wanted=danceNames[(p.dance-1)%Math.max(1,danceNames.length)] || danceNames[0] || names.find(n=>n.includes('walk')) || names[0];
-  }else if(p.moving){
-    wanted=names.find(n=>n.includes('walk')) || names.find(n=>n.includes('run')) || names[0];
-  }
-  const action=p.actions[wanted] || p.actions[names[0]];
-  if(action){ action.reset().fadeIn(.18).play(); p.currentAction=action; }
 }
 
 function updateRemotePlayer(data){
@@ -4017,11 +2848,8 @@ function updateRemotePlayer(data){
   const dz=nz-p.group.position.z;
 
   p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
-  const oldMoving=p.moving;
-  const oldDance=p.dance;
   if(data.dance!==undefined) p.dance=Number(data.dance)||0;
   if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
-  if(oldMoving!==p.moving || oldDance!==p.dance) setRemoteAvatarAnimation(p);
   p.group.position.x=nx;
   p.group.position.y=ny;
   p.group.position.z=nz;
