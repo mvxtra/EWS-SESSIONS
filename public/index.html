@@ -1018,6 +1018,7 @@ let sitting=false;
 let currentSeatId=null;
 let lastSitAttempt=0;
 let logoSign=null;
+let bartenderRoot=null;
 let clubLasers=[];
 let movingHeads=[];
 let laserDevices=[];
@@ -1960,85 +1961,50 @@ function createBar(){
 }
 
 function createBartender(){
-  // Bartender is placed on the far side of the bar, behind the counter.
-  const skin=new THREE.MeshStandardMaterial({color:0x8a5f4b,roughness:.88});
-  const shirt=new THREE.MeshStandardMaterial({color:0x151515,roughness:.72,metalness:.05});
-  const apron=new THREE.MeshStandardMaterial({color:0x343434,roughness:.82});
-  const pants=new THREE.MeshStandardMaterial({color:0x080808,roughness:.92});
-  const hairMat=new THREE.MeshStandardMaterial({color:0x101010,roughness:1});
+  bartenderRoot=new THREE.Group();
+  bartenderRoot.position.set(-12,0,8.62);
+  bartenderRoot.rotation.y=Math.PI;
 
-  const npc=new THREE.Group();
-  npc.position.set(-12,0,8.72);
-  npc.rotation.y=0;
+  const placeholderMat=new THREE.MeshStandardMaterial({color:0x17191b,roughness:.78,metalness:.08});
+  const placeholder=new THREE.Mesh(new THREE.CapsuleGeometry(.34,.92,8,16),placeholderMat);
+  placeholder.position.y=1.02; placeholder.scale.z=.72;
+  bartenderRoot.add(placeholder);
+  bartenderRoot.userData.placeholder=placeholder;
 
-  const body=new THREE.Mesh(new THREE.CylinderGeometry(.34,.39,1.42,16),shirt);
-  body.position.y=1.25;
-  body.castShadow=true;
-  npc.add(body);
-
-  const apronMesh=new THREE.Mesh(new THREE.BoxGeometry(.55,.74,.035),apron);
-  apronMesh.position.set(0,1.18,-.24);
-  apronMesh.castShadow=true;
-  npc.add(apronMesh);
-
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.29,20,14),skin);
-  head.position.y=2.04;
-  head.castShadow=true;
-  npc.add(head);
-
-  const hair=new THREE.Mesh(new THREE.SphereGeometry(.30,20,10,0,Math.PI*2,0,Math.PI*.48),hairMat);
-  hair.position.y=2.14;
-  npc.add(hair);
-
-  for(const x of [-.22,.22]){
-    const arm=new THREE.Mesh(new THREE.CylinderGeometry(.07,.085,.70,10),skin);
-    arm.position.set(x,1.38,-.03);
-    arm.rotation.z=x<0?-.22:.22;
-    arm.castShadow=true;
-    npc.add(arm);
+  const railMat=new THREE.MeshStandardMaterial({color:0x14171a,metalness:.82,roughness:.28});
+  const brassMat=new THREE.MeshStandardMaterial({color:0x9b7a3b,metalness:.9,roughness:.22});
+  const zone=new THREE.Group(); zone.position.set(-12,0,8.62);
+  for(const x of [-3.25,3.25]){
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,.88,14),brassMat);
+    post.position.set(x,.44,.55); zone.add(post);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(.075,12,8),brassMat);
+    cap.position.set(x,.89,.55); zone.add(cap);
   }
+  const rail=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,6.5,14),brassMat);
+  rail.rotation.z=Math.PI/2; rail.position.set(0,.67,.55); zone.add(rail);
+  const lower=new THREE.Mesh(new THREE.BoxGeometry(6.5,.55,.06),railMat);
+  lower.position.set(0,.32,.78); zone.add(lower);
+  const shelf=new THREE.Mesh(new THREE.BoxGeometry(5.8,.07,.52),railMat);
+  shelf.position.set(0,1.32,.18); zone.add(shelf);
+  scene.add(zone); scene.add(bartenderRoot); bartenderRoot.userData.npc=true;
+}
 
-  for(const x of [-.17,.17]){
-    const leg=new THREE.Mesh(new THREE.BoxGeometry(.17,.82,.2),pants);
-    leg.position.set(x,.43,0);
-    leg.castShadow=true;
-    npc.add(leg);
-  }
-
-  const bottle=new THREE.Mesh(new THREE.CylinderGeometry(.055,.07,.34,12),new THREE.MeshStandardMaterial({color:0x526b5b,roughness:.35,metalness:.25}));
-  bottle.position.set(.28,1.08,-.32);
-  npc.add(bottle);
-
-  const nameCanvas=document.createElement('canvas');
-  nameCanvas.width=256; nameCanvas.height=64;
-  const nctx=nameCanvas.getContext('2d');
-  nctx.fillStyle='rgba(0,0,0,.7)'; nctx.fillRect(8,12,240,40);
-  nctx.fillStyle='#fff'; nctx.font='bold 22px Arial'; nctx.textAlign='center';
-  nctx.fillText('BARTENDER',128,39);
-  const nameTex=new THREE.CanvasTexture(nameCanvas);
-  const name=new THREE.Sprite(new THREE.SpriteMaterial({map:nameTex,transparent:true,depthWrite:false}));
-  name.position.set(0,2.62,0); name.scale.set(1.5,.37,1);
-  npc.add(name);
-
-  // Dedicated bartender zone: low brass rail + posts, keeping the NPC clearly behind the bar.
-  const railMat=new THREE.MeshStandardMaterial({color:0x242424,metalness:.78,roughness:.28});
-  const brassMat=new THREE.MeshStandardMaterial({color:0xb08a42,metalness:.88,roughness:.22});
-  const zone=new THREE.Group();
-  zone.position.set(-12,0,8.72);
-  for(const x of [-3.0,3.0]){
-    const post=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,.92,12),brassMat);
-    post.position.set(x,.46,0); zone.add(post);
-    const cap=new THREE.Mesh(new THREE.SphereGeometry(.085,12,8),brassMat);
-    cap.position.set(x,.94,0); zone.add(cap);
-  }
-  const rail=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,6,12),brassMat);
-  rail.rotation.z=Math.PI/2; rail.position.set(0,.72,0); zone.add(rail);
-  const back=new THREE.Mesh(new THREE.BoxGeometry(6.2,.95,.08),railMat);
-  back.position.set(0,.48,.38); zone.add(back);
-  scene.add(zone);
-
-  scene.add(npc);
-  npc.userData.npc=true;
+function upgradeBartenderToHuman(){
+  if(!bartenderRoot) return;
+  const tpl=avatarTemplates.male||avatarTemplates.female;
+  if(!tpl) return;
+  if(bartenderRoot.userData.avatar) bartenderRoot.remove(bartenderRoot.userData.avatar);
+  const avatar=THREE.SkeletonUtils&&THREE.SkeletonUtils.clone?THREE.SkeletonUtils.clone(tpl.scene):tpl.scene.clone(true);
+  avatar.traverse(o=>{
+    if(o.isMesh){ o.castShadow=true; o.receiveShadow=true;
+      if(o.material){ const mats=Array.isArray(o.material)?o.material:[o.material]; mats.forEach(m=>{ if(m.color)m.color.multiplyScalar(.72); if('roughness' in m)m.roughness=Math.max(.35,m.roughness); }); }
+    }
+  });
+  const box=new THREE.Box3().setFromObject(avatar), size=new THREE.Vector3(); box.getSize(size);
+  avatar.scale.setScalar(1.82/Math.max(.01,size.y));
+  const box2=new THREE.Box3().setFromObject(avatar); avatar.position.y=-box2.min.y; avatar.rotation.y=Math.PI;
+  bartenderRoot.add(avatar); bartenderRoot.userData.avatar=avatar;
+  if(bartenderRoot.userData.placeholder) bartenderRoot.userData.placeholder.visible=false;
 }
 
 function createColumns(){
@@ -2191,7 +2157,7 @@ function createClubLogo(){
 
   logoSign=new THREE.Mesh(new THREE.CircleGeometry(1.55,64),mat);
   // Move the logo farther away from the main screen, toward the right rear wall.
-  logoSign.position.set(12.9,3.65,-16.55);
+  logoSign.position.set(11.9,3.12,-16.55);
   logoSign.rotation.y=0;
   scene.add(logoSign);
 
@@ -2212,7 +2178,7 @@ function createClubLogo(){
   neonObjects.push(inner);
 
   const glow=new THREE.PointLight(0x6fa8ff,2.2,9);
-  glow.position.set(12.9,3.65,-15.7);
+  glow.position.set(11.9,3.12,-15.7);
   scene.add(glow);
   lightObjects.push(glow);
   logoSign.userData.glowLight=glow;
@@ -2248,7 +2214,7 @@ function createRealisticLighting(){
   }
 
   // Compact laser fixtures: each beam originates from the actual fixture body.
-  const laserColors=[0x00f6ff,0xff00d9,0x8d00ff,0x39ff14,0xff1744,0x00ffcc];
+  const laserColors=[0x00ffff,0xff00ff,0xa800ff,0x39ff00,0xff1744,0x00ffb7];
   for(let i=0;i<10;i++){
     const x=-13.5+i*3;
     const z=i%2===0?-5.2:4.2;
@@ -2271,7 +2237,7 @@ function createRealisticLighting(){
 
     const beam=new THREE.Mesh(
       new THREE.CylinderGeometry(.008,.018,1,6,1,true),
-      new THREE.MeshBasicMaterial({color:laserColors[i%laserColors.length],transparent:true,opacity:.42,depthWrite:false,blending:THREE.AdditiveBlending})
+      new THREE.MeshBasicMaterial({color:laserColors[i%laserColors.length],transparent:true,opacity:.72,depthWrite:false,blending:THREE.AdditiveBlending})
     );
     scene.add(beam);
     clubLasers.push(beam);
@@ -2473,29 +2439,36 @@ function createSpeakers(){
 }
 
 function createSmokeCannons(){
-  const bodyMat=new THREE.MeshStandardMaterial({color:0x111214,metalness:.78,roughness:.28});
-  const rimMat=new THREE.MeshStandardMaterial({color:0x25282b,metalness:.9,roughness:.2});
-  const nozzleMat=new THREE.MeshBasicMaterial({color:0xb7d7ff,transparent:true,opacity:.85});
+  const bodyMat=new THREE.MeshStandardMaterial({color:0x090a0c,metalness:.88,roughness:.22});
+  const rimMat=new THREE.MeshStandardMaterial({color:0x35383c,metalness:.94,roughness:.16});
+  const nozzleMat=new THREE.MeshBasicMaterial({color:0xf4fbff,transparent:true,opacity:.98});
   smokeCannons=[];
-  const positions=[[-5.8,.72,-10.35,.12],[5.8,.72,-10.35,-.12]];
+  const positions=[[-5.4,.56,-10.55,.10],[5.4,.56,-10.55,-.10]];
   positions.forEach(([x,y,z,turn])=>{
     const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.y=turn;
-    const base=new THREE.Mesh(new THREE.BoxGeometry(1.05,.28,.78),bodyMat); base.position.y=.14; g.add(base);
-    const housing=new THREE.Mesh(new THREE.CylinderGeometry(.28,.34,.55,16),bodyMat); housing.rotation.z=Math.PI/2; housing.position.set(0,.46,0); g.add(housing);
-    const rim=new THREE.Mesh(new THREE.TorusGeometry(.285,.045,10,24),rimMat); rim.rotation.y=Math.PI/2; rim.position.set(0,.46,.28); g.add(rim);
-    const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.05,16),nozzleMat); nozzle.rotation.x=Math.PI/2; nozzle.position.set(0,.46,.33); g.add(nozzle);
-    scene.add(g); smokeCannons.push({group:g,nozzle});
+    const base=new THREE.Mesh(new THREE.BoxGeometry(1.28,.28,.88),bodyMat); base.position.y=.14; g.add(base);
+    const housing=new THREE.Mesh(new THREE.CylinderGeometry(.30,.37,.68,20),bodyMat); housing.rotation.x=Math.PI/2; housing.position.set(0,.48,.16); g.add(housing);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(.31,.055,10,32),rimMat); rim.rotation.x=Math.PI/2; rim.position.set(0,.48,.52); g.add(rim);
+    const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.15,.18,.065,20),nozzleMat); nozzle.rotation.x=Math.PI/2; nozzle.position.set(0,.48,.57); g.add(nozzle);
+    const glow=new THREE.PointLight(0xe9f7ff,.75,2.8); glow.position.set(0,.48,.61); g.add(glow);
+    scene.add(g); smokeCannons.push({group:g,nozzle,glow});
   });
-
-  const texCanvas=document.createElement('canvas'); texCanvas.width=96; texCanvas.height=96;
-  const c=texCanvas.getContext('2d'); const grad=c.createRadialGradient(48,48,2,48,48,46);
-  grad.addColorStop(0,'rgba(245,245,245,.28)'); grad.addColorStop(.25,'rgba(225,230,235,.16)'); grad.addColorStop(.7,'rgba(190,200,210,.055)'); grad.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle=grad; c.fillRect(0,0,96,96);
-  const tex=new THREE.CanvasTexture(texCanvas); smokeParticles=[];
-  for(let i=0;i<34;i++){
-    const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0,blending:THREE.NormalBlending});
-    const sp=new THREE.Sprite(m); const side=i%2===0?-1:1;
-    sp.position.set(side*(5.2+Math.random()*2.8),1.0+Math.random()*1.2,-9.9-Math.random()*1.2);
-    sp.scale.set(1.0+Math.random()*.9,1.0+Math.random()*.9,1); sp.userData={side,phase:Math.random()*6.28,speed:.35+Math.random()*.3,life:Math.random()};
+  const canvas=document.createElement('canvas'); canvas.width=192; canvas.height=192;
+  const c=canvas.getContext('2d'); const grad=c.createRadialGradient(96,96,3,96,96,92);
+  grad.addColorStop(0,'rgba(255,255,255,.72)'); grad.addColorStop(.16,'rgba(248,250,252,.60)'); grad.addColorStop(.38,'rgba(232,238,243,.43)'); grad.addColorStop(.68,'rgba(205,214,222,.20)'); grad.addColorStop(1,'rgba(180,190,200,0)');
+  c.fillStyle=grad; c.fillRect(0,0,192,192); const tex=new THREE.CanvasTexture(canvas);
+  smokeParticles=[];
+  for(let i=0;i<300;i++){
+    const ci=i%2, ox=ci===0?-5.4:5.4, oz=-9.98;
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0,depthWrite:false}));
+    const life=Math.random(); sp.position.set(ox+(Math.random()-.5)*.30,.52+Math.random()*.55,oz+Math.random()*.30);
+    const size=.65+Math.random()*1.35; sp.scale.set(size*1.15,size,1);
+    sp.userData={life,speed:.13+Math.random()*.18,originX:ox,originZ:oz,spread:(ci===0?-1:1)*(.12+Math.random()*.28),phase:Math.random()*6.28,size,ci};
+    scene.add(sp); smokeParticles.push(sp);
+  }
+  for(let i=0;i<90;i++){
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:0,depthWrite:false}));
+    sp.userData={life:Math.random(),speed:.08+Math.random()*.08,originX:(Math.random()-.5)*9,originZ:-9.3+Math.random()*1.2,spread:(Math.random()-.5)*.15,phase:Math.random()*6.28,size:1.2+Math.random()*1.7,ci:2};
     scene.add(sp); smokeParticles.push(sp);
   }
 }
@@ -3690,20 +3663,25 @@ function animate(){
     b.position.copy(source).add(target).multiplyScalar(.5);
     b.scale.set(1,Math.max(.1,length),1);
     b.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
-    b.material.opacity=.24+bassLevel*.42+(.5+.5*Math.sin(time*7+i*1.7))*.14;
+    b.material.opacity=.58+bassLevel*.32+(.5+.5*Math.sin(time*8+i*1.7))*.20;
     b.material.needsUpdate=true;
     fixture.lens.material.opacity=.82+bassLevel*.18;
   });
 
-  smokeParticles.forEach((sp,i)=>{
-    const u=sp.userData;
-    const t=(time*u.speed+u.phase)%6.5;
-    sp.position.y=.95+t*.52;
-    sp.position.x += Math.sin(time*.7+u.phase)*.004;
-    sp.position.z += -.012;
-    sp.material.opacity=Math.max(0,Math.min(.115,t<1.0?t*.11:(6.5-t)*.026));
-    const pulse=1+t*.24+bassLevel*.12;
-    sp.scale.set(pulse,pulse,1);
+  smokeParticles.forEach((sp)=>{
+    const u=sp.userData; u.life+=dt*u.speed*(1+bassLevel*.22); if(u.life>1)u.life-=1;
+    const p=u.life, plume=p*p, widen=.10+plume*1.25;
+    sp.position.x=u.originX+u.spread*plume+Math.sin(time*.8+u.phase)*widen;
+    sp.position.z=u.originZ+p*8.0;
+    sp.position.y=(u.ci===2?.55:.55+p*2.15)+Math.sin(time*.55+u.phase)*.06;
+    const fadeIn=Math.min(1,p/.08), fadeOut=Math.min(1,(1-p)/.14);
+    sp.material.opacity=Math.min(.48,(u.ci===2?.18:.34)*fadeIn*fadeOut*(.92+bassLevel*.35));
+    const growth=u.size*(.72+p*2.7)*(1+bassLevel*.16);
+    sp.scale.set(growth*(u.ci===2?1.45:1.18),growth*(u.ci===2?.62:1),1);
+  });
+  smokeCannons.forEach((c,i)=>{
+    if(c.nozzle && c.nozzle.material) c.nozzle.material.opacity=.88+bassLevel*.12;
+    if(c.glow) c.glow.intensity=.55+bassLevel*1.8;
   });
 
   if(hazeGroup){
@@ -3938,6 +3916,7 @@ function loadAvatarModels(){
   ]).then(()=>{
     console.log('[EWS AVATAR] models ready:',!!(avatarTemplates.male||avatarTemplates.female));
     remotePlayers.forEach(p=>applyAvatarToRemote(p));
+    upgradeBartenderToHuman();
   });
 }
 
