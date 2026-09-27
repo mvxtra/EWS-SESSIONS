@@ -503,6 +503,7 @@ input:focus{
 }
 
 #stream-indicator{
+  display:none !important;
   position:absolute;
 
   top:18px;
@@ -571,6 +572,7 @@ input:focus{
 }
 
 #audio-control{
+  display:none !important;
   position:absolute;
 
   top:58px;
@@ -770,12 +772,6 @@ input:focus{
   }
 }
 
-
-/* EWS CLUB PATCH 2026-09-27 */
-#club-interact{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);z-index:50;padding:9px 16px;border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.72);font-size:11px;letter-spacing:2px;display:none;pointer-events:none;text-transform:uppercase}
-#club-interact.show{display:block}
-#seat-state{opacity:.7;margin-left:8px}
-#audio-control,#stream-indicator{display:none!important}
 </style>
 </head>
 
@@ -977,8 +973,6 @@ input:focus{
     WASD MOVE · MOUSE LOOK · C CHAT
   </div>
 
-  <div id="club-interact">E — СЕСТЬ <span id="seat-state"></span></div>
-
 </div>
 
 </div>
@@ -1001,8 +995,8 @@ let keys={};
 
 // JUMP / GRAVITY
 let jumpVelocity=0;
-let playerY=1.7;
-const GROUND_Y=1.7;
+let playerY=EYE_HEIGHT;
+const GROUND_Y=EYE_HEIGHT;
 const JUMP_FORCE=7.2;
 const GRAVITY=18;
 let isGrounded=true;
@@ -1031,6 +1025,14 @@ let audioSource=null;
 
 let audioStarted=false;
 
+// PLAYER / PHYSICS / COLLISION
+const EYE_HEIGHT=1.7;
+const PLAYER_RADIUS=.38;
+const PLAYER_HEIGHT=1.7;
+const collisionBoxes=[];
+const seats=[];
+let sitting=false;
+let currentSeatId=null;
 let hls=null;
 
 let screenTexture;
@@ -1047,19 +1049,6 @@ let activeDance=0;
 let danceStartedAt=0;
 
 let playerBody;
-let collisionBoxes=[];
-let seats=[];
-let seated=false;
-let seatedSeat=null;
-let seatPrompt=null;
-let clubTruss=[];
-let movingHeads=[];
-let laserBeams=[];
-let hazeParticles=null;
-let logoMesh=null;
-const PLAYER_RADIUS=.42;
-const PLAYER_EYE_Y=1.7;
-
 
 /* =========================================================
    EWS TEXTURES
@@ -1236,7 +1225,7 @@ function startSession(username){
   });
 
   socket.on(
-    'online-users',
+    'online',
     list=>{
 
       onlineUserList=Array.isArray(list)?list:[];
@@ -1384,6 +1373,15 @@ function startSession(username){
   });
 
   // Ask the server for a fresh snapshot after every connection.
+  socket.on('seat-occupied', ()=>{ sitting=false; currentSeatId=null; setSittingUI(); });
+  socket.on('player-state', data=>{
+    if(data && data.id===socket.id){
+      sitting=!!data.sitting; currentSeatId=data.seatId||null;
+      if(sitting){ activeDance=0; keys={}; }
+      setSittingUI();
+    }
+  });
+
   socket.on('joined', ()=>{
     socket.emit('request-players');
     socket.emit('request-club-screen');
@@ -1618,13 +1616,14 @@ function init3D(){
   createNeonArchitecture();
   createCeilingBeams();
   createSpeakers();
-  createAdvancedClubPatch();
+  createClubRealism();
   createParticles();
   createPlayer();
 
   setupAudio();
 
   setupControls();
+  setSittingUI();
 
   animate();
 
@@ -2287,6 +2286,128 @@ function createSpeakers(){
 
 }
 
+function addCollisionBox(w,d,x,z,pad=.18){
+  collisionBoxes.push({minX:x-w/2-pad,maxX:x+w/2+pad,minZ:z-d/2-pad,maxZ:z+d/2+pad});
+}
+
+function pointBlocked(x,z){
+  for(const b of collisionBoxes){
+    if(x>b.minX && x<b.maxX && z>b.minZ && z<b.maxZ) return true;
+  }
+  return false;
+}
+
+function moveWithCollisions(dx,dz){
+  const ox=camera.position.x, oz=camera.position.z;
+  let nx=ox+dx, nz=oz+dz;
+  if(!pointBlocked(nx,nz)){
+    camera.position.x=nx; camera.position.z=nz; return;
+  }
+  // Slide along the first blocking surface instead of stopping dead.
+  if(!pointBlocked(nx,oz)) camera.position.x=nx;
+  if(!pointBlocked(camera.position.x,nz)) camera.position.z=nz;
+}
+
+function registerClubCollisions(){
+  collisionBoxes.length=0;
+  // Walls / hard boundaries.
+  addCollisionBox(36,.7,0,-17,.05); addCollisionBox(36,.7,0,17,.05);
+  addCollisionBox(.7,34,-18,0,.05); addCollisionBox(.7,34,18,0,.05);
+  // Stage + screen wall zone.
+  addCollisionBox(17,3,0,-12.5,.18);
+  addCollisionBox(14.8,.7,0,-16.5,.18);
+  // Bar and lounge furniture.
+  addCollisionBox(8,2,-12,7,.28);
+  addCollisionBox(6,.9,11,8,.28);
+  addCollisionBox(1.7,5.6,14,8,.25);
+  [8,11,14].forEach(x=>addCollisionBox(1.5,1.5,x,4,.22));
+  // Columns.
+  [[-15,5],[15,5],[-15,-5],[15,-5]].forEach(([x,z])=>addCollisionBox(1.15,1.15,x,z,.18));
+  // Speakers.
+  [[-8,-11],[8,-11],[-11,-10],[11,-10]].forEach(([x,z])=>addCollisionBox(1.35,.95,x,z,.18));
+}
+
+function createSeat(id,x,z,yaw=0,type='STOOL'){
+  const g=new THREE.Group();
+  const dark=new THREE.MeshStandardMaterial({color:0x111111,metalness:.55,roughness:.4});
+  const metal=new THREE.MeshStandardMaterial({color:0x777777,metalness:.85,roughness:.3});
+  const seat=new THREE.Mesh(new THREE.CylinderGeometry(.38,.38,.12,24),dark); seat.position.y=.68; g.add(seat);
+  const stem=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.68,12),metal); stem.position.y=.34; g.add(stem);
+  const foot=new THREE.Mesh(new THREE.TorusGeometry(.27,.045,8,24),metal); foot.rotation.x=Math.PI/2; foot.position.y=.05; g.add(foot);
+  g.position.set(x,0,z); g.rotation.y=yaw; scene.add(g);
+  seats.push({id,x,z,yaw,type,object:g});
+  addCollisionBox(.8,.8,x,z,.08);
+}
+
+function createClubRealism(){
+  // Bar stools: real seats + synchronized interaction points.
+  for(let i=0;i<5;i++) createSeat('bar-'+i,-15.1+i*1.55,8.35,Math.PI,'STOOL');
+
+  // Ceiling truss.
+  const trussMat=new THREE.MeshStandardMaterial({color:0x171717,metalness:.9,roughness:.25});
+  for(const x of [-11,-3,5,13]) createBox(.22,.22,29,x,5.25,0,trussMat);
+  for(const z of [-12,-4,4,12]) createBox(29,.22,.22,0,5.25,z,trussMat);
+
+  // Moving heads hanging from the truss.
+  const fixtures=[[-11,-10],[-3,-7],[5,-7],[13,-10],[-7,6],[7,6]];
+  fixtures.forEach(([x,z],i)=>{
+    const rig=new THREE.Group(); rig.position.set(x,5.02,z);
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(.13,.18,.12,12),trussMat); rig.add(base);
+    const head=new THREE.Mesh(new THREE.BoxGeometry(.28,.22,.34),new THREE.MeshStandardMaterial({color:0x333333,metalness:.8,roughness:.2})); head.position.y=-.2; rig.add(head);
+    const glow=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,.03,16),new THREE.MeshBasicMaterial({color:0xffffff})); glow.position.set(0,-.34,0); rig.add(glow);
+    const beam=new THREE.SpotLight(0xffffff,1.5,18,Math.PI/8,.65,1.5); beam.position.set(0,-.34,0); beam.target.position.set(0,0,-5); rig.add(beam); rig.add(beam.target);
+    lightObjects.push(beam);
+    rig.userData.phase=i*.8; scene.add(rig);
+  });
+
+  // Subtle haze layer: points react to the music without blocking the room.
+  const hazeGeo=new THREE.BufferGeometry(), hp=new Float32Array(180*3);
+  for(let i=0;i<180;i++){ hp[i*3]=(Math.random()-.5)*32; hp[i*3+1]=.8+Math.random()*3.8; hp[i*3+2]=(Math.random()-.5)*28; }
+  hazeGeo.setAttribute('position',new THREE.BufferAttribute(hp,3));
+  const haze=new THREE.Points(hazeGeo,new THREE.PointsMaterial({color:0xffffff,size:.09,transparent:true,opacity:.045,depthWrite:false}));
+  haze.name='club-haze'; scene.add(haze);
+
+  // Laser emitters on the truss.
+  const laserMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.38});
+  for(let i=0;i<4;i++){
+    const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0),new THREE.Vector3((i%2?1:-1)*8,-4,-14)]);
+    const line=new THREE.Line(geo,laserMat); line.position.set([-9,-3,3,9][i],5.02,-2); line.userData.phase=i*.7; scene.add(line); neonObjects.push(line);
+  }
+
+  // Circular EWS logo on the right-hand far wall.
+  const logoTex=new THREE.TextureLoader().load('/assets/logo.png');
+  const logo=new THREE.Mesh(new THREE.CircleGeometry(1.75,64),new THREE.MeshBasicMaterial({map:logoTex,transparent:true,side:THREE.DoubleSide,depthWrite:false}));
+  logo.position.set(17.72,3.55,1.5); logo.rotation.y=-Math.PI/2; scene.add(logo);
+  const logoGlow=new THREE.Mesh(new THREE.RingGeometry(1.78,1.88,64),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.5,side:THREE.DoubleSide}));
+  logoGlow.position.copy(logo.position); logoGlow.rotation.copy(logo.rotation); scene.add(logoGlow); neonObjects.push(logoGlow);
+
+  registerClubCollisions();
+}
+
+function getNearestSeat(){
+  let best=null, bd=1.45;
+  for(const seat of seats){
+    const d=Math.hypot(camera.position.x-seat.x,camera.position.z-seat.z);
+    if(d<bd){ bd=d; best=seat; }
+  }
+  return best;
+}
+
+function setSittingUI(){
+  let el=document.getElementById('sit-hint');
+  if(!el){ el=document.createElement('div'); el.id='sit-hint'; el.style.cssText='position:fixed;left:50%;bottom:125px;transform:translateX(-50%);z-index:40;padding:8px 12px;background:rgba(0,0,0,.8);border:1px solid #444;color:#fff;font:11px monospace;letter-spacing:1px;pointer-events:none;display:none'; document.getElementById('hud').appendChild(el); }
+  const seat=getNearestSeat();
+  if(sitting){ el.textContent='E / SPACE — ВСТАТЬ'; el.style.display='block'; }
+  else if(seat){ el.textContent='E — СЕСТЬ'; el.style.display='block'; }
+  else el.style.display='none';
+}
+
+function trySitOrStand(){
+  if(!socket || !pointerLocked) return;
+  if(sitting){ socket.emit('stand'); return; }
+  const seat=getNearestSeat(); if(seat) socket.emit('sit',{seatId:seat.id});
+}
+
 function createParticles(){
 
   const count=900;
@@ -2870,15 +2991,6 @@ async function startSSHAudio(){
    CONTROLS
 ========================================================= */
 
-
-window.addEventListener('keydown',e=>{
-  if(e.code==='KeyE'){
-    if(seated) standUp(); else {const seat=findNearestSeat();if(seat&&!seat.occupied)sitOnSeat(seat);}
-    return;
-  }
-  if(e.code==='Space' && seated){e.preventDefault();standUp();return;}
-});
-
 function setupControls(){
 
   window.addEventListener(
@@ -2938,6 +3050,8 @@ function setupControls(){
       }
 
       if(!chatMode){
+        if(e.code==='KeyE'){ trySitOrStand(); e.preventDefault(); return; }
+        if(e.code==='Space' && sitting){ trySitOrStand(); e.preventDefault(); return; }
         if(e.code==='KeyB'){ toggleEmotesMenu(); e.preventDefault(); return; }
         if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
         if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
@@ -3244,101 +3358,6 @@ function applyRemoteClubScreen(state){
   frame.setAttribute('allowfullscreen','');
 }
 
-
-/* =========================================================
-   EWS ADVANCED CLUB PATCH
-========================================================= */
-function addCollisionBox(x,z,w,d,pad=.18){ collisionBoxes.push({x,z,w:w+pad*2,d:d+pad*2}); }
-function pointHitsBox(x,z,b){ return x>b.x-b.w/2-PLAYER_RADIUS && x<b.x+b.w/2+PLAYER_RADIUS && z>b.z-b.d/2-PLAYER_RADIUS && z<b.z+b.d/2+PLAYER_RADIUS; }
-function canStandAt(x,z){ if(x<-16.6||x>16.6||z<-16.1||z>16.1)return false; for(const b of collisionBoxes) if(pointHitsBox(x,z,b)) return false; return true; }
-function moveWithCollisions(dx,dz){
-  const ox=camera.position.x, oz=camera.position.z;
-  const nx=ox+dx, nz=oz+dz;
-  if(canStandAt(nx,nz)){camera.position.x=nx;camera.position.z=nz;return;}
-  if(canStandAt(nx,oz)) camera.position.x=nx;
-  if(canStandAt(camera.position.x,nz)) camera.position.z=nz;
-}
-function addSeat(x,z,yawRot,label){
-  const seat={x,z,y:1.02,yaw:yawRot,occupied:false,label:label||'SEAT'};
-  seats.push(seat);
-  const base=new THREE.Mesh(new THREE.BoxGeometry(1.15,.18,1.05),new THREE.MeshStandardMaterial({color:0x181818,roughness:.9}));
-  base.position.set(x,.55,z); base.castShadow=true; base.receiveShadow=true; scene.add(base);
-  const back=new THREE.Mesh(new THREE.BoxGeometry(1.15,1.0,.16),new THREE.MeshStandardMaterial({color:0x101010,roughness:.95}));
-  back.position.set(x,.98,z+Math.cos(yawRot)*.43); back.rotation.y=yawRot; scene.add(back);
-  addCollisionBox(x,z,1.15,1.05,.08);
-}
-function findNearestSeat(){ let best=null,dist=999; for(const seat of seats){const d=Math.hypot(camera.position.x-seat.x,camera.position.z-seat.z);if(d<1.65&&d<dist){best=seat;dist=d;}} return best; }
-function sitOnSeat(seat){
-  if(!seat||seat.occupied)return;
-  seated=true; seatedSeat=seat; seat.occupied=true;
-  camera.position.set(seat.x,seat.y,seat.z); yaw=seat.yaw; pitch=0; keys={};
-  document.exitPointerLock?.();
-  broadcastPlayerState(performance.now());
-}
-function standUp(){ if(!seated)return; const seat=seatedSeat; seat.occupied=false; seated=false; seatedSeat=null; camera.position.y=GROUND_Y; camera.position.x+=Math.sin(yaw)*.65; camera.position.z+=Math.cos(yaw)*.65; }
-function updateSeatPrompt(){
-  const ui=document.getElementById('club-interact'); if(!ui)return;
-  if(seated){ui.classList.add('show');ui.firstChild.textContent='E / SPACE — ВСТАТЬ ';return;}
-  const seat=findNearestSeat();
-  if(seat&&!seat.occupied){ui.classList.add('show');ui.firstChild.textContent='E — СЕСТЬ ';}
-  else ui.classList.remove('show');
-}
-function createAdvancedClubPatch(){
-  // Main structural collision volumes.
-  addCollisionBox(0,-17,36,.7); addCollisionBox(-18,0,.7,34); addCollisionBox(18,0,.7,34);
-  addCollisionBox(-12,7,8,2.3); addCollisionBox(11,8,6,2); addCollisionBox(14,8,1.7,5.5);
-  addCollisionBox(0,-12.5,17,3); addCollisionBox(-15,5,1.2,1.2); addCollisionBox(15,5,1.2,1.2);
-
-  // Realistic seating / lounge.
-  addSeat(8,4,.0,'LOUNGE'); addSeat(11,4,.0,'LOUNGE'); addSeat(14,4,Math.PI,'LOUNGE');
-  addSeat(8,7,Math.PI,'LOUNGE'); addSeat(11,7,Math.PI,'LOUNGE');
-  for(let i=0;i<5;i++) addSeat(-15+i*.8,5.1,Math.PI,'BAR');
-
-  // Ceiling truss.
-  const trussMat=new THREE.MeshStandardMaterial({color:0x202020,metalness:.85,roughness:.28});
-  const beam=(w,h,d,x,y,z)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),trussMat);m.position.set(x,y,z);m.castShadow=true;scene.add(m);clubTruss.push(m);};
-  beam(28,.22,.22,0,5.35,-1); beam(28,.22,.22,0,5.35,-9); beam(.22,.22,18,-10,5.35,-5); beam(.22,.22,18,10,5.35,-5);
-  for(const x of [-10,-5,0,5,10]) for(const z of [-9,-1]) beam(.10,.35,.10,x,5.15,z);
-
-  // Moving heads with visible cones and reactive beams.
-  const headMat=new THREE.MeshStandardMaterial({color:0x111111,metalness:.8,roughness:.22});
-  for(const pos of [[-10,5.05,-9],[0,5.05,-9],[10,5.05,-9],[-10,5.05,-1],[0,5.05,-1],[10,5.05,-1]]){
-    const g=new THREE.Group();g.position.set(...pos);const base=new THREE.Mesh(new THREE.CylinderGeometry(.18,.22,.16,12),headMat);g.add(base);
-    const head=new THREE.Mesh(new THREE.BoxGeometry(.32,.24,.42),headMat);head.position.y=-.08;g.add(head);
-    const spot=new THREE.SpotLight(0xffffff,2.2,22,Math.PI/8,.45,1.2);spot.position.set(0,-.18,0);spot.target.position.set(0,-4,0);g.add(spot);g.add(spot.target);scene.add(g);movingHeads.push({g,spot,phase:Math.random()*Math.PI*2});
-  }
-
-  // Laser tubes: transparent cylinders aimed downward/diagonally.
-  const laserMat=new THREE.MeshBasicMaterial({color:0xff1744,transparent:true,opacity:.32,depthWrite:false,blending:THREE.AdditiveBlending});
-  for(let i=0;i<8;i++){
-    const m=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,12,8,1,true),laserMat.clone());
-    m.position.set(-12+i*3.4,3.1,-2);scene.add(m);laserBeams.push(m);
-  }
-
-  // Haze volume: soft particles, not a solid fog wall.
-  const count=420, geo=new THREE.BufferGeometry(), pos=new Float32Array(count*3);
-  for(let i=0;i<count;i++){pos[i*3]=(Math.random()-.5)*30;pos[i*3+1]=1+Math.random()*4.2;pos[i*3+2]=(Math.random()-.5)*28;}
-  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  hazeParticles=new THREE.Points(geo,new THREE.PointsMaterial({color:0xffffff,size:.07,transparent:true,opacity:.055,depthWrite:false}));scene.add(hazeParticles);
-
-  // Circular logo on the far wall. Asset expected at /assets/logo.png.
-  const loader=new THREE.TextureLoader(); loader.load('/assets/logo.png',tex=>{
-    tex.colorSpace=THREE.SRGBColorSpace||tex.colorSpace;
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(2.25,.055,16,96),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.9}));
-    ring.position.set(11,3.5,-16.62);scene.add(ring);
-    logoMesh=new THREE.Mesh(new THREE.CircleGeometry(2.12,64),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide}));
-    logoMesh.position.set(11,3.5,-16.60);logoMesh.rotation.y=Math.PI;scene.add(logoMesh);
-    const glow=new THREE.PointLight(0xffffff,1.2,9);glow.position.set(11,3.5,-15.8);scene.add(glow);lightObjects.push(glow);
-  },undefined,()=>console.warn('[EWS] /assets/logo.png not found'));
-}
-function updateClubLighting(time){
-  const beat=.5+bassLevel*1.7;
-  movingHeads.forEach((m,i)=>{m.g.rotation.y=Math.sin(time*.65+m.phase)*.95;m.g.rotation.x=-.35+Math.sin(time*.9+m.phase)*.35;m.spot.intensity=1.5+beat*2.2;});
-  laserBeams.forEach((m,i)=>{m.rotation.z=-.55+Math.sin(time*1.15+i*.7)*.45;m.rotation.x=Math.sin(time*.8+i)*.28;m.material.opacity=.12+bassLevel*.35;});
-  if(hazeParticles) hazeParticles.material.opacity=.035+bassLevel*.055;
-  if(logoMesh){logoMesh.rotation.z=Math.sin(time*.35)*.015;logoMesh.material.opacity=.82+bassLevel*.15;}
-}
-
 /* =========================================================
    ANIMATION
 ========================================================= */
@@ -3436,7 +3455,7 @@ function animate(){
     level*.12;
 
   const speed=
-    chatMode || activeDance
+    chatMode || activeDance || sitting
       ?0
       :5*dt;
 
@@ -3471,7 +3490,7 @@ function animate(){
   // JUMP PHYSICS
   // =========================
 
-  if(!chatMode){
+  if(!chatMode && !sitting){
 
     jumpVelocity-=
       GRAVITY*dt;
@@ -3489,16 +3508,43 @@ function animate(){
 
   }
 
-  if(pointerLocked && !chatMode && !seated){
-    const fx=-Math.sin(yaw), fz=-Math.cos(yaw);
-    const rx=Math.cos(yaw), rz=-Math.sin(yaw);
-    const dx=(fx*forward+rx*side)*speed;
-    const dz=(fz*forward+rz*side)*speed;
-    moveWithCollisions(dx,dz);
+  if(
+    pointerLocked &&
+    !chatMode
+  ){
+
+    const fx=
+      -Math.sin(yaw);
+
+    const fz=
+      -Math.cos(yaw);
+
+    const rx=
+      Math.cos(yaw);
+
+    const rz=
+      -Math.sin(yaw);
+
+    moveWithCollisions(
+      (fx*forward+rx*side)*speed,
+      (fz*forward+rz*side)*speed
+    );
+
   }
 
-  camera.position.x=THREE.MathUtils.clamp(camera.position.x,-16.9,16.9);
-  camera.position.z=THREE.MathUtils.clamp(camera.position.z,-16.2,16.2);
+  camera.position.x=
+    THREE.MathUtils.clamp(
+      camera.position.x,
+      -16,
+      16
+    );
+
+  camera.position.z=
+    THREE.MathUtils.clamp(
+      camera.position.z,
+      -15.5,
+      15.5
+    );
 
   camera.position.y=playerY;
 
@@ -3535,6 +3581,8 @@ function animate(){
       audioLevel*.18;
 
   }
+
+  setSittingUI();
 
   remotePlayers.forEach(p=>{
     const t=performance.now()/1000;
@@ -3719,6 +3767,8 @@ function animate(){
   }
 
 
+  setSittingUI();
+
   remotePlayers.forEach(p=>{
     if(p.dance) animateRemoteDance(p,time);
     else resetRemoteDancePose(p);
@@ -3748,27 +3798,66 @@ function animate(){
 ========================================================= */
 function createRemotePlayer(data){
   if(!scene || !data || !data.id || data.id===socket?.id) return;
+
+  // If a stale object exists for this socket, replace it cleanly.
   if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
-  const g=new THREE.Group(); g.userData.username=data.username||'PLAYER';
-  const hue=[0x8aff00,0x00d9ff,0xff3cac,0xb88cff,0xffb000][Math.abs(String(data.id).split('').reduce((a,c)=>a+c.charCodeAt(0),0))%5];
-  const skin=new THREE.MeshStandardMaterial({color:hue,roughness:.5,metalness:.08});
-  const suit=new THREE.MeshStandardMaterial({color:0x151515,roughness:.75,metalness:.2});
-  const eye=new THREE.MeshBasicMaterial({color:0xffffff});
-  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.30,.34,.95,12),suit); torso.position.y=.92; g.add(torso);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.36,20,14),skin); head.scale.set(1,.95,.9); head.position.y=1.62; g.add(head);
-  for(const sx of [-.13,.13]){const e=new THREE.Mesh(new THREE.SphereGeometry(.075,12,8),eye);e.scale.set(1,.65,.45);e.position.set(sx,1.67,-.32);g.add(e);}
-  const armGeo=new THREE.CylinderGeometry(.09,.105,.72,8), legGeo=new THREE.CylinderGeometry(.105,.12,.78,8);
-  const leftArm=new THREE.Mesh(armGeo,suit);leftArm.position.set(-.42,.92,0);leftArm.rotation.z=-.18;g.add(leftArm);
-  const rightArm=new THREE.Mesh(armGeo,suit);rightArm.position.set(.42,.92,0);rightArm.rotation.z=.18;g.add(rightArm);
-  const leftLeg=new THREE.Mesh(legGeo,suit);leftLeg.position.set(-.15,.36,0);g.add(leftLeg);
-  const rightLeg=new THREE.Mesh(legGeo,suit);rightLeg.position.set(.15,.36,0);g.add(rightLeg);
-  const bootMat=new THREE.MeshStandardMaterial({color:0x050505,metalness:.7,roughness:.3});
-  for(const sx of [-.15,.15]){const b=new THREE.Mesh(new THREE.BoxGeometry(.2,.12,.38),bootMat);b.position.set(sx,.05,-.08);g.add(b);}
-  const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=96;const ctx=labelCanvas.getContext('2d');ctx.clearRect(0,0,512,96);ctx.font='bold 30px Arial';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.shadowColor='#000';ctx.shadowBlur=8;ctx.fillText(g.userData.username,256,40);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(labelCanvas),transparent:true,depthTest:false}));label.scale.set(2.1,.4,1);label.position.y=2.35;g.add(label);
-  const x=Number.isFinite(Number(data.x))?Number(data.x):0,z=Number.isFinite(Number(data.z))?Number(data.z):13,y=Number.isFinite(Number(data.y))?Number(data.y):0,ry=Number.isFinite(Number(data.yaw??data.ry))?Number(data.yaw??data.ry):0;
-  g.position.set(x,y,z);g.rotation.y=ry;scene.add(g);
-  remotePlayers.set(data.id,{group:g,last:{x,z,yaw:ry},moving:!!data.moving,username:data.username||'PLAYER',dance:Number(data.dance)||0,danceStartedAt:Number(data.danceStartedAt)||0,parts:{torso,head,leftArm,rightArm,leftLeg,rightLeg},baseY:y,seated:!!data.seated});
+
+  const g=new THREE.Group();
+  g.userData.username=data.username||'PLAYER';
+
+  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
+  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
+
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
+  torso.position.y=.78;
+  g.add(torso);
+
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
+  head.position.y=1.42;
+  g.add(head);
+
+  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
+  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
+  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
+  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
+  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
+  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
+
+  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg};
+
+  const labelCanvas=document.createElement('canvas');
+  labelCanvas.width=256; labelCanvas.height=64;
+  const ctx=labelCanvas.getContext('2d');
+  ctx.clearRect(0,0,256,64);
+  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
+  ctx.fillText(g.userData.username,128,32);
+  const tex=new THREE.CanvasTexture(labelCanvas);
+  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+
+  const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
+  const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
+  const rawRemoteY=Number(data.y);
+  const y=Number.isFinite(rawRemoteY) ? (rawRemoteY>EYE_HEIGHT*.55 ? rawRemoteY-EYE_HEIGHT : rawRemoteY) : 0;
+  const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
+
+  g.position.set(x,y,z);
+  g.rotation.y=ry;
+  g.visible=true;
+  scene.add(g);
+
+  remotePlayers.set(data.id,{
+    group:g,
+    last:{x,z,yaw:ry},
+    moving:!!data.moving,
+    username:data.username||'PLAYER',
+    dance:Number(data.dance)||0,
+    danceStartedAt:Number(data.danceStartedAt)||0,
+    sitting:!!data.sitting,
+    seatId:data.seatId||null,
+    parts,
+    baseY:y
+  });
 }
 
 function updateRemotePlayer(data){
@@ -3783,7 +3872,7 @@ function updateRemotePlayer(data){
 
   const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
   const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
-  const ny=Number.isFinite(rawY) ? rawY : p.group.position.y;
+  const ny=Number.isFinite(rawY) ? (rawY>EYE_HEIGHT*.55 ? rawY-EYE_HEIGHT : rawY) : p.group.position.y;
   const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
 
   const dx=nx-p.group.position.x;
@@ -3792,11 +3881,12 @@ function updateRemotePlayer(data){
   p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
   if(data.dance!==undefined) p.dance=Number(data.dance)||0;
   if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
+  if(data.sitting!==undefined) p.sitting=!!data.sitting;
+  if(data.seatId!==undefined) p.seatId=data.seatId||null;
   p.group.position.x=nx;
-  p.group.position.y=p.seated ? 0 : ny;
+  p.group.position.y=ny;
   p.group.position.z=nz;
   p.group.rotation.y=nyaw;
-  if(data.seated!==undefined) p.seated=!!data.seated;
   p.last={x:nx,z:nz,yaw:nyaw};
 }
 
@@ -3828,7 +3918,9 @@ function broadcastPlayerState(now){
     moving:moving,
     jumping:!isGrounded,
     dance:activeDance,
-    danceStartedAt:danceStartedAt
+    danceStartedAt:danceStartedAt,
+    sitting:sitting,
+    seatId:currentSeatId
   });
 }
 
@@ -3901,6 +3993,7 @@ function animateRemoteDance(p,time){
 function resetRemoteDancePose(p){
   if(!p || !p.parts) return;
   p.group.position.y=p.baseY||0;
+  if(p.sitting){ p.group.position.y=0; }
   const q=p.parts;
   q.torso.rotation.set(0,0,0); q.head.rotation.set(0,0,0);
   q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
