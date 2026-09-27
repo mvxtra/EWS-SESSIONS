@@ -1012,6 +1012,8 @@ let neonObjects=[];
 let lightObjects=[];
 let clubSpotlights=[];
 let clubLasers=[];
+let clubSmoke=null;
+let clubSmokeVelocities=[];
 
 let particles;
 
@@ -1591,6 +1593,7 @@ function init3D(){
 
   createClubSpotlights();
   createClubLasers();
+  createClubSmoke();
 
   createFloor();
   createCeiling();
@@ -1765,6 +1768,83 @@ function createClubLasers(){
     scene.add(group);
     clubLasers.push({group,beam,baseOpacity:.14+i*.012,phase:i*Math.PI/2});
   });
+}
+
+function createClubSmoke(){
+  // Soft volumetric-looking smoke made from many translucent sprites.
+  // It stays inside the club and does not change the existing geometry.
+  const count=260;
+  const positions=new Float32Array(count*3);
+  clubSmokeVelocities=[];
+
+  const textureCanvas=document.createElement('canvas');
+  textureCanvas.width=128;
+  textureCanvas.height=128;
+  const ctx=textureCanvas.getContext('2d');
+  const grad=ctx.createRadialGradient(64,64,4,64,64,62);
+  grad.addColorStop(0,'rgba(255,255,255,.20)');
+  grad.addColorStop(.35,'rgba(230,230,230,.12)');
+  grad.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,128,128);
+  const texture=new THREE.CanvasTexture(textureCanvas);
+  texture.needsUpdate=true;
+
+  for(let i=0;i<count;i++){
+    positions[i*3]=(Math.random()-.5)*30;
+    positions[i*3+1]=.25+Math.random()*4.7;
+    positions[i*3+2]=(Math.random()-.5)*28-1;
+    clubSmokeVelocities.push({
+      x:(Math.random()-.5)*.018,
+      y:.004+Math.random()*.012,
+      z:(Math.random()-.5)*.018,
+      phase:Math.random()*Math.PI*2,
+      size:.55+Math.random()*1.1
+    });
+  }
+
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
+
+  const mat=new THREE.PointsMaterial({
+    map:texture,
+    color:0xd9d9d9,
+    size:.9,
+    transparent:true,
+    opacity:.16,
+    depthWrite:false,
+    blending:THREE.NormalBlending,
+    sizeAttenuation:true
+  });
+
+  clubSmoke=new THREE.Points(geo,mat);
+  clubSmoke.renderOrder=2;
+  scene.add(clubSmoke);
+}
+
+function animateClubSmoke(time,bass,level){
+  if(!clubSmoke) return;
+  const attr=clubSmoke.geometry.attributes.position;
+  const a=attr.array;
+  const lift=.008+Math.max(bass,level)*.018;
+
+  for(let i=0;i<clubSmokeVelocities.length;i++){
+    const v=clubSmokeVelocities[i];
+    const n=i*3;
+    a[n]+=v.x+Math.sin(time*.35+v.phase)*.0025;
+    a[n+1]+=v.y+lift*.35;
+    a[n+2]+=v.z+Math.cos(time*.28+v.phase)*.0025;
+
+    if(a[n]>15) a[n]=-15;
+    if(a[n]<-15) a[n]=15;
+    if(a[n+1]>5.4) a[n+1]=.18+Math.random()*.35;
+    if(a[n+2]>15) a[n+2]=-15;
+    if(a[n+2]<-15) a[n+2]=15;
+  }
+
+  attr.needsUpdate=true;
+  clubSmoke.material.opacity=.11+Math.min(.14,Math.max(bass,level)*.22);
+  clubSmoke.material.size=.78+Math.max(bass,0)*.55;
 }
 
 function animateClubLasers(time,bass,level){
@@ -3742,6 +3822,7 @@ function animate(){
 
   animateClubSpotlights(time,bass,level);
   animateClubLasers(time,bass,level);
+  animateClubSmoke(time,bass,level);
 
   remotePlayers.forEach(p=>{
     if(p.mixer) p.mixer.update(dt);
