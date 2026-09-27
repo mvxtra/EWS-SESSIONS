@@ -13,9 +13,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
 <script src="/socket.io/socket.io.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
 <style>
 
@@ -440,12 +440,13 @@ input:focus{
   width:100%;
   height:100%;
   border:0;
-  display:block;
+  display:none;
   background:#000;
   object-fit:contain;
 }
-
-#media-screen video{display:none;}
+#media-screen video{
+  outline:none;
+}
 
 #media-screen-close{
   display:none;
@@ -813,7 +814,7 @@ input:focus{
   </div>
 
   <div id="media-screen">
-    <video id="media-screen-video" playsinline controls autoplay></video>
+    <video id="media-screen-video" playsinline controls preload="auto"></video>
     <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe>
   </div>
 
@@ -865,8 +866,6 @@ let particles;
 
 let screenTexture;
 let screenMesh;
-let screenHls=null;
-let screenMediaType="";
 let screenMediaActive=false;
 let screenMediaUrl='';
 let onlineUserList=[];
@@ -1638,14 +1637,7 @@ function createMainScreen(){
     panel.style.border='0';
     panel.style.overflow='hidden';
     panel.style.pointerEvents='auto';
-
-    const video=document.getElementById('media-screen-video');
-    if(video){
-      video.style.display='none';
-      video.muted=false;
-      video.volume=1;
-      video.setAttribute('playsinline','');
-    }
+    panel.style.position='relative';
 
     screenDomObject=new THREE.CSS3DObject(panel);
     screenDomObject.position.set(0,3.65,-16.27);
@@ -2348,18 +2340,149 @@ function normalizeClubScreenUrl(raw){
   if(!value) return null;
 
   const yt=youtubeEmbed(value);
-  if(yt) return {src:yt,name:'YOUTUBE'};
+  if(yt) return {src:yt,name:'YOUTUBE',type:'iframe'};
 
   const tw=twitchEmbed(value);
-  if(tw) return {src:tw,name:'TWITCH'};
+  if(tw) return {src:tw,name:'TWITCH',type:'iframe'};
 
   try{
     const u=new URL(value);
+    if(u.protocol==='rtmp:' || u.protocol==='rtmps:'){
+      return {src:value,name:'RTMP',type:'unsupported'};
+    }
     if(u.protocol!=='http:' && u.protocol!=='https:') return null;
-    return {src:u.href,name:'WEBSITE'};
+    const path=u.pathname.toLowerCase();
+    if(path.includes('.m3u8')) return {src:u.href,name:'HLS',type:'hls'};
+    if(path.match(/\.(mp4|webm|ogg|m4v)(?:$|\?)/)) return {src:u.href,name:'VIDEO',type:'video'};
+    return {src:u.href,name:'WEBSITE',type:'iframe'};
   }catch(e){
     return null;
   }
+}
+
+function stopScreenMedia(){
+  const iframe=document.getElementById('media-screen-frame');
+  const video=document.getElementById('media-screen-video');
+  if(iframe) iframe.src='about:blank';
+  if(video){
+    try{ video.pause(); }catch(e){}
+    video.removeAttribute('src');
+    video.load();
+  }
+  if(window.clubHls){
+    try{ window.clubHls.destroy(); }catch(e){}
+    window.clubHls=null;
+  }
+}
+
+function showScreenPanel(){
+  if(screenDomObject){
+    screenDomObject.visible=true;
+    screenDomObject.element.style.display='block';
+  }
+  if(screenMesh) screenMesh.visible=false;
+}
+
+function hideScreenPanel(){
+  if(screenDomObject){
+    screenDomObject.visible=false;
+    screenDomObject.element.style.display='none';
+  }
+  if(screenMesh) screenMesh.visible=true;
+}
+
+function playClubMedia(result){
+  const iframe=document.getElementById('media-screen-frame');
+  const video=document.getElementById('media-screen-video');
+  if(!iframe || !video) return;
+
+  iframe.style.display='none';
+  video.style.display='none';
+  stopScreenMedia();
+
+  if(result.type==='unsupported'){
+    setScreenStatus('RTMP напрямую в браузере не воспроизводится. Нужна HLS-ссылка .m3u8 или YouTube/Twitch.');
+    return false;
+  }
+
+  if(result.type==='iframe'){
+    iframe.src=result.src;
+    iframe.style.display='block';
+    return true;
+  }
+
+  video.style.display='block';
+  video.controls=true;
+  video.autoplay=true;
+  video.muted=false;
+
+  if(result.type==='hls' && window.Hls && Hls.isSupported()){
+    const hls=new Hls({enableWorker:true,lowLatencyMode:true});
+    window.clubHls=hls;
+    hls.loadSource(result.src);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+      video.play().catch(()=>{
+        setScreenStatus(result.name+' загружен. Нажми ▶ на самом экране для звука.');
+      });
+    });
+    hls.on(Hls.Events.ERROR,(event,data)=>{
+      if(data && data.fatal){
+        setScreenStatus('Поток не воспроизводится. Проверь HLS .m3u8 и CORS на сервере потока.');
+      }
+    });
+    return true;
+  }
+
+  if(result.type==='hls' && video.canPlayType('application/vnd.apple.mpegurl')){
+    video.src=result.src;
+    video.addEventListener('loadedmetadata',()=>video.play().catch(()=>{}),{once:true});
+    return true;
+  }
+
+  if(result.type==='video'){
+    video.src=result.src;
+    video.play().catch(()=>{
+      setScreenStatus('Видео загружено. Нажми ▶ на экране для запуска звука.');
+    });
+    return true;
+  }
+  return false;
+}
+
+function loadClubScreen(){
+  if(!isClubHost()){
+    setScreenStatus('Только главный пользователь клуба может включать экран.');
+    return;
+  }
+  const input=document.getElementById('screen-url');
+  if(!input) return;
+  const result=normalizeClubScreenUrl(input.value);
+  if(!result){
+    setScreenStatus('Неверная ссылка. Нужна YouTube, Twitch, HLS .m3u8 или прямая видео-ссылка.');
+    return;
+  }
+
+  showScreenPanel();
+  const ok=playClubMedia(result);
+  if(!ok) return;
+  screenMediaActive=true;
+  screenMediaUrl=result.src;
+  setScreenStatus(result.name+' LOADED — видео находится прямо на 3D-экране.');
+
+  if(socket) socket.emit('club-screen-state',{src:result.src,name:result.name,type:result.type,active:true,owner:currentUser});
+  const menu=document.getElementById('screen-menu');
+  if(menu) menu.classList.remove('open');
+}
+
+function clearClubScreen(){
+  if(!isClubHost()) return;
+  stopScreenMedia();
+  screenMediaActive=false;
+  screenMediaUrl='';
+  hideScreenPanel();
+  if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
+  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch, HLS .m3u8 или видео.');
 }
 
 function isClubHost(){
@@ -2374,115 +2497,7 @@ function updateScreenHostUI(){
   }
 }
 
-function isDirectMediaUrl(src){
-  try{
-    const u=new URL(src);
-    const path=u.pathname.toLowerCase();
-    return /\.(m3u8|mp4|webm|ogg|ogv|mov)(?:$|\?)/.test(path) || u.searchParams.has('m3u8');
-  }catch(e){ return false; }
-}
 
-function stopScreenMedia(){
-  const frame=document.getElementById('media-screen-frame');
-  const video=document.getElementById('media-screen-video');
-  if(screenHls){ try{screenHls.destroy();}catch(e){} screenHls=null; }
-  if(video){
-    try{video.pause();}catch(e){}
-    video.removeAttribute('src');
-    video.load();
-    video.style.display='none';
-  }
-  if(frame){ frame.src='about:blank'; frame.style.display='none'; }
-  screenMediaType='';
-}
-
-function playDirectScreenMedia(src){
-  const video=document.getElementById('media-screen-video');
-  const frame=document.getElementById('media-screen-frame');
-  if(!video || !frame) return false;
-  stopScreenMedia();
-  video.style.display='block';
-  video.muted=false;
-  video.volume=1;
-  screenMediaType='video';
-
-  if(/\.m3u8(?:$|\?)/i.test(src)){
-    if(video.canPlayType('application/vnd.apple.mpegurl')){
-      video.src=src;
-    }else if(window.Hls && Hls.isSupported()){
-      screenHls=new Hls({enableWorker:true,lowLatencyMode:true});
-      screenHls.loadSource(src);
-      screenHls.attachMedia(video);
-    }else{
-      setScreenStatus('Этот браузер не поддерживает HLS (.m3u8).');
-      return false;
-    }
-  }else{
-    video.src=src;
-  }
-  video.load();
-  video.play().catch(()=>{
-    setScreenStatus('Видео загружено. Нажми PLAY на экране — браузер может блокировать автозвук.');
-  });
-  return true;
-}
-
-function loadClubScreen(){
-  if(!isClubHost()){
-    setScreenStatus('Только главный пользователь клуба может включать экран.');
-    return;
-  }
-  const input=document.getElementById('screen-url');
-  const frame=document.getElementById('media-screen-frame');
-  const video=document.getElementById('media-screen-video');
-  if(!input || !frame || !video) return;
-
-  const raw=String(input.value||'').trim();
-  const result=normalizeClubScreenUrl(raw);
-  if(!result){
-    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch, https:// сайт или прямой .m3u8/.mp4 поток.');
-    return;
-  }
-
-  stopScreenMedia();
-  let ok=true;
-  if(isDirectMediaUrl(raw)){
-    ok=playDirectScreenMedia(raw);
-    if(ok) setScreenStatus('DIRECT STREAM LOADED — видео на экране. Если звук не стартовал, нажми PLAY.');
-  }else{
-    frame.src=result.src;
-    frame.style.display='block';
-    video.style.display='none';
-    screenMediaType=result.name;
-    setScreenStatus(result.name+' LOADED — экран приклеен к стене.');
-  }
-  if(!ok) return;
-
-  screenMediaActive=true;
-  screenMediaUrl=isDirectMediaUrl(raw)?raw:result.src;
-  if(screenDomObject){
-    screenDomObject.visible=true;
-    screenDomObject.element.style.display='block';
-  }
-  if(screenMesh) screenMesh.visible=false;
-  if(socket) socket.emit('club-screen-state',{src:screenMediaUrl,name:isDirectMediaUrl(raw)?'DIRECT':result.name,active:true,owner:currentUser});
-  const menu=document.getElementById('screen-menu');
-  if(menu) menu.classList.remove('open');
-}
-
-function clearClubScreen(){
-  if(!isClubHost()) return;
-  stopScreenMedia();
-  screenMediaActive=false;
-  screenMediaUrl='';
-  if(screenDomObject){
-    screenDomObject.visible=false;
-    screenDomObject.element.style.display='none';
-  }
-  if(screenMesh) screenMesh.visible=true;
-  if(socket) socket.emit('club-screen-state',{active:false,owner:currentUser});
-  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch, сайт или прямой поток.');
-}
 
 /* =========================================================
    ANIMATION
@@ -2755,37 +2770,23 @@ function broadcastPlayerState(now){
 }
 
 function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  const video=document.getElementById('media-screen-video');
-  if(!frame || !video) return;
-  if(!state.active){
+  if(!state || !state.active){
     stopScreenMedia();
     screenMediaActive=false;
     screenMediaUrl='';
-    if(screenDomObject){
-      screenDomObject.visible=false;
-      screenDomObject.element.style.display='none';
-    }
-    if(screenMesh) screenMesh.visible=true;
+    hideScreenPanel();
     return;
   }
   if(state.src && state.src!==screenMediaUrl){
-    stopScreenMedia();
-    if(isDirectMediaUrl(state.src)){
-      playDirectScreenMedia(state.src);
-    }else{
-      frame.src=state.src;
-      frame.style.display='block';
+    const result={src:state.src,name:state.name||'STREAM',type:state.type||'iframe'};
+    showScreenPanel();
+    if(playClubMedia(result)){
+      screenMediaUrl=state.src;
+      screenMediaActive=true;
     }
-    screenMediaUrl=state.src;
-    screenMediaActive=true;
-    if(screenDomObject){
-      screenDomObject.visible=true;
-      screenDomObject.element.style.display='block';
-    }
-    if(screenMesh) screenMesh.visible=false;
   }
 }
+
 /* =========================================================
    CLEANUP
 ========================================================= */
