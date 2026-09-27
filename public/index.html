@@ -1586,26 +1586,31 @@ function createMainScreen(){
       roughness:.28
     })
   );
-  frame.position.set(0,3.65,-16.62);
+  frame.position.set(0,3.65,-16.48);
+  frame.renderOrder=999;
   scene.add(frame);
 
   // Чёрная поверхность экрана. Она остаётся на стене, пока ссылка не загружена.
   screenMesh=new THREE.Mesh(
     new THREE.PlaneGeometry(14,6),
     new THREE.MeshBasicMaterial({
-      color:0x000000,
-      side:THREE.FrontSide
+      color:0x080808,
+      side:THREE.FrontSide,
+      depthTest:false,
+      depthWrite:false
     })
   );
-  screenMesh.position.set(0,3.65,-16.34);
+  screenMesh.position.set(0,3.65,-16.18);
+  screenMesh.renderOrder=1000;
+  screenMesh.visible=true;
   scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
   [
-    [14.25,.10,.06,0,6.68,-16.28],
-    [14.25,.10,.06,0,.62,-16.28],
-    [.10,6.1,.06,-7.08,3.65,-16.28],
-    [.10,6.1,.06,7.08,3.65,-16.28]
+    [14.25,.10,.08,0,6.68,-16.10],
+    [14.25,.10,.08,0,.62,-16.10],
+    [.10,6.1,.08,-7.08,3.65,-16.10],
+    [.10,6.1,.08,7.08,3.65,-16.10]
   ].forEach(a=>{
     const m=new THREE.Mesh(
       new THREE.BoxGeometry(a[0],a[1],a[2]),
@@ -1627,7 +1632,7 @@ function createMainScreen(){
     panel.style.pointerEvents='auto';
 
     screenDomObject=new THREE.CSS3DObject(panel);
-    screenDomObject.position.set(0,3.65,-16.20);
+    screenDomObject.position.set(0,3.65,-16.02);
     screenDomObject.rotation.set(0,0,0);
     screenDomObject.scale.set(.01,.01,.01);
     screenDomObject.visible=false;
