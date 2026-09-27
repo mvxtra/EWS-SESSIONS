@@ -3028,10 +3028,18 @@ let chatInputFocused=false;
         e.code==='KeyC'
       ){
 
+        // C opens/closes chat. Prevent the same key from being
+        // inserted into the input when focus is moved during this keydown.
+        e.preventDefault();
+        e.stopPropagation();
+
         chatMode=
           !chatMode;
 
         toggleChat();
+
+        keys={};
+        return;
 
       }
 
