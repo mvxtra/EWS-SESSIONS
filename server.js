@@ -172,10 +172,6 @@ function isScreenHost(username) {
   );
 }
 
-/* =========================================================
-   UTILS
-========================================================= */
-
 function clamp(value, min, max) {
 
   return Math.max(
@@ -185,7 +181,7 @@ function clamp(value, min, max) {
 }
 
 /* =========================================================
-   API STATUS
+   API
 ========================================================= */
 
 app.get(
@@ -201,10 +197,6 @@ app.get(
 
   }
 );
-
-/* =========================================================
-   REGISTER
-========================================================= */
 
 app.post(
   '/api/register',
@@ -281,10 +273,6 @@ app.post(
   }
 );
 
-/* =========================================================
-   LOGIN
-========================================================= */
-
 app.post(
   '/api/login',
   (req, res) => {
@@ -343,10 +331,6 @@ app.post(
 
   }
 );
-
-/* =========================================================
-   FALLBACK API
-========================================================= */
 
 app.get(
   '/',
@@ -419,16 +403,6 @@ app.use(
 
 const onlineUsers = new Map();
 
-/*
-  socket.id ->
-
-  {
-    id,
-    username,
-    language
-  }
-*/
-
 function getOnlineUsers() {
 
   return Array.from(
@@ -451,11 +425,6 @@ function broadcastOnline() {
     list
   );
 
-  io.emit(
-    'online',
-    list
-  );
-
 }
 
 /* =========================================================
@@ -463,21 +432,6 @@ function broadcastOnline() {
 ========================================================= */
 
 const players = new Map();
-
-/*
-  socket.id ->
-
-  {
-    id,
-    username,
-    x,
-    y,
-    z,
-    yaw,
-    pitch,
-    dance
-  }
-*/
 
 function getPlayers() {
 
@@ -499,129 +453,243 @@ let clubScreenState = {
 };
 
 /* =========================================================
-   TRANSLATION CACHE
+   TRANSLATION
 ========================================================= */
 
-const translationCache =
-  new Map();
+const translationCache = new Map();
 
-const TRANSLATION_CACHE_LIMIT =
-  500;
+const TRANSLATION_CACHE_LIMIT = 1000;
 
-async function translateText(
+function normalizeLanguage(language) {
+
+  const lang =
+    String(language || '')
+      .trim()
+      .toLowerCase();
+
+  const aliases = {
+    russian: 'ru',
+    english: 'en',
+    german: 'de',
+    deutsch: 'de',
+    french: 'fr',
+    español: 'es',
+    spanish: 'es',
+    italian: 'it',
+    portuguese: 'pt',
+    dutch: 'nl',
+    polish: 'pl',
+    ukrainian: 'uk',
+    chinese: 'zh-CN',
+    japanese: 'ja',
+    korean: 'ko'
+  };
+
+  return aliases[lang] || lang || 'en';
+}
+
+async function translateWithGoogle(
   text,
   targetLanguage
 ) {
 
   const original =
-    String(text || '');
+    String(text || '').trim();
+
+  const target =
+    normalizeLanguage(
+      targetLanguage
+    );
 
   if (!original) {
     return '';
   }
 
-  const target =
-    String(
-      targetLanguage || ''
-    )
-      .trim()
-      .toLowerCase();
-
   if (
     !target ||
     target === 'auto'
   ) {
-
     return original;
-
   }
 
   const key =
     target +
-    '\n' +
+    '|' +
     original;
 
   if (
     translationCache.has(key)
   ) {
 
-    return translationCache.get(
-      key
+    console.log(
+      `[TRANSLATE CACHE] ${target}: ${original}`
     );
 
+    return translationCache.get(key);
   }
 
-  try {
+  const url =
+    'https://translate.googleapis.com/translate_a/single' +
+    '?client=gtx' +
+    '&sl=auto' +
+    '&tl=' +
+    encodeURIComponent(target) +
+    '&dt=t' +
+    '&q=' +
+    encodeURIComponent(original);
 
-    const url =
-      'https://translate.googleapis.com/translate_a/single' +
-      '?client=gtx' +
-      '&sl=auto' +
-      '&tl=' +
-      encodeURIComponent(target) +
-      '&dt=t&q=' +
-      encodeURIComponent(original);
+  let lastError = null;
 
-    const response =
-      await fetch(url);
+  for (
+    let attempt = 1;
+    attempt <= 2;
+    attempt++
+  ) {
 
-    if (!response.ok) {
+    try {
 
-      return original;
+      console.log(
+        `[TRANSLATE] attempt=${attempt} target=${target} text="${original}"`
+      );
 
-    }
+      const controller =
+        new AbortController();
 
-    const data =
-      await response.json();
+      const timeout =
+        setTimeout(
+          () => controller.abort(),
+          10000
+        );
 
-    const result =
-      Array.isArray(data) &&
-      Array.isArray(data[0])
-        ? data[0]
+      const response =
+        await fetch(
+          url,
+          {
+            method: 'GET',
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 EWS-Sessions'
+            },
+            signal:
+              controller.signal
+          }
+        );
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+
+        throw new Error(
+          `HTTP ${response.status}`
+        );
+
+      }
+
+      const data =
+        await response.json();
+
+      let translated = '';
+
+      if (
+        Array.isArray(data) &&
+        Array.isArray(data[0])
+      ) {
+
+        translated =
+          data[0]
             .map(
-              part =>
-                Array.isArray(part)
-                  ? part[0]
+              item =>
+                Array.isArray(item)
+                  ? String(item[0] || '')
                   : ''
             )
-            .join('')
-        : original;
+            .join('');
 
-    if (
-      translationCache.size >=
-      TRANSLATION_CACHE_LIMIT
-    ) {
+      }
 
-      const first =
-        translationCache
-          .keys()
-          .next()
-          .value;
+      translated =
+        translated.trim();
 
-      if (first) {
-        translationCache.delete(
-          first
+      if (!translated) {
+
+        throw new Error(
+          'Empty translation returned'
         );
+
+      }
+
+      if (
+        translationCache.size >=
+        TRANSLATION_CACHE_LIMIT
+      ) {
+
+        const firstKey =
+          translationCache
+            .keys()
+            .next()
+            .value;
+
+        if (firstKey) {
+
+          translationCache.delete(
+            firstKey
+          );
+
+        }
+
+      }
+
+      translationCache.set(
+        key,
+        translated
+      );
+
+      console.log(
+        `[TRANSLATE OK] ${target}: "${original}" -> "${translated}"`
+      );
+
+      return translated;
+
+    } catch (error) {
+
+      lastError =
+        error;
+
+      console.error(
+        `[TRANSLATE ERROR] attempt=${attempt}:`,
+        error.message
+      );
+
+      if (
+        attempt < 2
+      ) {
+
+        await new Promise(
+          resolve =>
+            setTimeout(
+              resolve,
+              500
+            )
+        );
+
       }
 
     }
 
-    translationCache.set(
-      key,
-      result || original
-    );
-
-    return result || original;
-
-  } catch (e) {
-
-    console.error(
-      'TRANSLATION ERROR:',
-      e.message
-    );
-
-    return original;
   }
+
+  console.error(
+    '[TRANSLATE FAILED]',
+    lastError?.message ||
+      'unknown error'
+  );
+
+  /*
+    If translation fails,
+    preserve original message.
+  */
+
+  return original;
 }
 
 /* =========================================================
@@ -651,11 +719,9 @@ io.on(
           );
 
         const language =
-          String(
+          normalizeLanguage(
             data?.language || 'en'
-          )
-            .trim()
-            .toLowerCase();
+          );
 
         if (!username) {
 
@@ -668,8 +734,7 @@ io.on(
         }
 
         /*
-          Prevent duplicate join
-          from the same socket.
+          Prevent duplicate join.
         */
 
         if (socket.username) {
@@ -716,43 +781,44 @@ io.on(
           }
         );
 
-        const startX =
-          Number(
-            data?.x
-          );
+        const x =
+          Number(data?.x);
 
-        const startY =
-          Number(
-            data?.y
-          );
+        const y =
+          Number(data?.y);
 
-        const startZ =
-          Number(
-            data?.z
-          );
+        const z =
+          Number(data?.z);
 
-        const startYaw =
-          Number(
-            data?.yaw
-          );
+        const yaw =
+          Number(data?.yaw);
 
         players.set(
           socket.id,
           {
             id: socket.id,
             username,
-            x: Number.isFinite(startX)
-              ? startX
-              : 0,
-            y: Number.isFinite(startY)
-              ? startY
-              : 1.7,
-            z: Number.isFinite(startZ)
-              ? startZ
-              : 10,
-            yaw: Number.isFinite(startYaw)
-              ? startYaw
-              : 0,
+
+            x:
+              Number.isFinite(x)
+                ? x
+                : 0,
+
+            y:
+              Number.isFinite(y)
+                ? y
+                : 1.7,
+
+            z:
+              Number.isFinite(z)
+                ? z
+                : 10,
+
+            yaw:
+              Number.isFinite(yaw)
+                ? yaw
+                : 0,
+
             pitch: 0,
             dance: 0
           }
@@ -791,15 +857,14 @@ io.on(
         broadcastOnline();
 
         console.log(
-          'USER JOINED:',
-          username
+          `[JOIN] ${username} language=${language}`
         );
 
       }
     );
 
     /* =====================================================
-       REQUEST ONLINE
+       ONLINE
     ===================================================== */
 
     socket.on(
@@ -815,7 +880,7 @@ io.on(
     );
 
     /* =====================================================
-       LANGUAGE CHANGE
+       LANGUAGE
     ===================================================== */
 
     socket.on(
@@ -826,15 +891,13 @@ io.on(
           return;
         }
 
-        const nextLanguage =
-          String(
-            language || 'en'
-          )
-            .trim()
-            .toLowerCase();
+        const newLanguage =
+          normalizeLanguage(
+            language
+          );
 
         socket.language =
-          nextLanguage;
+          newLanguage;
 
         const user =
           onlineUsers.get(
@@ -844,15 +907,19 @@ io.on(
         if (user) {
 
           user.language =
-            nextLanguage;
+            newLanguage;
 
         }
+
+        console.log(
+          `[LANGUAGE] ${socket.username} -> ${newLanguage}`
+        );
 
         socket.emit(
           'language-updated',
           {
             language:
-              nextLanguage
+              newLanguage
           }
         );
 
@@ -862,7 +929,7 @@ io.on(
     );
 
     /* =====================================================
-       REQUEST PLAYERS
+       PLAYERS
     ===================================================== */
 
     socket.on(
@@ -880,10 +947,6 @@ io.on(
 
       }
     );
-
-    /* =====================================================
-       PLAYER STATE
-    ===================================================== */
 
     socket.on(
       'player-state',
@@ -988,11 +1051,6 @@ io.on(
       }
     );
 
-    /* =====================================================
-       PLAYER MOVE
-       Compatibility
-    ===================================================== */
-
     socket.on(
       'player-move',
       data => {
@@ -1086,7 +1144,7 @@ io.on(
     );
 
     /* =====================================================
-       EMOTES / DANCES
+       DANCES
     ===================================================== */
 
     socket.on(
@@ -1105,7 +1163,6 @@ io.on(
         ) {
 
           return;
-
         }
 
         const player =
@@ -1123,9 +1180,12 @@ io.on(
         io.emit(
           'player-emote',
           {
-            id: socket.id,
+            id:
+              socket.id,
+
             username:
               socket.username,
+
             dance
           }
         );
@@ -1134,7 +1194,7 @@ io.on(
     );
 
     /* =====================================================
-       CLUB SCREEN REQUEST
+       SCREEN
     ===================================================== */
 
     socket.on(
@@ -1149,10 +1209,6 @@ io.on(
       }
     );
 
-    /* =====================================================
-       CLUB SCREEN STATE
-    ===================================================== */
-
     socket.on(
       'club-screen-state',
       state => {
@@ -1164,7 +1220,6 @@ io.on(
         ) {
 
           return;
-
         }
 
         if (
@@ -1195,10 +1250,6 @@ io.on(
             .trim()
             .slice(0, 2000);
 
-        /*
-          Public screen URLs must use HTTPS.
-        */
-
         if (
           !/^https:\/\//i.test(src)
         ) {
@@ -1209,17 +1260,18 @@ io.on(
           );
 
           return;
-
         }
 
         clubScreenState = {
           active: true,
           src,
+
           name:
             String(
               state.name ||
               'MEDIA'
             ).slice(0, 100),
+
           owner:
             SCREEN_HOST
         };
@@ -1233,7 +1285,7 @@ io.on(
     );
 
     /* =====================================================
-       CHAT — PERSONAL TRANSLATION
+       CHAT + PERSONAL TRANSLATION
     ===================================================== */
 
     socket.on(
@@ -1256,36 +1308,36 @@ io.on(
         }
 
         const senderLanguage =
-          String(
+          normalizeLanguage(
             socket.language || 'en'
-          )
-            .toLowerCase();
+          );
+
+        console.log('');
+        console.log(
+          '================ CHAT ================'
+        );
+        console.log(
+          `USER: ${socket.username}`
+        );
+        console.log(
+          `LANG: ${senderLanguage}`
+        );
+        console.log(
+          `TEXT: ${original}`
+        );
+
+        const recipients =
+          Array.from(
+            onlineUsers.entries()
+          );
 
         /*
-          Every online user gets their own translation.
-          The sender does NOT receive a duplicate.
+          Translate separately for every recipient.
         */
 
         await Promise.all(
-          Array.from(
-            onlineUsers.entries()
-          ).map(
+          recipients.map(
             async ([id, user]) => {
-
-              const targetLanguage =
-                String(
-                  user.language || 'en'
-                )
-                  .toLowerCase();
-
-              const translated =
-                targetLanguage !==
-                senderLanguage
-                  ? await translateText(
-                      original,
-                      targetLanguage
-                    )
-                  : original;
 
               const targetSocket =
                 io.sockets.sockets.get(
@@ -1295,6 +1347,36 @@ io.on(
               if (!targetSocket) {
                 return;
               }
+
+              const targetLanguage =
+                normalizeLanguage(
+                  user.language || 'en'
+                );
+
+              let translated =
+                original;
+
+              /*
+                Same language:
+                no translation needed.
+              */
+
+              if (
+                targetLanguage !==
+                senderLanguage
+              ) {
+
+                translated =
+                  await translateWithGoogle(
+                    original,
+                    targetLanguage
+                  );
+
+              }
+
+              console.log(
+                `[CHAT SEND] ${socket.username} -> ${user.username} | ${senderLanguage} -> ${targetLanguage} | "${translated}"`
+              );
 
               targetSocket.emit(
                 'chat-message',
@@ -1308,16 +1390,26 @@ io.on(
                   text:
                     translated,
 
-                  ts:
-                    Date.now(),
+                  original,
 
-                  original
+                  sourceLanguage:
+                    senderLanguage,
+
+                  targetLanguage,
+
+                  ts:
+                    Date.now()
                 }
               );
 
             }
           )
         );
+
+        console.log(
+          '========================================'
+        );
+        console.log('');
 
       }
     );
@@ -1458,7 +1550,7 @@ try {
 }
 
 /* =========================================================
-   SERVER
+   SERVER START
 ========================================================= */
 
 server.listen(
