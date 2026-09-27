@@ -459,47 +459,27 @@ input:focus{
   line-height:1.4;
 }
 
-#media-screen{
-  position:absolute;
-  z-index:15;
-  display:none;
-  overflow:hidden;
-  background:#000;
-  border:1px solid #222;
-  box-shadow:0 0 45px rgba(0,0,0,.9);
-  pointer-events:auto;
-}
-
-#media-screen.active{display:block;}
-
-#media-screen iframe{
-  width:100%;
-  height:100%;
-  border:0;
-  display:block;
-  background:#000;
-}
-
-#media-screen-close{
-  position:absolute;
-  top:7px;
-  right:7px;
-  z-index:2;
-  width:28px;
-  height:28px;
-  border:1px solid #555;
-  background:rgba(0,0,0,.85);
-  color:#fff;
-  cursor:pointer;
-  font-size:14px;
-  line-height:26px;
-}
+#css3d-container{position:absolute;inset:0;width:100%;height:100%;z-index:15;pointer-events:none;overflow:hidden;}
+#css3d-screen{width:1400px;height:600px;position:absolute;left:0;top:0;background:#000;border:1px solid #222;box-shadow:0 0 45px rgba(0,0,0,.9);pointer-events:auto;overflow:hidden;display:none;}
+#css3d-screen.active{display:block;}
+#css3d-screen iframe{width:100%;height:100%;border:0;display:block;background:#000;pointer-events:auto;}
+#css3d-screen-close{position:absolute;top:7px;right:7px;z-index:2;width:28px;height:28px;border:1px solid #555;background:rgba(0,0,0,.85);color:#fff;cursor:pointer;font-size:14px;line-height:26px;}
 
 @media(max-width:700px){
   #screen-menu-row{flex-wrap:wrap;}
   #screen-url{flex-basis:100%;}
 }
 
+/* =========================================================
+   EMOTES / DANCES
+========================================================= */
+#emotes-control{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:32;pointer-events:auto;height:34px;padding:0 18px;border:1px solid #444;background:rgba(0,0,0,.82);color:#fff;font-size:10px;font-weight:bold;letter-spacing:3px;cursor:pointer;}
+#emotes-control:hover{background:#fff;color:#000;}
+#emotes-menu{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:41;width:250px;padding:10px;background:rgba(4,4,4,.97);border:1px solid #444;box-shadow:0 20px 70px rgba(0,0,0,.7);display:none;pointer-events:auto;}
+#emotes-menu.open{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.emote-btn{height:36px;border:1px solid #333;background:#111;color:#fff;cursor:pointer;font-size:10px;letter-spacing:1px;}
+.emote-btn:hover{background:#fff;color:#000;}
+#emote-stop{grid-column:1/-1;}
 /* =========================================================
    OTHER HUD
 ========================================================= */
@@ -913,6 +893,18 @@ input:focus{
     <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
   </div>
 
+  <button id="emotes-control" onclick="toggleEmotesMenu()">EMOTES</button>
+
+  <div id="emotes-menu">
+    <button class="emote-btn" onclick="playDance(1)">DANCE 01</button>
+    <button class="emote-btn" onclick="playDance(2)">DANCE 02</button>
+    <button class="emote-btn" onclick="playDance(3)">SHUFFLE</button>
+    <button class="emote-btn" onclick="playDance(4)">ROBOT</button>
+    <button class="emote-btn" onclick="playDance(5)">BOUNCE</button>
+    <button class="emote-btn" onclick="playDance(6)">WAVE</button>
+    <button id="emote-stop" class="emote-btn" onclick="stopDance()">STOP DANCE</button>
+  </div>
+
   <div id="lang-bar">
 
     <select id="lang">
@@ -1043,6 +1035,8 @@ let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
 let clubScreenHost=null;
+let activeDance=0;
+let danceStartedAt=0;
 
 let playerBody;
 
@@ -2904,6 +2898,17 @@ function setupControls(){
         }
       }
 
+      if(!chatMode){
+        if(e.code==='KeyB'){ toggleEmotesMenu(); e.preventDefault(); return; }
+        if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
+        if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
+        if(e.code==='Digit3'){ playDance(3); e.preventDefault(); return; }
+        if(e.code==='Digit4'){ playDance(4); e.preventDefault(); return; }
+        if(e.code==='Digit5'){ playDance(5); e.preventDefault(); return; }
+        if(e.code==='Digit6'){ playDance(6); e.preventDefault(); return; }
+        if(['KeyW','KeyA','KeyS','KeyD','Space'].includes(e.code) && activeDance){ stopDance(); }
+      }
+
       keys[e.code]=true;
 
       if(
@@ -3100,85 +3105,36 @@ function isClubHost(){
 }
 
 function loadClubScreen(){
-  if(!isClubHost()){
-    setScreenStatus('Только главный пользователь клуба может включать экран.');
-    return;
-  }
-
-  const input=document.getElementById('screen-url');
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('css3d-screen');
-  if(!input || !frame || !panel) return;
-
-  const result=normalizeClubScreenUrl(input.value);
-  if(!result){
-    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');
-    return;
-  }
-
-  frame.src=result.src;
-  panel.classList.add('active');
-  screenMediaActive=true;
-  screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — экран физически закреплён на задней стене.');
-
-  if(socket){
-    socket.emit('club-screen-state',{
-      src:result.src,
-      name:result.name,
-      active:true,
-      owner:currentUser
-    });
-  }
-
-  const menu=document.getElementById('screen-menu');
-  if(menu) menu.classList.remove('open');
+  if(!isClubHost()){ setScreenStatus('Только главный пользователь клуба может включать экран.'); return; }
+  const input=document.getElementById('screen-url'); const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
+  if(!input||!frame||!panel)return; const result=normalizeClubScreenUrl(input.value);
+  if(!result){setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');return;}
+  frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
+  setScreenStatus(result.name+' LOADED — экран закреплён. Нажми ESC, чтобы выйти из управления камерой и кликать по плееру.');
+  if(socket)socket.emit('club-screen-state',{src:result.src,name:result.name,active:true,owner:currentUser});
+  const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
 }
 
 function clearClubScreen(){
-  if(!isClubHost()) return;
-
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('css3d-screen');
-
-  if(frame) frame.src='about:blank';
-  if(panel) panel.classList.remove('active');
-
-  screenMediaActive=false;
-  screenMediaUrl='';
-
-  if(socket){
-    socket.emit('club-screen-state',{
-      active:false,
-      owner:currentUser
-    });
-  }
-
-  setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
+  if(!isClubHost())return; const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
+  if(frame)frame.src='about:blank'; if(panel)panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl='';
+  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser}); setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
 }
 
-function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
+// When the user wants to click the embedded player, release pointer lock first.
+// The 3D screen remains physically fixed to the wall; only mouse control is released.
+function enableScreenInteraction(){
+  if(document.pointerLockElement){
+    try{ document.exitPointerLock(); }catch(e){}
+  }
   const panel=document.getElementById('css3d-screen');
-  if(!frame || !panel) return;
-
-  // IMPORTANT: inactive state must also be applied.
-  if(!state || !state.active || !state.src){
-    frame.src='about:blank';
-    panel.classList.remove('active');
-    screenMediaActive=false;
-    screenMediaUrl='';
-    return;
-  }
-
-  if(state.src!==screenMediaUrl){
-    frame.src=state.src;
-  }
-
-  screenMediaUrl=state.src;
-  screenMediaActive=true;
-  panel.classList.add('active');
+  if(panel){ panel.style.pointerEvents='auto'; }
 }
+
+document.addEventListener('mousedown',function(e){
+  const screen=e.target && e.target.closest ? e.target.closest('#css3d-screen') : null;
+  if(screen) enableScreenInteraction();
+});
 
 /* =========================================================
    ANIMATION
@@ -3277,7 +3233,7 @@ function animate(){
     level*.12;
 
   const speed=
-    chatMode
+    chatMode || activeDance
       ?0
       :5*dt;
 
@@ -3594,6 +3550,11 @@ function animate(){
   }
 
 
+  remotePlayers.forEach(p=>{
+    if(p.dance) animateRemoteDance(p,time);
+    else resetRemoteDancePose(p);
+  });
+
   renderer.render(
     scene,
     camera
@@ -3637,6 +3598,8 @@ function createRemotePlayer(data){
   const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
   const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
 
+  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg};
+
   const labelCanvas=document.createElement('canvas');
   labelCanvas.width=256; labelCanvas.height=64;
   const ctx=labelCanvas.getContext('2d');
@@ -3661,7 +3624,11 @@ function createRemotePlayer(data){
     group:g,
     last:{x,z,yaw:ry},
     moving:!!data.moving,
-    username:data.username||'PLAYER'
+    username:data.username||'PLAYER',
+    dance:Number(data.dance)||0,
+    danceStartedAt:Number(data.danceStartedAt)||0,
+    parts,
+    baseY:y
   });
 }
 
@@ -3684,6 +3651,8 @@ function updateRemotePlayer(data){
   const dz=nz-p.group.position.z;
 
   p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
+  if(data.dance!==undefined) p.dance=Number(data.dance)||0;
+  if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
   p.group.position.x=nx;
   p.group.position.y=ny;
   p.group.position.z=nz;
@@ -3717,11 +3686,86 @@ function broadcastPlayerState(now){
     pitch:pitch,
     username:currentUser,
     moving:moving,
-    jumping:!isGrounded
+    jumping:!isGrounded,
+    dance:activeDance,
+    danceStartedAt:danceStartedAt
   });
 }
 
 
+
+/* =========================================================
+   EMOTES / DANCES
+========================================================= */
+function toggleEmotesMenu(){
+  const menu=document.getElementById('emotes-menu');
+  if(menu) menu.classList.toggle('open');
+}
+
+function playDance(id){
+  if(chatMode || !socket) return;
+  activeDance=Math.max(1,Math.min(6,Number(id)||1));
+  danceStartedAt=Date.now();
+  keys={};
+  try{ if(document.pointerLockElement) document.exitPointerLock(); }catch(e){}
+  const menu=document.getElementById('emotes-menu');
+  if(menu) menu.classList.remove('open');
+  broadcastPlayerState(Date.now(),true);
+}
+
+function stopDance(){
+  activeDance=0;
+  danceStartedAt=0;
+  const menu=document.getElementById('emotes-menu');
+  if(menu) menu.classList.remove('open');
+  broadcastPlayerState(Date.now(),true);
+}
+
+function animateRemoteDance(p,time){
+  if(!p || !p.parts) return;
+  const q=p.parts;
+  const t=Math.max(0,(Date.now()-(p.danceStartedAt||Date.now()))/1000);
+  const w=t*Math.PI*2;
+  q.torso.rotation.set(0,0,0);
+  q.head.rotation.set(0,0,0);
+  q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
+  q.leftLeg.rotation.set(0,0,0); q.rightLeg.rotation.set(0,0,0);
+  if(!p.dance) return;
+  if(p.dance===1){
+    q.leftArm.rotation.z=-1.1+Math.sin(w*2)*.35; q.rightArm.rotation.z=1.1-Math.sin(w*2)*.35;
+    q.leftLeg.rotation.z=Math.sin(w)*.35; q.rightLeg.rotation.z=-Math.sin(w)*.35;
+    q.torso.rotation.y=Math.sin(w)*.18;
+  }else if(p.dance===2){
+    q.leftArm.rotation.z=-.55+Math.sin(w*2)*.9; q.rightArm.rotation.z=.55-Math.sin(w*2)*.9;
+    q.leftLeg.rotation.z=Math.sin(w*2)*.28; q.rightLeg.rotation.z=-Math.sin(w*2)*.28;
+    q.torso.rotation.z=Math.sin(w)*.16;
+  }else if(p.dance===3){
+    q.leftArm.rotation.z=-1.25+Math.sin(w*2)*.25; q.rightArm.rotation.z=.25+Math.sin(w*2+.8)*.8;
+    q.leftLeg.rotation.z=Math.sin(w*2)*.55; q.rightLeg.rotation.z=-Math.sin(w*2)*.55;
+    q.torso.rotation.y=Math.sin(w)*.35;
+  }else if(p.dance===4){
+    const step=Math.sin(w*2)>0?1:-1;
+    q.leftArm.rotation.z=-.85*step; q.rightArm.rotation.z=.85*step;
+    q.leftLeg.rotation.z=.35*step; q.rightLeg.rotation.z=-.35*step;
+    q.head.rotation.y=Math.sin(w*2)*.35;
+  }else if(p.dance===5){
+    const bounce=Math.abs(Math.sin(w*2))*0.22;
+    p.group.position.y=(p.baseY||p.group.position.y)+bounce;
+    q.leftArm.rotation.z=-.8-Math.sin(w*2)*.3; q.rightArm.rotation.z=.8+Math.sin(w*2)*.3;
+  }else if(p.dance===6){
+    q.leftArm.rotation.z=-1.35+Math.sin(w*3)*.5; q.rightArm.rotation.z=.15;
+    q.rightArm.rotation.x=Math.sin(w*2)*.5; q.head.rotation.z=Math.sin(w*2)*.15;
+  }
+}
+
+function resetRemoteDancePose(p){
+  if(!p || !p.parts) return;
+  p.group.position.y=p.baseY||0;
+  const q=p.parts;
+  q.torso.rotation.set(0,0,0); q.head.rotation.set(0,0,0);
+  q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
+  q.leftLeg.rotation.set(0,0,0); q.rightLeg.rotation.set(0,0,0);
+}
 
 /* =========================================================
    CLEANUP
