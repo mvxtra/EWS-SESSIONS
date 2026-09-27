@@ -1365,6 +1365,7 @@ function startSession(username){
   // Ask the server for a fresh snapshot after every connection.
   socket.on('joined', ()=>{
     socket.emit('request-players');
+    socket.emit('request-club-screen');
   });
 
 }
@@ -1511,6 +1512,7 @@ function init3D(){
   cssRenderer.domElement.style.height='100%';
   cssRenderer.domElement.style.zIndex='15';
   cssRenderer.domElement.style.pointerEvents='none';
+  cssRenderer.domElement.style.transform='translateZ(0)';
   document.getElementById('css3d-container').appendChild(cssRenderer.domElement);
 
   const cssScreenEl=document.getElementById('css3d-screen');
@@ -3113,6 +3115,44 @@ document.addEventListener('mousedown',function(e){
   const screen=e.target && e.target.closest ? e.target.closest('#css3d-screen') : null;
   if(screen) enableScreenInteraction();
 });
+
+/* =========================================================
+   REMOTE CLUB SCREEN
+   The server sends one shared screen state to every guest.
+   This function is intentionally separate from loadClubScreen()
+   because friends must never need to be the host to display it.
+========================================================= */
+function applyRemoteClubScreen(state){
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('css3d-screen');
+  if(!frame || !panel) return;
+
+  state=state || {};
+
+  if(state.active !== true || !state.src){
+    frame.src='about:blank';
+    panel.classList.remove('active');
+    screenMediaActive=false;
+    screenMediaUrl='';
+    return;
+  }
+
+  const src=String(state.src).trim();
+  if(!src) return;
+
+  // Do not reload the iframe every time a duplicate Socket.IO event arrives.
+  if(screenMediaUrl !== src){
+    frame.src=src;
+    screenMediaUrl=src;
+  }
+
+  screenMediaActive=true;
+  panel.classList.add('active');
+
+  // Make sure the iframe can play media on every guest browser.
+  frame.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture');
+  frame.setAttribute('allowfullscreen','');
+}
 
 /* =========================================================
    ANIMATION
