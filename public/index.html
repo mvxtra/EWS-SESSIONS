@@ -443,6 +443,7 @@ input:focus{
 }
 
 #media-screen-close{
+  display:none;
   position:absolute;
   top:7px;
   right:7px;
@@ -1435,6 +1436,7 @@ function init3D(){
   css3dRenderer.domElement.style.width = '100%';
   css3dRenderer.domElement.style.height = '100%';
   css3dRenderer.domElement.style.pointerEvents = 'none';
+  css3dRenderer.domElement.style.zIndex = '12';
   document.getElementById('app').appendChild(css3dRenderer.domElement);
 
   renderer.shadowMap.enabled=true;
@@ -1518,6 +1520,13 @@ function init3D(){
   setupAudio();
 
   setupControls();
+
+  // Браузер блокирует autoplay. Первый клик по клубу автоматически запускает HLS-аудио.
+  document.addEventListener('pointerdown', function(){
+    if(!audioStarted){
+      startSSHAudio().catch(function(){});
+    }
+  }, {once:false, passive:true});
 
   animate();
 
@@ -1727,7 +1736,7 @@ function createMainScreen(){
     new THREE.PlaneGeometry(14,6),
     new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide})
   );
-  screenMesh.position.set(0,3.65,-16.48);
+  screenMesh.position.set(0,3.65,-16.69);
   scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
@@ -1749,9 +1758,10 @@ function createMainScreen(){
     panel.style.display='none';
 
     screenDomObject=new THREE.CSS3DObject(panel);
-    screenDomObject.position.set(0,3.65,-16.40);
+    screenDomObject.position.set(0,3.65,-16.69);
     screenDomObject.rotation.set(0,0,0);
     screenDomObject.scale.set(.01,.01,.01);
+    screenDomObject.element.style.transformStyle='preserve-3d';
     screenDomObject.visible=false;
     scene.add(screenDomObject);
 
