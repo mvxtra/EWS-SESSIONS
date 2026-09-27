@@ -9,7 +9,7 @@
   content="width=device-width,initial-scale=1.0"
 >
 
-<title>EWS SESSIONS</title>
+<title>EWS SESSIONS — FIXED</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
@@ -502,7 +502,7 @@ input:focus{
   letter-spacing:1px;
 }
 
-#stream-indicator{
+#stream-indicator{display:none !important;
   position:absolute;
 
   top:18px;
@@ -570,7 +570,7 @@ input:focus{
   pointer-events:none;
 }
 
-#audio-control{
+#audio-control{display:none !important;
   position:absolute;
 
   top:58px;
@@ -671,7 +671,7 @@ input:focus{
     padding:2px 0;
   }
 
-  #stream-indicator{
+  #stream-indicator{display:none !important;
     top:52px;
     left:12px;
 
@@ -682,7 +682,7 @@ input:focus{
     font-size:8px;
   }
 
-  #audio-control{
+  #audio-control{display:none !important;
     top:84px;
     left:12px;
 
@@ -770,12 +770,6 @@ input:focus{
   }
 }
 
-
-#club-status{position:fixed;left:18px;bottom:18px;z-index:40;padding:7px 10px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.62);font:10px Arial;letter-spacing:1.5px;color:#ddd;pointer-events:none;backdrop-filter:blur(4px)}
-#status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#fff;margin-right:7px;box-shadow:0 0 9px #fff}
-#sit-prompt{position:fixed;left:50%;bottom:17%;transform:translateX(-50%);z-index:45;display:none;padding:9px 14px;border:1px solid rgba(255,255,255,.35);background:rgba(0,0,0,.78);font:11px Arial;letter-spacing:1.4px;color:#fff;pointer-events:none}
-#sit-prompt.show{display:block}
-#audio-control{display:none!important}
 </style>
 </head>
 
@@ -867,13 +861,7 @@ input:focus{
     EWS
     <span>SESSIONS</span>
   </div>
-
-  <div id="stream-indicator">EWS SESSIONS</div>
-  <button id="audio-control" style="display:none!important" aria-hidden="true"></button>
-  <div id="club-status"><span id="status-dot"></span><span id="status-text">CLUB LIVE</span></div>
-  <div id="sit-prompt">E — СЕСТЬ</div>
-
-  <button
+<button
     id="screen-control"
     onclick="toggleScreenMenu()">
     SCREEN
@@ -1040,28 +1028,6 @@ let activeDance=0;
 let danceStartedAt=0;
 
 let playerBody;
-const collisionBoxes=[];
-const chairSpots=[];
-let sitting=false, sitChairId=null, clubHaze=null;
-let movingHeads=[], laserBeams=[];
-
-function addCollisionBox(x,z,w,d,tag='object'){collisionBoxes.push({x,z,w,d,tag});}
-function blockedAt(x,z,r=.34){return collisionBoxes.some(b=>x>b.x-b.w/2-r&&x<b.x+b.w/2+r&&z>b.z-b.d/2-r&&z<b.z+b.d/2+r);}
-function nearestChair(){
-  let best=null,bd=1.55;
-  for(const c of chairSpots){const d=Math.hypot(camera.position.x-c.x,camera.position.z-c.z);if(d<bd){best=c;bd=d;}}
-  return best;
-}
-function updateSitPrompt(){
-  const el=document.getElementById('sit-prompt');if(!el)return;
-  if(sitting){el.textContent='E / SPACE — ВСТАТЬ';el.classList.add('show');return;}
-  const c=nearestChair();if(c){el.textContent='E — СЕСТЬ';el.classList.add('show');}else el.classList.remove('show');
-}
-function trySitOrStand(){
-  if(chatMode||!socket)return;
-  if(sitting){socket.emit('stand-chair');return;}
-  const c=nearestChair();if(c)socket.emit('sit-chair',{chairId:c.id});
-}
 
 /* =========================================================
    EWS TEXTURES
@@ -1069,8 +1035,8 @@ function trySitOrStand(){
 ========================================================= */
 
 const EWS_TEXTURES = {
-  concrete: 'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
-  floor: 'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+  concrete: null,
+  floor: null
 };
 
 const ewsTextureLoader = new THREE.TextureLoader();
@@ -1621,7 +1587,6 @@ function init3D(){
   createCeilingBeams();
   createSpeakers();
   createParticles();
-  createAtmosphere();
   createPlayer();
 
   setupAudio();
@@ -1703,7 +1668,6 @@ function createFloor(){
   const texture = loadEWSTexture(EWS_TEXTURES.floor,8,10);
 
   const mat = new THREE.MeshStandardMaterial({
-    map:texture,
     color:0x121212,
     metalness:.18,
     roughness:.82
@@ -1726,7 +1690,6 @@ function createCeiling(){
   const ceiling = new THREE.Mesh(
     new THREE.PlaneGeometry(36,42),
     new THREE.MeshStandardMaterial({
-      map:texture,
       color:0x080808,
       roughness:1
     })
@@ -1742,7 +1705,6 @@ function createWalls(){
   const texture = loadEWSTexture(EWS_TEXTURES.concrete,6,2);
 
   const mat = new THREE.MeshStandardMaterial({
-    map:texture,
     color:0x101010,
     roughness:.93,
     metalness:.04
@@ -1752,9 +1714,6 @@ function createWalls(){
   createBox(36,6,.5,0,3,17,mat);
   createBox(.5,6,34,-18,3,0,mat);
   createBox(.5,6,34,18,3,0,mat);
-  addCollisionBox(0,-17,36,.8,'wall');
-  addCollisionBox(-18,0,.8,34,'wall'); addCollisionBox(18,0,.8,34,'wall');
-  addCollisionBox(-8.5,17,19,.8,'wall'); addCollisionBox(8.5,17,19,.8,'wall');
 }
 
 function createDanceFloor(){
@@ -1765,7 +1724,6 @@ function createDanceFloor(){
         14,.12,14
       ),
       new THREE.MeshStandardMaterial({
-        map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
         color:0x151515,
         metalness:.35,
         roughness:.58
@@ -1839,11 +1797,7 @@ function createMainScreen(){
     new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide,transparent:true,opacity:0})
   );
   screenMesh.position.set(0,3.65,-16.48);
-  scene.add(screenMesh); 
-  addCollisionBox(0,-16.48,14.8,.7,'screen');
-  const mountMat=new THREE.MeshStandardMaterial({color:0x252525,metalness:.85,roughness:.25});
-  [-5.2,5.2].forEach(x=>{createBox(.22,.7,.35,x,3.65,-16.92,mountMat);createBox(.8,.16,.3,x,3,-16.9,mountMat);createBox(.8,.16,.3,x,4.3,-16.9,mountMat);});
-
+  scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
   [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
@@ -1867,7 +1821,6 @@ function createStage(){
     0,.3,-12.5,
     stageMat
   );
-  addCollisionBox(0,-12.5,17,3,'stage');
 
   const stripMat =
     new THREE.MeshBasicMaterial({
@@ -1890,43 +1843,113 @@ function createStage(){
 }
 
 function createBar(){
-  const wood=new THREE.MeshStandardMaterial({color:0x171717,metalness:.45,roughness:.42});
-  const top=new THREE.MeshStandardMaterial({color:0xb9b9b9,metalness:.8,roughness:.22});
-  const back=new THREE.MeshStandardMaterial({color:0x0b0b0b,roughness:.75});
-  createBox(8.6,1,1.55,-12,.55,7.15,wood);
-  createBox(8.8,.16,1.75,-12,1.08,7.15,top);
-  createBox(8.4,2.9,.35,-12,2.05,5.95,back);
-  for(let shelf=0;shelf<2;shelf++){
-    createBox(7.8,.08,.75,-12,1.65+shelf*.82,5.72,top,false,false);
-    for(let i=0;i<9;i++){const m=new THREE.Mesh(new THREE.CylinderGeometry(.075,.095,.58,12),new THREE.MeshStandardMaterial({color:[0x666666,0x999999,0x303030][i%3],metalness:.55,roughness:.3}));m.position.set(-15.45+i*.86,1.98+shelf*.82,5.7);scene.add(m);}
+
+  const wood =
+    new THREE.MeshStandardMaterial({
+      color:0x141414,
+      metalness:.3,
+      roughness:.55
+    });
+
+  createBox(
+    8,1.1,2,
+    -12,.65,7,
+    wood
+  );
+
+  createBox(
+    8.5,.15,2.3,
+    -12,1.25,7,
+    new THREE.MeshStandardMaterial({
+      color:0xdddddd,
+      metalness:.7,
+      roughness:.25
+    })
+  );
+
+  for(
+    let i=0;
+    i<5;
+    i++
+  ){
+
+    const bottle =
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .07,
+          .09,
+          .65,
+          12
+        ),
+        new THREE.MeshStandardMaterial({
+          color:0x888888,
+          metalness:.6,
+          roughness:.25
+        })
+      );
+
+    bottle.position.set(
+      -15+i*.8,
+      1.7,
+      6.5
+    );
+
+    scene.add(bottle);
+
   }
-  for(let i=0;i<5;i++){
-    const x=-15.2+i*1.6, metal=new THREE.MeshStandardMaterial({color:0x202020,metalness:.8,roughness:.28}), seat=new THREE.MeshStandardMaterial({color:0x111111,roughness:.7});
-    createBox(.12,.9,.12,x,.48,8.55,metal);
-    let base=new THREE.Mesh(new THREE.CylinderGeometry(.38,.46,.08,24),metal);base.position.set(x,.06,8.55);scene.add(base);
-    let pad=new THREE.Mesh(new THREE.CylinderGeometry(.36,.36,.12,24),seat);pad.position.set(x,.94,8.55);scene.add(pad);
-    let foot=new THREE.Mesh(new THREE.TorusGeometry(.25,.035,8,24),metal);foot.rotation.x=Math.PI/2;foot.position.set(x,.38,8.55);scene.add(foot);
-    const id='bar-'+i;chairSpots.push({id,x,z:8.55});addCollisionBox(x,8.55,.72,.72,'chair');
-  }
-  addCollisionBox(-12,7.15,8.8,1.8,'bar');addCollisionBox(-12,5.95,8.5,.5,'bar-back');
+
 }
 
 function createLounge(){
-  const sofa=new THREE.MeshStandardMaterial({color:0x151515,roughness:.82});
-  const metal=new THREE.MeshStandardMaterial({color:0x242424,metalness:.75,roughness:.3});
-  createBox(5.6,.65,1.0,11.1,.45,9.2,sofa);createBox(5.6,.9,.22,11.1,.95,9.62,sofa);
-  createBox(1,.65,3.7,14,.45,7.5,sofa);createBox(.22,.9,3.7,14.42,.95,7.5,sofa);
-  addCollisionBox(11.1,9.2,5.8,1.2,'sofa');addCollisionBox(14,7.5,1.2,3.8,'sofa');
-  [{x:8,z:3.6},{x:11,z:3.6},{x:14,z:3.6}].forEach((t,ti)=>{
-    let top=new THREE.Mesh(new THREE.CylinderGeometry(.62,.62,.1,32),metal);top.position.set(t.x,.78,t.z);scene.add(top);
-    let leg=new THREE.Mesh(new THREE.CylinderGeometry(.08,.11,.75,12),metal);leg.position.set(t.x,.39,t.z);scene.add(leg);addCollisionBox(t.x,t.z,1.25,1.25,'table');
-    [[t.x-1.05,t.z],[t.x+1.05,t.z],[t.x,t.z-1],[t.x,t.z+1]].forEach((q,si)=>{
-      const [x,z]=q;let seat=new THREE.Mesh(new THREE.CylinderGeometry(.32,.34,.1,20),sofa);seat.position.set(x,.63,z);scene.add(seat);
-      let stem=new THREE.Mesh(new THREE.CylinderGeometry(.055,.075,.55,10),metal);stem.position.set(x,.34,z);scene.add(stem);
-      let base=new THREE.Mesh(new THREE.CylinderGeometry(.28,.34,.05,20),metal);base.position.set(x,.07,z);scene.add(base);
-      const id=`lounge-${ti}-${si}`;chairSpots.push({id,x,z});addCollisionBox(x,z,.7,.7,'chair');
+
+  const sofaMat =
+    new THREE.MeshStandardMaterial({
+      color:0x181818,
+      roughness:.9
     });
-  });
+
+  createBox(
+    6,.8,1.6,
+    11,.7,8,
+    sofaMat
+  );
+
+  createBox(
+    1.6,1.4,5.5,
+    14,1.2,8,
+    sofaMat
+  );
+
+  for(
+    let i=0;
+    i<3;
+    i++
+  ){
+
+    const table =
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .65,
+          .65,
+          .08,
+          32
+        ),
+        new THREE.MeshStandardMaterial({
+          color:0x101010,
+          metalness:.7
+        })
+      );
+
+    table.position.set(
+      8+i*3,
+      .75,
+      4
+    );
+
+    scene.add(table);
+
+  }
+
 }
 
 function createColumns(){
@@ -2139,27 +2162,92 @@ function createNeonArchitecture(){
 }
 
 function createCeilingBeams(){
-  const mat=new THREE.MeshStandardMaterial({color:0x151515,metalness:.85,roughness:.28});
-  for(let x=-14;x<=14;x+=4)createBox(.24,.24,34,x,5.72,0,mat);
-  createBox(17,.18,.18,0,5.42,-3,mat);createBox(17,.18,.18,0,5.42,3,mat);
-  for(let x=-8;x<=8;x+=2){createBox(.1,.8,.1,x,5.42,-3,mat);createBox(.1,.8,.1,x,5.42,3,mat);}
-  const fm=new THREE.MeshStandardMaterial({color:0x080808,metalness:.8,roughness:.25});
-  for(let x=-7;x<=7;x+=3.5){const h=new THREE.Group();h.position.set(x,5.08,-3);h.add(new THREE.Mesh(new THREE.BoxGeometry(.55,.32,.55),fm));const lens=new THREE.Mesh(new THREE.CylinderGeometry(.14,.18,.1,16),new THREE.MeshBasicMaterial({color:0xffffff}));lens.rotation.x=Math.PI/2;lens.position.z=-.31;h.add(lens);scene.add(h);movingHeads.push(h);}
-  const m1=new THREE.MeshBasicMaterial({color:0x3344ff,transparent:true,opacity:.1,depthWrite:false,blending:THREE.AdditiveBlending}),m2=new THREE.MeshBasicMaterial({color:0xff2244,transparent:true,opacity:.1,depthWrite:false,blending:THREE.AdditiveBlending});
-  for(let i=0;i<4;i++){const beam=new THREE.Mesh(new THREE.CylinderGeometry(.018,.055,10,8,1,true),i%2?m1:m2);beam.position.set(-6+i*4,3,-3);scene.add(beam);laserBeams.push({mesh:beam,phase:i*1.4});}
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x151515,
+      metalness:.8,
+      roughness:.3
+    });
+
+  for(
+    let x=-14;
+    x<=14;
+    x+=4
+  ){
+
+    createBox(
+      .3,.3,34,
+      x,5.7,0,
+      mat
+    );
+
+  }
+
 }
 
 function createSpeakers(){
-  const cab=new THREE.MeshStandardMaterial({color:0x050505,metalness:.5,roughness:.62});
-  const grille=new THREE.MeshStandardMaterial({color:0x111111,roughness:.9});
-  [[-10,2.2,-12],[10,2.2,-12],[-15.5,2.1,-9.5],[15.5,2.1,-9.5]].forEach((p,i)=>{
-    createBox(1.5,2.9,1.05,p[0],p[1],p[2],cab);
-    for(let j=0;j<3;j++){let c=new THREE.Mesh(new THREE.CylinderGeometry(.28,.28,.08,24),new THREE.MeshStandardMaterial({color:0x2a2a2a,metalness:.65,roughness:.28}));c.rotation.x=Math.PI/2;c.position.set(p[0],1.35+j*.62,p[2]-.56);scene.add(c);}
-    createBox(1.34,2.7,.025,p[0],p[1],p[2]-.55,grille,false,false);
-    addCollisionBox(p[0],p[2],1.7,1.25,'speaker');
-    createBox(.18,.85,.18,p[0],4,p[2]+.1,new THREE.MeshStandardMaterial({color:0x333333,metalness:.8,roughness:.25}));
-    createBox(.9,.12,.18,p[0],3.62,p[2]+.1,new THREE.MeshStandardMaterial({color:0x333333,metalness:.8,roughness:.25}));
-  });
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x050505,
+      metalness:.4,
+      roughness:.7
+    });
+
+  const positions=[
+    [-8,2,-11],
+    [8,2,-11],
+    [-11,2,-10],
+    [11,2,-10]
+  ];
+
+  positions.forEach(
+    p=>{
+
+      createBox(
+        1.2,2.5,.8,
+        p[0],
+        p[1],
+        p[2],
+        mat
+      );
+
+      for(
+        let i=0;
+        i<3;
+        i++
+      ){
+
+        const cone =
+          new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              .23,
+              .23,
+              .12,
+              24
+            ),
+            new THREE.MeshBasicMaterial({
+              color:0xaaaaaa
+            })
+          );
+
+        cone.rotation.x=
+          Math.PI/2;
+
+        cone.position.set(
+          p[0],
+          1.3+i*.6,
+          p[2]-.45
+        );
+
+        scene.add(cone);
+
+      }
+
+    }
+  );
+
 }
 
 function createParticles(){
@@ -2216,56 +2304,74 @@ function createParticles(){
 
 }
 
-function createAtmosphere(){
-  const count=260,geo=new THREE.BufferGeometry(),pos=new Float32Array(count*3);
-  for(let i=0;i<count;i++){pos[i*3]=(Math.random()-.5)*30;pos[i*3+1]=.35+Math.random()*5.1;pos[i*3+2]=(Math.random()-.5)*28-1;}
-  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  clubHaze=new THREE.Points(geo,new THREE.PointsMaterial({color:0xcfcfcf,size:.18,transparent:true,opacity:.035,depthWrite:false}));
-  scene.add(clubHaze);
-}
+function createPlayer(){
 
-function createAlienAvatar(colorHex=0x62ff72,outfitHex=0x151515){
-  const g=new THREE.Group(),skin=new THREE.MeshStandardMaterial({color:colorHex,roughness:.62}),outfit=new THREE.MeshStandardMaterial({color:outfitHex,roughness:.82}),shoe=new THREE.MeshStandardMaterial({color:0x050505,roughness:.55});
-  const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.3,.62,6,12),outfit);torso.position.y=.86;g.add(torso);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.36,18,14),skin);head.scale.set(.92,1.05,.9);head.position.y=1.55;g.add(head);
-  const eye=new THREE.MeshBasicMaterial({color:0x050505});[-.13,.13].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.07,10,8),eye);e.scale.z=.35;e.position.set(x,1.59,-.31);g.add(e);});
-  const ag=new THREE.CapsuleGeometry(.075,.55,4,8),lg=new THREE.CapsuleGeometry(.095,.55,4,8);
-  const la=new THREE.Mesh(ag,outfit);la.position.set(-.38,.87,0);la.rotation.z=-.12;g.add(la);const ra=new THREE.Mesh(ag,outfit);ra.position.set(.38,.87,0);ra.rotation.z=.12;g.add(ra);
-  const ll=new THREE.Mesh(lg,outfit);ll.position.set(-.13,.29,0);g.add(ll);const rl=new THREE.Mesh(lg,outfit);rl.position.set(.13,.29,0);g.add(rl);
-  [-.13,.13].forEach(x=>{const sh=new THREE.Mesh(new THREE.BoxGeometry(.19,.09,.42),shoe);sh.position.set(x,.06,-.08);g.add(sh);});
-  return g;
+  playerBody =
+    new THREE.Group();
+
+  const body =
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        .25,
+        .32,
+        1,
+        12
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xffffff,
+        roughness:.7
+      })
+    );
+
+  body.position.y=.5;
+
+  playerBody.add(
+    body
+  );
+
+  const head =
+    new THREE.Mesh(
+      new THREE.SphereGeometry(
+        .23,
+        16,
+        16
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xdddddd,
+        roughness:.7
+      })
+    );
+
+  head.position.y=1.25;
+
+  playerBody.add(
+    head
+  );
+
+  playerBody.position.set(
+    0,
+    0,
+    13
+  );
+
+  scene.add(
+    playerBody
+  );
+
 }
-function createPlayer(){playerBody=createAlienAvatar();playerBody.position.set(0,0,13);playerBody.visible=false;scene.add(playerBody);}
 
 /* =========================================================
    AUDIO
 ========================================================= */
 
 function setupAudio(){
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  indicator.textContent=
-    'AUDIO: READY';
-
-  indicator.classList.remove(
-    'live',
-    'error'
-  );
-
-  if(button) button.textContent='▶ AUDIO: START';
-
-  if(button) button.classList.remove('live');
-
+  // Audio remains active, but the old AUDIO HUD/button is intentionally removed.
+  const indicator=document.getElementById('stream-indicator');
+  const button=document.getElementById('audio-control');
+  if(indicator) indicator.textContent='';
+  if(button) button.style.display='none';
 }
+
 
 async function unlockEWSAudio(){
 
@@ -2307,10 +2413,7 @@ async function startSSHAudio(){
       'stream-indicator'
     );
 
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
+  const button = document.getElementById('audio-control');
 
   if(!audio)return;
 
@@ -2329,10 +2432,9 @@ async function startSSHAudio(){
   indicator.textContent=
     'AUDIO: CONNECTING...';
 
-  button.disabled=true;
+  if(button) button.disabled=true;
 
-  button.textContent=
-    '● AUDIO: CONNECTING';
+  if(button) button.textContent='● AUDIO: CONNECTING';
 
   try{
 
@@ -2436,7 +2538,7 @@ async function startSSHAudio(){
             'live'
           );
 
-          button.disabled=false;
+          if(button) button.disabled=false;
 
           audioStarted=true;
 
@@ -2548,7 +2650,7 @@ async function startSSHAudio(){
               'live'
             );
 
-            button.disabled=false;
+            if(button) button.disabled=false;
 
           }
 
@@ -2609,14 +2711,13 @@ async function startSSHAudio(){
         'error'
       );
 
-      button.textContent=
-        '● AUDIO: LIVE';
+      if(button) button.textContent='● AUDIO: LIVE';
 
       button.classList.add(
         'live'
       );
 
-      button.disabled=false;
+      if(button) button.disabled=false;
 
       audioStarted=true;
 
@@ -2632,8 +2733,7 @@ async function startSSHAudio(){
         indicator.textContent=
           'AUDIO: PAUSED';
 
-        button.textContent=
-          '▶ AUDIO: RESUME';
+        if(button) button.textContent='▶ AUDIO: RESUME';
 
         button.classList.remove(
           'live'
@@ -2661,14 +2761,11 @@ async function startSSHAudio(){
         'error'
       );
 
-      button.textContent=
-        '▶ AUDIO: RETRY';
+      if(button) button.textContent='▶ AUDIO: RETRY';
 
-      button.classList.remove(
-        'live'
-      );
+      if(button) button.classList.remove('live');
 
-      button.disabled=false;
+      if(button) button.disabled=false;
 
     };
 
@@ -2766,8 +2863,6 @@ function setupControls(){
       }
 
       if(!chatMode){
-        if(e.code==='KeyE'){trySitOrStand();e.preventDefault();return;}
-        if(e.code==='Space' && sitting){trySitOrStand();e.preventDefault();return;}
         if(e.code==='KeyB'){ toggleEmotesMenu(); e.preventDefault(); return; }
         if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
         if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
@@ -3171,7 +3266,7 @@ function animate(){
     level*.12;
 
   const speed=
-    chatMode || activeDance || sitting
+    chatMode || activeDance
       ?0
       :5*dt;
 
@@ -3206,7 +3301,7 @@ function animate(){
   // JUMP PHYSICS
   // =========================
 
-  if(!chatMode && !sitting){
+  if(!chatMode){
 
     jumpVelocity-=
       GRAVITY*dt;
@@ -3241,10 +3336,17 @@ function animate(){
     const rz=
       -Math.sin(yaw);
 
-    const dx=(fx*forward+rx*side)*speed, dz=(fz*forward+rz*side)*speed;
-    const nx=camera.position.x+dx, nz=camera.position.z+dz;
-    if(!blockedAt(nx,camera.position.z,.34))camera.position.x=nx;
-    if(!blockedAt(camera.position.x,nz,.34))camera.position.z=nz;
+    camera.position.x+=
+      (
+        fx*forward+
+        rx*side
+      )*speed;
+
+    camera.position.z+=
+      (
+        fz*forward+
+        rz*side
+      )*speed;
 
   }
 
@@ -3285,8 +3387,6 @@ function animate(){
 
   }
 
-  updateSitPrompt();
-  if(sitting){playerY=1.18;jumpVelocity=0;isGrounded=true;}
   broadcastPlayerState(performance.now());
 
   if(particles){
@@ -3488,9 +3588,6 @@ function animate(){
     else resetRemoteDancePose(p);
   });
 
-  movingHeads.forEach((h,i)=>{h.rotation.y=Math.sin(time*.55+i)*.75;h.rotation.x=-.25+Math.sin(time*.8+i*.7)*.22;});
-  laserBeams.forEach(b=>{b.mesh.rotation.z=Math.sin(time*.7+b.phase)*.45;b.mesh.rotation.x=.55+Math.cos(time*.55+b.phase)*.35;b.mesh.material.opacity=.055+bassLevel*.13;});
-  if(clubHaze){clubHaze.rotation.y+=.00025;clubHaze.material.opacity=.028+bassLevel*.035;}
   renderer.render(
     scene,
     camera
@@ -3514,16 +3611,64 @@ function animate(){
    REMOTE PLAYERS / SILHOUETTES
 ========================================================= */
 function createRemotePlayer(data){
-  if(!scene||!data||!data.id||data.id===socket?.id)return;
-  if(remotePlayers.has(data.id))removeRemotePlayer(data.id);
-  const colors=[0x62ff72,0x52b8ff,0xb46cff,0xff526d,0xffd84d,0x65ffe0,0xff8c52], outfits=[0x151515,0x202b35,0x301d38,0x35231b,0x252525,0x182c25];
-  const idx=Math.abs(String(data.username||data.id).split('').reduce((a,c)=>a+c.charCodeAt(0),0));
-  const g=createAlienAvatar(Number(data.avatarColor)||colors[idx%colors.length],Number(data.outfitColor)||outfits[idx%outfits.length]);g.userData.username=data.username||'PLAYER';
-  const c=document.createElement('canvas');c.width=256;c.height=64;const ctx=c.getContext('2d');ctx.font='bold 24px Arial';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(g.userData.username,128,32);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));label.scale.set(1.7,.42,1);label.position.y=2.15;g.add(label);
-  const x=Number.isFinite(Number(data.x))?Number(data.x):0,z=Number.isFinite(Number(data.z))?Number(data.z):13,y=Number.isFinite(Number(data.y))?Number(data.y):0,ry=Number.isFinite(Number(data.yaw??data.ry))?Number(data.yaw??data.ry):0;
-  g.position.set(x,y,z);g.rotation.y=ry;scene.add(g);
-  remotePlayers.set(data.id,{group:g,last:{x,z,yaw:ry},moving:!!data.moving,username:data.username||'PLAYER',dance:Number(data.dance)||0,danceStartedAt:Number(data.danceStartedAt)||0,sitting:!!data.sitting,chairId:data.chairId||null,parts:{torso:g.children[0],head:g.children[1],leftArm:g.children[4],rightArm:g.children[5],leftLeg:g.children[6],rightLeg:g.children[7]},baseY:y});
+  if(!scene || !data || !data.id || data.id===socket?.id) return;
+
+  // If a stale object exists for this socket, replace it cleanly.
+  if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
+
+  const g=new THREE.Group();
+  g.userData.username=data.username||'PLAYER';
+
+  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
+  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
+
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
+  torso.position.y=.78;
+  g.add(torso);
+
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
+  head.position.y=1.42;
+  g.add(head);
+
+  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
+  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
+  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
+  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
+  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
+  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
+
+  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg};
+
+  const labelCanvas=document.createElement('canvas');
+  labelCanvas.width=256; labelCanvas.height=64;
+  const ctx=labelCanvas.getContext('2d');
+  ctx.clearRect(0,0,256,64);
+  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
+  ctx.fillText(g.userData.username,128,32);
+  const tex=new THREE.CanvasTexture(labelCanvas);
+  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+
+  const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
+  const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
+  const y=1.7;
+  const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
+
+  g.position.set(x,y,z);
+  g.rotation.y=ry;
+  g.visible=true;
+  scene.add(g);
+
+  remotePlayers.set(data.id,{
+    group:g,
+    last:{x,z,yaw:ry},
+    moving:!!data.moving,
+    username:data.username||'PLAYER',
+    dance:Number(data.dance)||0,
+    danceStartedAt:Number(data.danceStartedAt)||0,
+    parts,
+    baseY:y
+  });
 }
 
 function updateRemotePlayer(data){
@@ -3538,7 +3683,7 @@ function updateRemotePlayer(data){
 
   const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
   const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
-  const ny=Number.isFinite(rawY) ? rawY : p.group.position.y;
+  const ny=1.7;
   const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
 
   const dx=nx-p.group.position.x;
@@ -3547,8 +3692,6 @@ function updateRemotePlayer(data){
   p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
   if(data.dance!==undefined) p.dance=Number(data.dance)||0;
   if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
-  if(data.sitting!==undefined)p.sitting=!!data.sitting;
-  if(data.chairId!==undefined)p.chairId=data.chairId||null;
   p.group.position.x=nx;
   p.group.position.y=ny;
   p.group.position.z=nz;
@@ -3584,9 +3727,7 @@ function broadcastPlayerState(now){
     moving:moving,
     jumping:!isGrounded,
     dance:activeDance,
-    danceStartedAt:danceStartedAt,
-    sitting:sitting,
-    chairId:sitChairId
+    danceStartedAt:danceStartedAt
   });
 }
 
@@ -3694,5 +3835,14 @@ window.addEventListener(
 
 </script>
 
+<script>
+// EWS visual safety net: optional avatar/texture failures must not prevent the 3D scene from rendering.
+window.addEventListener('error', function(e){
+  if(String(e.message||'').includes('CapsuleGeometry')){
+    console.warn('[EWS FIX] CapsuleGeometry fallback active');
+    e.preventDefault();
+  }
+});
+</script>
 </body>
 </html>
