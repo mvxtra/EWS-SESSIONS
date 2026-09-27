@@ -938,7 +938,7 @@ input:focus{
   </div>
 
   <div id="hint">
-    WASD MOVE · MOUSE LOOK · C CHAT
+    WASD MOVE · MOUSE LOOK · ENTER CHAT
   </div>
 
 </div>
@@ -1021,6 +1021,8 @@ let logoSign=null;
 let clubLasers=[];
 let movingHeads=[];
 let laserDevices=[];
+let smokeCannons=[];
+let smokeParticles=[];
 let hazeGroup=null;
 
 /* =========================================================
@@ -1630,6 +1632,7 @@ function init3D(){
   createNeonArchitecture();
   createCeilingBeams();
   createSpeakers();
+  createSmokeCannons();
   createRealisticLighting();
   createClubLogo();
   createCollisionMap();
@@ -1965,7 +1968,7 @@ function createBartender(){
   const hairMat=new THREE.MeshStandardMaterial({color:0x101010,roughness:1});
 
   const npc=new THREE.Group();
-  npc.position.set(-12,0,8.25);
+  npc.position.set(-12,0,8.72);
   npc.rotation.y=0;
 
   const body=new THREE.Mesh(new THREE.CylinderGeometry(.34,.39,1.42,16),shirt);
@@ -2016,6 +2019,23 @@ function createBartender(){
   const name=new THREE.Sprite(new THREE.SpriteMaterial({map:nameTex,transparent:true,depthWrite:false}));
   name.position.set(0,2.62,0); name.scale.set(1.5,.37,1);
   npc.add(name);
+
+  // Dedicated bartender zone: low brass rail + posts, keeping the NPC clearly behind the bar.
+  const railMat=new THREE.MeshStandardMaterial({color:0x242424,metalness:.78,roughness:.28});
+  const brassMat=new THREE.MeshStandardMaterial({color:0xb08a42,metalness:.88,roughness:.22});
+  const zone=new THREE.Group();
+  zone.position.set(-12,0,8.72);
+  for(const x of [-3.0,3.0]){
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(.055,.065,.92,12),brassMat);
+    post.position.set(x,.46,0); zone.add(post);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(.085,12,8),brassMat);
+    cap.position.set(x,.94,0); zone.add(cap);
+  }
+  const rail=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,6,12),brassMat);
+  rail.rotation.z=Math.PI/2; rail.position.set(0,.72,0); zone.add(rail);
+  const back=new THREE.Mesh(new THREE.BoxGeometry(6.2,.95,.08),railMat);
+  back.position.set(0,.48,.38); zone.add(back);
+  scene.add(zone);
 
   scene.add(npc);
   npc.userData.npc=true;
@@ -2171,7 +2191,7 @@ function createClubLogo(){
 
   logoSign=new THREE.Mesh(new THREE.CircleGeometry(1.55,64),mat);
   // Move the logo farther away from the main screen, toward the right rear wall.
-  logoSign.position.set(12.9,4.15,-16.55);
+  logoSign.position.set(12.9,3.65,-16.55);
   logoSign.rotation.y=0;
   scene.add(logoSign);
 
@@ -2192,7 +2212,7 @@ function createClubLogo(){
   neonObjects.push(inner);
 
   const glow=new THREE.PointLight(0x6fa8ff,2.2,9);
-  glow.position.set(12.9,4.15,-15.7);
+  glow.position.set(12.9,3.65,-15.7);
   scene.add(glow);
   lightObjects.push(glow);
   logoSign.userData.glowLight=glow;
@@ -2228,7 +2248,7 @@ function createRealisticLighting(){
   }
 
   // Compact laser fixtures: each beam originates from the actual fixture body.
-  const laserColors=[0x65a7ff,0xff3f68,0xb86cff,0x50e7ff];
+  const laserColors=[0x00f6ff,0xff00d9,0x8d00ff,0x39ff14,0xff1744,0x00ffcc];
   for(let i=0;i<10;i++){
     const x=-13.5+i*3;
     const z=i%2===0?-5.2:4.2;
@@ -2251,7 +2271,7 @@ function createRealisticLighting(){
 
     const beam=new THREE.Mesh(
       new THREE.CylinderGeometry(.008,.018,1,6,1,true),
-      new THREE.MeshBasicMaterial({color:laserColors[i%laserColors.length],transparent:true,opacity:.16,depthWrite:false,blending:THREE.AdditiveBlending})
+      new THREE.MeshBasicMaterial({color:laserColors[i%laserColors.length],transparent:true,opacity:.42,depthWrite:false,blending:THREE.AdditiveBlending})
     );
     scene.add(beam);
     clubLasers.push(beam);
@@ -2420,51 +2440,64 @@ function createCeilingBeams(){
 }
 
 function createSpeakers(){
-  // Compact hanging line-array PA: smaller than the old floor stacks and fixed to the truss.
-  const cabinetMat=new THREE.MeshStandardMaterial({color:0x080909,metalness:.45,roughness:.48});
-  const sideMat=new THREE.MeshStandardMaterial({color:0x17191b,metalness:.65,roughness:.32});
-  const grilleMat=new THREE.MeshStandardMaterial({color:0x050505,metalness:.08,roughness:.9});
-  const coneMat=new THREE.MeshStandardMaterial({color:0x24272a,metalness:.22,roughness:.55});
+  // Realistic compact club PA: four suspended line-array clusters, kept clear of the screen.
+  const cabinetMat=new THREE.MeshStandardMaterial({color:0x08090a,metalness:.62,roughness:.38});
+  const edgeMat=new THREE.MeshStandardMaterial({color:0x1b1d20,metalness:.82,roughness:.24});
+  const grilleMat=new THREE.MeshStandardMaterial({color:0x050505,metalness:.08,roughness:.92});
+  const coneMat=new THREE.MeshStandardMaterial({color:0x1c2024,metalness:.28,roughness:.5});
+  const logoMat=new THREE.MeshBasicMaterial({color:0x79a9ff,transparent:true,opacity:.8});
 
-  const clusters=[[-12.8,5.02,-5.15,0.12],[12.8,5.02,-5.15,-0.12],[-12.8,5.02,4.15,0.12],[12.8,5.02,4.15,-0.12]];
-  clusters.forEach(([x,y,z,tilt])=>{
-    const group=new THREE.Group();
-    group.position.set(x,y,z);
-    group.rotation.y=tilt;
-
-    // Short suspension chain / bracket.
-    const mount=new THREE.Mesh(new THREE.BoxGeometry(.32,.48,.32),sideMat);
-    mount.position.y=.22; group.add(mount);
-    const arm=new THREE.Mesh(new THREE.BoxGeometry(.14,.55,.14),sideMat);
-    arm.position.set(0,.48,0); group.add(arm);
-
-    // Three compact line-array cabinets with a slight downward splay.
-    for(let n=0;n<3;n++){
-      const cab=new THREE.Mesh(new THREE.BoxGeometry(1.18,.62,.54),cabinetMat);
-      cab.position.set(0,.86+n*.64,0);
-      cab.rotation.x=(n-1)*.055;
-      cab.castShadow=true;
-      group.add(cab);
-
-      const grille=new THREE.Mesh(new THREE.PlaneGeometry(1.02,.48),grilleMat);
-      grille.position.set(0,cab.position.y,.285);
-      grille.rotation.x=cab.rotation.x;
-      group.add(grille);
-
-      const woofer=new THREE.Mesh(new THREE.CylinderGeometry(.14,.14,.045,20),coneMat);
-      woofer.rotation.x=Math.PI/2;
-      woofer.position.set(-.27,cab.position.y,.315);
-      group.add(woofer);
-      const woofer2=woofer.clone();
-      woofer2.position.x=.27;
-      group.add(woofer2);
+  const clusters=[[-13.7,4.85,-5.0,.16],[13.7,4.85,-5.0,-.16],[-13.7,4.85,3.9,.10],[13.7,4.85,3.9,-.10]];
+  clusters.forEach(([x,y,z,tilt],ci)=>{
+    const group=new THREE.Group(); group.position.set(x,y,z); group.rotation.y=tilt;
+    const mount=new THREE.Mesh(new THREE.BoxGeometry(.22,.34,.22),edgeMat); mount.position.y=.18; group.add(mount);
+    const cable=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.72,8),edgeMat); cable.position.y=.53; group.add(cable);
+    for(let n=0;n<4;n++){
+      const cab=new THREE.Mesh(new THREE.BoxGeometry(1.28,.56,.52),cabinetMat);
+      cab.position.set(0,.88+n*.53,0);
+      cab.rotation.x=(n-1.5)*.065;
+      cab.castShadow=true; group.add(cab);
+      const rim=new THREE.Mesh(new THREE.BoxGeometry(1.12,.44,.025),edgeMat);
+      rim.position.set(0,cab.position.y,.275); rim.rotation.x=cab.rotation.x; group.add(rim);
+      const grille=new THREE.Mesh(new THREE.PlaneGeometry(1.03,.37),grilleMat);
+      grille.position.set(0,cab.position.y,.291); grille.rotation.x=cab.rotation.x; group.add(grille);
+      for(const dx of [-.27,.27]){
+        const woofer=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.04,20),coneMat);
+        woofer.rotation.x=Math.PI/2; woofer.position.set(dx,cab.position.y,.318); group.add(woofer);
+      }
     }
-
-    const logoPlate=new THREE.Mesh(new THREE.BoxGeometry(.32,.12,.025),new THREE.MeshBasicMaterial({color:0x7fa8ff,transparent:true,opacity:.75}));
-    logoPlate.position.set(0,2.72,.29); group.add(logoPlate);
-
+    const top=new THREE.Mesh(new THREE.BoxGeometry(1.38,.08,.58),edgeMat); top.position.y=2.58; group.add(top);
+    const logoPlate=new THREE.Mesh(new THREE.BoxGeometry(.28,.055,.025),logoMat); logoPlate.position.set(0,2.60,.31); group.add(logoPlate);
     scene.add(group);
   });
+}
+
+function createSmokeCannons(){
+  const bodyMat=new THREE.MeshStandardMaterial({color:0x111214,metalness:.78,roughness:.28});
+  const rimMat=new THREE.MeshStandardMaterial({color:0x25282b,metalness:.9,roughness:.2});
+  const nozzleMat=new THREE.MeshBasicMaterial({color:0xb7d7ff,transparent:true,opacity:.85});
+  smokeCannons=[];
+  const positions=[[-5.8,.72,-10.35,.12],[5.8,.72,-10.35,-.12]];
+  positions.forEach(([x,y,z,turn])=>{
+    const g=new THREE.Group(); g.position.set(x,y,z); g.rotation.y=turn;
+    const base=new THREE.Mesh(new THREE.BoxGeometry(1.05,.28,.78),bodyMat); base.position.y=.14; g.add(base);
+    const housing=new THREE.Mesh(new THREE.CylinderGeometry(.28,.34,.55,16),bodyMat); housing.rotation.z=Math.PI/2; housing.position.set(0,.46,0); g.add(housing);
+    const rim=new THREE.Mesh(new THREE.TorusGeometry(.285,.045,10,24),rimMat); rim.rotation.y=Math.PI/2; rim.position.set(0,.46,.28); g.add(rim);
+    const nozzle=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.05,16),nozzleMat); nozzle.rotation.x=Math.PI/2; nozzle.position.set(0,.46,.33); g.add(nozzle);
+    scene.add(g); smokeCannons.push({group:g,nozzle});
+  });
+
+  const texCanvas=document.createElement('canvas'); texCanvas.width=96; texCanvas.height=96;
+  const c=texCanvas.getContext('2d'); const grad=c.createRadialGradient(48,48,2,48,48,46);
+  grad.addColorStop(0,'rgba(245,245,245,.28)'); grad.addColorStop(.25,'rgba(225,230,235,.16)'); grad.addColorStop(.7,'rgba(190,200,210,.055)'); grad.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle=grad; c.fillRect(0,0,96,96);
+  const tex=new THREE.CanvasTexture(texCanvas); smokeParticles=[];
+  for(let i=0;i<34;i++){
+    const m=new THREE.SpriteMaterial({map:tex,transparent:true,depthWrite:false,opacity:0,blending:THREE.NormalBlending});
+    const sp=new THREE.Sprite(m); const side=i%2===0?-1:1;
+    sp.position.set(side*(5.2+Math.random()*2.8),1.0+Math.random()*1.2,-9.9-Math.random()*1.2);
+    sp.scale.set(1.0+Math.random()*.9,1.0+Math.random()*.9,1); sp.userData={side,phase:Math.random()*6.28,speed:.35+Math.random()*.3,life:Math.random()};
+    scene.add(sp); smokeParticles.push(sp);
+  }
 }
 
 function createParticles(){
@@ -3092,15 +3125,16 @@ function setupControls(){
 
       keys[e.code]=true;
 
-      if(
-        e.code==='KeyC'
-      ){
-
-        chatMode=
-          !chatMode;
-
+      if(e.code==='Enter' && chatMode && active && active.id==='chat-input'){
+        return; // the chat form handles Enter -> send
+      }
+      if(e.code==='Enter'){
+        e.preventDefault();
+        chatMode=true;
         toggleChat();
-
+        const input=document.getElementById('chat-input');
+        if(input){ input.focus(); }
+        return;
       }
 
       // SPACE = JUMP
@@ -3656,8 +3690,20 @@ function animate(){
     b.position.copy(source).add(target).multiplyScalar(.5);
     b.scale.set(1,Math.max(.1,length),1);
     b.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
-    b.material.opacity=.045+bassLevel*.22+(.5+.5*Math.sin(time*7+i*1.7))*.055;
-    fixture.lens.material.opacity=.55+bassLevel*.4;
+    b.material.opacity=.24+bassLevel*.42+(.5+.5*Math.sin(time*7+i*1.7))*.14;
+    b.material.needsUpdate=true;
+    fixture.lens.material.opacity=.82+bassLevel*.18;
+  });
+
+  smokeParticles.forEach((sp,i)=>{
+    const u=sp.userData;
+    const t=(time*u.speed+u.phase)%6.5;
+    sp.position.y=.95+t*.52;
+    sp.position.x += Math.sin(time*.7+u.phase)*.004;
+    sp.position.z += -.012;
+    sp.material.opacity=Math.max(0,Math.min(.115,t<1.0?t*.11:(6.5-t)*.026));
+    const pulse=1+t*.24+bassLevel*.12;
+    sp.scale.set(pulse,pulse,1);
   });
 
   if(hazeGroup){
