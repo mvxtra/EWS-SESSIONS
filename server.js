@@ -3,7 +3,13 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const { Server } = require('socket.io');
+const { spawn } = require('child_process');
 const NodeMediaServer = require('node-media-server');
+
+// =====================================================
+// EWS SESSIONS
+// PROFESSIONAL SERVER
+// =====================================================
 
 const app = express();
 const server = http.createServer(app);
@@ -15,46 +21,91 @@ const io = new Server(server, {
     }
 });
 
-const PORT = process.env.PORT || 3000;
+// =====================================================
+// CONFIG
+// =====================================================
+
+const PORT = 3000;
+const RTMP_PORT = 1935;
+const HLS_PORT = 8000;
 
 const ROOT = __dirname;
-const PUBLIC = path.join(ROOT, 'public');
-const DATA = path.join(ROOT, 'data');
-const MEDIA = path.join(ROOT, 'media');
-const USERS_FILE = path.join(DATA, 'users.json');
+const PUBLIC_DIR = path.join(ROOT, 'public');
+
+const MEDIA_ROOT = path.join(ROOT, 'media');
+const HLS_DIR = path.join(MEDIA_ROOT, 'live', 'ews');
+
+const USERS_FILE = path.join(ROOT, 'users.json');
+const FFMPEG_PATH = path.join(ROOT, 'ffmpeg.exe');
 
 const MAIN_USERNAME = 'mvxtra';
 
-fs.mkdirSync(DATA, { recursive: true });
-fs.mkdirSync(MEDIA, { recursive: true });
+// =====================================================
+// DIRECTORIES
+// =====================================================
+
+fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+fs.mkdirSync(MEDIA_ROOT, { recursive: true });
+fs.mkdirSync(HLS_DIR, { recursive: true });
 
 if (!fs.existsSync(USERS_FILE)) {
-    fs.writeFileSync(USERS_FILE, '[]', 'utf8');
+    fs.writeFileSync(
+        USERS_FILE,
+        '[]',
+        'utf8'
+    );
 }
+
+// =====================================================
+// EXPRESS
+// =====================================================
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/hls', express.static(MEDIA));
-app.use(express.static(PUBLIC));
+app.use(
+    '/hls',
+    express.static(MEDIA_ROOT, {
+        setHeaders: (res) => {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+        }
+    })
+);
 
+app.use(express.static(PUBLIC_DIR));
 
-// ======================================================
+app.get('/', (req, res) => {
+    res.sendFile(
+        path.join(PUBLIC_DIR, 'index.html')
+    );
+});
+
+// =====================================================
 // USERS
-// ======================================================
+// =====================================================
 
 function loadUsers() {
     try {
-        const data = fs.readFileSync(USERS_FILE, 'utf8');
-        const users = JSON.parse(data);
+        const raw = fs.readFileSync(
+            USERS_FILE,
+            'utf8'
+        );
 
-        return Array.isArray(users) ? users : [];
+        const users = JSON.parse(raw);
+
+        return Array.isArray(users)
+            ? users
+            : [];
     } catch (error) {
-        console.log('[USERS LOAD ERROR]', error.message);
+        console.log(
+            '[USERS LOAD ERROR]',
+            error.message
+        );
+
         return [];
     }
 }
-
 
 function saveUsers(users) {
     try {
@@ -64,17 +115,20 @@ function saveUsers(users) {
             'utf8'
         );
     } catch (error) {
-        console.log('[USERS SAVE ERROR]', error.message);
+        console.log(
+            '[USERS SAVE ERROR]',
+            error.message
+        );
     }
 }
 
-
 function normalizeUsername(username) {
-    return String(username || '')
+    return String(
+        username || ''
+    )
         .trim()
         .toLowerCase();
 }
-
 
 function isMainUser(username) {
     return (
@@ -83,160 +137,338 @@ function isMainUser(username) {
     );
 }
 
-
-// ======================================================
+// =====================================================
 // REGISTER
-// ======================================================
+// =====================================================
 
-app.post('/api/register', (req, res) => {
+app.post(
+    '/api/register',
+    (req, res) => {
 
-    const username = String(
-        req.body?.username || ''
-    ).trim();
+        const username = String(
+            req.body?.username || ''
+        ).trim();
 
-    const password = String(
-        req.body?.password || ''
-    );
+        const password = String(
+            req.body?.password || ''
+        );
 
-    if (!username || !password) {
-        return res.status(400).json({
-            ok: false,
-            error: 'Введите логин и пароль'
+        if (!username || !password) {
+            return res.status(400).json({
+                ok: false,
+                error: 'Введите логин и пароль'
+            });
+        }
+
+        if (
+            username.length < 3 ||
+            username.length > 32
+        ) {
+            return res.status(400).json({
+                ok: false,
+                error: 'Логин должен быть от 3 до 32 символов'
+            });
+        }
+
+        if (password.length < 3) {
+            return res.status(400).json({
+                ok: false,
+                error: 'Пароль слишком короткий'
+            });
+        }
+
+        const users = loadUsers();
+
+        const exists = users.some(
+            user =>
+                normalizeUsername(user.username) ===
+                normalizeUsername(username)
+        );
+
+        if (exists) {
+            return res.status(409).json({
+                ok: false,
+                error: 'Пользователь уже существует'
+            });
+        }
+
+        const owner = isMainUser(username);
+
+        users.push({
+            username,
+            password,
+            owner,
+            role: owner ? 'owner' : 'user',
+            createdAt: Date.now()
+        });
+
+        saveUsers(users);
+
+        console.log(
+            `[REGISTER] ${username}${owner ? ' [OWNER]' : ''}`
+        );
+
+        res.json({
+            ok: true,
+            username,
+            owner,
+            role: owner ? 'owner' : 'user'
         });
     }
+);
 
-    if (username.length < 3 || username.length > 32) {
-        return res.status(400).json({
-            ok: false,
-            error: 'Логин должен быть от 3 до 32 символов'
-        });
-    }
-
-    if (password.length < 3) {
-        return res.status(400).json({
-            ok: false,
-            error: 'Пароль слишком короткий'
-        });
-    }
-
-    const users = loadUsers();
-
-    const exists = users.find(user =>
-        normalizeUsername(user.username) ===
-        normalizeUsername(username)
-    );
-
-    if (exists) {
-        return res.status(409).json({
-            ok: false,
-            error: 'Пользователь уже существует'
-        });
-    }
-
-    const owner = isMainUser(username);
-
-    const user = {
-        username,
-        password,
-        owner,
-        role: owner ? 'owner' : 'user',
-        createdAt: Date.now()
-    };
-
-    users.push(user);
-
-    saveUsers(users);
-
-    console.log(
-        `[REGISTER] ${username}${owner ? ' [MAIN USER]' : ''}`
-    );
-
-    res.json({
-        ok: true,
-        username: user.username,
-        owner,
-        role: user.role
-    });
-});
-
-
-// ======================================================
+// =====================================================
 // LOGIN
-// ======================================================
+// =====================================================
 
-app.post('/api/login', (req, res) => {
+app.post(
+    '/api/login',
+    (req, res) => {
 
-    const username = String(
-        req.body?.username || ''
-    ).trim();
+        const username = String(
+            req.body?.username || ''
+        ).trim();
 
-    const password = String(
-        req.body?.password || ''
-    );
+        const password = String(
+            req.body?.password || ''
+        );
 
-    if (!username || !password) {
-        return res.status(400).json({
-            ok: false,
-            error: 'Введите логин и пароль'
+        if (!username || !password) {
+            return res.status(400).json({
+                ok: false,
+                error: 'Введите логин и пароль'
+            });
+        }
+
+        const users = loadUsers();
+
+        const user = users.find(
+            item =>
+                normalizeUsername(item.username) ===
+                normalizeUsername(username)
+        );
+
+        if (!user) {
+            return res.status(401).json({
+                ok: false,
+                error: 'Пользователь не найден'
+            });
+        }
+
+        if (String(user.password) !== password) {
+            return res.status(401).json({
+                ok: false,
+                error: 'Неверный пароль'
+            });
+        }
+
+        const owner = isMainUser(
+            user.username
+        );
+
+        user.owner = owner;
+        user.role = owner
+            ? 'owner'
+            : 'user';
+
+        saveUsers(users);
+
+        console.log(
+            `[LOGIN] ${user.username}${owner ? ' [OWNER]' : ''}`
+        );
+
+        res.json({
+            ok: true,
+            username: user.username,
+            owner,
+            role: user.role
         });
     }
+);
 
-    const users = loadUsers();
+// =====================================================
+// STATUS
+// =====================================================
 
-    const user = users.find(item =>
-        normalizeUsername(item.username) ===
-        normalizeUsername(username)
-    );
+app.get(
+    '/api/status',
+    (req, res) => {
 
-    if (!user) {
-        return res.status(401).json({
-            ok: false,
-            error: 'Пользователь не найден'
+        res.json({
+            ok: true,
+            name: 'EWS SESSIONS',
+            server: 'online',
+            mainUser: MAIN_USERNAME,
+            online: onlineUsers.size,
+            rtmp:
+                `rtmp://localhost:${RTMP_PORT}/live`,
+            streamKey: 'ews',
+            hls:
+                `http://localhost:${PORT}/hls/ews/index.m3u8`,
+            time: new Date().toISOString()
         });
     }
+);
 
-    if (String(user.password) !== password) {
-        return res.status(401).json({
-            ok: false,
-            error: 'Неверный пароль'
-        });
+// =====================================================
+// TRANSLATION CACHE
+// =====================================================
+
+const translationCache = new Map();
+
+const MAX_TRANSLATION_CACHE = 5000;
+
+function makeTranslationKey(
+    text,
+    source,
+    target
+) {
+    return [
+        source || 'auto',
+        target || 'en',
+        text
+    ].join('::');
+}
+
+function trimTranslationCache() {
+
+    while (
+        translationCache.size >
+        MAX_TRANSLATION_CACHE
+    ) {
+
+        const first =
+            translationCache.keys().next().value;
+
+        translationCache.delete(first);
+    }
+}
+
+async function translateText(
+    text,
+    target,
+    source = 'auto'
+) {
+
+    if (!text) {
+        return '';
     }
 
-    const owner = isMainUser(user.username);
+    target = String(
+        target || 'en'
+    ).toLowerCase();
 
-    if (owner) {
-        user.owner = true;
-        user.role = 'owner';
+    source = String(
+        source || 'auto'
+    ).toLowerCase();
+
+    if (
+        source !== 'auto' &&
+        source === target
+    ) {
+        return text;
     }
 
-    saveUsers(users);
+    const key =
+        makeTranslationKey(
+            text,
+            source,
+            target
+        );
 
-    console.log(
-        `[LOGIN] ${user.username}${owner ? ' [MAIN USER]' : ''}`
-    );
+    if (
+        translationCache.has(key)
+    ) {
+        return translationCache.get(key);
+    }
 
-    res.json({
-        ok: true,
-        username: user.username,
-        owner,
-        role: owner ? 'owner' : 'user'
-    });
-});
+    try {
 
+        const url =
+            'https://translate.googleapis.com/translate_a/single' +
+            '?client=gtx' +
+            '&sl=' +
+            encodeURIComponent(source) +
+            '&tl=' +
+            encodeURIComponent(target) +
+            '&dt=t' +
+            '&q=' +
+            encodeURIComponent(text);
 
-// ======================================================
-// ONLINE USERS / PLAYERS
-// ======================================================
+        const response =
+            await fetch(
+                url,
+                {
+                    headers: {
+                        'User-Agent':
+                            'Mozilla/5.0'
+                    }
+                }
+            );
+
+        if (!response.ok) {
+            return text;
+        }
+
+        const data =
+            await response.json();
+
+        let translated = '';
+
+        if (
+            Array.isArray(data) &&
+            Array.isArray(data[0])
+        ) {
+
+            translated =
+                data[0]
+                    .map(
+                        item =>
+                            Array.isArray(item)
+                                ? item[0]
+                                : ''
+                    )
+                    .join('');
+        }
+
+        if (translated) {
+
+            translationCache.set(
+                key,
+                translated
+            );
+
+            trimTranslationCache();
+
+            return translated;
+        }
+
+    } catch (error) {
+
+        console.log(
+            '[TRANSLATION ERROR]',
+            error.message
+        );
+    }
+
+    return text;
+}
+
+// =====================================================
+// ONLINE USERS
+// =====================================================
 
 const onlineUsers = new Map();
+
+// =====================================================
+// MULTIPLAYER PLAYERS
+// =====================================================
+
 const players = new Map();
 
-
-// ======================================================
+// =====================================================
 // CLUB SCREEN
-// ======================================================
-
-let screenHostId = null;
+// =====================================================
 
 let clubScreenState = {
     active: false,
@@ -245,48 +477,49 @@ let clubScreenState = {
     owner: ''
 };
 
+let screenHostId = null;
 
-// ======================================================
-// ONLINE HELPERS
-// ======================================================
+// =====================================================
+// HELPERS
+// =====================================================
 
 function getOnlineUsers() {
+
     return Array.from(
         onlineUsers.values()
     );
 }
 
-
 function broadcastOnline() {
+
     io.emit(
         'online-users',
         getOnlineUsers()
     );
 }
 
-
-function getPlayersFor(socketId) {
-    return Array.from(
-        players.values()
-    ).filter(
-        player => player.id !== socketId
-    );
-}
-
-
 function broadcastPlayers() {
+
     io.emit(
         'players-state',
-        Array.from(players.values())
+        Array.from(
+            players.values()
+        )
     );
 }
-
 
 function getMainUserOnline() {
 
-    for (const user of onlineUsers.values()) {
+    for (
+        const user of
+        onlineUsers.values()
+    ) {
 
-        if (isMainUser(user.username)) {
+        if (
+            isMainUser(
+                user.username
+            )
+        ) {
             return user;
         }
     }
@@ -294,22 +527,23 @@ function getMainUserOnline() {
     return null;
 }
 
-
 function updateScreenHost() {
 
-    const owner = getMainUserOnline();
+    const owner =
+        getMainUserOnline();
 
-    screenHostId = owner
-        ? owner.id
-        : null;
+    screenHostId =
+        owner
+            ? owner.id
+            : null;
 
     return owner;
 }
 
-
 function broadcastScreenHost() {
 
-    const owner = updateScreenHost();
+    const owner =
+        updateScreenHost();
 
     io.emit(
         'screen-host',
@@ -329,7 +563,6 @@ function broadcastScreenHost() {
     );
 }
 
-
 function broadcastScreen() {
 
     io.emit(
@@ -338,202 +571,9 @@ function broadcastScreen() {
     );
 }
 
-
-// ======================================================
-// TRANSLATION
-// ======================================================
-
-const translationCache = new Map();
-const translationPending = new Map();
-
-const MAX_TRANSLATION_CACHE = 5000;
-
-
-function translationKey(
-    text,
-    source,
-    target
-) {
-
-    return (
-        `${String(source || 'auto').toLowerCase()}::` +
-        `${String(target || 'en').toLowerCase()}::` +
-        `${String(text || '')}`
-    );
-}
-
-
-function trimTranslationCache() {
-
-    while (
-        translationCache.size >
-        MAX_TRANSLATION_CACHE
-    ) {
-
-        translationCache.delete(
-            translationCache.keys().next().value
-        );
-    }
-}
-
-
-async function translateText(
-    text,
-    targetLanguage,
-    sourceLanguage
-) {
-
-    const target = String(
-        targetLanguage || 'en'
-    )
-        .trim()
-        .toLowerCase();
-
-    const source = String(
-        sourceLanguage || 'auto'
-    )
-        .trim()
-        .toLowerCase();
-
-    if (!text) {
-        return text;
-    }
-
-    if (
-        !target ||
-        (
-            source !== 'auto' &&
-            source === target
-        )
-    ) {
-        return text;
-    }
-
-    const key = translationKey(
-        text,
-        source,
-        target
-    );
-
-    if (translationCache.has(key)) {
-        return translationCache.get(key);
-    }
-
-    if (translationPending.has(key)) {
-        return translationPending.get(key);
-    }
-
-    const promise = (async () => {
-
-        try {
-
-            const sl =
-                source &&
-                source !== 'auto'
-                    ? source
-                    : 'auto';
-
-            const url =
-                'https://translate.googleapis.com/translate_a/single' +
-                `?client=gtx` +
-                `&sl=${encodeURIComponent(sl)}` +
-                `&tl=${encodeURIComponent(target)}` +
-                `&dt=t` +
-                `&q=${encodeURIComponent(text)}`;
-
-            const response = await fetch(
-                url,
-                {
-                    headers: {
-                        'User-Agent':
-                            'Mozilla/5.0'
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                return text;
-            }
-
-            const result =
-                await response.json();
-
-            if (
-                Array.isArray(result) &&
-                Array.isArray(result[0])
-            ) {
-
-                const translated =
-                    result[0]
-                        .map(part =>
-                            Array.isArray(part)
-                                ? part[0]
-                                : ''
-                        )
-                        .join('');
-
-                if (translated) {
-
-                    translationCache.set(
-                        key,
-                        translated
-                    );
-
-                    trimTranslationCache();
-
-                    return translated;
-                }
-            }
-
-        } catch (error) {
-
-            console.log(
-                '[TRANSLATION ERROR]',
-                error.message
-            );
-        }
-
-        return text;
-
-    })();
-
-    translationPending.set(
-        key,
-        promise
-    );
-
-    try {
-
-        return await promise;
-
-    } finally {
-
-        translationPending.delete(key);
-    }
-}
-
-
-// ======================================================
-// STATUS
-// ======================================================
-
-app.get(
-    '/api/status',
-    (req, res) => {
-
-        res.json({
-            ok: true,
-            server: 'EWS SESSIONS',
-            mainUser: MAIN_USERNAME,
-            online: getOnlineUsers().length
-        });
-    }
-);
-
-
-// ======================================================
+// =====================================================
 // SOCKET.IO
-// ======================================================
+// =====================================================
 
 io.on(
     'connection',
@@ -543,7 +583,6 @@ io.on(
             `[SOCKET CONNECT] ${socket.id}`
         );
 
-
         socket.emit(
             'server-ready',
             {
@@ -551,10 +590,9 @@ io.on(
             }
         );
 
-
-        // ==================================================
+        // =================================================
         // JOIN
-        // ==================================================
+        // =================================================
 
         socket.on(
             'join',
@@ -570,16 +608,16 @@ io.on(
                     String(
                         data?.language ||
                         'en'
-                    )
-                        .trim()
-                        .toLowerCase();
+                    ).trim().toLowerCase();
 
                 if (!username) {
                     return;
                 }
 
                 const owner =
-                    isMainUser(username);
+                    isMainUser(
+                        username
+                    );
 
                 socket.username =
                     username;
@@ -589,7 +627,6 @@ io.on(
 
                 socket.isOwner =
                     owner;
-
 
                 onlineUsers.set(
                     socket.id,
@@ -601,9 +638,11 @@ io.on(
                     }
                 );
 
+                // =========================================
+                // CREATE PLAYER
+                // =========================================
 
                 const player = {
-
                     id: socket.id,
 
                     username,
@@ -612,8 +651,10 @@ io.on(
                     y: 0,
                     z: 13,
 
-                    ry: 0,
                     yaw: 0,
+                    ry: 0,
+
+                    pitch: 0,
 
                     jumping: false,
                     moving: false,
@@ -623,12 +664,10 @@ io.on(
                     timestamp: Date.now()
                 };
 
-
                 players.set(
                     socket.id,
                     player
                 );
-
 
                 if (owner) {
 
@@ -636,13 +675,19 @@ io.on(
                         socket.id;
 
                     console.log(
-                        `[MAIN USER ONLINE] ${username}`
+                        `[OWNER ONLINE] ${username}`
                     );
                 }
 
+                // =========================================
+                // SEND ONLINE
+                // =========================================
 
                 broadcastOnline();
 
+                // =========================================
+                // SEND JOINED
+                // =========================================
 
                 socket.emit(
                     'joined',
@@ -650,36 +695,50 @@ io.on(
                         ok: true,
                         username,
                         owner,
-                        role: owner
-                            ? 'owner'
-                            : 'user'
+                        role:
+                            owner
+                                ? 'owner'
+                                : 'user'
                     }
                 );
 
+                // =========================================
+                // SEND EXISTING PLAYERS
+                // =========================================
 
                 socket.emit(
                     'players-state',
-                    getPlayersFor(
-                        socket.id
+                    Array.from(
+                        players.values()
+                    ).filter(
+                        player =>
+                            player.id !==
+                            socket.id
                     )
                 );
 
+                // =========================================
+                // SEND SCREEN
+                // =========================================
 
                 socket.emit(
                     'club-screen-state',
                     clubScreenState
                 );
 
+                // =========================================
+                // SCREEN HOST
+                // =========================================
 
                 const screenOwner =
                     getMainUserOnline();
-
 
                 socket.emit(
                     'screen-host',
                     screenOwner
                         ? {
-                            id: screenOwner.id,
+                            id:
+                                screenOwner.id,
                             username:
                                 screenOwner.username,
                             online: true,
@@ -694,37 +753,36 @@ io.on(
                         }
                 );
 
+                // =========================================
+                // INFORM OTHER PLAYERS
+                // =========================================
 
                 socket.broadcast.emit(
                     'player-joined',
                     player
                 );
 
-
                 socket.broadcast.emit(
                     'system-message',
                     {
                         text:
                             `${username} entered EWS SESSIONS`,
-                        ts: Date.now()
+                        ts:
+                            Date.now()
                     }
                 );
 
-
                 broadcastScreenHost();
 
-
                 console.log(
-                    `[JOIN] ${username}` +
-                    `${owner ? ' [MAIN USER / OWNER]' : ''}`
+                    `[JOIN] ${username}${owner ? ' [OWNER]' : ''}`
                 );
             }
         );
 
-
-        // ==================================================
+        // =================================================
         // REQUEST ONLINE
-        // ==================================================
+        // =================================================
 
         socket.on(
             'request-online',
@@ -737,10 +795,9 @@ io.on(
             }
         );
 
-
-        // ==================================================
+        // =================================================
         // REQUEST PLAYERS
-        // ==================================================
+        // =================================================
 
         socket.on(
             'request-players',
@@ -748,17 +805,20 @@ io.on(
 
                 socket.emit(
                     'players-state',
-                    getPlayersFor(
-                        socket.id
+                    Array.from(
+                        players.values()
+                    ).filter(
+                        player =>
+                            player.id !==
+                            socket.id
                     )
                 );
             }
         );
 
-
-        // ==================================================
+        // =================================================
         // PLAYER UPDATE
-        // ==================================================
+        // =================================================
 
         function updatePlayer(data) {
 
@@ -775,32 +835,34 @@ io.on(
                 return null;
             }
 
-
             const x =
                 Number(data?.x);
 
             const z =
                 Number(data?.z);
 
-
             if (
                 !Number.isFinite(x) ||
                 !Number.isFinite(z)
             ) {
-
                 return null;
             }
 
-
-            const yValue =
+            const y =
                 Number(data?.y);
 
-            const yawValue =
+            const yaw =
                 Number(
                     data?.yaw ??
-                    data?.ry
+                    data?.ry ??
+                    0
                 );
 
+            const pitch =
+                Number(
+                    data?.pitch ??
+                    0
+                );
 
             player.x =
                 Math.max(
@@ -811,18 +873,16 @@ io.on(
                     )
                 );
 
-
             player.y =
-                Number.isFinite(yValue)
+                Number.isFinite(y)
                     ? Math.max(
                         0,
                         Math.min(
                             5,
-                            yValue
+                            y
                         )
                     )
-                    : player.y;
-
+                    : 0;
 
             player.z =
                 Math.max(
@@ -833,20 +893,23 @@ io.on(
                     )
                 );
 
-
             if (
-                Number.isFinite(
-                    yawValue
-                )
+                Number.isFinite(yaw)
             ) {
 
                 player.yaw =
-                    yawValue;
+                    yaw;
 
                 player.ry =
-                    yawValue;
+                    yaw;
             }
 
+            if (
+                Number.isFinite(pitch)
+            ) {
+                player.pitch =
+                    pitch;
+            }
 
             player.jumping =
                 !!data?.jumping;
@@ -863,61 +926,30 @@ io.on(
             player.timestamp =
                 Date.now();
 
-
             players.set(
                 socket.id,
                 player
             );
 
-
             return player;
         }
 
-
-        // ==================================================
-        // PLAYER MOVE
-        // ==================================================
-
-        socket.on(
-            'player-move',
-            data => {
-
-                const player =
-                    updatePlayer(data);
-
-                if (!player) {
-                    return;
-                }
-
-
-                socket.broadcast.emit(
-                    'player-move',
-                    player
-                );
-
-                socket.broadcast.emit(
-                    'player-state',
-                    player
-                );
-            }
-        );
-
-
-        // ==================================================
+        // =================================================
         // PLAYER STATE
-        // ==================================================
+        // =================================================
 
         socket.on(
             'player-state',
             data => {
 
                 const player =
-                    updatePlayer(data);
+                    updatePlayer(
+                        data
+                    );
 
                 if (!player) {
                     return;
                 }
-
 
                 socket.broadcast.emit(
                     'player-state',
@@ -931,10 +963,38 @@ io.on(
             }
         );
 
+        // =================================================
+        // PLAYER MOVE
+        // =================================================
 
-        // ==================================================
+        socket.on(
+            'player-move',
+            data => {
+
+                const player =
+                    updatePlayer(
+                        data
+                    );
+
+                if (!player) {
+                    return;
+                }
+
+                socket.broadcast.emit(
+                    'player-move',
+                    player
+                );
+
+                socket.broadcast.emit(
+                    'player-state',
+                    player
+                );
+            }
+        );
+
+        // =================================================
         // CLUB SCREEN
-        // ==================================================
+        // =================================================
 
         socket.on(
             'club-screen-state',
@@ -958,80 +1018,63 @@ io.on(
                     return;
                 }
 
-
                 socket.isOwner = true;
-
                 screenHostId =
                     socket.id;
 
-
-                if (!data) {
-                    return;
-                }
-
-
+                // CLEAR
                 if (
+                    !data ||
                     data.active === false
                 ) {
 
                     clubScreenState = {
-
                         active: false,
-
                         src: '',
-
                         name: '',
-
                         owner:
                             socket.username
                     };
-
 
                     broadcastScreen();
 
                     return;
                 }
 
-
                 const src =
                     String(
                         data.src || ''
                     ).trim();
 
-
                 if (
                     !src ||
                     !/^https?:\/\//i.test(src)
                 ) {
-
                     return;
                 }
 
-
                 clubScreenState = {
-
                     active: true,
-
                     src,
-
                     name:
                         String(
                             data.name || ''
                         ).trim(),
-
                     owner:
                         socket.username
                 };
 
+                console.log(
+                    `[SCREEN] ${socket.username} -> ${src}`
+                );
 
                 broadcastScreen();
             }
         );
 
-
-        // ==================================================
+        // =================================================
         // REQUEST SCREEN
-        // ==================================================
+        // =================================================
 
         socket.on(
             'request-club-screen',
@@ -1042,16 +1085,15 @@ io.on(
                     clubScreenState
                 );
 
-
                 const owner =
                     getMainUserOnline();
-
 
                 socket.emit(
                     'screen-host',
                     owner
                         ? {
-                            id: owner.id,
+                            id:
+                                owner.id,
                             username:
                                 owner.username,
                             online: true,
@@ -1068,10 +1110,9 @@ io.on(
             }
         );
 
-
-        // ==================================================
+        // =================================================
         // CHAT
-        // ==================================================
+        // =================================================
 
         socket.on(
             'chat-message',
@@ -1081,82 +1122,76 @@ io.on(
                     return;
                 }
 
-
                 const text =
                     String(
                         data?.text || ''
                     ).trim();
 
-
                 if (
                     !text ||
                     text.length > 500
                 ) {
-
                     return;
                 }
 
-
                 const original =
                     text;
-
-                const timestamp =
-                    Date.now();
-
 
                 const sourceLanguage =
                     String(
                         data?.lang ||
                         socket.language ||
                         'auto'
-                    )
-                        .trim()
-                        .toLowerCase();
+                    ).trim().toLowerCase();
 
-
-                // Group users by language
-                // so each translation is made once.
+                const timestamp =
+                    Date.now();
 
                 const groups =
                     new Map();
 
+                // =========================================
+                // GROUP USERS BY LANGUAGE
+                // =========================================
 
                 for (
-                    const user
-                    of onlineUsers.values()
+                    const user of
+                    onlineUsers.values()
                 ) {
 
                     const lang =
                         String(
                             user.language ||
                             'en'
-                        )
-                            .trim()
-                            .toLowerCase();
+                        ).trim().toLowerCase();
 
-
-                    if (!groups.has(lang)) {
-
+                    if (
+                        !groups.has(lang)
+                    ) {
                         groups.set(
                             lang,
                             []
                         );
                     }
 
-
                     groups
                         .get(lang)
                         .push(user);
                 }
 
+                // =========================================
+                // TRANSLATE ONCE PER LANGUAGE
+                // =========================================
 
                 await Promise.all(
-
                     Array.from(
                         groups.entries()
                     ).map(
                         async (
-                            [language, users]
+                            [
+                                language,
+                                users
+                            ]
                         ) => {
 
                             const translated =
@@ -1165,7 +1200,6 @@ io.on(
                                     language,
                                     sourceLanguage
                                 );
-
 
                             for (
                                 const user
@@ -1186,11 +1220,14 @@ io.on(
                                         text:
                                             translated,
 
-                                        original,
+                                        original:
+                                            original,
 
-                                        sourceLanguage,
+                                        sourceLanguage:
+                                            sourceLanguage,
 
-                                        language,
+                                        language:
+                                            language,
 
                                         translated:
                                             translated !==
@@ -1207,10 +1244,9 @@ io.on(
             }
         );
 
-
-        // ==================================================
+        // =================================================
         // LANGUAGE CHANGE
-        // ==================================================
+        // =================================================
 
         socket.on(
             'language-change',
@@ -1225,7 +1261,6 @@ io.on(
                     return;
                 }
 
-
                 const newLanguage =
                     String(
                         language || 'en'
@@ -1233,28 +1268,24 @@ io.on(
                         .trim()
                         .toLowerCase();
 
-
                 user.language =
                     newLanguage;
 
                 socket.language =
                     newLanguage;
 
-
                 onlineUsers.set(
                     socket.id,
                     user
                 );
 
-
                 broadcastOnline();
             }
         );
 
-
-        // ==================================================
+        // =================================================
         // DISCONNECT
-        // ==================================================
+        // =================================================
 
         socket.on(
             'disconnect',
@@ -1265,40 +1296,52 @@ io.on(
                         socket.id
                     );
 
-
                 if (user) {
 
                     console.log(
                         `[OFFLINE] ${user.username} | ${reason}`
                     );
 
-                    onlineUsers.delete(
-                        socket.id
+                    socket.broadcast.emit(
+                        'system-message',
+                        {
+                            text:
+                                `${user.username} left EWS SESSIONS`,
+                            ts:
+                                Date.now()
+                        }
                     );
                 }
 
+                onlineUsers.delete(
+                    socket.id
+                );
 
                 players.delete(
                     socket.id
                 );
 
+                // =========================================
+                // REMOVE PLAYER FOR EVERYONE
+                // =========================================
 
                 socket.broadcast.emit(
                     'player-left',
                     socket.id
                 );
 
-
                 socket.broadcast.emit(
                     'player-removed',
                     socket.id
                 );
 
+                // =========================================
+                // MAIN USER LEFT
+                // =========================================
 
                 if (
                     socket.id ===
                     screenHostId ||
-
                     (
                         user &&
                         isMainUser(
@@ -1310,200 +1353,497 @@ io.on(
                     screenHostId =
                         null;
 
-
                     clubScreenState = {
-
                         active: false,
-
                         src: '',
-
                         name: '',
-
                         owner: ''
                     };
-
 
                     broadcastScreen();
                 }
 
-
-                if (user) {
-
-                    socket.broadcast.emit(
-                        'system-message',
-                        {
-                            text:
-                                `${user.username} left EWS SESSIONS`,
-                            ts: Date.now()
-                        }
-                    );
-                }
-
-
                 broadcastOnline();
-
                 broadcastPlayers();
-
                 broadcastScreenHost();
+
+                console.log(
+                    `[DISCONNECT] ${socket.id}`
+                );
             }
         );
     }
 );
 
+// =====================================================
+// NODE MEDIA SERVER
+// =====================================================
 
-// ======================================================
-// ROOT
-// ======================================================
+const nmsConfig = {
 
-app.get(
-    '/',
-    (req, res) => {
-
-        res.sendFile(
-            path.join(
-                PUBLIC,
-                'index.html'
-            )
-        );
-    }
-);
-
-
-// ======================================================
-// RTMP / HLS
-// ======================================================
-// Оставляем серверную часть,
-// чтобы существующий звук/стриминг не ломался.
-// Клиент при этом может использовать экран,
-// YouTube или Twitch.
-
-const mediaServerConfig = {
+    logType: 3,
 
     rtmp: {
-        port: 1935,
+        port: RTMP_PORT,
+
         chunk_size: 60000,
+
         gop_cache: true,
+
         ping: 30,
+
         ping_timeout: 60
     },
 
     http: {
-        port: 8000,
-        mediaroot: MEDIA,
+        port: HLS_PORT,
+
+        mediaroot:
+            MEDIA_ROOT,
+
         allow_origin: '*'
-    },
-
-    trans: {
-        ffmpeg:
-            process.env.FFMPEG_PATH ||
-            'ffmpeg',
-
-        tasks: [
-            {
-                app: 'live',
-                hls: true,
-                hlsFlags:
-                    '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
-                dash: false
-            }
-        ]
     }
 };
 
+let nms = null;
 
 try {
 
-    const nms =
+    nms =
         new NodeMediaServer(
-            mediaServerConfig
+            nmsConfig
         );
 
     nms.run();
 
+    console.log('');
     console.log(
-        'RTMP SERVER READY'
+        '=========================================='
     );
-
     console.log(
-        'RTMP: rtmp://localhost:1935/live'
+        'EWS MEDIA SERVER READY'
     );
-
+    console.log(
+        `RTMP: rtmp://localhost:${RTMP_PORT}/live`
+    );
     console.log(
         'KEY: ews'
     );
-
     console.log(
-        'HLS: http://localhost:3000/hls/ews/index.m3u8'
+        `HLS MEDIA PORT: ${HLS_PORT}`
     );
+    console.log(
+        '=========================================='
+    );
+    console.log('');
 
 } catch (error) {
 
     console.log(
-        '[RTMP ERROR]',
+        '[MEDIA SERVER ERROR]',
         error.message
     );
 }
 
+// =====================================================
+// FFMPEG
+// =====================================================
 
-// ======================================================
-// START SERVER
-// ======================================================
+let ffmpegProcess = null;
+let ffmpegRestartTimer = null;
+let ffmpegStarting = false;
+
+function cleanHLS() {
+
+    try {
+
+        const files =
+            fs.readdirSync(
+                HLS_DIR
+            );
+
+        for (
+            const file of files
+        ) {
+
+            const fullPath =
+                path.join(
+                    HLS_DIR,
+                    file
+                );
+
+            try {
+                fs.unlinkSync(
+                    fullPath
+                );
+            } catch {}
+        }
+
+    } catch (error) {
+
+        console.log(
+            '[HLS CLEAN ERROR]',
+            error.message
+        );
+    }
+}
+
+// =====================================================
+// START FFMPEG
+// =====================================================
+
+function startFFmpeg() {
+
+    if (ffmpegStarting) {
+        return;
+    }
+
+    if (
+        ffmpegProcess &&
+        !ffmpegProcess.killed
+    ) {
+        return;
+    }
+
+    if (
+        !fs.existsSync(
+            FFMPEG_PATH
+        )
+    ) {
+
+        console.log('');
+        console.log(
+            '[FFMPEG] ffmpeg.exe NOT FOUND'
+        );
+        console.log(
+            FFMPEG_PATH
+        );
+        console.log('');
+
+        return;
+    }
+
+    ffmpegStarting = true;
+
+    cleanHLS();
+
+    console.log(
+        '[FFMPEG] Starting...'
+    );
+
+    const args = [
+
+        '-hide_banner',
+
+        '-loglevel',
+        'warning',
+
+        // =============================================
+        // INPUT
+        // =============================================
+
+        '-i',
+        'rtmp://127.0.0.1:1935/live/ews',
+
+        // =============================================
+        // VIDEO
+        // =============================================
+
+        '-map',
+        '0:v:0?',
+
+        '-c:v',
+        'libx264',
+
+        '-preset',
+        'veryfast',
+
+        '-tune',
+        'zerolatency',
+
+        '-pix_fmt',
+        'yuv420p',
+
+        '-r',
+        '30',
+
+        '-g',
+        '60',
+
+        '-keyint_min',
+        '60',
+
+        '-sc_threshold',
+        '0',
+
+        '-b:v',
+        '2500k',
+
+        '-maxrate',
+        '2500k',
+
+        '-bufsize',
+        '5000k',
+
+        // =============================================
+        // AUDIO
+        // =============================================
+
+        '-map',
+        '0:a:0?',
+
+        '-c:a',
+        'aac',
+
+        '-b:a',
+        '128k',
+
+        '-ar',
+        '48000',
+
+        '-ac',
+        '2',
+
+        // =============================================
+        // HLS
+        // =============================================
+
+        '-f',
+        'hls',
+
+        '-hls_time',
+        '2',
+
+        '-hls_list_size',
+        '6',
+
+        '-hls_flags',
+        'delete_segments+append_list',
+
+        '-hls_segment_filename',
+        path.join(
+            HLS_DIR,
+            'segment_%03d.ts'
+        ),
+
+        path.join(
+            HLS_DIR,
+            'index.m3u8'
+        )
+    ];
+
+    try {
+
+        ffmpegProcess =
+            spawn(
+                FFMPEG_PATH,
+                args,
+                {
+                    cwd: ROOT,
+                    windowsHide: true
+                }
+            );
+
+        ffmpegStarting = false;
+
+    } catch (error) {
+
+        ffmpegStarting = false;
+
+        console.log(
+            '[FFMPEG START ERROR]',
+            error.message
+        );
+
+        return;
+    }
+
+    ffmpegProcess.stdout.on(
+        'data',
+        data => {
+
+            const text =
+                data.toString().trim();
+
+            if (text) {
+                console.log(
+                    `[FFMPEG] ${text}`
+                );
+            }
+        }
+    );
+
+    ffmpegProcess.stderr.on(
+        'data',
+        data => {
+
+            const text =
+                data.toString().trim();
+
+            if (text) {
+                console.log(
+                    `[FFMPEG] ${text}`
+                );
+            }
+        }
+    );
+
+    ffmpegProcess.on(
+        'error',
+        error => {
+
+            console.log(
+                '[FFMPEG ERROR]',
+                error.message
+            );
+        }
+    );
+
+    ffmpegProcess.on(
+        'close',
+        code => {
+
+            console.log(
+                `[FFMPEG] exited with code ${code}`
+            );
+
+            ffmpegProcess =
+                null;
+
+            if (ffmpegRestartTimer) {
+                clearTimeout(
+                    ffmpegRestartTimer
+                );
+            }
+
+            // Don't hammer the machine.
+            ffmpegRestartTimer =
+                setTimeout(
+                    () => {
+
+                        startFFmpeg();
+
+                    },
+                    3000
+                );
+        }
+    );
+}
+
+// =====================================================
+// WEB SERVER
+// =====================================================
 
 server.listen(
     PORT,
     '0.0.0.0',
     () => {
 
+        console.log('');
         console.log(
-            '=============================='
+            '=========================================='
         );
-
         console.log(
-            'EWS SESSIONS SERVER READY'
+            '          EWS SESSIONS'
         );
-
         console.log(
-            `PORT: ${PORT}`
+            '=========================================='
         );
-
         console.log(
-            `http://localhost:${PORT}`
+            `WEB:  http://localhost:${PORT}`
         );
-
         console.log(
-            'SOCKET.IO: READY'
+            `RTMP: rtmp://localhost:${RTMP_PORT}/live`
         );
-
         console.log(
-            'PLAYERS: READY'
+            'KEY:  ews'
         );
-
         console.log(
-            'ONLINE USERS: READY'
+            `HLS:  http://localhost:${PORT}/hls/ews/index.m3u8`
         );
-
-        console.log(
-            'CHAT: READY'
-        );
-
-        console.log(
-            'CHAT TRANSLATION: READY'
-        );
-
-        console.log(
-            'CLUB SCREEN: READY'
-        );
-
         console.log(
             `MAIN USER: ${MAIN_USERNAME}`
         );
-
         console.log(
-            'MAIN USER CONTROL: READY'
+            'ONLINE: READY'
         );
-
         console.log(
-            '=============================='
+            'MULTIPLAYER: READY'
+        );
+        console.log(
+            'CHAT: READY'
+        );
+        console.log(
+            'TRANSLATION: READY'
+        );
+        console.log(
+            'CLUB SCREEN: READY'
+        );
+        console.log(
+            'AUDIO: READY'
+        );
+        console.log(
+            '=========================================='
+        );
+        console.log('');
+
+        setTimeout(
+            () => {
+                startFFmpeg();
+            },
+            2500
         );
     }
+);
+
+// =====================================================
+// GRACEFUL SHUTDOWN
+// =====================================================
+
+function shutdown() {
+
+    console.log(
+        '\n[EWS] Shutting down...'
+    );
+
+    if (ffmpegRestartTimer) {
+        clearTimeout(
+            ffmpegRestartTimer
+        );
+    }
+
+    if (ffmpegProcess) {
+
+        try {
+            ffmpegProcess.kill();
+        } catch {}
+    }
+
+    if (nms) {
+
+        try {
+            nms.stop();
+        } catch {}
+    }
+
+    server.close(
+        () => {
+
+            console.log(
+                '[EWS] Server stopped.'
+            );
+
+            process.exit(0);
+        }
+    );
+}
+
+process.on(
+    'SIGINT',
+    shutdown
+);
+
+process.on(
+    'SIGTERM',
+    shutdown
 );
