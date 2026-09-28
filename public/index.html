@@ -1576,7 +1576,7 @@ function init3D(){
   createMainScreen();
   createEWSLogo();
   createStage();
-  createColumns();
+  // Old architectural columns removed.
   createEntrance();
   createNeonArchitecture();
   createCeilingBeams();
@@ -1849,58 +1849,8 @@ function createStage(){
 
 function createColumns(){
 
-  const mat =
-    new THREE.MeshStandardMaterial({
-      color:0x101010,
-      metalness:.55,
-      roughness:.35
-    });
-
-  const positions=[
-    [-15,5],
-    [15,5],
-    [-15,-5],
-    [15,-5]
-  ];
-
-  positions.forEach(
-    p=>{
-
-      createBox(
-        1,6,1,
-        p[0],
-        3,
-        p[1],
-        mat
-      );
-
-      const ring =
-        new THREE.Mesh(
-          new THREE.TorusGeometry(
-            .72,
-            .06,
-            8,
-            32
-          ),
-          new THREE.MeshBasicMaterial({
-            color:0xffffff
-          })
-        );
-
-      ring.position.set(
-        p[0],
-        2,
-        p[1]
-      );
-
-      scene.add(ring);
-
-      neonObjects.push(
-        ring
-      );
-
-    }
-  );
+  // Removed the old square architectural columns.
+  // The room now stays visually open for the lighting and dance floor.
 
 }
 
@@ -2073,65 +2023,111 @@ function createCeilingBeams(){
 
 function createSpeakers(){
 
-  const mat =
-    new THREE.MeshStandardMaterial({
-      color:0x050505,
-      metalness:.4,
-      roughness:.7
+  // Professional club PA: realistic stacked speaker cabinets,
+  // angled toward the dance floor instead of simple rectangular boxes.
+  const cabinetMat=new THREE.MeshStandardMaterial({
+    color:0x090909,
+    metalness:.55,
+    roughness:.62
+  });
+
+  const grilleMat=new THREE.MeshStandardMaterial({
+    color:0x151515,
+    metalness:.15,
+    roughness:.9
+  });
+
+  const rimMat=new THREE.MeshBasicMaterial({
+    color:0x22ccff,
+    transparent:true,
+    opacity:.7,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+
+  function makeCabinet(x,y,z,w,h,d,scale=1){
+    const group=new THREE.Group();
+    group.position.set(x,y,z);
+    group.scale.setScalar(scale);
+
+    const cabinet=new THREE.Mesh(
+      new THREE.BoxGeometry(w,h,d),
+      cabinetMat
+    );
+    cabinet.castShadow=true;
+    cabinet.receiveShadow=true;
+    group.add(cabinet);
+
+    // Front grille.
+    const grille=new THREE.Mesh(
+      new THREE.PlaneGeometry(w*.88,h*.84),
+      grilleMat
+    );
+    grille.position.z=-d/2-.006;
+    group.add(grille);
+
+    // Woofer rings.
+    const wooferR= Math.min(w,h)*.22;
+    [h*.25,-h*.23].forEach(yy=>{
+      const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(wooferR,.035,10,32),
+        new THREE.MeshBasicMaterial({
+          color:0x555555,
+          transparent:true,
+          opacity:.8
+        })
+      );
+      ring.position.set(0,yy,-d/2-.025);
+      ring.rotation.x=Math.PI/2;
+      group.add(ring);
     });
 
-  const positions=[
-    [-8,2,-11],
-    [8,2,-11],
-    [-11,2,-10],
-    [11,2,-10]
-  ];
+    // Small horn / tweeter.
+    const horn=new THREE.Mesh(
+      new THREE.CylinderGeometry(.12,.18,.12,16),
+      new THREE.MeshStandardMaterial({
+        color:0x2a2a2a,
+        metalness:.3,
+        roughness:.7
+      })
+    );
+    horn.rotation.x=Math.PI/2;
+    horn.position.set(0,h*.25,-d/2-.035);
+    group.add(horn);
 
-  positions.forEach(
-    p=>{
+    // Subtle cabinet edge light.
+    const edge=new THREE.Mesh(
+      new THREE.BoxGeometry(w*.94,.035,.035),
+      rimMat
+    );
+    edge.position.set(0,-h/2+.12,-d/2-.035);
+    group.add(edge);
 
-      createBox(
-        1.2,2.5,.8,
-        p[0],
-        p[1],
-        p[2],
-        mat
-      );
+    scene.add(group);
+    return group;
+  }
 
-      for(
-        let i=0;
-        i<3;
-        i++
-      ){
+  // Main PA stacks at the front corners.
+  const leftTop=makeCabinet(-7.5,3.9,-10.55,1.9,2.15,.95,1);
+  const rightTop=makeCabinet(7.5,3.9,-10.55,1.9,2.15,.95,1);
 
-        const cone =
-          new THREE.Mesh(
-            new THREE.CylinderGeometry(
-              .23,
-              .23,
-              .12,
-              24
-            ),
-            new THREE.MeshBasicMaterial({
-              color:0xaaaaaa
-            })
-          );
+  // Subs on the floor — wider and heavier.
+  makeCabinet(-7.5,1.0,-10.55,2.35,1.7,1.15,1);
+  makeCabinet(7.5,1.0,-10.55,2.35,1.7,1.15,1);
 
-        cone.rotation.x=
-          Math.PI/2;
+  // Side-fill speakers, mounted higher and aimed inward.
+  const leftFill=makeCabinet(-13.8,3.55,-5.8,1.25,1.7,.75,.9);
+  const rightFill=makeCabinet(13.8,3.55,-5.8,1.25,1.7,.75,.9);
 
-        cone.position.set(
-          p[0],
-          1.3+i*.6,
-          p[2]-.45
-        );
+  leftFill.rotation.y=-.42;
+  rightFill.rotation.y=.42;
 
-        scene.add(cone);
+  // Ceiling-hung compact fills.
+  const leftHang=makeCabinet(-11.8,5.0,-1.8,1.05,1.45,.65,.72);
+  const rightHang=makeCabinet(11.8,5.0,-1.8,1.05,1.45,.65,.72);
 
-      }
-
-    }
-  );
+  leftHang.rotation.y=-.35;
+  rightHang.rotation.y=.35;
 
 }
 
