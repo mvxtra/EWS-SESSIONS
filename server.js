@@ -10,7 +10,15 @@ const NodeMediaServer = require('node-media-server');
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin:'*', methods:['GET','POST'] } });
+const io = new Server(server, {
+  cors:{origin:'*',methods:['GET','POST']},
+  pingInterval:10000,
+  pingTimeout:30000,
+  connectionStateRecovery:{
+    maxDisconnectionDuration:120000,
+    skipMiddlewares:true
+  }
+});
 
 const PORT = Number(process.env.PORT || 3000);
 const RTMP_PORT = Number(process.env.RTMP_PORT || 1935);
@@ -210,6 +218,7 @@ app.post('/api/translate',async(req,res)=>{
 
 const onlineUsers=new Map();
 const players=new Map();
+const disconnectTimers=new Map();
 const clubScreenState={active:false,src:'',url:'',name:'',owner:SCREEN_HOST};
 const SPAWN_POINTS=[
   {x:0,z:13},{x:3,z:10},{x:-3,z:10},{x:6,z:7},
@@ -280,6 +289,24 @@ io.on('connection',socket=>{
     const language=normalizeLanguage(data.language);
     socket.username=username;
     socket.language=language;
+    socket.data.joined=true;
+
+    const userKey=username.toLowerCase();
+    const pending=disconnectTimers.get(userKey);
+    if(pending) {
+      clearTimeout(pending.timer);
+      disconnectTimers.delete(userKey);
+    }
+
+    // One active session per username keeps reconnects from creating ghost users.
+    for(const [id,user] of onlineUsers){
+      if(id===socket.id) continue;
+      if(String(user.username||'').toLowerCase()!==userKey) continue;
+      onlineUsers.delete(id);
+      players.delete(id);
+      io.emit('player-left',id);
+      io.emit('player-removed',id);
+    }
 
     onlineUsers.set(socket.id,{id:socket.id,username,language});
 
@@ -480,14 +507,23 @@ io.on('connection',socket=>{
   });
 
   socket.on('disconnect',reason=>{
-    const username=socket.username||'unknown';
-    onlineUsers.delete(socket.id);
-    players.delete(socket.id);
-    io.emit('player-left',socket.id);
-    io.emit('player-removed',socket.id);
-    broadcastOnline();
+    const username=cleanUsername(socket.username||'unknown');
+    const userKey=username.toLowerCase();
+    const timer=setTimeout(()=>{
+      disconnectTimers.delete(userKey);
+      const current=onlineUsers.get(socket.id);
+      if(current && String(current.username||'').toLowerCase()===userKey){
+        onlineUsers.delete(socket.id);
+        players.delete(socket.id);
+        io.emit('player-left',socket.id);
+        io.emit('player-removed',socket.id);
+        broadcastOnline();
+        broadcastPresence();
+      }
+    },5000);
+    disconnectTimers.set(userKey,{socketId:socket.id,timer});
     broadcastPresence();
-    console.log('DISCONNECT:',username,'|',reason,'| online:',onlineUsers.size,'| players:',players.size);
+    console.log('DISCONNECT:',username,'|',reason,'| grace=5s | online:',onlineUsers.size,'| players:',players.size);
   });
 });
 
