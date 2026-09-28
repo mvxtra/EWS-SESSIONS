@@ -1481,6 +1481,15 @@ function startSession(username){
       }
     );
 
+    // Explicit multiplayer handshake: ask for the authoritative player list
+    // after the server has registered this socket.
+    setTimeout(()=>{
+      if(socket && socket.connected){
+        socket.emit('request-players');
+        socket.emit('request-online');
+      }
+    },250);
+
   });
 
   socket.on(
@@ -1599,8 +1608,7 @@ function startSession(username){
   socket.on('players-state', list=>{
     if(!Array.isArray(list)) return;
 
-    // Server sends everyone except the current socket.
-    // Rebuild only the missing players so existing objects keep moving smoothly.
+    // Server is authoritative. Every player in the snapshot must exist locally.
     const alive = new Set();
 
     list.forEach(data=>{
@@ -1609,10 +1617,16 @@ function startSession(username){
       updateRemotePlayer(data);
     });
 
-    // Remove players that are no longer present in the server snapshot.
     Array.from(remotePlayers.keys()).forEach(id=>{
       if(!alive.has(id)) removeRemotePlayer(id);
     });
+  });
+
+  // Direct spawn event for the joining player. This is intentionally handled
+  // separately from the snapshot so a guest can never be missed between events.
+  socket.on('player-spawn', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
   });
 
   socket.on('player-joined', data=>{
@@ -1633,9 +1647,10 @@ function startSession(username){
     removeRemotePlayer(id);
   });
 
-  // Ask the server for a fresh snapshot after every connection.
-  socket.on('joined', ()=>{
+  // Refresh shared state whenever the transport reconnects.
+  socket.on('connect',()=>{
     socket.emit('request-players');
+    socket.emit('request-online');
     socket.emit('request-club-screen');
   });
 
