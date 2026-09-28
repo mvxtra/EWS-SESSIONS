@@ -2093,7 +2093,7 @@ function createSpeakers(){
     // x is deliberately closer to center; y=stage deck, so nothing hangs.
     g.position.set(x,0,-12.0);
     // Front (-Z) points into the room; slight inward toe-in.
-    g.rotation.y=side<0 ? 0.12 : -0.12;
+    g.rotation.y=side<0 ? -0.12 : 0.12;
 
     // Sub sits directly on the stage.
     const sub=new THREE.Mesh(new THREE.BoxGeometry(2.15,1.05,1.15),cabinet);
