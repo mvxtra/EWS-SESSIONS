@@ -3598,8 +3598,11 @@ document.addEventListener('wheel',e=>{
   e.preventDefault();
   const direction=e.deltaY<0 ? 1 : -1;
   strobeWheelLevel=THREE.MathUtils.clamp(strobeWheelLevel+direction*.08,0,1);
-  strobeWheelSpeed=THREE.MathUtils.lerp(10,42,strobeWheelLevel);
-  strobeWheelTimer=performance.now()+180;
+  strobeWheelSpeed=THREE.MathUtils.lerp(0,42,strobeWheelLevel);
+  if(strobeWheelLevel<=0){
+    strobeWheelLevel=0;
+    strobeWheelSpeed=0;
+  }
 },{passive:false});
 
 function animate(){
