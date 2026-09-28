@@ -531,22 +531,7 @@ input:focus{
   padding:7px 10px;
 }
 
-#zone-label{
-  position:absolute;
 
-  left:50%;
-  bottom:90px;
-
-  transform:translateX(-50%);
-
-  font-size:10px;
-
-  letter-spacing:5px;
-
-  color:rgba(255,255,255,.4);
-
-  pointer-events:none;
-}
 
 #audio-control{
   position:absolute;
@@ -725,11 +710,7 @@ input:focus{
     display:none;
   }
 
-  #zone-label{
-    bottom:calc(31vh + 20px);
-
-    font-size:8px;
-  }
+  
 }
 
 @media(max-width:420px){
@@ -743,9 +724,36 @@ input:focus{
     min-height:185px;
   }
 
-  #zone-label{
-    bottom:calc(34vh + 20px);
-  }
+  
+}
+
+
+/* =========================================================
+   MOBILE JOYSTICK + EMOJI
+========================================================= */
+#mobile-joystick{
+  pointer-events:auto;
+  user-select:none;
+  -webkit-user-select:none;
+}
+#joystick-knob{
+  pointer-events:none;
+  transition:transform .08s ease-out;
+}
+#mobile-emoji-bar{
+  pointer-events:auto;
+}
+#mobile-emoji-bar button{
+  pointer-events:auto;
+  user-select:none;
+  -webkit-user-select:none;
+}
+@media(max-width:700px){
+  #hint{display:none !important;}
+  #emotes-control{bottom:230px !important;}
+}
+@media(min-width:701px){
+  #mobile-joystick,#mobile-emoji-bar{display:none !important;}
 }
 
 </style>
@@ -933,9 +941,6 @@ input:focus{
   </div>
 
 
-  <div id="zone-label">
-    MAIN FLOOR
-  </div>
 
   <div id="hint">
     WASD MOVE · MOUSE LOOK · ENTER CHAT
@@ -1192,7 +1197,18 @@ function startSession(username){
 
   socket=io();
 
+  let savedPos = null;
+  let reconnectAttempts = 0;
+
+  socket.on('disconnect', function(){
+    console.warn('[EWS] Socket disconnected, will auto-reconnect...');
+    if(camera){
+      savedPos = {x: camera.position.x, y: playerY, z: camera.position.z, yaw, pitch};
+    }
+  });
+
   socket.on('connect',function(){
+    reconnectAttempts = 0;
 
     socket.emit(
       'join',
@@ -1211,6 +1227,15 @@ function startSession(username){
       if(socket && socket.connected){
         socket.emit('request-players');
         socket.emit('request-club-screen');
+        // Restore position after reconnect
+        if(savedPos){
+          camera.position.x = savedPos.x;
+          playerY = savedPos.y;
+          camera.position.z = savedPos.z;
+          yaw = savedPos.yaw;
+          pitch = savedPos.pitch;
+          savedPos = null;
+        }
       }
     },350);
 
@@ -1403,6 +1428,17 @@ function startSession(username){
     socket.emit('request-club-screen');
   });
 
+  socket.on('emoji-reaction', data=>{
+    if(data && typeof data.emoji === 'number') spawnRemoteEmoji(data);
+  });
+
+  socket.on('vip-access', data=>{
+    if(data && Array.isArray(data.users)){
+      VIP_USERS.clear();
+      data.users.forEach(u => VIP_USERS.add(String(u).toLowerCase()));
+    }
+  });
+
   socket.on('seat-occupied', data=>{
     if(data && data.seatId) console.log('Seat occupied:',data.seatId);
   });
@@ -1495,7 +1531,7 @@ function init3D(){
   scene.fog =
     new THREE.FogExp2(
       0x000000,
-      0.060
+      0.085
     );
 
   camera =
@@ -1565,7 +1601,7 @@ function init3D(){
   const ambient =
     new THREE.AmbientLight(
       0xffffff,
-      0.022
+      0.008
     );
 
   scene.add(ambient);
@@ -1573,7 +1609,7 @@ function init3D(){
   const ceilingLight =
     new THREE.PointLight(
       0xffffff,
-      0.38,
+      0.12,
       40
     );
 
@@ -1625,8 +1661,6 @@ function init3D(){
   createDanceFloor();
   createMainScreen();
   createStage();
-  createBar();
-  createBartender();
   createColumns();
   createEntrance();
   createNeonArchitecture();
@@ -1636,6 +1670,9 @@ function init3D(){
   createRealisticLighting();
   createClubLogo();
   loadExternalModels();
+  createVIPZone();
+  createStrobeLight();
+  createClockSign();
   createCollisionMap();
   createParticles();
   createPlayer();
@@ -1644,6 +1681,7 @@ function init3D(){
   setupAudio();
 
   setupControls();
+  setupMobileControls();
 
   animate();
 
@@ -2356,10 +2394,374 @@ function createRealisticLighting(){
   scene.add(hazeGroup);
 }
 
+
+/* =========================================================
+   VIP ZONE
+   Rope-off corner with sofa. Access controlled by server flag.
+   Server: socket.on('vip-access', ...) sets window._vipUsers array.
+   Client checks isVIPUser() before allowing entry.
+========================================================= */
+let vipZoneBox = null;
+let vipRopeLeft = null;
+let vipRopeRight = null;
+let vipSign = null;
+const VIP_USERS = new Set();
+// Default VIP users (can be overridden by server)
+['mvxtra'].forEach(u => VIP_USERS.add(u.toLowerCase()));
+
+function isVIPUser(){
+  return VIP_USERS.has(String(currentUser||'').toLowerCase());
+}
+
+function createVIPZone(){
+  // VIP corner: right-back of the club, x: 9..16, z: 6..14
+  const sofaMat = new THREE.MeshStandardMaterial({color:0x1a0a14,metalness:.15,roughness:.85});
+  const cushionMat = new THREE.MeshStandardMaterial({color:0x2a1020,roughness:.9});
+  const ropeMat = new THREE.MeshBasicMaterial({color:0x6ea8ff,transparent:true,opacity:.7});
+  const postMat = new THREE.MeshStandardMaterial({color:0x222222,metalness:.88,roughness:.2});
+
+  const vip = new THREE.Group();
+  vip.position.set(12.5, 0, 10);
+
+  // L-shaped sofa
+  const seat1 = createBox(4, .45, 1.4, 0, .4, 0, sofaMat);
+  const seat2 = createBox(1.4, .45, 3, -1.3, .4, 1.3, sofaMat);
+  // Backrests
+  createBox(4, .8, .2, 0, .85, -.6, sofaMat);
+  createBox(.2, .8, 3, -1.9, .85, 1.3, sofaMat);
+  // Cushions
+  createBox(3.8, .12, 1.2, 0, .62, 0, cushionMat, false, false);
+  createBox(1.2, .12, 2.8, -1.3, .62, 1.3, cushionMat, false, false);
+
+  // Velvet rope posts (2 posts at the entry gap)
+  for(const px of [2.2, 2.2]){
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(.04,.05,1.1,12), postMat);
+    post.position.set(px, .55, 1.8);
+    post.castShadow = true;
+    vip.add(post);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(.07,10,8), postMat);
+    cap.position.set(px, 1.12, 1.8);
+    vip.add(cap);
+  }
+
+  // Rope between posts
+  const rope = new THREE.Mesh(new THREE.CylinderGeometry(.02,.02,1.8,8), ropeMat);
+  rope.rotation.z = Math.PI/2;
+  rope.rotation.y = Math.PI/2;
+  rope.position.set(2.2, .85, 2.7);
+  vip.add(rope);
+  vipRopeLeft = rope;
+  neonObjects.push(rope);
+
+  // VIP sign
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 256;
+  signCanvas.height = 80;
+  const sctx = signCanvas.getContext('2d');
+  sctx.fillStyle = 'rgba(0,0,0,.75)';
+  sctx.fillRect(0, 0, 256, 80);
+  sctx.fillStyle = '#6ea8ff';
+  sctx.font = 'bold 30px Arial';
+  sctx.textAlign = 'center';
+  sctx.fillText('VIP', 128, 48);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  vipSign = new THREE.Sprite(new THREE.SpriteMaterial({map:signTex, transparent:true, depthTest:false}));
+  vipSign.position.set(1, 2.2, 1.8);
+  vipSign.scale.set(1.8, .56, 1);
+  vip.add(vipSign);
+
+  scene.add(vip);
+
+  // Collision box for VIP (blocks non-VIP from entering)
+  vipZoneBox = {minX: 9, maxX: 16.5, minZ: 6.5, maxZ: 14.5};
+
+  // Point light for VIP area
+  const vipLight = new THREE.PointLight(0x6ea8ff, 0.4, 8);
+  vipLight.position.set(12.5, 3, 10);
+  scene.add(vipLight);
+  lightObjects.push(vipLight);
+}
+
+/* =========================================================
+   STROBE LIGHT
+   Random intermittent flashes above the dancefloor.
+========================================================= */
+let strobeLight = null;
+let strobeNextFlash = 0;
+let strobeActiveUntil = 0;
+
+function createStrobeLight(){
+  strobeLight = new THREE.PointLight(0xffffff, 0, 25);
+  strobeLight.position.set(0, 5.2, -1);
+  scene.add(strobeLight);
+  strobeNextFlash = performance.now() + 2000 + Math.random() * 3000;
+}
+
+function updateStrobe(now){
+  if(!strobeLight) return;
+  if(now < strobeNextFlash){
+    // Check if currently in a flash
+    if(now < strobeActiveUntil){
+      strobeLight.intensity = 6 + Math.random() * 4;
+    } else {
+      strobeLight.intensity = 0;
+    }
+    return;
+  }
+  // Start a new flash burst
+  const burstCount = 2 + Math.floor(Math.random() * 4); // 2-5 flashes
+  const burstDuration = 0.08 + Math.random() * 0.06; // 0.08-0.14 sec per flash
+  strobeActiveUntil = now + burstDuration * 1000;
+  strobeNextFlash = now + (3000 + Math.random() * 8000); // 3-11 sec pause
+  strobeLight.intensity = 8;
+}
+
+/* =========================================================
+   ELECTRONIC CLOCK (MSK) ABOVE ENTRANCE
+========================================================= */
+let clockMesh = null;
+let clockCtx = null;
+let clockTexture = null;
+
+function createClockSign(){
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 160;
+  clockCtx = canvas.getContext('2d');
+  clockTexture = new THREE.CanvasTexture(canvas);
+  clockTexture.needsUpdate = true;
+
+  const mat = new THREE.MeshBasicMaterial({map: clockTexture, transparent: true});
+  clockMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 1.1), mat);
+  clockMesh.position.set(0, 5.2, 15.55);
+  scene.add(clockMesh);
+
+  // Neon frame around clock
+  const frameMat = new THREE.MeshBasicMaterial({color: 0x6ea8ff, transparent: true, opacity: .8});
+  const frameTop = new THREE.Mesh(new THREE.BoxGeometry(3.6, .05, .05), frameMat);
+  frameTop.position.set(0, 5.75, 15.54);
+  scene.add(frameTop);
+  neonObjects.push(frameTop);
+  const frameBot = frameTop.clone();
+  frameBot.position.y = 4.65;
+  scene.add(frameBot);
+  neonObjects.push(frameBot);
+  const frameL = new THREE.Mesh(new THREE.BoxGeometry(.05, 1.15, .05), frameMat);
+  frameL.position.set(-1.78, 5.2, 15.54);
+  scene.add(frameL);
+  neonObjects.push(frameL);
+  const frameR = frameL.clone();
+  frameR.position.x = 1.78;
+  scene.add(frameR);
+  neonObjects.push(frameR);
+}
+
+function updateClock(){
+  if(!clockCtx || !clockTexture) return;
+  // MSK = UTC+3
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const msk = new Date(utc + 3 * 3600000);
+  const hh = String(msk.getHours()).padStart(2, '0');
+  const mm = String(msk.getMinutes()).padStart(2, '0');
+  const ss = String(msk.getSeconds()).padStart(2, '0');
+
+  clockCtx.fillStyle = 'rgba(0,0,0,.85)';
+  clockCtx.fillRect(0, 0, 512, 160);
+
+  clockCtx.fillStyle = '#6ea8ff';
+  clockCtx.font = 'bold 60px "Courier New", monospace';
+  clockCtx.textAlign = 'center';
+  clockCtx.textBaseline = 'middle';
+  clockCtx.shadowColor = '#6ea8ff';
+  clockCtx.shadowBlur = 20;
+  clockCtx.fillText(hh + ':' + mm + ':' + ss, 256, 60);
+  clockCtx.shadowBlur = 0;
+
+  clockCtx.fillStyle = '#5577aa';
+  clockCtx.font = 'bold 22px Arial';
+  clockCtx.fillText('MSK', 256, 125);
+
+  clockTexture.needsUpdate = true;
+}
+
+/* =========================================================
+   EMOJI REACTIONS (3D sprites above player head)
+========================================================= */
+let emojiSprites = [];
+const EMOJI_LIST = ['🔥', '💀', '❤️'];
+
+function spawnEmoji(emojiCode){
+  if(!scene || !camera) return;
+  // Create canvas with emoji
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.font = '80px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(EMOJI_LIST[emojiCode] || '🔥', 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({map: tex, transparent: true, depthTest: false});
+  const sprite = new THREE.Sprite(mat);
+  sprite.position.set(camera.position.x, camera.position.y + 0.8, camera.position.z);
+  sprite.scale.set(0.6, 0.6, 1);
+  sprite.userData = {born: performance.now(), life: 3000, vy: 0.02};
+  scene.add(sprite);
+  emojiSprites.push(sprite);
+
+  // Broadcast to other players
+  if(socket && socket.connected){
+    socket.emit('emoji-reaction', {emoji: emojiCode, x: camera.position.x, y: camera.position.y + 0.8, z: camera.position.z});
+  }
+}
+
+function spawnRemoteEmoji(data){
+  if(!scene) return;
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.font = '80px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(EMOJI_LIST[data.emoji] || '🔥', 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  const mat = new THREE.SpriteMaterial({map: tex, transparent: true, depthTest: false});
+  const sprite = new THREE.Sprite(mat);
+  sprite.position.set(data.x, data.y, data.z);
+  sprite.scale.set(0.6, 0.6, 1);
+  sprite.userData = {born: performance.now(), life: 3000, vy: 0.02};
+  scene.add(sprite);
+  emojiSprites.push(sprite);
+}
+
+function updateEmojis(now){
+  emojiSprites = emojiSprites.filter(s => {
+    const age = now - s.userData.born;
+    if(age > s.userData.life){
+      scene.remove(s);
+      if(s.material.map) s.material.map.dispose();
+      s.material.dispose();
+      return false;
+    }
+    const t = age / s.userData.life;
+    s.position.y += s.userData.vy;
+    s.material.opacity = 1 - t;
+    return true;
+  });
+}
+
+/* =========================================================
+   MOBILE CONTROLS — virtual joystick + touch look
+========================================================= */
+let isMobile = /Android|iPhone|iPad|iPod|Mobile|mobile|Touch/i.test(navigator.userAgent) || ('ontouchstart' in window && window.innerWidth < 900);
+let joystickActive = false;
+let joystickStart = {x: 0, y: 0};
+let joystickVec = {x: 0, y: 0};
+let touchLookActive = false;
+let touchLookId = null;
+let touchLookLast = {x: 0, y: 0};
+
+function setupMobileControls(){
+  if(!isMobile) return;
+
+  // Create joystick element
+  const js = document.createElement('div');
+  js.id = 'mobile-joystick';
+  js.style.cssText = 'position:fixed;bottom:100px;left:60px;width:120px;height:120px;border-radius:50%;border:2px solid rgba(110,168,255,.4);background:rgba(0,0,0,.3);z-index:300;touch-action:none;display:flex;align-items:center;justify-content:center;';
+  const knob = document.createElement('div');
+  knob.id = 'joystick-knob';
+  knob.style.cssText = 'width:50px;height:50px;border-radius:50%;background:rgba(110,168,255,.5);border:1px solid rgba(110,168,255,.8);position:absolute;';
+  js.appendChild(knob);
+  document.body.appendChild(js);
+
+  // Emoji buttons for mobile
+  const eb = document.createElement('div');
+  eb.id = 'mobile-emoji-bar';
+  eb.style.cssText = 'position:fixed;bottom:100px;right:20px;display:flex;gap:8px;z-index:300;touch-action:none;';
+  EMOJI_LIST.forEach((emoji, i) => {
+    const btn = document.createElement('button');
+    btn.textContent = emoji;
+    btn.style.cssText = 'width:44px;height:44px;font-size:24px;border:1px solid #444;background:rgba(0,0,0,.7);border-radius:50%;cursor:pointer;';
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); spawnEmoji(i); }, {passive: false});
+    eb.appendChild(btn);
+  });
+  document.body.appendChild(eb);
+
+  // Joystick touch events
+  js.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const t = e.touches[0];
+    joystickStart = {x: t.clientX, y: t.clientY};
+  }, {passive: false});
+
+  js.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if(!joystickActive) return;
+    const t = e.touches[0];
+    const dx = t.clientX - joystickStart.x;
+    const dy = t.clientY - joystickStart.y;
+    const maxR = 50;
+    const dist = Math.hypot(dx, dy);
+    const clampedDist = Math.min(dist, maxR);
+    const angle = Math.atan2(dy, dx);
+    const kx = Math.cos(angle) * clampedDist / maxR;
+    const ky = Math.sin(angle) * clampedDist / maxR;
+    joystickVec = {x: kx, y: ky};
+    knob.style.transform = `translate(${kx * maxR}px, ${ky * maxR}px)`;
+  }, {passive: false});
+
+  js.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    joystickActive = false;
+    joystickVec = {x: 0, y: 0};
+    knob.style.transform = 'translate(0, 0)';
+  }, {passive: false});
+
+  // Touch look — right half of screen
+  document.addEventListener('touchstart', (e) => {
+    for(const t of e.changedTouches){
+      const target = t.target;
+      if(target.id === 'mobile-joystick' || target.id === 'joystick-knob' || target.id === 'mobile-emoji-bar' || target.closest('#mobile-emoji-bar') || target.closest('#chat') || target.closest('#chat-input') || target.closest('#chat-send') || target.closest('#emotes-menu') || target.closest('#screen-menu') || target.closest('#screen-control') || target.closest('#emotes-control')){
+        continue;
+      }
+      if(t.clientX > window.innerWidth / 2 && !touchLookActive){
+        touchLookActive = true;
+        touchLookId = t.identifier;
+        touchLookLast = {x: t.clientX, y: t.clientY};
+      }
+    }
+  }, {passive: false});
+
+  document.addEventListener('touchmove', (e) => {
+    if(!touchLookActive) return;
+    for(const t of e.changedTouches){
+      if(t.identifier === touchLookId){
+        const dx = t.clientX - touchLookLast.x;
+        const dy = t.clientY - touchLookLast.y;
+        yaw -= dx * 0.004;
+        pitch -= dy * 0.004;
+        pitch = Math.max(-1.45, Math.min(1.45, pitch));
+        touchLookLast = {x: t.clientX, y: t.clientY};
+      }
+    }
+  }, {passive: false});
+
+  document.addEventListener('touchend', (e) => {
+    for(const t of e.changedTouches){
+      if(t.identifier === touchLookId){
+        touchLookActive = false;
+        touchLookId = null;
+      }
+    }
+  }, {passive: false});
+}
+
+
 function createCollisionMap(){
   collisionBoxes=[
     {minX:-8.8,maxX:8.8,minZ:-14.2,maxZ:-10.9},
-    {minX:-16,maxX:-8,minZ:5.8,maxZ:8.3},
     {minX:-15.7,maxX:-14.3,minZ:-5.7,maxZ:-4.3},
     {minX:14.3,maxX:15.7,minZ:-5.7,maxZ:-4.3},
     {minX:-15.7,maxX:-14.3,minZ:4.3,maxZ:5.7},
@@ -2369,7 +2771,12 @@ function createCollisionMap(){
 
 function collides(x,z){
   const r=.38;
-  return collisionBoxes.some(b=>x> b.minX-r && x< b.maxX+r && z> b.minZ-r && z< b.maxZ+r);
+  if(collisionBoxes.some(b=>x> b.minX-r && x< b.maxX+r && z> b.minZ-r && z< b.maxZ+r)) return true;
+  // VIP zone — blocks non-VIP users
+  if(vipZoneBox && !isVIPUser()){
+    if(x > vipZoneBox.minX - r && x < vipZoneBox.maxX + r && z > vipZoneBox.minZ - r && z < vipZoneBox.maxZ + r) return true;
+  }
+  return false;
 }
 
 function tryMove(dx,dz){
@@ -3629,11 +4036,17 @@ function animate(){
   }
 
   if(
-    pointerLocked &&
+    (pointerLocked || isMobile) &&
     !chatMode
   ){
 
-    const fx=
+    // Mobile joystick input
+    if(isMobile && joystickActive){
+      forward = -joystickVec.y;
+      side = joystickVec.x;
+    }
+
+    const fx =
       -Math.sin(yaw);
 
     const fz=
@@ -3689,6 +4102,9 @@ function animate(){
 
   }
 
+  updateStrobe(performance.now());
+  updateClock();
+  updateEmojis(performance.now());
   broadcastPlayerState(performance.now());
 
   if(particles){
