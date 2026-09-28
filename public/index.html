@@ -1128,9 +1128,6 @@ function startSession(username){
 
       ul.innerHTML='';
 
-      const screenButton=document.getElementById('screen-control');
-      if(screenButton){ screenButton.style.display=isClubHost()?'block':'none'; }
-
       if(!Array.isArray(list)) return;
 
       list.forEach(user=>{
@@ -1245,12 +1242,6 @@ function startSession(username){
   });
 
   socket.on('player-state', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
-
-  // Compatibility with the older multiplayer event name.
-  socket.on('player-move', data=>{
     if(!data || !data.id || data.id===socket.id) return;
     updateRemotePlayer(data);
   });
