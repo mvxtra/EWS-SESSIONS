@@ -1294,14 +1294,7 @@ function toggleSofaSeat(){
 }
 
 function createEWSLogo(){
-  const loader=new THREE.TextureLoader();
-  loader.load('/assets/logo.png',texture=>{
-    texture.encoding=THREE.sRGBEncoding;
-    const mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide});
-    const logo=new THREE.Mesh(new THREE.PlaneGeometry(4.6,4.6),mat);
-    logo.position.set(0,3.65,-16.25);
-    scene.add(logo);
-  },undefined,err=>console.warn('[EWS LOGO]',err));
+  // Disabled: keep the far wall clear for the shared SCREEN.
 }
 
 /* =========================================================
@@ -1888,7 +1881,7 @@ function init3D(){
   createWalls();
   createDanceFloor();
   createMainScreen();
-  createEWSLogo();
+  // Logo disabled.
   createStage();
   // Old architectural columns removed.
   createEntrance();
