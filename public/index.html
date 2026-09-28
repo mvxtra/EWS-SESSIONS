@@ -1366,7 +1366,7 @@ function init3D(){
   scene.fog =
     new THREE.FogExp2(
       0x000000,
-      0.045
+      0.068
     );
 
   camera =
@@ -2035,7 +2035,7 @@ function createSpeakers(){
 
 }
 function createFog(){
-  const count=220;
+  const count=420;
   const geo=new THREE.BufferGeometry();
   const pos=new Float32Array(count*3);
   const scale=new Float32Array(count);
