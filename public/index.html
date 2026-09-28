@@ -433,12 +433,6 @@ function buildClubDetails() {
     new THREE.MeshStandardMaterial({color:0x303030,roughness:.45,metalness:.45})
   ];
 
-  for(let i=-3;i<=3;i++){
-    const pillar=new THREE.Mesh(new THREE.BoxGeometry(.4,7,.4),mats[i%2?0:1]);
-    pillar.position.set(i*4.5,3,-14.7);
-    scene.add(pillar);
-  }
-
   const screenFrame=new THREE.Mesh(
     new THREE.BoxGeometry(14.6,6.6,.35),
     new THREE.MeshStandardMaterial({color:0x020202,roughness:.4,metalness:.7})
