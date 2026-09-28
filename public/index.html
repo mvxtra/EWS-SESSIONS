@@ -446,26 +446,6 @@ function buildClubDetails() {
   screenFrame.position.set(0,5.35,-15.1);
   scene.add(screenFrame);
 
-  const signCanvas=document.createElement('canvas');
-  signCanvas.width=1024;
-  signCanvas.height=256;
-  const ctx=signCanvas.getContext('2d');
-  ctx.fillStyle='#050505';
-  ctx.fillRect(0,0,1024,256);
-  ctx.fillStyle='#ffffff';
-  ctx.font='900 120px Arial';
-  ctx.textAlign='center';
-  ctx.fillText('EWS',512,145);
-
-  const sign=new THREE.Mesh(
-    new THREE.PlaneGeometry(7,1.75),
-    new THREE.MeshBasicMaterial({
-      map:new THREE.CanvasTexture(signCanvas),
-      transparent:true
-    })
-  );
-  sign.position.set(0,9.8,-15.0);
-  scene.add(sign);
 }
 
 function resize() {
