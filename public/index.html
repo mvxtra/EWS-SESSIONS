@@ -960,6 +960,9 @@ let socket=null;
 let currentUser=null;
 let sessionStarted=false;
 let presenceHeartbeat=null;
+let httpPresenceTimer=null;
+let httpPresenceBusy=false;
+const httpPresenceAuthoritative=true;
 
 let scene;
 let camera;
@@ -1499,7 +1502,7 @@ function startSession(username){
   // the remote players, so neither view can get out of sync.
   function renderOnlineUsers(list){
     let users=Array.isArray(list)?list.slice():[];
-    if(socket && socket.connected && currentUser){
+    if(currentUser){
       const exists=users.some(user=>{
         const name=typeof user==='string' ? user : user && user.username;
         return String(name||'').trim().toLowerCase()===String(currentUser).trim().toLowerCase();
@@ -1620,7 +1623,8 @@ function startSession(username){
   // MULTIPLAYER — initial snapshot + live updates
   // =====================================================
 
-  socket.on('players-state', list=>{
+  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
+socket.on('players-state', list=>{
     if(!Array.isArray(list)) return;
 
     // Snapshots are a recovery/synchronization mechanism. Do NOT remove a
@@ -1634,26 +1638,31 @@ function startSession(username){
 
   // Direct spawn event for the joining player. This is intentionally handled
   // separately from the snapshot so a guest can never be missed between events.
-  socket.on('player-spawn', data=>{
+  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
+socket.on('player-spawn', data=>{
     if(!data || !data.id || data.id===socket.id) return;
     updateRemotePlayer(data);
   });
 
-  socket.on('player-joined', data=>{
+  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
+socket.on('player-joined', data=>{
     if(!data || !data.id || data.id===socket.id) return;
     updateRemotePlayer(data);
   });
 
-  socket.on('player-state', data=>{
+  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
+socket.on('player-state', data=>{
     if(!data || !data.id || data.id===socket.id) return;
     updateRemotePlayer(data);
   });
 
-  socket.on('player-left', id=>{
+  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
+socket.on('player-left', id=>{
     removeRemotePlayer(id);
   });
 
-  socket.on('player-removed', id=>{
+  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
+socket.on('player-removed', id=>{
     removeRemotePlayer(id);
   });
 
@@ -1742,6 +1751,73 @@ document
 
     }
   );
+
+
+/* =========================================================
+   HTTP MULTIPLAYER PRESENCE
+   This is the authoritative guest-sync path. It does not depend on WebSocket.
+========================================================= */
+function clearHttpRemotePlayers(){
+  for(const [id] of remotePlayers){
+    if(String(id).startsWith('presence:')) removeRemotePlayer(id);
+  }
+}
+
+async function syncHttpPresence(){
+  if(!currentUser || !camera || httpPresenceBusy) return;
+  httpPresenceBusy=true;
+  try{
+    const response=await fetch('/api/presence',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      cache:'no-store',
+      body:JSON.stringify({
+        username:currentUser,
+        language:document.getElementById('lang')?.value||'en',
+        x:camera.position.x,
+        y:playerY,
+        z:camera.position.z,
+        yaw,
+        pitch,
+        moving:Math.abs(camera.position.x-(syncHttpPresence.lastX??camera.position.x))>.0005||
+                Math.abs(camera.position.z-(syncHttpPresence.lastZ??camera.position.z))>.0005,
+        jumping:!isGrounded,
+        avatar:avatarChoice,
+        dance:activeDance,
+        danceStartedAt:danceStartedAt
+      })
+    });
+    if(!response.ok) throw new Error('HTTP '+response.status);
+    const state=await response.json();
+    if(!state || !Array.isArray(state.online) || !Array.isArray(state.players)) return;
+
+    renderOnlineUsers(state.online);
+    const seen=new Set();
+    state.players.forEach(data=>{
+      if(!data || !data.id || String(data.username||'').trim().toLowerCase()===String(currentUser).trim().toLowerCase()) return;
+      seen.add(data.id);
+      updateRemotePlayer(data);
+    });
+    for(const [id] of remotePlayers){
+      if(String(id).startsWith('presence:') && !seen.has(id)) removeRemotePlayer(id);
+    }
+
+    syncHttpPresence.lastX=camera.position.x;
+    syncHttpPresence.lastZ=camera.position.z;
+    syncHttpPresence.failures=0;
+  }catch(err){
+    syncHttpPresence.failures=(syncHttpPresence.failures||0)+1;
+    if(syncHttpPresence.failures%10===0) console.warn('[EWS HTTP PRESENCE]',err);
+  }finally{
+    httpPresenceBusy=false;
+  }
+}
+
+function startHttpPresence(){
+  if(httpPresenceTimer) clearInterval(httpPresenceTimer);
+  syncHttpPresence();
+  httpPresenceTimer=setInterval(syncHttpPresence,300);
+}
 
 /* =========================================================
    THREE.JS
@@ -1907,6 +1983,8 @@ function init3D(){
   setupAudio();
 
   setupControls();
+
+  startHttpPresence();
 
   animate();
 
