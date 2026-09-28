@@ -1,567 +1,1345 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Club PS2 Style</title>
-  <style>
-    body { margin: 0; overflow: hidden; background: #050505; font-family: sans-serif; }
-    #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    .hud-text { position: absolute; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.8); font-weight: bold; }
-    #fps { top: 10px; left: 10px; }
-    #chat { bottom: 10px; left: 10px; max-width: 300px; }
-    #emojis { bottom: 10px; right: 10px; display: flex; gap: 10px; }
-    .emoji-btn {
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.4);
-      color: #fff;
-      padding: 8px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 18px;
-      pointer-events: auto;
-    }
-    .emoji-btn:hover { background: rgba(255,255,255,0.4); }
-    #mobile-controls {
-      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 15px; pointer-events: auto;
-    }
-    .mobile-btn {
-      width: 60px; height: 60px; border-radius: 50%;
-      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4);
-      color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center;
-    }
-    @media (min-width: 768px) {
-      #mobile-controls { display: none; }
-    }
-    #players-online {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      width: 200px;
-      max-height: 200px;
-      overflow-y: auto;
-      pointer-events: auto;
-      color: #fff;
-      font-size: 16px;
-      text-align: right;
-      border-left: 2px solid rgba(255,255,255,0.3);
-      padding-left: 10px;
-    }
-    #players-online .player-item {
-      margin-bottom: 6px;
-      opacity: 0.9;
-      animation: fadeIn 0.4s ease-out forwards;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateX(10px); }
-      to { opacity: 0.9; transform: translateX(0); }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>EWS SESSIONS</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#0a0a0f; color:#e8e8e8; font-family:'Consolas','Courier New',monospace; }
+canvas { display:block; }
+
+#auth {
+  position:fixed; inset:0; z-index:1000;
+  display:flex; align-items:center; justify-content:center;
+  background:radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 100%);
+}
+#auth-box {
+  width:340px; padding:36px 28px;
+  background:rgba(20,20,35,0.92);
+  border:1px solid #ff6600;
+  border-radius:4px;
+  box-shadow:0 0 40px rgba(255,102,0,0.15);
+}
+#auth-box h1 {
+  font-size:22px; text-align:center; margin-bottom:4px;
+  letter-spacing:4px; color:#ff6600;
+}
+#auth-box .subtitle {
+  text-align:center; font-size:10px; color:#888; margin-bottom:24px;
+  letter-spacing:2px;
+}
+#auth-box input {
+  width:100%; padding:12px 14px; margin-bottom:12px;
+  background:rgba(0,0,0,0.4);
+  border:1px solid #333; border-radius:3px;
+  color:#e8e8e8; font-size:14px; font-family:inherit;
+  outline:none; transition:border-color 0.2s;
+}
+#auth-box input:focus { border-color:#ff6600; }
+#auth-box input::placeholder { color:#555; }
+#auth-box button {
+  width:100%; padding:12px;
+  background:transparent;
+  border:1px solid #ff6600; border-radius:3px;
+  color:#ff6600; font-size:14px; font-family:inherit;
+  cursor:pointer; transition:all 0.2s;
+  letter-spacing:2px; margin-bottom:8px;
+}
+#auth-box button:hover { background:rgba(255,102,0,0.15); }
+#auth-box button.primary { background:#ff6600; color:#0a0a0f; }
+#auth-box button.primary:hover { background:#ff8533; }
+#auth-error {
+  color:#ff4444; font-size:12px; text-align:center;
+  min-height:16px; margin-top:4px;
+}
+.auth-tabs { display:flex; gap:4px; margin-bottom:20px; }
+.auth-tabs button {
+  flex:1; padding:10px; background:transparent;
+  border:1px solid #333; color:#888;
+  font-size:12px; font-family:inherit; cursor:pointer;
+  letter-spacing:2px; border-radius:3px; margin:0;
+}
+.auth-tabs button.active {
+  border-color:#ff6600; color:#ff6600;
+}
+
+#game { position:fixed; inset:0; }
+#canvas { position:fixed; inset:0; width:100%; height:100%; }
+
+/* TOP BAR */
+#top-bar {
+  position:fixed; top:0; left:0; right:0; z-index:50;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 14px;
+  background:linear-gradient(180deg, rgba(0,0,0,0.7), transparent);
+  pointer-events:none;
+}
+#top-bar .logo {
+  font-size:13px; letter-spacing:3px; color:#ff6600;
+  text-shadow:0 0 8px rgba(255,102,0,0.4);
+}
+#top-bar .audio-status {
+  font-size:11px; color:#888; letter-spacing:1px;
+}
+#audio-btn {
+  pointer-events:auto;
+  padding:5px 12px; background:transparent;
+  border:1px solid #ff6600; border-radius:3px;
+  color:#ff6600; font-size:11px; cursor:pointer;
+  font-family:inherit; letter-spacing:1px;
+}
+#audio-btn:hover { background:rgba(255,102,0,0.15); }
+#audio-btn.active { background:#ff6600; color:#0a0a0f; }
+
+/* ONLINE LIST */
+#online-panel {
+  position:fixed; top:42px; left:14px; z-index:50;
+  width:200px; max-height:260px; overflow-y:auto;
+  background:rgba(10,10,15,0.85);
+  border:1px solid #222; border-radius:4px;
+  padding:8px 10px;
+}
+#online-panel h3 {
+  font-size:10px; letter-spacing:3px; color:#888;
+  margin-bottom:6px;
+}
+#online-list { font-size:12px; }
+#online-list .online-row {
+  display:flex; align-items:center; gap:6px;
+  padding:3px 0;
+}
+#online-list .dot {
+  width:7px; height:7px; border-radius:50%;
+  background:#0c0;
+  flex-shrink:0;
+}
+#online-list .dot.me { background:#ff6600; }
+#online-list .dot.host { background:#ffcc00; }
+#online-list .uname { color:#ccc; }
+#online-list .uname.me { color:#ff6600; }
+#online-list .uname.host { color:#ffcc00; }
+
+/* CHAT */
+#chat-panel {
+  position:fixed; bottom:0; left:0; right:0; z-index:50;
+  height:160px; pointer-events:none;
+  display:flex; flex-direction:column; justify-content:flex-end;
+}
+#chat-messages {
+  flex:1; overflow-y:auto;
+  padding:6px 14px;
+  font-size:12px; line-height:1.5;
+  max-height:120px;
+}
+#chat-messages .chat-msg { margin-bottom:2px; }
+#chat-messages .chat-user { color:#ff6600; }
+#chat-messages .chat-text { color:#ddd; }
+#chat-messages .chat-orig { color:#666; font-size:10px; font-style:italic; }
+#chat-input-row {
+  display:flex; gap:6px; padding:6px 14px;
+  pointer-events:auto;
+}
+#chat-input {
+  flex:1; padding:8px 12px;
+  background:rgba(0,0,0,0.6);
+  border:1px solid #333; border-radius:3px;
+  color:#e8e8e8; font-size:13px; font-family:inherit;
+  outline:none;
+}
+#chat-input:focus { border-color:#ff6600; }
+#chat-send {
+  padding:8px 16px; background:transparent;
+  border:1px solid #ff6600; border-radius:3px;
+  color:#ff6600; font-size:12px; cursor:pointer;
+  font-family:inherit; letter-spacing:1px;
+}
+#chat-send:hover { background:rgba(255,102,0,0.15); }
+.chat-hidden #chat-panel { display:none; }
+
+/* BOTTOM CONTROLS */
+#bottom-controls {
+  position:fixed; bottom:166px; left:14px; z-index:50;
+  display:flex; flex-direction:column; gap:6px;
+}
+#bottom-controls button, #bottom-controls select {
+  padding:7px 14px; background:rgba(10,10,15,0.85);
+  border:1px solid #ff6600; border-radius:3px;
+  color:#ff6600; font-size:11px; cursor:pointer;
+  font-family:inherit; letter-spacing:1px;
+  outline:none;
+}
+#bottom-controls button:hover { background:rgba(255,102,0,0.15); }
+#bottom-controls select { color:#ff6600; }
+#bottom-controls select option { background:#0a0a0f; }
+
+/* SCREEN MODAL */
+#screen-modal {
+  position:fixed; inset:0; z-index:200;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,0.85);
+}
+#screen-modal.show { display:flex; }
+#screen-modal-box {
+  width:420px; padding:28px;
+  background:rgba(20,20,35,0.95);
+  border:1px solid #ff6600; border-radius:4px;
+}
+#screen-modal-box h2 {
+  font-size:14px; letter-spacing:3px; color:#ff6600;
+  margin-bottom:16px; text-align:center;
+}
+#screen-modal-box input {
+  width:100%; padding:10px 12px; margin-bottom:12px;
+  background:rgba(0,0,0,0.4);
+  border:1px solid #333; border-radius:3px;
+  color:#e8e8e8; font-size:13px; font-family:inherit;
+  outline:none;
+}
+#screen-modal-box input:focus { border-color:#ff6600; }
+#screen-modal-box input::placeholder { color:#555; }
+#screen-modal-box .btn-row { display:flex; gap:8px; }
+#screen-modal-box button {
+  flex:1; padding:10px;
+  background:transparent;
+  border:1px solid #ff6600; border-radius:3px;
+  color:#ff6600; font-size:12px; cursor:pointer;
+  font-family:inherit; letter-spacing:1px;
+}
+#screen-modal-box button:hover { background:rgba(255,102,0,0.15); }
+#screen-modal-box button.primary { background:#ff6600; color:#0a0a0f; }
+#screen-modal-box .close-btn {
+  flex:0 0 auto; padding:4px 10px; border-color:#333; color:#888;
+}
+#screen-modal-box .screen-hint {
+  font-size:10px; color:#666; margin-top:8px; text-align:center;
+}
+#screen-modal-box .denied {
+  color:#ff4444; font-size:12px; text-align:center; padding:20px 0;
+}
+
+/* EMOTES PANEL */
+#emotes-panel {
+  position:fixed; bottom:166px; right:14px; z-index:50;
+  display:none; flex-direction:column; gap:4px;
+  background:rgba(10,10,15,0.85);
+  border:1px solid #222; border-radius:4px;
+  padding:8px;
+}
+#emotes-panel.show { display:flex; }
+#emotes-panel h3 {
+  font-size:9px; letter-spacing:3px; color:#888;
+  margin-bottom:4px; text-align:center;
+}
+#emotes-panel button {
+  padding:6px 18px; background:transparent;
+  border:1px solid #333; border-radius:3px;
+  color:#ccc; font-size:11px; cursor:pointer;
+  font-family:inherit; letter-spacing:1px;
+  text-align:center;
+}
+#emotes-panel button:hover { border-color:#ff6600; color:#ff6600; }
+#emotes-panel button.stop { border-color:#ff4444; color:#ff4444; }
+
+/* HINT */
+#hint {
+  position:fixed; bottom:170px; right:14px; z-index:40;
+  font-size:10px; color:#555; text-align:right;
+  letter-spacing:1px; pointer-events:none;
+}
+
+/* MOBILE */
+#mobile-controls {
+  position:fixed; bottom:170px; left:14px; z-index:50;
+  display:none;
+}
+.mobile-only { display:none; }
+@media(max-width:768px) {
+  .mobile-only { display:block; }
+  #mobile-controls { display:block; }
+  #hint { display:none; }
+  #online-panel { width:150px; font-size:11px; }
+  #bottom-controls { bottom:200px; }
+  #emotes-panel { bottom:200px; }
+}
+#joystick {
+  width:120px; height:120px;
+  background:rgba(255,102,0,0.1);
+  border:2px solid rgba(255,102,0,0.3);
+  border-radius:50%;
+  position:relative; touch-action:none;
+}
+#joystick-knob {
+  width:40px; height:40px;
+  background:rgba(255,102,0,0.5);
+  border-radius:50%;
+  position:absolute; top:40px; left:40px;
+  touch-action:none;
+}
+#look-btn {
+  position:fixed; bottom:180px; right:14px; z-index:50;
+  width:70px; height:70px;
+  background:rgba(255,102,0,0.1);
+  border:2px solid rgba(255,102,0,0.3);
+  border-radius:50%;
+  display:none; touch-action:none;
+  font-size:9px; color:#888; text-align:center;
+  line-height:70px; letter-spacing:1px;
+}
+.mobile-only #look-btn { display:block; }
+
+#loading {
+  position:fixed; inset:0; z-index:9999;
+  display:flex; align-items:center; justify-content:center;
+  background:#0a0a0f; color:#ff6600;
+  font-size:14px; letter-spacing:4px;
+}
+.spinner {
+  width:30px; height:30px;
+  border:2px solid #333; border-top-color:#ff6600;
+  border-radius:50%; animation:spin 1s linear infinite;
+  margin-right:12px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
 </head>
 <body>
-  <div id="ui-layer">
-    <div id="fps" class="hud-text">FPS: 0</div>
-    <div id="chat" class="hud-text"></div>
-    <div id="emojis">
-      <button class="emoji-btn" onclick="sendEmoji('😀')">😀</button>
-      <button class="emoji-btn" onclick="sendEmoji('😎')">😎</button>
-      <button class="emoji-btn" onclick="sendEmoji('🔥')">🔥</button>
-      <button class="emoji-btn" onclick="sendEmoji('🎉')">🎉</button>
+
+<div id="loading"><div class="spinner"></div>LOADING</div>
+
+<!-- AUTH -->
+<div id="auth">
+  <div id="auth-box">
+    <h1>EWS SESSIONS</h1>
+    <div class="subtitle">UNDERGROUND CLUB</div>
+    <div class="auth-tabs">
+      <button id="tab-login" class="active" onclick="switchAuthTab('login')">ВХОД</button>
+      <button id="tab-register" onclick="switchAuthTab('register')">РЕГИСТРАЦИЯ</button>
     </div>
-    <div id="players-online">
-      <div style="font-size:14px; color:#aaa; margin-bottom:8px;">Кто в клубе:</div>
-      <div id="players-list"></div>
-    </div>
-    <div id="mobile-controls">
-      <button class="mobile-btn" onmousedown="setMoveDir(0,1)" onmouseup="setMoveDir(0,0)">↑</button>
-      <button class="mobile-btn" onmousedown="setMoveDir(-1,0)" onmouseup="setMoveDir(0,0)">←</button>
-      <button class="mobile-btn" onmousedown="setMoveDir(1,0)" onmouseup="setMoveDir(0,0)">→</button>
-      <button class="mobile-btn" onmousedown="setMoveDir(0,-1)" onmouseup="setMoveDir(0,0)">↓</button>
+    <input id="auth-username" placeholder="username" maxlength="24" autocomplete="off">
+    <input id="auth-password" type="password" placeholder="password" maxlength="100">
+    <button id="auth-submit" class="primary" onclick="doAuth()">ВОЙТИ</button>
+    <div id="auth-error"></div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game" class="chat-hidden">
+  <canvas id="canvas"></canvas>
+
+  <!-- TOP BAR -->
+  <div id="top-bar">
+    <div class="logo">EWS SESSIONS</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <span class="audio-status" id="audio-status">AUDIO: OFF</span>
+      <button id="audio-btn" onclick="toggleAudio()">▶ AUDIO: START</button>
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <script>
-    const CONFIG = {
-      avatar: {
-        baseScale: 1.7,
-        headSegments: 16,
-        hairCubes: 4,
-        colors: [
-          { shirt: '#1a1a1a', pants: '#2b3e50', shoes: '#111111', hair: '#000000' },
-          { shirt: '#2b2b2b', pants: '#334756', shoes: '#0f0f0f', hair: '#1a1a1a' },
-          { shirt: '#333333', pants: '#48637f', shoes: '#151515', hair: '#222222' },
-          { shirt: '#444444', pants: '#5a7594', shoes: '#1a1a1a', hair: '#333333' }
-        ]
-      },
-      scene: {
-        fogColor: 0x0a0a0a,
-        fogNear: 10,
-        fogFar: 60
-      }
-    };
+  <!-- ONLINE -->
+  <div id="online-panel">
+    <h3>ONLINE</h3>
+    <div id="online-list"></div>
+  </div>
 
-    let scene, camera, renderer, clock;
-    let player, playerMesh, playerNickname;
-    let moveDir = new THREE.Vector2(0, 0);
-    let lastTime = 0;
-    let fpsCounter = 0;
-    let fpsDisplay = document.getElementById('fps');
-    let playersListEl = document.getElementById('players-list');
-    let socket;
-    let players = {};
-    let emojis = [];
-    let allPlayers = {};
+  <!-- BOTTOM CONTROLS -->
+  <div id="bottom-controls">
+    <button id="btn-screen" onclick="openScreenModal()">SCREEN</button>
+    <button id="btn-emotes" onclick="toggleEmotes()">EMOTES</button>
+    <select id="lang-select" onchange="changeLanguage()">
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+      <option value="es">Español</option>
+      <option value="de">Deutsch</option>
+      <option value="fr">Français</option>
+      <option value="zh">中文</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="ar">العربية</option>
+      <option value="hi">हिन्दी</option>
+      <option value="pt">Português</option>
+      <option value="it">Italiano</option>
+      <option value="tr">Türkçe</option>
+      <option value="uk">Українська</option>
+    </select>
+  </div>
 
-    function init() {
-      scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x050505);
-      scene.fog = new THREE.Fog(CONFIG.scene.fogColor, CONFIG.scene.fogNear, CONFIG.scene.fogFar);
+  <!-- EMOTES -->
+  <div id="emotes-panel">
+    <h3>DANCES</h3>
+    <button onclick="sendDance(1)">DANCE 01</button>
+    <button onclick="sendDance(2)">DANCE 02</button>
+    <button onclick="sendDance(3)">SHUFFLE</button>
+    <button onclick="sendDance(4)">ROBOT</button>
+    <button onclick="sendDance(5)">BOUNCE</button>
+    <button onclick="sendDance(6)">WAVE</button>
+    <button class="stop" onclick="sendDance(0)">STOP DANCE</button>
+  </div>
 
-      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
-      camera.position.set(0, 4, 8);
-      camera.lookAt(0, 2, 0);
+  <!-- HINT -->
+  <div id="hint">
+    WASD MOVE · MOUSE LOOK<br>C CHAT · SPACE JUMP
+  </div>
 
-      renderer = new THREE.WebGLRenderer({ antialias: false });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.shadowMap.enabled = true;
-      document.body.appendChild(renderer.domElement);
+  <!-- SCREEN MODAL -->
+  <div id="screen-modal">
+    <div id="screen-modal-box">
+      <h2>CLUB SCREEN</h2>
+      <div id="screen-content">
+        <input id="screen-url" placeholder="YouTube or Twitch URL">
+        <div class="btn-row">
+          <button class="primary" onclick="loadScreen()">LOAD</button>
+          <button onclick="clearScreen()">CLEAR</button>
+          <button class="close-btn" onclick="closeScreenModal()">×</button>
+        </div>
+        <div class="screen-hint">YouTube и Twitch открываются со звуком через embed.</div>
+      </div>
+      <div id="screen-denied" style="display:none;"></div>
+    </div>
+  </div>
 
-      clock = new THREE.Clock();
+  <!-- CHAT -->
+  <div id="chat-panel">
+    <div id="chat-messages"></div>
+    <div id="chat-input-row">
+      <input id="chat-input" placeholder="C — открыть/закрыть чат" maxlength="500" autocomplete="off">
+      <button id="chat-send" onclick="sendChat()">→</button>
+    </div>
+  </div>
 
-      const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
-      scene.add(ambientLight);
+  <!-- MOBILE -->
+  <div id="mobile-controls" class="mobile-only">
+    <div id="joystick"><div id="joystick-knob"></div></div>
+  </div>
+  <div id="look-btn" class="mobile-only">LOOK</div>
+</div>
 
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-      dirLight.position.set(5, 10, 5);
-      dirLight.castShadow = true;
-      scene.add(dirLight);
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// =====================================================
+// STATE
+// =====================================================
+let socket = null;
+let scene, camera, renderer;
+let myUsername = null;
+let myLanguage = 'ru';
+let isHost = false;
+let myPlayer = null;
+let players = {};
+let playerMeshes = {};
+let keys = {};
+let mouseLocked = false;
+let chatOpen = false;
+let audioCtx = null;
+let clock = new THREE.Clock();
+let lastStateSent = 0;
+let mobileMove = {x:0, z:0};
+let lookActive = false;
+let lookStartX = 0, lookStartY = 0;
+let myYaw = 0, myPitch = 0;
+let myX = 0, myY = 1.7, myZ = 13;
+let myMoving = false;
+let myJumping = false;
+let myDance = 0;
+let velY = 0;
+const GRAVITY = 25;
+const JUMP_FORCE = 9;
+const MOVE_SPEED = 7;
+const BOUNDS = {xMin:-16, xMax:16, zMin:-15.5, zMax:15.5};
 
-      // Пол
-      const floorGeo = new THREE.PlaneGeometry(100, 100);
-      const floorMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-      const floor = new THREE.Mesh(floorGeo, floorMat);
-      floor.rotation.x = -Math.PI / 2;
-      floor.receiveShadow = true;
-      scene.add(floor);
-
-      // Стены
-      const wallMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
-      const wallPositions = [
-        { geo: new THREE.BoxGeometry(0.2, 10, 40), pos: [-20, 5, 0] },
-        { geo: new THREE.BoxGeometry(0.2, 10, 40), pos: [20, 5, 0] },
-        { geo: new THREE.BoxGeometry(40, 10, 0.2), pos: [0, 5, -20] },
-        { geo: new THREE.BoxGeometry(40, 10, 0.2), pos: [0, 5, 20] }
-      ];
-      wallPositions.forEach(w => {
-        const wall = new THREE.Mesh(w.geo, wallMat);
-        wall.position.set(...w.pos);
-        wall.castShadow = true;
-        wall.receiveShadow = true;
-        scene.add(wall);
-      });
-
-      // Диваны по углам
-      const sofaMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 });
-      const sofaGeo = new THREE.BoxGeometry(6, 2, 4);
-      const sofaPositions = [
-        { x: -18, z: -18 },
-        { x: 18, z: -18 },
-        { x: -18, z: 18 },
-        { x: 18, z: 18 }
-      ];
-      sofaPositions.forEach(pos => {
-        const sofa = new THREE.Mesh(sofaGeo, sofaMat);
-        sofa.position.set(pos.x, 1, pos.z);
-        sofa.castShadow = true;
-        sofa.receiveShadow = true;
-        scene.add(sofa);
-        const pl = new THREE.PointLight(0xffaa00, 0.8, 15);
-        pl.position.set(pos.x, 3, pos.z);
-        scene.add(pl);
-      });
-
-      // Часы MSK
-      const clockGroup = new THREE.Group();
-      clockGroup.position.set(0, 6, -19.8);
-      scene.add(clockGroup);
-
-      const clockBgGeo = new THREE.BoxGeometry(4, 2, 0.1);
-      const clockBgMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffffff, emissiveIntensity: 0.3 });
-      const clockBg = new THREE.Mesh(clockBgGeo, clockBgMat);
-      clockGroup.add(clockBg);
-
-      const clockCanvas = document.createElement('canvas');
-      clockCanvas.width = 512;
-      clockCanvas.height = 256;
-      const clockCtx = clockCanvas.getContext('2d');
-      const clockTexture = new THREE.CanvasTexture(clockCanvas);
-      const clockTextMat = new THREE.MeshBasicMaterial({ map: clockTexture, transparent: true });
-      const clockTextGeo = new THREE.PlaneGeometry(3.6, 1.8);
-      const clockTextMesh = new THREE.Mesh(clockTextGeo, clockTextMat);
-      clockTextMesh.position.z = 0.06;
-      clockTextMesh.name = 'clockText';
-      clockGroup.add(clockTextMesh);
-
-      const clockLight = new THREE.PointLight(0xffffff, 1.5, 10);
-      clockLight.position.set(0, 2, 2);
-      clockGroup.add(clockLight);
-
-      // Стробоскоп
-      const strobeLight = new THREE.PointLight(0xffffff, 2, 50);
-      strobeLight.position.set(0, 10, 0);
-      scene.add(strobeLight);
-      let strobeOn = true;
-      setInterval(() => {
-        strobeOn = !strobeOn;
-        strobeLight.intensity = strobeOn ? 2 : 0.1;
-      }, 300);
-
-      // Игрок
-      playerNickname = 'Player_' + Math.floor(Math.random() * 1000);
-      player = createAvatar({ style: Math.floor(Math.random() * CONFIG.avatar.colors.length) });
-      player.position.set(0, 0, 0);
-      scene.add(player);
-      playerMesh = player;
-
-      // Сокет
-      socket = io();
-
-      socket.on('connect', () => {
-        socket.emit('join', { nickname: playerNickname });
-      });
-
-      socket.on('players-list', (list) => {
-        allPlayers = {};
-        list.forEach(p => {
-          allPlayers[p.socketId] = p.nickname;
-        });
-        updatePlayersListUI();
-      });
-
-      socket.on('player-join', (data) => {
-        if (data.nickname !== playerNickname) {
-          allPlayers[data.socketId] = data.nickname;
-          updatePlayersListUI();
-          const avatar = createAvatar(data.avatarData || { style: 0 });
-          avatar.position.set(data.position.x, data.position.y, data.position.z);
-          scene.add(avatar);
-          players[data.socketId] = { mesh: avatar, lastMoveTime: 0 };
-        }
-      });
-
-      socket.on('player-leave', (socketId) => {
-        if (players[socketId]) {
-          scene.remove(players[socketId].mesh);
-          delete players[socketId];
-        }
-        if (allPlayers[socketId]) {
-          delete allPlayers[socketId];
-          updatePlayersListUI();
-        }
-      });
-
-      socket.on('player-move', (data) => {
-        if (players[data.socketId]) {
-          const p = players[data.socketId];
-          p.mesh.position.set(data.position.x, data.position.y, data.position.z);
-          p.mesh.rotation.y = data.rotation;
-          p.lastMoveTime = Date.now();
-        }
-      });
-
-      socket.on('emoji', (data) => {
-        spawnEmoji(data.position, data.emoji);
-      });
-
-      // Управление
-      window.addEventListener('keydown', (e) => {
-        if (e.code === 'KeyW') moveDir.y = 1;
-        if (e.code === 'KeyS') moveDir.y = -1;
-        if (e.code === 'KeyA') moveDir.x = -1;
-        if (e.code === 'KeyD') moveDir.x = 1;
-      });
-      window.addEventListener('keyup', (e) => {
-        if (e.code === 'KeyW' || e.code === 'KeyS') moveDir.y = 0;
-        if (e.code === 'KeyA' || e.code === 'KeyD') moveDir.x = 0;
-      });
-
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-      });
-
-      animate();
+// =====================================================
+// AUTH
+// =====================================================
+let authMode = 'login';
+function switchAuthTab(mode) {
+  authMode = mode;
+  document.getElementById('tab-login').classList.toggle('active', mode==='login');
+  document.getElementById('tab-register').classList.toggle('active', mode==='register');
+  document.getElementById('auth-submit').textContent = mode==='login' ? 'ВОЙТИ' : 'СОЗДАТЬ';
+  document.getElementById('auth-error').textContent = '';
+}
+function doAuth() {
+  const u = document.getElementById('auth-username').value.trim();
+  const p = document.getElementById('auth-password').value;
+  if(!u || !p) { document.getElementById('auth-error').textContent = 'Заполните оба поля'; return; }
+  const endpoint = authMode==='login' ? '/api/login' : '/api/register';
+  fetch(endpoint, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({username:u, password:p})
+  }).then(r=>r.json()).then(data=>{
+    if(data.ok) {
+      myUsername = data.username;
+      document.getElementById('auth').style.display='none';
+      document.getElementById('game').classList.remove('chat-hidden');
+      chatOpen = true;
+      initGame();
+    } else {
+      document.getElementById('auth-error').textContent = data.error || 'Ошибка';
     }
+  }).catch(()=>{
+    document.getElementById('auth-error').textContent = 'Сервер недоступен';
+  });
+}
+document.getElementById('auth-password').addEventListener('keydown', e=>{
+  if(e.key==='Enter') doAuth();
+});
+document.getElementById('auth-username').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('auth-password').focus();
+});
 
-    function updatePlayersListUI() {
-      playersListEl.innerHTML = '';
-      const nicknames = Object.values(allPlayers);
-      if (nicknames.length === 0) {
-        playersListEl.innerHTML = '<div style="color:#666; font-size:13px;">В клубе пока тихо…</div>';
+// =====================================================
+// AUDIO
+// =====================================================
+function toggleAudio() {
+  if(!audioCtx) {
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    // simple ambient hum
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type='sine';
+    osc.frequency.value=55;
+    gain.gain.value=0.03;
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();
+    document.getElementById('audio-status').textContent='AUDIO: READY';
+    document.getElementById('audio-btn').classList.add('active');
+    document.getElementById('audio-btn').textContent='■ AUDIO: ON';
+  } else {
+    audioCtx.close();
+    audioCtx = null;
+    document.getElementById('audio-status').textContent='AUDIO: OFF';
+    document.getElementById('audio-btn').classList.remove('active');
+    document.getElementById('audio-btn').textContent='▶ AUDIO: START';
+  }
+}
+
+// =====================================================
+// THREE.JS INIT
+// =====================================================
+function initGame() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0a0f);
+  scene.fog = new THREE.Fog(0x0a0a0f, 18, 40);
+
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.set(0, 1.7, 13);
+
+  renderer = new THREE.WebGLRenderer({canvas:document.getElementById('canvas'), antialias:false});
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+
+  // LIGHTS
+  const ambient = new THREE.AmbientLight(0x404060, 0.6);
+  scene.add(ambient);
+  const orangeLight = new THREE.PointLight(0xff6600, 1.5, 30);
+  orangeLight.position.set(0, 5, 0);
+  scene.add(orangeLight);
+  const screenLight = new THREE.PointLight(0x4488ff, 0.8, 20);
+  screenLight.position.set(0, 4, -14);
+  scene.add(screenLight);
+  const barLight = new THREE.PointLight(0x00ffcc, 0.6, 12);
+  barLight.position.set(-12, 3, 0);
+  scene.add(barLight);
+
+  buildClub();
+  buildMyAvatar();
+
+  // SOCKET
+  socket = io();
+  setupSocket();
+
+  // EVENTS
+  window.addEventListener('resize', onResize);
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+  document.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('pointerlockchange', onPointerLockChange);
+
+  document.getElementById('loading').style.display='none';
+  animate();
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// =====================================================
+// CLUB GEOMETRY
+// =====================================================
+function buildClub() {
+  // FLOOR
+  const floorGeo = new THREE.PlaneGeometry(34, 34);
+  const floorCanvas = document.createElement('canvas');
+  floorCanvas.width = 512; floorCanvas.height = 512;
+  const fc = floorCanvas.getContext('2d');
+  fc.fillStyle = '#1a1a22'; fc.fillRect(0,0,512,512);
+  fc.strokeStyle = '#2a2a35'; fc.lineWidth = 2;
+  for(let i=0; i<=16; i++) {
+    fc.beginPath(); fc.moveTo(i*32,0); fc.lineTo(i*32,512); fc.stroke();
+    fc.beginPath(); fc.moveTo(0,i*32); fc.lineTo(512,i*32); fc.stroke();
+  }
+  // dance floor circle
+  fc.strokeStyle = '#ff6600'; fc.lineWidth = 3;
+  fc.beginPath(); fc.arc(256, 256, 80, 0, Math.PI*2); fc.stroke();
+  fc.strokeStyle = 'rgba(255,102,0,0.3)'; fc.lineWidth = 1;
+  fc.beginPath(); fc.arc(256, 256, 100, 0, Math.PI*2); fc.stroke();
+  const floorTex = new THREE.CanvasTexture(floorCanvas);
+  const floorMat = new THREE.MeshBasicMaterial({map:floorTex});
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI/2;
+  scene.add(floor);
+
+  // WALLS
+  const wallMat = new THREE.MeshBasicMaterial({color:0x15151f});
+  const wallGeo1 = new THREE.PlaneGeometry(34, 10);
+  // back wall (with screen)
+  const backWall = new THREE.Mesh(wallGeo1, wallMat);
+  backWall.position.set(0, 5, -17);
+  backWall.rotation.y = 0;
+  scene.add(backWall);
+  // front wall
+  const frontWall = new THREE.Mesh(wallGeo1, wallMat);
+  frontWall.position.set(0, 5, 17);
+  frontWall.rotation.y = Math.PI;
+  scene.add(frontWall);
+  // left wall
+  const leftWall = new THREE.Mesh(wallGeo1.clone(), wallMat);
+  leftWall.position.set(-17, 5, 0);
+  leftWall.rotation.y = Math.PI/2;
+  scene.add(leftWall);
+  // right wall
+  const rightWall = new THREE.Mesh(wallGeo1.clone(), wallMat);
+  rightWall.position.set(17, 5, 0);
+  rightWall.rotation.y = -Math.PI/2;
+  scene.add(rightWall);
+
+  // CEILING
+  const ceilGeo = new THREE.PlaneGeometry(34, 34);
+  const ceilMat = new THREE.MeshBasicMaterial({color:0x12121a});
+  const ceiling = new THREE.Mesh(ceilGeo, ceilMat);
+  ceiling.position.y = 10;
+  ceiling.rotation.x = Math.PI/2;
+  scene.add(ceiling);
+
+  // SCREEN on back wall
+  const screenFrameGeo = new THREE.BoxGeometry(10, 5.5, 0.3);
+  const screenFrameMat = new THREE.MeshBasicMaterial({color:0x222});
+  const screenFrame = new THREE.Mesh(screenFrameGeo, screenFrameMat);
+  screenFrame.position.set(0, 5, -16.7);
+  scene.add(screenFrame);
+
+  // screen surface (canvas texture)
+  const screenCanvas = document.createElement('canvas');
+  screenCanvas.width = 640; screenCanvas.height = 360;
+  const sc = screenCanvas.getContext('2d');
+  sc.fillStyle = '#000'; sc.fillRect(0,0,640,360);
+  sc.fillStyle = '#ff6600'; sc.font = 'bold 28px monospace';
+  sc.textAlign = 'center';
+  sc.fillText('EWS SESSIONS', 320, 180);
+  sc.fillStyle = '#444'; sc.font = '14px monospace';
+  sc.fillText('SCREEN OFFLINE', 320, 210);
+  const screenTex = new THREE.CanvasTexture(screenCanvas);
+  window.screenCanvas = screenCanvas;
+  window.screenTex = screenTex;
+  const screenMat = new THREE.MeshBasicMaterial({map:screenTex});
+  const screenGeo = new THREE.PlaneGeometry(9, 5);
+  window.screenMesh = new THREE.Mesh(screenGeo, screenMat);
+  window.screenMesh.position.set(0, 5, -16.5);
+  scene.add(window.screenMesh);
+
+  // screen iframe container (hidden by default)
+  window.screenIframe = null;
+
+  // BAR (left side)
+  const barGeo = new THREE.BoxGeometry(2, 1.2, 10);
+  const barMat = new THREE.MeshBasicMaterial({color:0x1a1a2e});
+  const bar = new THREE.Mesh(barGeo, barMat);
+  bar.position.set(-13, 0.6, 0);
+  scene.add(bar);
+
+  // bar top
+  const barTopGeo = new THREE.BoxGeometry(2.2, 0.1, 10.2);
+  const barTopMat = new THREE.MeshBasicMaterial({color:0x2a2a3e});
+  const barTop = new THREE.Mesh(barTopGeo, barTopMat);
+  barTop.position.set(-13, 1.25, 0);
+  scene.add(barTop);
+
+  // bottles on bar
+  for(let i=0; i<6; i++) {
+    const bottleGeo = new THREE.BoxGeometry(0.25, 0.6, 0.25);
+    const colors = [0x00ff66, 0xff6600, 0x00aaff, 0xff0066, 0xffff00, 0x00ffaa];
+    const bottleMat = new THREE.MeshBasicMaterial({color:colors[i]});
+    const bottle = new THREE.Mesh(bottleGeo, bottleMat);
+    bottle.position.set(-13, 1.65, -4 + i*1.5);
+    scene.add(bottle);
+  }
+
+  // bar shelf behind
+  const shelfGeo = new THREE.BoxGeometry(0.4, 0.1, 8);
+  const shelfMat = new THREE.MeshBasicMaterial({color:0x222});
+  const shelf = new THREE.Mesh(shelfGeo, shelfMat);
+  shelf.position.set(-14.5, 2.5, 0);
+  scene.add(shelf);
+  for(let i=0; i<5; i++) {
+    const shelfBottleGeo = new THREE.BoxGeometry(0.2, 0.5, 0.2);
+    const sbMat = new THREE.MeshBasicMaterial({color:colors[Math.min(i,colors.length-1)]});
+    const sb = new THREE.Mesh(shelfBottleGeo, sbMat);
+    sb.position.set(-14.5, 2.8, -3 + i*1.5);
+    scene.add(sb);
+  }
+
+  // SOFAS (right side)
+  function makeSofa(x, z, rot) {
+    const group = new THREE.Group();
+    // base
+    const baseGeo = new THREE.BoxGeometry(4, 0.5, 1.8);
+    const sofaMat = new THREE.MeshBasicMaterial({color:0x2a1a3e});
+    const base = new THREE.Mesh(baseGeo, sofaMat);
+    base.position.y = 0.35;
+    group.add(base);
+    // back
+    const backGeo = new THREE.BoxGeometry(4, 1.2, 0.3);
+    const back = new THREE.Mesh(backGeo, sofaMat);
+    back.position.set(0, 1, -0.75);
+    group.add(back);
+    // arms
+    const armGeo = new THREE.BoxGeometry(0.3, 0.8, 1.8);
+    const armL = new THREE.Mesh(armGeo, sofaMat);
+    armL.position.set(-2, 0.75, 0);
+    group.add(armL);
+    const armR = new THREE.Mesh(armGeo, sofaMat);
+    armR.position.set(2, 0.75, 0);
+    group.add(armR);
+    // cushions
+    for(let i=0; i<2; i++) {
+      const cushGeo = new THREE.BoxGeometry(1.8, 0.2, 1.4);
+      const cushMat = new THREE.MeshBasicMaterial({color:0x3a2a4e});
+      const cush = new THREE.Mesh(cushGeo, cushMat);
+      cush.position.set(-1 + i*2, 0.7, 0);
+      group.add(cush);
+    }
+    group.position.set(x, 0, z);
+    group.rotation.y = rot;
+    scene.add(group);
+  }
+  makeSofa(11, -4, -Math.PI/2);
+  makeSofa(11, 2, -Math.PI/2);
+  makeSofa(11, 8, -Math.PI/2);
+
+  // DJ BOOTH (front center)
+  const djGeo = new THREE.BoxGeometry(4, 1, 2);
+  const djMat = new THREE.MeshBasicMaterial({color:0x1a1a2e});
+  const djBooth = new THREE.Mesh(djGeo, djMat);
+  djBooth.position.set(0, 0.5, 14);
+  scene.add(djBooth);
+  const djTopGeo = new THREE.BoxGeometry(4.2, 0.08, 2.2);
+  const djTopMat = new THREE.MeshBasicMaterial({color:0x333});
+  const djTop = new THREE.Mesh(djTopGeo, djTopMat);
+  djTop.position.set(0, 1.04, 14);
+  scene.add(djTop);
+
+  // SPEAKERS
+  function makeSpeaker(x, z) {
+    const g = new THREE.Group();
+    const boxGeo = new THREE.BoxGeometry(1.2, 2.5, 1);
+    const boxMat = new THREE.MeshBasicMaterial({color:0x1a1a1a});
+    const box = new THREE.Mesh(boxGeo, boxMat);
+    g.add(box);
+    const coneGeo = new THREE.CircleGeometry(0.35, 8);
+    const coneMat = new THREE.MeshBasicMaterial({color:0x444});
+    const c1 = new THREE.Mesh(coneGeo, coneMat);
+    c1.position.set(0, 0.5, 0.51);
+    g.add(c1);
+    const c2 = new THREE.Mesh(coneGeo.clone(), coneMat);
+    c2.position.set(0, -0.5, 0.51);
+    g.add(c2);
+    g.position.set(x, 1.5, z);
+    scene.add(g);
+  }
+  makeSpeaker(-8, -14);
+  makeSpeaker(8, -14);
+
+  // ORANGE ACCENTS - glowing strips
+  const stripGeo = new THREE.BoxGeometry(34, 0.05, 0.1);
+  const stripMat = new THREE.MeshBasicMaterial({color:0xff6600});
+  const strip1 = new THREE.Mesh(stripGeo, stripMat);
+  strip1.position.set(0, 3, -16.8);
+  scene.add(strip1);
+  const strip2 = new THREE.Mesh(stripGeo.clone(), stripMat);
+  strip2.position.set(0, 6.5, -16.8);
+  scene.add(strip2);
+}
+
+// =====================================================
+// AVATARS (PS2 / LOW-POLY STYLE)
+// =====================================================
+function makeAvatarMesh(player) {
+  const group = new THREE.Group();
+  const colors = [0xff6600, 0x00aaff, 0x00ff66, 0xff0066, 0xffff00, 0xaa00ff, 0x00ffff, 0xff4444];
+  const c = colors[Math.abs(hashCode(player.username)) % colors.length];
+
+  // BODY
+  const bodyGeo = new THREE.BoxGeometry(0.7, 0.9, 0.4);
+  const bodyMat = new THREE.MeshBasicMaterial({color:c});
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 1.15;
+  group.add(body);
+
+  // HEAD
+  const headGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
+  const headMat = new THREE.MeshBasicMaterial({color:0xffcca0});
+  const head = new THREE.Mesh(headGeo, headMat);
+  head.position.y = 1.85;
+  group.add(head);
+
+  // HAIR
+  const hairGeo = new THREE.BoxGeometry(0.5, 0.15, 0.5);
+  const hairMat = new THREE.MeshBasicMaterial({color:c});
+  const hair = new THREE.Mesh(hairGeo, hairMat);
+  hair.position.y = 2.12;
+  group.add(hair);
+
+  // ARMS
+  const armGeo = new THREE.BoxGeometry(0.18, 0.7, 0.18);
+  const armMat = new THREE.MeshBasicMaterial({color:0xffcca0});
+  const armL = new THREE.Mesh(armGeo, armMat);
+  armL.position.set(-0.44, 1.2, 0);
+  group.add(armL);
+  const armR = new THREE.Mesh(armGeo.clone(), armMat);
+  armR.position.set(0.44, 1.2, 0);
+  group.add(armR);
+
+  // LEGS
+  const legGeo = new THREE.BoxGeometry(0.22, 0.7, 0.22);
+  const legMat = new THREE.MeshBasicMaterial({color:0x222244});
+  const legL = new THREE.Mesh(legGeo, legMat);
+  legL.position.set(-0.18, 0.35, 0);
+  group.add(legL);
+  const legR = new THREE.Mesh(legGeo.clone(), legMat);
+  legR.position.set(0.18, 0.35, 0);
+  group.add(legR);
+
+  // NAME TAG (sprite)
+  const tagCanvas = document.createElement('canvas');
+  tagCanvas.width = 256; tagCanvas.height = 64;
+  const tc = tagCanvas.getContext('2d');
+  tc.fillStyle = 'rgba(0,0,0,0.6)';
+  tc.fillRect(0,0,256,64);
+  tc.fillStyle = '#ff6600';
+  tc.font = 'bold 22px monospace';
+  tc.textAlign = 'center';
+  tc.fillText(player.username, 128, 38);
+  const tagTex = new THREE.CanvasTexture(tagCanvas);
+  const tagMat = new THREE.SpriteMaterial({map:tagTex, depthTest:false});
+  const tag = new THREE.Sprite(tagMat);
+  tag.position.y = 2.5;
+  tag.scale.set(1.5, 0.4, 1);
+  group.add(tag);
+
+  group.userData = {armL, armR, legL, legR, head, tag, color:c};
+  return group;
+}
+
+function hashCode(str) {
+  let h = 0;
+  for(let i=0; i<str.length; i++) h = ((h<<5)-h) + str.charCodeAt(i);
+  return h;
+}
+
+function buildMyAvatar() {
+  // We don't render our own avatar in first person
+}
+
+// =====================================================
+// SOCKET
+// =====================================================
+function setupSocket() {
+  socket.on('connect', () => {
+    socket.emit('join', {username:myUsername, language:myLanguage});
+  });
+
+  socket.on('screen-host', (data) => {
+    isHost = data.host;
+    if(!isHost) {
+      document.getElementById('btn-screen').style.opacity = '0.5';
+    }
+  });
+
+  socket.on('player-spawn', (data) => {
+    myX = data.x; myY = data.y; myZ = data.z;
+    myYaw = data.yaw || 0; myPitch = data.pitch || 0;
+    myPlayer = data;
+    camera.position.set(myX, myY, myZ);
+    updateCameraRotation();
+  });
+
+  socket.on('players-state', (list) => {
+    // Clear old
+    for(const id in playerMeshes) {
+      scene.remove(playerMeshes[id]);
+      delete playerMeshes[id];
+    }
+    players = {};
+    list.forEach(p => {
+      players[p.id] = p;
+      addPlayerMesh(p);
+    });
+  });
+
+  socket.on('player-state', (p) => {
+    if(p.id === socket.id) return;
+    players[p.id] = p;
+    if(!playerMeshes[p.id]) {
+      addPlayerMesh(p);
+    } else {
+      playerMeshes[p.id].position.set(p.x, 0, p.z);
+      playerMeshes[p.id].rotation.y = p.yaw || 0;
+    }
+  });
+
+  socket.on('player-left', (id) => {
+    if(playerMeshes[id]) {
+      scene.remove(playerMeshes[id]);
+      delete playerMeshes[id];
+    }
+    delete players[id];
+  });
+
+  socket.on('player-removed', (id) => {
+    if(playerMeshes[id]) {
+      scene.remove(playerMeshes[id]);
+      delete playerMeshes[id];
+    }
+    delete players[id];
+  });
+
+  socket.on('online-users', updateOnline);
+  socket.on('online', updateOnline);
+
+  socket.on('club-screen-state', (state) => {
+    updateScreen(state);
+  });
+
+  socket.on('chat-message', (data) => {
+    addChatMessage(data);
+  });
+
+  socket.on('language-updated', (data) => {
+    myLanguage = data.language;
+    document.getElementById('lang-select').value = data.language;
+  });
+}
+
+function addPlayerMesh(p) {
+  const mesh = makeAvatarMesh(p);
+  mesh.position.set(p.x, 0, p.z);
+  mesh.rotation.y = p.yaw || 0;
+  scene.add(mesh);
+  playerMeshes[p.id] = mesh;
+}
+
+function updateOnline(list) {
+  const el = document.getElementById('online-list');
+  el.innerHTML = '';
+  list.forEach(u => {
+    const row = document.createElement('div');
+    row.className = 'online-row';
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    const name = document.createElement('div');
+    name.className = 'uname';
+    name.textContent = u.username;
+    if(u.username === myUsername) { dot.classList.add('me'); name.classList.add('me'); }
+    if(u.username === 'mvxtra') { dot.classList.add('host'); name.classList.add('host'); }
+    row.appendChild(dot);
+    row.appendChild(name);
+    el.appendChild(row);
+  });
+}
+
+// =====================================================
+// SCREEN
+// =====================================================
+function updateScreen(state) {
+  if(state.active && state.url) {
+    // Show iframe on screen
+    const url = state.url;
+    let embedUrl = '';
+    // YouTube
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    if(ytMatch) {
+      embedUrl = 'https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=1';
+    }
+    // Twitch
+    const twitchMatch = url.match(/twitch\.tv\/(\w+)/);
+    if(twitchMatch) {
+      embedUrl = 'https://player.twitch.tv/?channel=' + twitchMatch[1] + '&parent=' + location.hostname;
+    }
+    if(embedUrl) {
+      if(window.screenIframe) {
+        window.screenIframe.src = embedUrl;
       } else {
-        nicknames.forEach(n => {
-          const div = document.createElement('div');
-          div.className = 'player-item';
-          div.textContent = n;
-          playersListEl.appendChild(div);
-        });
+        window.screenIframe = document.createElement('iframe');
+        window.screenIframe.style.position = 'fixed';
+        window.screenIframe.style.width = '0';
+        window.screenIframe.style.height = '0';
+        window.screenIframe.style.border = 'none';
+        window.screenIframe.style.pointerEvents = 'none';
+        window.screenIframe.src = embedUrl;
+        document.body.appendChild(window.screenIframe);
       }
+      // Update screen canvas
+      const sc = window.screenCanvas.getContext('2d');
+      sc.fillStyle = '#000'; sc.fillRect(0,0,640,360);
+      sc.fillStyle = '#ff6600'; sc.font = 'bold 20px monospace';
+      sc.textAlign = 'center';
+      sc.fillText('▶ ' + (state.name || 'LIVE'), 320, 180);
+      sc.fillStyle = '#666'; sc.font = '12px monospace';
+      sc.fillText(url.slice(0,60), 320, 210);
+      window.screenTex.needsUpdate = true;
     }
+  } else {
+    // Clear screen
+    if(window.screenIframe) {
+      window.screenIframe.src = '';
+    }
+    const sc = window.screenCanvas.getContext('2d');
+    sc.fillStyle = '#000'; sc.fillRect(0,0,640,360);
+    sc.fillStyle = '#ff6600'; sc.font = 'bold 28px monospace';
+    sc.textAlign = 'center';
+    sc.fillText('EWS SESSIONS', 320, 180);
+    sc.fillStyle = '#444'; sc.font = '14px monospace';
+    sc.fillText('SCREEN OFFLINE', 320, 210);
+    window.screenTex.needsUpdate = true;
+  }
+}
 
-    function createAvatar(data) {
-      const group = new THREE.Group();
-      const style = (data && data.style) || 0;
-      const colors = CONFIG.avatar.colors[style % CONFIG.avatar.colors.length];
+function openScreenModal() {
+  document.getElementById('screen-modal').classList.add('show');
+  if(!isHost) {
+    document.getElementById('screen-content').style.display = 'none';
+    const denied = document.getElementById('screen-denied');
+    denied.style.display = 'block';
+    denied.textContent = 'Только mvxtra может управлять экраном';
+  } else {
+    document.getElementById('screen-content').style.display = 'block';
+    document.getElementById('screen-denied').style.display = 'none';
+  }
+}
+function closeScreenModal() {
+  document.getElementById('screen-modal').classList.remove('show');
+}
+function loadScreen() {
+  const url = document.getElementById('screen-url').value.trim();
+  if(!url) return;
+  socket.emit('club-screen-state', {
+    active:true,
+    url:url,
+    name:url
+  });
+  closeScreenModal();
+}
+function clearScreen() {
+  socket.emit('club-screen-state', {
+    active:false,
+    url:'',
+    name:''
+  });
+  document.getElementById('screen-url').value = '';
+  closeScreenModal();
+}
 
-      // Голова
-      const headGeo = new THREE.SphereGeometry(0.4, 16, 16);
-      const headMat = new THREE.MeshStandardMaterial({ color: 0xf0e6dd, flatShading: true });
-      const head = new THREE.Mesh(headGeo, headMat);
-      head.position.y = 1.6;
-      group.add(head);
+// =====================================================
+// EMOTES / DANCES
+// =====================================================
+function toggleEmotes() {
+  document.getElementById('emotes-panel').classList.toggle('show');
+}
+function sendDance(id) {
+  myDance = id;
+  socket.emit('player-emote', {dance:id});
+  if(id === 0) myDance = 0;
+}
 
-      // Глаза
-      const eyeGeo = new THREE.BoxGeometry(0.15, 0.06, 0.02);
-      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000, flatShading: true });
-      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      leftEye.position.set(-0.12, 1.7, 0.38);
-      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rightEye.position.set(0.12, 1.7, 0.38);
-      group.add(leftEye, rightEye);
+// =====================================================
+// CHAT
+// =====================================================
+function sendChat() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text) return;
+  socket.emit('chat-message', {text});
+  input.value = '';
+}
+document.getElementById('chat-input').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') { e.preventDefault(); sendChat(); }
+});
 
-      // Нос
-      const noseGeo = new THREE.BoxGeometry(0.04, 0.06, 0.04);
-      const noseMat = new THREE.MeshStandardMaterial({ color: 0xd0c0b0, flatShading: true });
-      const nose = new THREE.Mesh(noseGeo, noseMat);
-      nose.position.set(0, 1.65, 0.38);
-      group.add(nose);
+function addChatMessage(data) {
+  const el = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'chat-msg';
+  let html = '<span class="chat-user">' + escapeHtml(data.user || data.username || '') + ':</span> ';
+  html += '<span class="chat-text">' + escapeHtml(data.text || '') + '</span>';
+  if(data.original && data.original !== data.text) {
+    html += '<div class="chat-orig">' + escapeHtml(data.original) + '</div>';
+  }
+  div.innerHTML = html;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  // limit messages
+  while(el.children.length > 50) el.removeChild(el.firstChild);
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+}
 
-      // Рот
-      const mouthGeo = new THREE.BoxGeometry(0.14, 0.04, 0.02);
-      const mouthMat = new THREE.MeshStandardMaterial({ color: 0x000000, flatShading: true });
-      const mouth = new THREE.Mesh(mouthGeo, mouthMat);
-      mouth.position.set(0, 1.52, 0.38);
-      group.add(mouth);
+// =====================================================
+// LANGUAGE
+// =====================================================
+function changeLanguage() {
+  const lang = document.getElementById('lang-select').value;
+  myLanguage = lang;
+  socket.emit('language-change', lang);
+}
 
-      // Причёска
-      for (let i = 0; i < CONFIG.avatar.hairCubes; i++) {
-        const hGeo = new THREE.BoxGeometry(0.3, 0.2, 0.2);
-        const hMat = new THREE.MeshStandardMaterial({ color: colors.hair, flatShading: true });
-        const hair = new THREE.Mesh(hGeo, hMat);
-        hair.position.y = 1.8 + (Math.random() - 0.5) * 0.2;
-        hair.position.x = (Math.random() - 0.5) * 0.4;
-        hair.position.z = (Math.random() - 0.5) * 0.4;
-        group.add(hair);
+// =====================================================
+// INPUT
+// =====================================================
+function onKeyDown(e) {
+  keys[e.code] = true;
+  if(e.code === 'KeyC') {
+    chatOpen = !chatOpen;
+    document.getElementById('game').classList.toggle('chat-hidden', !chatOpen);
+    if(chatOpen) document.getElementById('chat-input').focus();
+  }
+  if(e.code === 'Space' && !chatOpen) {
+    if(myY <= 1.71) { velY = JUMP_FORCE; myJumping = true; }
+    e.preventDefault();
+  }
+  if(chatOpen && document.activeElement === document.getElementById('chat-input')) {
+    keys = {};
+  }
+}
+function onKeyUp(e) { keys[e.code] = false; }
+
+function onMouseDown(e) {
+  if(!mouseLocked && !chatOpen && e.target.tagName === 'CANVAS') {
+    document.getElementById('canvas').requestPointerLock();
+  }
+}
+function onMouseUp() {}
+function onMouseMove(e) {
+  if(mouseLocked) {
+    myYaw -= e.movementX * 0.002;
+    myPitch -= e.movementY * 0.002;
+    myPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, myPitch));
+    updateCameraRotation();
+  }
+}
+function onPointerLockChange() {
+  mouseLocked = document.pointerLockElement === document.getElementById('canvas');
+}
+function updateCameraRotation() {
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = myYaw;
+  camera.rotation.x = myPitch;
+}
+
+// =====================================================
+// ANIMATION
+// =====================================================
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+
+  // MOVEMENT
+  if(!chatOpen) {
+    let dx = 0, dz = 0;
+    if(keys['KeyW'] || keys['ArrowUp']) dz -= 1;
+    if(keys['KeyS'] || keys['ArrowDown']) dz += 1;
+    if(keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+    if(keys['KeyD'] || keys['ArrowRight']) dx += 1;
+    // mobile
+    if(mobileMove.x) dx = mobileMove.x;
+    if(mobileMove.z) dz = mobileMove.z;
+
+    if(dx || dz) {
+      const len = Math.sqrt(dx*dx + dz*dz);
+      dx /= len; dz /= len;
+      const cos = Math.cos(myYaw);
+      const sin = Math.sin(myYaw);
+      const moveX = (dx * cos - dz * sin) * MOVE_SPEED * dt;
+      const moveZ = (dx * sin + dz * cos) * MOVE_SPEED * dt;
+      myX = Math.max(BOUNDS.xMin, Math.min(BOUNDS.xMax, myX + moveX));
+      myZ = Math.max(BOUNDS.zMin, Math.min(BOUNDS.zMax, myZ + moveZ));
+      myMoving = true;
+    } else {
+      myMoving = false;
+    }
+  } else {
+    myMoving = false;
+  }
+
+  // GRAVITY / JUMP
+  if(myJumping || myY > 1.7) {
+    velY -= GRAVITY * dt;
+    myY += velY * dt;
+    if(myY <= 1.7) { myY = 1.7; velY = 0; myJumping = false; }
+  }
+
+  camera.position.set(myX, myY, myZ);
+
+  // SEND STATE (throttled)
+  const now = Date.now();
+  if(now - lastStateSent > 50) {
+    lastStateSent = now;
+    socket.emit('player-state', {
+      x:myX, y:myY, z:myZ,
+      yaw:myYaw, pitch:myPitch,
+      moving:myMoving, jumping:myJumping,
+      dance:myDance, danceStartedAt: myDance ? now : 0
+    });
+  }
+
+  // ANIMATE OTHER PLAYERS
+  for(const id in playerMeshes) {
+    const mesh = playerMeshes[id];
+    const p = players[id];
+    if(!p) continue;
+    const ud = mesh.userData;
+    const t = clock.getElapsedTime() * 6;
+
+    if(p.dance && p.dance > 0) {
+      // DANCE ANIMATIONS
+      switch(p.dance) {
+        case 1: // DANCE 01 - sway
+          ud.armL.rotation.x = Math.sin(t) * 0.8;
+          ud.armR.rotation.x = -Math.sin(t) * 0.8;
+          ud.body && (mesh.children[0].position.y = 1.15 + Math.abs(Math.sin(t*2)) * 0.1);
+          ud.legL.rotation.x = Math.sin(t) * 0.3;
+          ud.legR.rotation.x = -Math.sin(t) * 0.3;
+          break;
+        case 2: // DANCE 02 - arms up
+          ud.armL.rotation.x = -Math.PI/2 + Math.sin(t) * 0.3;
+          ud.armR.rotation.x = -Math.PI/2 - Math.sin(t) * 0.3;
+          ud.legL.rotation.x = Math.sin(t*2) * 0.2;
+          ud.legR.rotation.x = -Math.sin(t*2) * 0.2;
+          break;
+        case 3: // SHUFFLE
+          ud.legL.rotation.x = Math.sin(t*3) * 0.5;
+          ud.legR.rotation.x = -Math.sin(t*3) * 0.5;
+          ud.armL.rotation.x = Math.sin(t*3) * 0.4;
+          ud.armR.rotation.x = -Math.sin(t*3) * 0.4;
+          mesh.children[0].position.y = 1.15 + Math.abs(Math.sin(t*3)) * 0.05;
+          break;
+        case 4: // ROBOT
+          const step = Math.floor(t) % 4;
+          ud.armL.rotation.x = [-0.5, 0, 0.5, 0][step];
+          ud.armR.rotation.x = [0, 0.5, 0, -0.5][step];
+          ud.armL.rotation.z = step===0 ? -0.5 : 0;
+          ud.armR.rotation.z = step===2 ? 0.5 : 0;
+          ud.legL.rotation.x = 0;
+          ud.legR.rotation.x = 0;
+          break;
+        case 5: // BOUNCE
+          mesh.children[0].position.y = 1.15 + Math.abs(Math.sin(t*4)) * 0.15;
+          ud.armL.rotation.x = Math.sin(t*4) * 0.3;
+          ud.armR.rotation.x = -Math.sin(t*4) * 0.3;
+          ud.legL.rotation.x = Math.sin(t*4) * 0.1;
+          ud.legR.rotation.x = -Math.sin(t*4) * 0.1;
+          break;
+        case 6: // WAVE
+          ud.armR.rotation.x = -Math.PI * 0.7;
+          ud.armR.rotation.z = Math.sin(t*4) * 0.5;
+          ud.armL.rotation.x = 0;
+          ud.legL.rotation.x = 0;
+          ud.legR.rotation.x = 0;
+          break;
       }
-
-      // Тело
-      const bodyGeo = new THREE.BoxGeometry(0.6, 0.8, 0.3);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: colors.shirt, flatShading: true });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 1.05;
-      group.add(body);
-
-      // Воротник
-      const collarGeo = new THREE.BoxGeometry(0.6, 0.04, 0.32);
-      const collarMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true });
-      const collar = new THREE.Mesh(collarGeo, collarMat);
-      collar.position.y = 1.45;
-      group.add(collar);
-
-      // Руки
-      const armGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.6, 8);
-      const armMat = new THREE.MeshStandardMaterial({ color: 0xf0e6dd, flatShading: true });
-      const leftArm = new THREE.Mesh(armGeo, armMat);
-      leftArm.position.set(-0.35, 0.9, 0);
-      leftArm.rotation.z = Math.PI / 4;
-      leftArm.name = 'leftArm';
-      const rightArm = new THREE.Mesh(armGeo, armMat);
-      rightArm.position.set(0.35, 0.9, 0);
-      rightArm.rotation.z = -Math.PI / 4;
-      rightArm.name = 'rightArm';
-      group.add(leftArm, rightArm);
-
-      // Ноги
-      const legGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.7, 8);
-      const legMat = new THREE.MeshStandardMaterial({ color: colors.pants, flatShading: true });
-      const leftLeg = new THREE.Mesh(legGeo, legMat);
-      leftLeg.position.set(-0.15, 0.3, 0);
-      leftLeg.name = 'leftLeg';
-      const rightLeg = new THREE.Mesh(legGeo, legMat);
-      rightLeg.position.set(0.15, 0.3, 0);
-      rightLeg.name = 'rightLeg';
-      group.add(leftLeg, rightLeg);
-
-      // Обувь
-      const shoeGeo = new THREE.BoxGeometry(0.25, 0.1, 0.25);
-      const shoeMat = new THREE.MeshStandardMaterial({ color: colors.shoes, flatShading: true });
-      const leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
-      leftShoe.position.set(-0.15, -0.05, 0);
-      const rightShoe = new THREE.Mesh(shoeGeo, shoeMat);
-      rightShoe.position.set(0.15, -0.05, 0);
-      group.add(leftShoe, rightShoe);
-
-      // Ремень
-      const beltGeo = new THREE.BoxGeometry(0.6, 0.03, 0.32);
-      const beltMat = new THREE.MeshStandardMaterial({ color: 0x333333, flatShading: true });
-      const belt = new THREE.Mesh(beltGeo, beltMat);
-      belt.position.y = 0.65;
-      group.add(belt);
-
-      // Никнейм над головой
-      const nickCanvas = document.createElement('canvas');
-      nickCanvas.width = 256;
-      nickCanvas.height = 64;
-      const nickCtx = nickCanvas.getContext('2d');
-      nickCtx.fillStyle = 'rgba(255,255,255,0.9)';
-      nickCtx.font = 'bold 28px sans-serif';
-      nickCtx.textAlign = 'center';
-      nickCtx.fillText(data && data.nickname ? data.nickname : '', 128, 40);
-      const nickTex = new THREE.CanvasTexture(nickCanvas);
-      const nickMat = new THREE.SpriteMaterial({ map: nickTex, transparent: true });
-      const nickSprite = new THREE.Sprite(nickMat);
-      nickSprite.position.y = 2.3;
-      nickSprite.scale.set(2, 0.5, 1);
-      group.add(nickSprite);
-
-      group.scale.set(CONFIG.avatar.baseScale / 1.7, CONFIG.avatar.baseScale / 1.7, CONFIG.avatar.baseScale / 1.7);
-      return group;
+    } else if(p.moving) {
+      // WALK ANIMATION
+      ud.armL.rotation.x = Math.sin(t) * 0.6;
+      ud.armR.rotation.x = -Math.sin(t) * 0.6;
+      ud.legL.rotation.x = -Math.sin(t) * 0.5;
+      ud.legR.rotation.x = Math.sin(t) * 0.5;
+      mesh.children[0].position.y = 1.15 + Math.abs(Math.sin(t*2)) * 0.03;
+    } else {
+      // IDLE - reset
+      ud.armL.rotation.x = 0;
+      ud.armR.rotation.x = 0;
+      ud.armL.rotation.z = 0;
+      ud.armR.rotation.z = 0;
+      ud.legL.rotation.x = 0;
+      ud.legR.rotation.x = 0;
+      mesh.children[0].position.y = 1.15;
     }
+  }
 
-    function sendEmoji(emoji) {
-      const pos = playerMesh.position.clone();
-      pos.y += 2;
-      socket.emit('emoji', { position: { x: pos.x, y: pos.y, z: pos.z }, emoji: emoji });
-      spawnEmoji(pos, emoji);
-    }
+  renderer.render(scene, camera);
+}
 
-    function spawnEmoji(pos, emoji) {
-      const canvas = document.createElement('canvas');
-      canvas.width = 128;
-      canvas.height = 128;
-      const ctx = canvas.getContext('2d');
-      ctx.font = '80px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(emoji, 64, 90);
-      const tex = new THREE.CanvasTexture(canvas);
-      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-      const sprite = new THREE.Sprite(mat);
-      sprite.position.copy(pos);
-      sprite.scale.set(1, 1, 1);
-      scene.add(sprite);
-      emojis.push({ mesh: sprite, lifeTime: Date.now() + 3000, startY: pos.y });
-    }
+// =====================================================
+// MOBILE CONTROLS
+// =====================================================
+const joystick = document.getElementById('joystick');
+const joystickKnob = document.getElementById('joystick-knob');
+if(joystick) {
+  let joyActive = false;
+  joystick.addEventListener('touchstart', e => { joyActive = true; e.preventDefault(); });
+  joystick.addEventListener('touchmove', e => {
+    if(!joyActive) return;
+    const touch = e.touches[0];
+    const rect = joystick.getBoundingClientRect();
+    const cx = rect.left + rect.width/2;
+    const cy = rect.top + rect.height/2;
+    let dx = touch.clientX - cx;
+    let dy = touch.clientY - cy;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const max = 40;
+    if(dist > max) { dx = dx/dist*max; dy = dy/dist*max; }
+    joystickKnob.style.left = (40 + dx) + 'px';
+    joystickKnob.style.top = (40 + dy) + 'px';
+    mobileMove.x = dx / max;
+    mobileMove.z = dy / max;
+    e.preventDefault();
+  });
+  joystick.addEventListener('touchend', e => {
+    joyActive = false;
+    joystickKnob.style.left = '40px';
+    joystickKnob.style.top = '40px';
+    mobileMove.x = 0; mobileMove.z = 0;
+  });
+}
 
-    function setMoveDir(x, y) {
-      moveDir.set(x, y);
-    }
-
-    function updateClock() {
-      const now = new Date();
-      const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-      const msk = new Date(utc + 3 * 3600000);
-      const hours = msk.getHours().toString().padStart(2, '0');
-      const minutes = msk.getMinutes().toString().padStart(2, '0');
-      const seconds = msk.getSeconds().toString().padStart(2, '0');
-      const text = 'MSK ' + hours + ':' + minutes + ':' + seconds;
-
-      const clockTextMesh = scene.getObjectByName('clockText');
-      if (clockTextMesh && clockTextMesh.material && clockTextMesh.material.map) {
-        const ctx = clockTextMesh.material.map.image.getContext('2d');
-        ctx.fillStyle = 'rgba(0,0,0,0)';
-        ctx.fillRect(0, 0, 512, 256);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 80px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(text, 256, 160);
-        clockTextMesh.material.map.needsUpdate = true;
-      }
-    }
-
-    let walkPhase = 0;
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-
-      fpsCounter++;
-      if (Date.now() - lastTime >= 1000) {
-        fpsDisplay.textContent = 'FPS: ' + fpsCounter;
-        fpsCounter = 0;
-        lastTime = Date.now();
-      }
-
-      // Движение
-      const speed = 5;
-      const moveVector = new THREE.Vector3(moveDir.x, 0, moveDir.y).normalize().multiplyScalar(speed * delta);
-      playerMesh.position.add(moveVector);
-
-      // Ограничение по стенам
-      playerMesh.position.x = Math.max(-19, Math.min(19, playerMesh.position.x));
-      playerMesh.position.z = Math.max(-19, Math.min(19, playerMesh.position.z));
-
-      // Поворот по направлению движения
-      if (moveDir.lengthSq() > 0.01) {
-        playerMesh.rotation.y = Math.atan2(moveDir.x, moveDir.y);
-        walkPhase += delta * 8;
-        const swing = Math.sin(walkPhase) * 0.3;
-        const leftArm = playerMesh.getObjectByName('leftArm');
-        const rightArm = playerMesh.getObjectByName('rightArm');
-        const leftLeg = playerMesh.getObjectByName('leftLeg');
-        const rightLeg = playerMesh.getObjectByName('rightLeg');
-        if (leftArm) leftArm.rotation.x = swing;
-        if (rightArm) rightArm.rotation.x = -swing;
-        if (leftLeg) leftLeg.rotation.x = -swing;
-        if (rightLeg) rightLeg.rotation.x = swing;
-      } else {
-        walkPhase = 0;
-        const leftArm = playerMesh.getObjectByName('leftArm');
-        const rightArm = playerMesh.getObjectByName('rightArm');
-        const leftLeg = playerMesh.getObjectByName('leftLeg');
-        const rightLeg = playerMesh.getObjectByName('rightLeg');
-        if (leftArm) leftArm.rotation.x = 0;
-        if (rightArm) rightArm.rotation.x = 0;
-        if (leftLeg) leftLeg.rotation.x = 0;
-        if (rightLeg) rightLeg.rotation.x = 0;
-      }
-
-      // Отправка позиции на сервер (throttle)
-      if (socket && socket.connected && moveDir.lengthSq() > 0.01) {
-        socket.emit('player-move', {
-          position: { x: playerMesh.position.x, y: playerMesh.position.y, z: playerMesh.position.z },
-          rotation: playerMesh.rotation.y
-        });
-      }
-
-      // Камера следует за игроком
-      camera.position.x = playerMesh.position.x;
-      camera.position.z = playerMesh.position.z + 8;
-      camera.position.y = 4;
-      camera.lookAt(playerMesh.position.x, 1, playerMesh.position.z);
-
-      // Часы
-      updateClock();
-
-      // Эмодзи — всплывают и исчезают
-      const nowTime = Date.now();
-      for (let i = emojis.length - 1; i >= 0; i--) {
-        const e = emojis[i];
-        e.mesh.position.y += delta * 1.5;
-        if (nowTime > e.lifeTime) {
-          scene.remove(e.mesh);
-          if (e.mesh.material) e.mesh.material.dispose();
-          emojis.splice(i, 1);
-        }
-      }
-
-      renderer.render(scene, camera);
-    }
-
-    init();
-  </script>
+const lookBtn = document.getElementById('look-btn');
+if(lookBtn) {
+  lookBtn.addEventListener('touchstart', e => {
+    lookActive = true;
+    lookStartX = e.touches[0].clientX;
+    lookStartY = e.touches[0].clientY;
+    e.preventDefault();
+  });
+  lookBtn.addEventListener('touchmove', e => {
+    if(!lookActive) return;
+    const dx = e.touches[0].clientX - lookStartX;
+    const dy = e.touches[0].clientY - lookStartY;
+    myYaw -= dx * 0.005;
+    myPitch -= dy * 0.005;
+    myPitch = Math.max(-Math.PI/2+0.1, Math.min(Math.PI/2-0.1, myPitch));
+    updateCameraRotation();
+    lookStartX = e.touches[0].clientX;
+    lookStartY = e.touches[0].clientY;
+    e.preventDefault();
+  });
+  lookBtn.addEventListener('touchend', () => { lookActive = false; });
+}
+</script>
 </body>
 </html>
