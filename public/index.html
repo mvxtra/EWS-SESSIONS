@@ -1525,13 +1525,10 @@ function startSession(username){
   }
 
   socket.on('presence-state', state=>{
+    // ONLINE may still arrive through Socket.IO, but HTTP heartbeat is the
+    // sole authority for remote player objects to prevent duplicate avatars.
     if(!state) return;
     renderOnlineUsers(Array.isArray(state.online)?state.online:[]);
-    const players=Array.isArray(state.players)?state.players:[];
-    players.forEach(data=>{
-      if(!data || !data.id || data.id===socket.id) return;
-      updateRemotePlayer(data);
-    });
   });
 
   socket.on('connect',function(){
@@ -1620,64 +1617,12 @@ function startSession(username){
   );
 
   // =====================================================
-  // MULTIPLAYER — initial snapshot + live updates
+  // MULTIPLAYER — HTTP heartbeat is authoritative
   // =====================================================
+  // Socket.IO remains responsible for chat and SCREEN, but player presence
+  // comes only from /api/presence so reconnects and proxy upgrades cannot
+  // create duplicate/stale remote players.
 
-  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
-socket.on('players-state', list=>{
-    if(!Array.isArray(list)) return;
-
-    // Snapshots are a recovery/synchronization mechanism. Do NOT remove a
-    // remote player merely because one snapshot was incomplete; disconnect
-    // events are responsible for removal.
-    list.forEach(data=>{
-      if(!data || !data.id || data.id===socket.id) return;
-      updateRemotePlayer(data);
-    });
-  });
-
-  // Direct spawn event for the joining player. This is intentionally handled
-  // separately from the snapshot so a guest can never be missed between events.
-  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
-socket.on('player-spawn', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
-
-  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
-socket.on('player-joined', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
-
-  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
-socket.on('player-state', data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
-  });
-
-  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
-socket.on('player-left', id=>{
-    removeRemotePlayer(id);
-  });
-
-  // Socket.IO presence disabled: HTTP heartbeat is authoritative. 
-socket.on('player-removed', id=>{
-    removeRemotePlayer(id);
-  });
-
-  // Refresh shared state whenever the transport reconnects.
-
-
-  // Recovery heartbeat: one presence request keeps ONLINE and remote players
-  // synchronized without several competing snapshots overwriting each other.
-  if(presenceHeartbeat) clearInterval(presenceHeartbeat);
-  presenceHeartbeat=setInterval(()=>{
-    if(!socket || !socket.connected) return;
-    socket.emit('request-presence');
-  },2000);
-
-}
 
 /* =========================================================
    CHAT
@@ -1775,7 +1720,7 @@ async function syncHttpPresence(){
         username:currentUser,
         language:document.getElementById('lang')?.value||'en',
         x:camera.position.x,
-        y:playerY,
+        y:Math.max(0,playerY-GROUND_Y),
         z:camera.position.z,
         yaw,
         pitch,
