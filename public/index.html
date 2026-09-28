@@ -1416,6 +1416,17 @@ function startSession(username){
 
   clubScreenHost='mvxtra';
 
+  // SCREEN is a host-only control. Guests can receive and watch the
+  // shared screen, but they must not see or operate the selection UI.
+  const host=String(currentUser||'').trim().toLowerCase()==='mvxtra';
+  const screenControl=document.getElementById('screen-control');
+  const screenMenu=document.getElementById('screen-menu');
+  if(screenControl) screenControl.style.display=host?'':'none';
+  if(screenMenu){
+    screenMenu.classList.remove('open');
+    screenMenu.style.display=host?'':'none';
+  }
+
   init3D();
 
   socket=io();
@@ -3542,8 +3553,10 @@ function toggleChat(){
 ========================================================= */
 
 function toggleScreenMenu(){
+  if(!isClubHost()) return;
   const menu=document.getElementById('screen-menu');
   if(!menu) return;
+  menu.style.display='';
   menu.classList.toggle('open');
   if(menu.classList.contains('open')){
     const input=document.getElementById('screen-url');
