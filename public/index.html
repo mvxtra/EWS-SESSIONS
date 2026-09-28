@@ -1539,7 +1539,7 @@ function init3D(){
   const ambient =
     new THREE.AmbientLight(
       0xffffff,
-      0.045
+      0.018
     );
 
   scene.add(ambient);
@@ -1547,8 +1547,8 @@ function init3D(){
   const ceilingLight =
     new THREE.PointLight(
       0xffffff,
-      0.65,
-      40
+      0.18,
+      34
     );
 
   ceilingLight.position.set(
@@ -1568,8 +1568,8 @@ function init3D(){
   createLight(
     -7,3,-7,
     0xffffff,
-    1.6,
-    16
+    0.32,
+    14
   );
 
   createLight(
@@ -1581,9 +1581,9 @@ function init3D(){
 
   createLight(
     -8,2,5,
-    0x666666,
-    0.8,
-    14
+    0x444444,
+    0.18,
+    12
   );
 
   createLight(
@@ -2208,7 +2208,7 @@ function createClubLighting(){
 
     const spot=new THREE.SpotLight(
       color,
-      2.4,
+      1.65,
       34,
       Math.PI/9,
       .62,
@@ -2263,13 +2263,39 @@ function createClubLighting(){
   washPositions.forEach((p,i)=>{
     const wash=new THREE.PointLight(
       colors[(i+1)%colors.length],
-      1.1,
-      13
+      0.55,
+      11
     );
 
     wash.position.set(p[0],p[1],p[2]);
     scene.add(wash);
     floorWashLights.push(wash);
+  });
+
+  // STAGE BACKLIGHT — separates performers and speakers from the rear wall.
+  const stageBacklights=[
+    [-6.6,4.55,-13.9,0xff2bd6],
+    [0,4.8,-14.2,0x22ccff],
+    [6.6,4.55,-13.9,0x7a5cff]
+  ];
+
+  stageBacklights.forEach((p)=>{
+    const back=new THREE.SpotLight(p[3],1.15,18,Math.PI/7,.72,1.25);
+    back.position.set(p[0],p[1],p[2]);
+    back.target.position.set(p[0]*.55,1.35,-8.8);
+    scene.add(back);
+    scene.add(back.target);
+    clubLights.push(back);
+  });
+
+  // LOW SIDE LIGHT — soft definition along the dancefloor without washing the room.
+  [-1,1].forEach((side)=>{
+    const sideLight=new THREE.SpotLight(0x19ffe0,.48,18,Math.PI/6,.82,1.4);
+    sideLight.position.set(side*11.8,2.25,1.5);
+    sideLight.target.position.set(side*2.8,.5,-1.5);
+    scene.add(sideLight);
+    scene.add(sideLight.target);
+    floorWashLights.push(sideLight);
   });
 
   // FRONT-TRUSS STROBES
@@ -3556,7 +3582,7 @@ function animate(){
 
   floorWashLights.forEach((light,i)=>{
     const wave=.5+.5*Math.sin(time*2.3+i*.85);
-    light.intensity=.6+wave*.75+bassLevel*2.25;
+    light.intensity=.28+wave*.38+bassLevel*1.55;
   });
 
   fixtureGlows.forEach((ring,i)=>{
