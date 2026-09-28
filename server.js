@@ -355,7 +355,7 @@ io.on('connection',socket=>{
     io.emit('club-screen-state',clubScreenState);
   });
 
-  socket.on('chat-message',async message=>{
+  socket.on('chat-message',message=>{
     if(!socket.username) return;
     const original=String(message?.text||'').trim().slice(0,500);
     if(!original) return;
@@ -364,29 +364,40 @@ io.on('connection',socket=>{
     const targetLanguages=[...new Set(
       recipients.map(([,user])=>normalizeLanguage(user.language))
     )];
-    const translations=new Map();
-
-    await Promise.all(targetLanguages.map(async targetLanguage=>{
-      try{
-        translations.set(targetLanguage,await translateText(original,targetLanguage));
-      }catch{
-        translations.set(targetLanguage,original);
-      }
-    }));
-
     const ts=Date.now();
-    for(const [id,user] of recipients){
-      const targetSocket=io.sockets.sockets.get(id);
-      if(!targetSocket) continue;
-      const targetLanguage=normalizeLanguage(user.language);
-      targetSocket.emit('chat-message',{
-        user:socket.username,
-        username:socket.username,
-        text:translations.get(targetLanguage)||original,
-        original,
-        targetLanguage,
-        translated:true,
-        ts
+
+    // Each language is translated independently. A slow translator cannot block other users.
+    for(const targetLanguage of targetLanguages){
+      translateText(original,targetLanguage).then(translated=>{
+        for(const [id,user] of recipients){
+          if(normalizeLanguage(user.language)!==targetLanguage) continue;
+          const targetSocket=io.sockets.sockets.get(id);
+          if(!targetSocket) continue;
+          targetSocket.emit('chat-message',{
+            user:socket.username,
+            username:socket.username,
+            text:translated||original,
+            original,
+            targetLanguage,
+            translated:true,
+            ts
+          });
+        }
+      }).catch(()=>{
+        for(const [id,user] of recipients){
+          if(normalizeLanguage(user.language)!==targetLanguage) continue;
+          const targetSocket=io.sockets.sockets.get(id);
+          if(!targetSocket) continue;
+          targetSocket.emit('chat-message',{
+            user:socket.username,
+            username:socket.username,
+            text:original,
+            original,
+            targetLanguage,
+            translated:false,
+            ts
+          });
+        }
       });
     }
   });
