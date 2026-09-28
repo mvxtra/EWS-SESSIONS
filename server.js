@@ -336,7 +336,7 @@ function getOnlineUsers() {
 }
 
 function broadcastOnline() {
-    io.emit('online', getOnlineUsers());
+    io.emit('online-users', getOnlineUsers());
 }
 
 /* =========================================================
@@ -372,7 +372,7 @@ function sanitizePlayerState(data) {
 
     return {
         x: Number.isFinite(x) ? clamp(x, -34, 34) : 0,
-        y: Number.isFinite(y) ? clamp(y, 0.9, 8) : 1.7,
+        y: Number.isFinite(y) ? clamp(y, 0, 8) : 0,
         z: Number.isFinite(z) ? clamp(z, -28, 28) : 0,
         yaw: Number.isFinite(yaw) ? yaw : 0,
         pitch: Number.isFinite(pitch) ? clamp(pitch, -1.4, 1.4) : 0,
@@ -399,7 +399,7 @@ function sanitizePlayerState(data) {
 
 function sendPlayersSnapshot(socket) {
     socket.emit(
-        'players',
+        'players-state',
         [...players.values()]
     );
 }
@@ -409,9 +409,11 @@ function sendPlayersSnapshot(socket) {
 ========================================================= */
 
 let clubScreenState = {
-    url: 'https://www.youtube.com/embed/live_stream?channel=',
-    playing: false,
-    time: 0,
+    url: '',
+    src: '',
+    name: '',
+    active: false,
+    owner: '',
     updatedAt: Date.now()
 };
 
@@ -478,6 +480,7 @@ io.on('connection', socket => {
 
         sendPlayersSnapshot(socket);
 
+        socket.broadcast.emit('player-joined', player);
         socket.broadcast.emit('player-state', player);
 
         broadcastOnline();
@@ -488,13 +491,15 @@ io.on('connection', socket => {
         );
 
         socket.emit(
-            'online',
+            'online-users',
             getOnlineUsers()
         );
 
         console.log(
             `Player joined: ${username} (${socket.id})`
         );
+
+        socket.emit('joined');
     });
 
     /* =====================================================
@@ -757,17 +762,22 @@ io.on('connection', socket => {
 
         clubScreenState = {
             url: String(
-                data?.url ||
-                clubScreenState.url
+                data?.url || ''
             ).slice(0, 1000),
 
-            playing: !!data?.playing,
+            src: String(
+                data?.src || ''
+            ).slice(0, 1000),
 
-            time: Number.isFinite(
-                Number(data?.time)
-            )
-                ? Number(data.time)
-                : 0,
+            name: String(
+                data?.name || ''
+            ).slice(0, 50),
+
+            active: !!data?.active,
+
+            owner: String(
+                data?.owner || ''
+            ).slice(0, 50),
 
             updatedAt: Date.now()
         };
@@ -776,6 +786,19 @@ io.on('connection', socket => {
             'club-screen-state',
             clubScreenState
         );
+    });
+
+    /* =====================================================
+       REQUEST HANDLERS
+    ===================================================== */
+
+    socket.on('request-players', () => {
+        if (!socket.username) return;
+        sendPlayersSnapshot(socket);
+    });
+
+    socket.on('request-club-screen', () => {
+        socket.emit('club-screen-state', clubScreenState);
     });
 
     /* =====================================================
