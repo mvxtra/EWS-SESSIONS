@@ -146,6 +146,7 @@ let screenRequestTimer = null;
 let dustField = null;
 let hazeField = null;
 let mistField = null;
+let smokePuffs = [];
 
 function msg(text) {
   $('authMsg').textContent = text || '';
@@ -505,31 +506,61 @@ function buildClubDetails() {
 
 }
 
+function createSmokeTexture() {
+  const canvas=document.createElement('canvas');
+  canvas.width=256;
+  canvas.height=256;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,256,256);
+  ctx.filter='blur(8px)';
+
+  const blobs=[
+    [128,132,92,.72],
+    [82,132,58,.55],
+    [167,128,64,.58],
+    [126,88,56,.42],
+    [108,174,62,.46],
+    [165,171,48,.38],
+    [72,170,40,.30]
+  ];
+
+  for(const [x,y,r,a] of blobs){
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);
+    g.addColorStop(0,'rgba(225,225,225,'+a+')');
+    g.addColorStop(.35,'rgba(190,190,190,'+(a*.62)+')');
+    g.addColorStop(.72,'rgba(150,150,150,'+(a*.20)+')');
+    g.addColorStop(1,'rgba(120,120,120,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  ctx.filter='none';
+  return new THREE.CanvasTexture(canvas);
+}
+
 function buildAtmosphere() {
-  // Fine airborne dust: tiny, slow particles spread through the room.
-  const dustCount = 900;
-  const dustPositions = new Float32Array(dustCount * 3);
+  const dustCount=900;
+  const dustPositions=new Float32Array(dustCount*3);
 
   for(let i=0;i<dustCount;i++){
     const i3=i*3;
-    dustPositions[i3] = (Math.random()-.5) * 34;
-    dustPositions[i3+1] = .35 + Math.random() * 7.5;
-    dustPositions[i3+2] = -14 + Math.random() * 28;
+    dustPositions[i3]=(Math.random()-.5)*34;
+    dustPositions[i3+1]=.35+Math.random()*7.5;
+    dustPositions[i3+2]=-14+Math.random()*28;
   }
 
-  const dustGeometry = new THREE.BufferGeometry();
-  dustGeometry.setAttribute(
-    'position',
-    new THREE.BufferAttribute(dustPositions,3)
-  );
+  const dustGeometry=new THREE.BufferGeometry();
+  dustGeometry.setAttribute('position',new THREE.BufferAttribute(dustPositions,3));
 
-  dustField = new THREE.Points(
+  dustField=new THREE.Points(
     dustGeometry,
     new THREE.PointsMaterial({
       color:0xb8b8b8,
-      size:.035,
+      size:.028,
       transparent:true,
-      opacity:.38,
+      opacity:.32,
       depthWrite:false,
       sizeAttenuation:true
     })
@@ -537,74 +568,76 @@ function buildAtmosphere() {
 
   scene.add(dustField);
 
-  // Soft haze: larger, translucent particles mainly around the outer room.
-  const hazeCount = 120;
-  const hazePositions = new Float32Array(hazeCount * 3);
+  smokePuffs=[];
+  const smokeTexture=createSmokeTexture();
+  const smokeCount=42;
 
-  for(let i=0;i<hazeCount;i++){
-    const i3=i*3;
-    const edge = Math.random() < .65 ? 1 : 0;
-    const x=edge
-      ? (Math.random()<.5 ? -1 : 1) * (7 + Math.random()*9)
-      : (Math.random()-.5)*12;
+  for(let i=0;i<smokeCount;i++){
+    const material=new THREE.SpriteMaterial({
+      map:smokeTexture,
+      color:0xbcbcbc,
+      transparent:true,
+      opacity:.035+Math.random()*.045,
+      depthWrite:false,
+      depthTest:true,
+      blending:THREE.NormalBlending
+    });
 
-    hazePositions[i3] = x;
-    hazePositions[i3+1] = .45 + Math.random() * 3.8;
-    hazePositions[i3+2] = -12 + Math.random() * 23;
+    const sprite=new THREE.Sprite(material);
+    sprite.position.set(
+      (Math.random()-.5)*30,
+      .65+Math.random()*5.5,
+      -12.8+Math.random()*24
+    );
+
+    sprite.scale.set(
+      1.8+Math.random()*3.6,
+      1.6+Math.random()*3.0,
+      1
+    );
+    sprite.material.rotation=(Math.random()-.5)*.7;
+    scene.add(sprite);
+
+    smokePuffs.push({
+      sprite,
+      baseX:sprite.position.x,
+      baseZ:sprite.position.z,
+      baseY:sprite.position.y,
+      phase:Math.random()*Math.PI*2,
+      rise:.025+Math.random()*.045,
+      sway:.25+Math.random()*.65,
+      pulse:.5+Math.random()*1.2
+    });
   }
 
-  const hazeGeometry = new THREE.BufferGeometry();
-  hazeGeometry.setAttribute(
-    'position',
-    new THREE.BufferAttribute(hazePositions,3)
-  );
-
-  hazeField = new THREE.Points(
-    hazeGeometry,
-    new THREE.PointsMaterial({
-      color:0xaaaaaa,
-      size:1.7,
-      transparent:true,
-      opacity:.055,
-      depthWrite:false,
-      sizeAttenuation:true
-    })
-  );
-
-  scene.add(hazeField);
-
-  // Denser low mist gives the floor a soft atmospheric layer.
-  const mistCount = 150;
-  const mistPositions = new Float32Array(mistCount * 3);
+  const mistCount=80;
+  const mistPositions=new Float32Array(mistCount*3);
 
   for(let i=0;i<mistCount;i++){
     const i3=i*3;
-    mistPositions[i3] = (Math.random()-.5) * 32;
-    mistPositions[i3+1] = .12 + Math.random() * 1.25;
-    mistPositions[i3+2] = -13 + Math.random() * 25;
+    mistPositions[i3]=(Math.random()-.5)*32;
+    mistPositions[i3+1]=.08+Math.random()*.85;
+    mistPositions[i3+2]=-13+Math.random()*25;
   }
 
-  const mistGeometry = new THREE.BufferGeometry();
-  mistGeometry.setAttribute(
-    'position',
-    new THREE.BufferAttribute(mistPositions,3)
-  );
+  const mistGeometry=new THREE.BufferGeometry();
+  mistGeometry.setAttribute('position',new THREE.BufferAttribute(mistPositions,3));
 
-  mistField = new THREE.Points(
+  mistField=new THREE.Points(
     mistGeometry,
     new THREE.PointsMaterial({
-      color:0xc0c0c0,
-      size:2.35,
+      color:0xa9a9a9,
+      size:2.6,
       transparent:true,
-      opacity:.035,
+      opacity:.018,
       depthWrite:false,
       sizeAttenuation:true
     })
   );
 
   scene.add(mistField);
+  scene.fog=new THREE.FogExp2(0x040404,.018);
 }
-
 function resize() {
   if(!renderer || !camera) return;
 
@@ -953,14 +986,17 @@ function animate() {
     dustField.position.y = Math.sin(time*.18)*.03;
   }
 
-  if(hazeField){
-    hazeField.rotation.y -= dt*.002;
-    hazeField.position.x = Math.sin(time*.11)*.45;
-  }
+  smokePuffs.forEach(p=>{
+    const wave=time*p.sway+p.phase;
+    p.sprite.position.x=p.baseX+Math.sin(wave)*.28;
+    p.sprite.position.z=p.baseZ+Math.cos(wave*.7)*.22;
+    p.sprite.position.y=p.baseY+((time*p.rise+p.phase*.6)%1.8);
+    p.sprite.material.opacity=.024+.018*Math.sin(time*p.pulse+p.phase)+.018;
+  });
 
   if(mistField){
-    mistField.rotation.y += dt*.004;
-    mistField.position.x = Math.cos(time*.09)*.35;
+    mistField.rotation.y += dt*.0025;
+    mistField.position.x = Math.cos(time*.09)*.25;
   }
 
   if(screenAnchor && cssObject) {
