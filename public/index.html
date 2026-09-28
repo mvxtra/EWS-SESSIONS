@@ -1121,94 +1121,97 @@ function createCornerSofa(x,z,rotationY,label){
   const leatherMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:.46,metalness:.08});
   const cushionMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.60,metalness:.03});
 
-  // True L-shaped corner sofa: one long section + one perpendicular return.
-  const baseA=new THREE.Mesh(new THREE.BoxGeometry(5.4,.58,1.38),frameMat);
-  baseA.position.set(2.15,.43,0);
-  baseA.castShadow=true; baseA.receiveShadow=true; group.add(baseA);
+  // Large real L-shaped sectional, with both arms/backrests pushed into the corner.
+  const baseA=new THREE.Mesh(new THREE.BoxGeometry(6.8,.58,1.55),frameMat);
+  baseA.position.set(2.35,.43,0);
+  const baseB=new THREE.Mesh(new THREE.BoxGeometry(1.55,.58,5.8),frameMat);
+  baseB.position.set(0,-.0,-2.13);
 
-  const baseB=new THREE.Mesh(new THREE.BoxGeometry(1.38,.58,4.55),frameMat);
-  baseB.position.set(0,.43,-1.58);
-  baseB.castShadow=true; baseB.receiveShadow=true; group.add(baseB);
+  const seatA=new THREE.Mesh(new THREE.BoxGeometry(6.35,.34,1.25),cushionMat);
+  seatA.position.set(2.35,.84,0);
+  const seatB=new THREE.Mesh(new THREE.BoxGeometry(1.25,.34,5.35),cushionMat);
+  seatB.position.set(0,.84,-2.13);
 
-  const seatA=new THREE.Mesh(new THREE.BoxGeometry(5.05,.34,1.12),cushionMat);
-  seatA.position.set(2.15,.84,0);
-  seatA.castShadow=true; seatA.receiveShadow=true; group.add(seatA);
-
-  const seatB=new THREE.Mesh(new THREE.BoxGeometry(1.12,.34,4.15),cushionMat);
-  seatB.position.set(0,.84,-1.58);
-  seatB.castShadow=true; seatB.receiveShadow=true; group.add(seatB);
-
-  // Two perpendicular upholstered backrests make the corner shape unmistakable.
-  const backA=new THREE.Mesh(new THREE.BoxGeometry(5.4,1.62,.42),leatherMat);
-  backA.position.set(2.15,1.43,.50);
-  backA.castShadow=true; backA.receiveShadow=true; group.add(backA);
-
-  const backB=new THREE.Mesh(new THREE.BoxGeometry(.42,1.62,4.55),leatherMat);
-  backB.position.set(-.50,1.43,-1.58);
-  backB.castShadow=true; backB.receiveShadow=true; group.add(backB);
-
-  // Soft cushions.
-  [0.45,2.15,3.85].forEach(px=>{
-    const pillow=new THREE.Mesh(new THREE.BoxGeometry(1.35,.30,.88),leatherMat);
-    pillow.position.set(px,.99,-.04);
-    pillow.castShadow=true; pillow.receiveShadow=true; group.add(pillow);
+  [baseA,baseB,seatA,seatB].forEach(m=>{
+    m.castShadow=true;m.receiveShadow=true;group.add(m);
   });
-  [-.15,-1.55,-2.95].forEach(pz=>{
-    const pillow=new THREE.Mesh(new THREE.BoxGeometry(.88,.30,1.15),leatherMat);
-    pillow.position.set(.03,.99,pz);
-    pillow.castShadow=true; pillow.receiveShadow=true; group.add(pillow);
+
+  const backA=new THREE.Mesh(new THREE.BoxGeometry(6.8,1.62,.42),leatherMat);
+  backA.position.set(2.35,1.43,.57);
+  const backB=new THREE.Mesh(new THREE.BoxGeometry(.42,1.62,5.8),leatherMat);
+  backB.position.set(-.57,1.43,-2.13);
+  [backA,backB].forEach(m=>{
+    m.castShadow=true;m.receiveShadow=true;group.add(m);
   });
+
+  // Individual cushions create many believable sitting places.
+  for(let i=0;i<5;i++){
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(1.12,.30,1.0),leatherMat);
+    pillow.position.set(.55+i*1.45,.99,-.03);
+    pillow.castShadow=true;pillow.receiveShadow=true;group.add(pillow);
+  }
+  for(let i=0;i<4;i++){
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(.98,.30,1.12),leatherMat);
+    pillow.position.set(.02,.99,-.65-i*1.38);
+    pillow.castShadow=true;pillow.receiveShadow=true;group.add(pillow);
+  }
 
   const armMat=new THREE.MeshStandardMaterial({color:0x0c0c0c,roughness:.50,metalness:.06});
-  const armA=new THREE.Mesh(new THREE.BoxGeometry(.42,1.0,1.38),armMat);
-  armA.position.set(4.85,1.0,0); armA.castShadow=true; armA.receiveShadow=true; group.add(armA);
-  const armB=new THREE.Mesh(new THREE.BoxGeometry(1.38,1.0,.42),armMat);
-  armB.position.set(0,1.0,-3.85); armB.castShadow=true; armB.receiveShadow=true; group.add(armB);
+  const armA=new THREE.Mesh(new THREE.BoxGeometry(.42,1.0,1.55),armMat);
+  armA.position.set(5.54,1.0,0);
+  const armB=new THREE.Mesh(new THREE.BoxGeometry(1.55,1.0,.42),armMat);
+  armB.position.set(0,1.0,-5.03);
+  [armA,armB].forEach(m=>{m.castShadow=true;m.receiveShadow=true;group.add(m);});
 
   const glow=new THREE.PointLight(0xffe7d0,.12,4.2);
-  glow.position.set(1.2,1.2,-.8);
+  glow.position.set(1.2,1.2,-1);
   group.add(glow);
 
   scene.add(group);
   addSofaColliders(x,z,rotationY);
 
-  // Main sitting point on the long section, facing toward the dancefloor.
+  // Multiple usable seats along BOTH arms of the sectional.
   const fx=-Math.sin(rotationY), fz=-Math.cos(rotationY);
-  // Seated camera is placed above the cushion so the viewpoint is not buried inside the sofa.
-  sofaSeats.push({
-    group,
-    x:x+fx*1.72,
-    y:1.62,
-    z:z+fz*1.72,
-    yaw:rotationY,
-    label:label||'CORNER SOFA'
-  });
+  const rx=Math.cos(rotationY), rz=-Math.sin(rotationY);
+  const addSeat=(sx,sz,seatYaw)=>{
+    sofaSeats.push({
+      group,
+      x:x+sx*rx+sz*fx,
+      y:1.62,
+      z:z+sx*rz+sz*fz,
+      yaw:seatYaw,
+      label:label||'CORNER SOFA'
+    });
+  };
+
+  // Five seats on the long section + four on the return section.
+  [-2.45,-1.22,0,1.22,2.45].forEach(v=>addSeat(v,-.92,rotationY));
+  [-1.35,-.05,1.25,2.55].forEach(v=>addSeat(-.92,v,rotationY+Math.PI/2));
 }
 
 function createLoungeSofas(){
-  // Four proper L-shaped sofas, each tight into a real room corner.
-  // They stay outside the dancefloor and leave a clear route around the room.
-  createCornerSofa(-16.9,13.6,0,'LEFT FRONT CORNER');
-  createCornerSofa(16.9,13.6,Math.PI,'RIGHT FRONT CORNER');
-  createCornerSofa(-16.9,-13.6,0,'LEFT REAR CORNER');
-  createCornerSofa(16.9,-13.6,Math.PI,'RIGHT REAR CORNER');
+  // Every sectional is anchored into a real room corner.
+  createCornerSofa(-15.55,13.55,0,'LEFT FRONT CORNER');
+  createCornerSofa(15.55,13.55,Math.PI,'RIGHT FRONT CORNER');
+  createCornerSofa(-15.55,-13.55,0,'LEFT REAR CORNER');
+  createCornerSofa(15.55,-13.55,Math.PI,'RIGHT REAR CORNER');
 }
 
 function nearestSofaSeat(){
   if(!camera || !sofaSeats.length) return null;
-  let best=null, bestDist=Infinity;
+  let best=null,bestDist=Infinity;
   for(const s of sofaSeats){
     const d=Math.hypot(camera.position.x-s.x,camera.position.z-s.z);
     if(d<bestDist){best=s;bestDist=d;}
   }
-  return bestDist<1.65 ? best : null;
+  return bestDist<1.35 ? best : null;
 }
 
 function updateSofaPrompt(){
   const el=document.getElementById('sofa-prompt');
-  if(!el || !camera) return;
+  if(!el||!camera) return;
   const near=!!nearestSofaSeat();
-  const show=near && !seated && !chatMode;
+  const show=near&&!seated&&!chatMode;
   if(show!==sofaPromptVisible){
     sofaPromptVisible=show;
     el.classList.toggle('show',show);
@@ -1217,23 +1220,35 @@ function updateSofaPrompt(){
 
 function toggleSofaSeat(){
   if(chatMode) return;
+
   if(seated){
+    // Stand up one clean frame at a time: clear the seated state first,
+    // then place the player safely outside the sofa footprint.
+    const oldSeat=seatedSeat;
     seated=false;
     seatedSeat=null;
-    isGrounded=true;
-    playerY=GROUND_Y;
     keys={};
+    jumpVelocity=0;
+    isGrounded=true;
+
+    const escapeX=camera.position.x + Math.sin(oldSeat.yaw)*1.05;
+    const escapeZ=camera.position.z + Math.cos(oldSeat.yaw)*1.05;
+    camera.position.x=escapeX;
+    camera.position.z=escapeZ;
+    playerY=GROUND_Y;
+    camera.position.y=GROUND_Y;
     return;
   }
+
   const seat=nearestSofaSeat();
   if(!seat) return;
+
   seated=true;
   seatedSeat=seat;
   keys={};
   jumpVelocity=0;
   isGrounded=true;
   camera.position.set(seat.x,seat.y,seat.z);
-  // Keep the seated viewpoint at head level, clearly above the cushion.
   yaw=seat.yaw;
   pitch=0;
 }
