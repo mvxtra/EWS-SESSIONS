@@ -4523,7 +4523,8 @@ function createRemotePlayer(data){
     baseY:y
   };
   remotePlayers.set(data.id,p);
-  loadRemoteAvatar(p,p.avatar);
+  // TEST MODE: keep remote players on the guaranteed-visible placeholder.
+  // This isolates multiplayer visibility from GLTF/avatar loading.
 }
 function updateRemotePlayer(data){
   if(!data.id || data.id===socket?.id) return;
