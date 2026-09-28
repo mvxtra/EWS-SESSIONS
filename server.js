@@ -560,6 +560,7 @@ io.on('connection', socket => {
     // New client gets one complete snapshot.
     emitWorld(socket);
     emitOnlineForSocket(socket);
+    socket.emit('screen:state', publicScreen());
 
     // Everyone already inside gets exactly one join event.
     socket.to(CLUB_ROOM).emit(
@@ -590,6 +591,11 @@ io.on('connection', socket => {
     if (!socket.data.joined) return;
     emitWorld(socket);
     emitOnlineForSocket(socket);
+  });
+
+  socket.on('screen:request', () => {
+    if (!socket.data.joined) return;
+    socket.emit('screen:state', publicScreen());
   });
 
   socket.on('request-online', () => {
