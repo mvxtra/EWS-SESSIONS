@@ -1421,31 +1421,42 @@ function startSession(username){
     'online-users',
     list=>{
 
-      onlineUserList=Array.isArray(list)?list:[];
+      // The server is authoritative. If the first broadcast races with the
+      // join event, keep the connected user visible until the next snapshot.
+      let users=Array.isArray(list)?list.slice():[];
+
+      if(socket && socket.connected && currentUser){
+        const alreadyThere=users.some(user=>{
+          const name=typeof user==='string' ? user : user && user.username;
+          return String(name||'').toLowerCase()===String(currentUser).toLowerCase();
+        });
+        if(!alreadyThere){
+          users.unshift({username:currentUser,language:document.getElementById('lang')?.value||'en'});
+        }
+      }
+
+      onlineUserList=users;
+
       // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
       clubScreenHost='mvxtra';
 
-      const ul =
-        document.getElementById('online-list');
-
+      const ul=document.getElementById('online-list');
+      if(!ul) return;
       ul.innerHTML='';
 
-      if(!Array.isArray(list)) return;
+      users.forEach(user=>{
 
-      list.forEach(user=>{
+        const li=document.createElement('li');
 
-        const li =
-          document.createElement('li');
+        const name=typeof user==='string'
+          ? user
+          : (user && user.username) || '';
 
-        const name =
-          typeof user === 'string'
-            ? user
-            : user.username;
+        if(!name) return;
 
-        li.textContent =
-          name === currentUser
-            ? name + ' (YOU)'
-            : name;
+        li.textContent=name===currentUser
+          ? name + ' (YOU)'
+          : name;
 
         ul.appendChild(li);
 
