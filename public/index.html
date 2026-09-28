@@ -85,6 +85,23 @@ body{
   background:#000;
 }
 
+#screen-audio-hint{
+  position:absolute;
+  left:50%;
+  bottom:14px;
+  transform:translateX(-50%);
+  z-index:3;
+  padding:7px 11px;
+  border:1px solid rgba(255,255,255,.38);
+  background:rgba(0,0,0,.72);
+  color:#fff;
+  font:10px monospace;
+  letter-spacing:2px;
+  pointer-events:none;
+  opacity:.85;
+  white-space:nowrap;
+}
+
 
 /* =========================================================
    LOGIN
@@ -663,6 +680,7 @@ input:focus{
 <div id="css3d-container">
   <div id="css3d-screen">
     <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    <div id="screen-audio-hint">CLICK SCREEN FOR SOUND</div>
   </div>
 </div>
 
@@ -842,6 +860,7 @@ let screenCtx;
 let screenMesh;
 let screenMediaActive=false;
 let screenMediaUrl='';
+let pendingScreenState=null;
 let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
@@ -1045,6 +1064,11 @@ function startSession(username){
     screenButton.style.display=isClubHost()?'block':'none';
   }
 
+  const audioHint=document.getElementById('screen-audio-hint');
+  if(audioHint){
+    audioHint.style.display=isClubHost()?'none':'block';
+  }
+
   init3D();
 
   // One socket per page. Reconnect uses the same handlers and rejoins the club.
@@ -1067,6 +1091,29 @@ function startSession(username){
       username:currentUser,
       language:document.getElementById('lang').value
     });
+
+    // Re-sync the world and screen after the join has reached the server.
+    setTimeout(()=>{
+      if(socket && socket.connected){
+        socket.emit('request-world');
+        socket.emit('screen:request');
+      }
+    },250);
+
+    setTimeout(()=>{
+      if(socket && socket.connected){
+        socket.emit('request-world');
+        socket.emit('screen:request');
+      }
+    },1500);
+
+    // A SCREEN action made just before the socket finished connecting
+    // is sent now, once the connection is ready.
+    if(pendingScreenState){
+      const pending=pendingScreenState;
+      pendingScreenState=null;
+      socket.emit('screen:set',pending);
+    }
   });
 
   socket.on('disconnect',reason=>{
@@ -1316,7 +1363,7 @@ function init3D(){
   cssRenderer.domElement.style.top='0';
   cssRenderer.domElement.style.width='100%';
   cssRenderer.domElement.style.height='100%';
-  cssRenderer.domElement.style.zIndex='15';
+  cssRenderer.domElement.style.zIndex='19';
   cssRenderer.domElement.style.pointerEvents='none';
   cssRenderer.domElement.style.transform='translateZ(0)';
   document.getElementById('css3d-container').appendChild(cssRenderer.domElement);
@@ -2632,16 +2679,18 @@ function loadClubScreen(){
     ' LOADED — общий экран клуба.'
   );
 
+  const screenState={
+    active:true,
+    src:result.src,
+    url:input.value.trim(),
+    name:result.name
+  };
+
+  pendingScreenState=screenState;
+
   if(socket && socket.connected){
-    socket.emit(
-      'screen:set',
-      {
-        active:true,
-        src:result.src,
-        url:input.value.trim(),
-        name:result.name
-      }
-    );
+    socket.emit('screen:set',screenState);
+    pendingScreenState=null;
   }
 
   const menu=document.getElementById('screen-menu');
@@ -2662,13 +2711,12 @@ function clearClubScreen(){
   screenMediaActive=false;
   screenMediaUrl='';
 
+  const screenState={active:false};
+  pendingScreenState=screenState;
+
   if(socket && socket.connected){
-    socket.emit(
-      'screen:set',
-      {
-        active:false
-      }
-    );
+    socket.emit('screen:set',screenState);
+    pendingScreenState=null;
   }
 
   setScreenStatus('Экран очищен.');
@@ -2756,10 +2804,16 @@ function applyRemoteClubScreen(state){
     !state.src
   ){
     frame.src='about:blank';
+    frame.style.display='none';
+    panel.style.visibility='hidden';
+    panel.style.opacity='0';
     panel.classList.remove('active');
 
     screenMediaActive=false;
     screenMediaUrl='';
+
+    const audioHint=document.getElementById('screen-audio-hint');
+    if(audioHint) audioHint.style.display='none';
 
     closeMobileScreen();
     return;
@@ -2789,6 +2843,15 @@ function applyRemoteClubScreen(state){
     screenMediaUrl=src;
   }
 
+  // Force the shared screen visible on every client, including reconnects.
+  panel.style.display='block';
+  panel.style.visibility='visible';
+  panel.style.opacity='1';
+  frame.style.display='block';
+  frame.style.visibility='visible';
+  frame.style.width='100%';
+  frame.style.height='100%';
+
   frame.setAttribute(
     'allow',
     'autoplay; fullscreen; encrypted-media; picture-in-picture'
@@ -2798,6 +2861,11 @@ function applyRemoteClubScreen(state){
 
   screenMediaActive=true;
   panel.classList.add('active');
+
+  const audioHint=document.getElementById('screen-audio-hint');
+  if(audioHint){
+    audioHint.style.display=isClubHost()?'none':'block';
+  }
 
   openMobileScreen(src);
 }
