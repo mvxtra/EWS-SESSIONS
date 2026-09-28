@@ -244,6 +244,19 @@ function sendPlayersSnapshot(socket){
   socket.emit('players-state',getPlayers().filter(p=>p.id!==socket.id));
 }
 
+function broadcastPlayersSnapshot(){
+  const snapshot=getPlayers();
+  for(const socket of io.sockets.sockets.values()){
+    socket.emit('players-state',snapshot.filter(p=>p.id!==socket.id));
+  }
+}
+
+// Keep every browser synchronized even if an individual realtime movement
+// packet is missed during reconnects or a slow connection.
+setInterval(()=>{
+  if(players.size>0) broadcastPlayersSnapshot();
+},1000);
+
 io.on('connection',socket=>{
   console.log('SOCKET CONNECT:',socket.id);
 
