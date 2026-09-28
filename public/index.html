@@ -1619,17 +1619,12 @@ function startSession(username){
   socket.on('players-state', list=>{
     if(!Array.isArray(list)) return;
 
-    // Server is authoritative. Every player in the snapshot must exist locally.
-    const alive = new Set();
-
+    // Snapshots are a recovery/synchronization mechanism. Do NOT remove a
+    // remote player merely because one snapshot was incomplete; disconnect
+    // events are responsible for removal.
     list.forEach(data=>{
       if(!data || !data.id || data.id===socket.id) return;
-      alive.add(data.id);
       updateRemotePlayer(data);
-    });
-
-    Array.from(remotePlayers.keys()).forEach(id=>{
-      if(!alive.has(id)) removeRemotePlayer(id);
     });
   });
 
