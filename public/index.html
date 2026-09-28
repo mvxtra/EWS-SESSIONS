@@ -1529,7 +1529,6 @@ function startSession(username){
       if(!data || !data.id || data.id===socket.id) return;
       updateRemotePlayer(data);
     });
-    if(state.screen) applyRemoteClubScreen(state.screen);
   });
 
   socket.on('connect',function(){
@@ -3803,6 +3802,7 @@ function applyRemoteClubScreen(state){
   if(incomingVersion) clubScreenVersion=incomingVersion;
 
   if(state.active !== true || !state.src){
+    if(screenMediaActive && !incomingVersion) return;
     stopScreenHls();
     frame.src='about:blank';
     frame.style.display='block';
