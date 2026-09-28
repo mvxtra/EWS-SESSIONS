@@ -1533,7 +1533,8 @@ function init3D(){
 
   const cssScreenEl=document.getElementById('css3d-screen');
   cssScreenObject=new THREE.CSS3DObject(cssScreenEl);
-  cssScreenObject.position.set(0,3.65,-16.455);
+  // Screen is mounted behind the PA stacks, against the rear wall.
+  cssScreenObject.position.set(0,3.65,-16.56);
   cssScreenObject.rotation.set(0,0,0);
   cssScreenObject.scale.set(0.01,0.01,0.01);
   cssScene.add(cssScreenObject);
@@ -1881,18 +1882,20 @@ function createMainScreen(){
     new THREE.BoxGeometry(14.6,6.6,.42),
     new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
   );
-  frame.position.set(0,3.65,-16.72);
+  // Rear frame is deeper than the PA stacks.
+  frame.position.set(0,3.65,-16.82);
   scene.add(frame);
 
   screenMesh=new THREE.Mesh(
     new THREE.PlaneGeometry(14,6),
     new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide,transparent:true,opacity:0})
   );
-  screenMesh.position.set(0,3.65,-16.48);
+  // Physical screen surface sits behind the PA stacks.
+  screenMesh.position.set(0,3.65,-16.58);
   scene.add(screenMesh);
 
   const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
+  [[14.2,.035,.035,0,6.68,-16.57],[14.2,.035,.035,0,.62,-16.57],[.035,6.1,.035,-7.08,3.65,-16.57],[.035,6.1,.035,7.08,3.65,-16.57]].forEach(a=>{
     const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
     m.position.set(a[3],a[4],a[5]);
     scene.add(m);
@@ -3951,7 +3954,10 @@ function animate(){
     cssScreenObject.position.copy(screenMesh.position);
     cssScreenObject.rotation.copy(screenMesh.rotation);
     cssScreenObject.scale.set(0.01,0.01,0.01);
-    cssScreenObject.position.z += 0.035;
+
+    // The PA stacks are physically in front of the screen.
+    // Keep the HTML screen on the rear wall plane; do not pull it toward the camera.
+    cssScreenObject.position.z -= 0.08;
   }
 
   if(cssRenderer && cssScene){
