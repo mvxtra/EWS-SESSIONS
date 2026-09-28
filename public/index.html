@@ -1891,118 +1891,86 @@ function createCeilingBeams(){
 
 function createSpeakers(){
 
-  // EWS PA — clean professional line-array design, spread wide and aimed at the dance floor.
-  const cabinetMat=new THREE.MeshStandardMaterial({
-    color:0x050505,
-    metalness:.72,
-    roughness:.28
-  });
-  const grilleMat=new THREE.MeshStandardMaterial({
-    color:0x101010,
-    metalness:.15,
-    roughness:.82
-  });
-  const trimMat=new THREE.MeshBasicMaterial({
-    color:0x3b3b3b,
-    transparent:true,
-    opacity:.65
-  });
+  // EWS PA — stage-mounted main system + wall-mounted side fills.
+  const cabinetMat=new THREE.MeshStandardMaterial({color:0x050505,metalness:.72,roughness:.28});
+  const grilleMat=new THREE.MeshStandardMaterial({color:0x111111,metalness:.12,roughness:.86});
+  const trimMat=new THREE.MeshBasicMaterial({color:0x22ccff,transparent:true,opacity:.75});
 
-  function lineArray(x,z,side){
+  function arrayCabinet(parent,y,tilt){
+    const box=new THREE.Group();
+    box.position.y=y;
+    box.rotation.x=tilt;
+
+    const body=new THREE.Mesh(new THREE.BoxGeometry(1.65,.48,.62),cabinetMat);
+    body.castShadow=true; body.receiveShadow=true;
+    box.add(body);
+
+    const grille=new THREE.Mesh(new THREE.PlaneGeometry(1.42,.36),grilleMat);
+    grille.position.z=-.316;
+    box.add(grille);
+
+    const trim=new THREE.Mesh(new THREE.BoxGeometry(1.45,.025,.025),trimMat);
+    trim.position.set(0,.18,-.335);
+    box.add(trim);
+    parent.add(box);
+  }
+
+  function mainArray(x,side){
     const g=new THREE.Group();
-    g.position.set(x,3.9,z);
-
-    // Rotate the arrays inward so the front faces the dance floor.
+    // ON THE STAGE: no floating speaker arrays.
+    g.position.set(x,3.15,-11.0);
     g.rotation.y=side<0 ? -0.34 : 0.34;
 
-    for(let i=0;i<4;i++){
-      const box=new THREE.Group();
-      box.position.set(0,-i*.58,0);
-      box.rotation.x=(i-1.5)*0.045;
-
-      const body=new THREE.Mesh(
-        new THREE.BoxGeometry(1.65,.52,.62),
-        cabinetMat
-      );
-      body.castShadow=true;
-      body.receiveShadow=true;
-      box.add(body);
-
-      const grille=new THREE.Mesh(
-        new THREE.PlaneGeometry(1.42,.39),
-        grilleMat
-      );
-      grille.position.z=-.316;
-      box.add(grille);
-
-      const topTrim=new THREE.Mesh(
-        new THREE.BoxGeometry(1.46,.025,.025),
-        trimMat
-      );
-      topTrim.position.set(0,.19,-.335);
-      box.add(topTrim);
-
-      g.add(box);
-    }
-
+    // Four compact line-array modules stacked as one real PA hang.
+    [-0.78,-0.25,0.28,0.81].forEach((y,i)=>arrayCabinet(g,y,(i-1.5)*.055));
     scene.add(g);
+
+    // Large subwoofer sitting directly on the stage floor.
+    const sub=new THREE.Group();
+    sub.position.set(x,1.15,-11.0);
+    sub.rotation.y=side<0 ? -0.25 : 0.25;
+
+    const body=new THREE.Mesh(new THREE.BoxGeometry(2.5,1.05,1.15),cabinetMat);
+    body.castShadow=true; body.receiveShadow=true;
+    sub.add(body);
+
+    const grille=new THREE.Mesh(new THREE.PlaneGeometry(2.18,.82),grilleMat);
+    grille.position.z=-.586;
+    sub.add(grille);
+
+    const trim=new THREE.Mesh(new THREE.BoxGeometry(2.18,.025,.025),trimMat);
+    trim.position.set(0,.41,-.605);
+    sub.add(trim);
+    scene.add(sub);
   }
 
-  function subStack(x,z,side){
-    const g=new THREE.Group();
-    g.position.set(x,1.05,z);
-    g.rotation.y=side<0 ? -0.24 : 0.24;
+  mainArray(-7.7,-1);
+  mainArray(7.7,1);
 
-    // Two large subs — wider and visually distinct from the line arrays.
-    for(let i=0;i<2;i++){
-      const box=new THREE.Mesh(
-        new THREE.BoxGeometry(2.35,.92,1.02),
-        cabinetMat
-      );
-      box.position.y=i*.95;
-      box.castShadow=true;
-      box.receiveShadow=true;
-      g.add(box);
-
-      const grille=new THREE.Mesh(
-        new THREE.PlaneGeometry(2.05,.72),
-        grilleMat
-      );
-      grille.position.set(0,i*.95,-.521);
-      g.add(grille);
-    }
-
-    scene.add(g);
-  }
-
-  // Main arrays: deliberately wider apart to open the dance floor.
-  lineArray(-7.7,-10.7,-1);
-  lineArray(7.7,-10.7,1);
-  subStack(-7.7,-10.7,-1);
-  subStack(7.7,-10.7,1);
-
-  // Side fills, rotated toward the center of the room.
-  function sideFill(x,z,side){
+  // SIDE FILLS — physically attached to the side walls, not floating in space.
+  function wallFill(x,z,side){
     const g=new THREE.Group();
     g.position.set(x,3.35,z);
+    // Front faces the dance floor; body is pushed against the wall.
     g.rotation.y=side<0 ? -1.03 : 1.03;
-    const box=new THREE.Mesh(
-      new THREE.BoxGeometry(1.15,1.65,.72),
-      cabinetMat
-    );
-    box.castShadow=true;
-    g.add(box);
-    const grille=new THREE.Mesh(
-      new THREE.PlaneGeometry(.98,1.38),
-      grilleMat
-    );
+
+    const body=new THREE.Mesh(new THREE.BoxGeometry(1.15,1.55,.72),cabinetMat);
+    body.castShadow=true; body.receiveShadow=true;
+    g.add(body);
+
+    const grille=new THREE.Mesh(new THREE.PlaneGeometry(.98,1.30),grilleMat);
     grille.position.z=-.366;
     g.add(grille);
+
+    const trim=new THREE.Mesh(new THREE.BoxGeometry(.98,.025,.025),trimMat);
+    trim.position.set(0,.58,-.385);
+    g.add(trim);
+
     scene.add(g);
   }
 
-  sideFill(-13.9,-5.6,-1);
-  sideFill(13.9,-5.6,1);
+  wallFill(-15.15,-5.6,-1);
+  wallFill(15.15,-5.6,1);
 }
 function createFog(){
   const count=420;
