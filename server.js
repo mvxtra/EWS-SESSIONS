@@ -255,6 +255,7 @@ function broadcastPlayersSnapshot(){
 // packet is missed during reconnects or a slow connection.
 setInterval(()=>{
   if(players.size>0) broadcastPlayersSnapshot();
+  if(onlineUsers.size>0) broadcastOnline();
 },1000);
 
 io.on('connection',socket=>{
