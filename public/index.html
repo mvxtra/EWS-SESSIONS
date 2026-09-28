@@ -1463,7 +1463,14 @@ function startSession(username){
 
   init3D();
 
-  socket=io();
+  socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:500,reconnectionDelayMax:4000});
+
+  socket.on('disconnect',reason=>{
+    console.warn('[EWS SOCKET] disconnected:',reason);
+  });
+  socket.on('connect_error',err=>{
+    console.warn('[EWS SOCKET] connect_error:',err && err.message ? err.message : err);
+  });
 
   // Register the shared SCREEN listener immediately, before the first
   // connection/join can deliver the current club-screen-state.
@@ -1510,6 +1517,7 @@ function startSession(username){
         avatar: avatarChoice
       }
     );
+    console.log('[EWS SOCKET] JOIN sent:', currentUser, 'socket:', socket.id);
 
     // If the host pressed LOAD before Socket.IO finished connecting, resend the
     // selected screen immediately after JOIN so guests always receive it.
