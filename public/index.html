@@ -798,6 +798,7 @@ input:focus{
 <div id="css3d-container">
   <div id="css3d-screen">
     <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    <video id="media-screen-video" playsinline autoplay muted controls style="display:none;width:100%;height:100%;object-fit:cover;background:#000;"></video>
   </div>
 </div>
 
@@ -1027,6 +1028,7 @@ let audioSource=null;
 let audioStarted=false;
 
 let hls=null;
+let screenHls=null;
 
 let screenTexture;
 let screenCanvas;
@@ -3685,21 +3687,79 @@ function isClubHost(){
   return String(currentUser||'').trim().toLowerCase()==='mvxtra';
 }
 
+function isHlsUrl(url){
+  const value=String(url||'').toLowerCase();
+  return value.includes('.m3u8') || value.includes('/hls/');
+}
+
+function stopScreenHls(){
+  try{ if(screenHls){ screenHls.destroy(); } }catch(e){}
+  screenHls=null;
+  const video=document.getElementById('media-screen-video');
+  if(video){
+    try{ video.pause(); }catch(e){}
+    video.removeAttribute('src');
+    video.load();
+  }
+}
+
+function playScreenMedia(src){
+  const frame=document.getElementById('media-screen-frame');
+  const video=document.getElementById('media-screen-video');
+  if(!frame || !video) return;
+
+  stopScreenHls();
+
+  if(isHlsUrl(src)){
+    frame.style.display='none';
+    video.style.display='block';
+    video.muted=true;
+
+    if(window.Hls && Hls.isSupported()){
+      screenHls=new Hls({lowLatencyMode:true});
+      screenHls.loadSource(src);
+      screenHls.attachMedia(video);
+      screenHls.on(Hls.Events.MANIFEST_PARSED,()=>{
+        video.play().catch(()=>{});
+      });
+    }else if(video.canPlayType('application/vnd.apple.mpegurl')){
+      video.src=src;
+      video.play().catch(()=>{});
+    }else{
+      video.style.display='none';
+      frame.style.display='block';
+      frame.src=src;
+    }
+  }else{
+    video.style.display='none';
+    frame.style.display='block';
+    frame.src=src;
+  }
+}
+
 function loadClubScreen(){
   if(!isClubHost()){ setScreenStatus('Только главный пользователь клуба может включать экран.'); return; }
-  const input=document.getElementById('screen-url'); const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
-  if(!input||!frame||!panel)return; const result=normalizeClubScreenUrl(input.value);
+  const input=document.getElementById('screen-url'); const panel=document.getElementById('css3d-screen');
+  if(!input||!panel)return; const result=normalizeClubScreenUrl(input.value);
   if(!result){setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');return;}
-  frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — экран закреплён. Нажми ESC, чтобы выйти из управления камерой и кликать по плееру.');
-  if(socket)socket.emit('club-screen-state',{src:result.src,url:input.value.trim(),name:result.name,active:true,owner:currentUser});
+  const rawUrl=input.value.trim();
+  playScreenMedia(result.src);
+  panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
+  setScreenStatus(result.name+' LOADED — экран закреплён.');
+  if(socket)socket.emit('club-screen-state',{src:result.src,url:rawUrl,name:result.name,active:true,owner:currentUser});
   const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
 }
 
 function clearClubScreen(){
-  if(!isClubHost())return; const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
-  if(frame)frame.src='about:blank'; if(panel)panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl='';
-  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser}); setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
+  if(!isClubHost())return;
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('css3d-screen');
+  stopScreenHls();
+  if(frame)frame.src='about:blank';
+  if(panel)panel.classList.remove('active');
+  screenMediaActive=false; screenMediaUrl='';
+  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser});
+  setScreenStatus('Экран очищен.');
 }
 
 // When the user wants to click the embedded player, release pointer lock first.
@@ -3725,13 +3785,17 @@ document.addEventListener('mousedown',function(e){
 ========================================================= */
 function applyRemoteClubScreen(state){
   const frame=document.getElementById('media-screen-frame');
+  const video=document.getElementById('media-screen-video');
   const panel=document.getElementById('css3d-screen');
-  if(!frame || !panel) return;
+  if(!frame || !video || !panel) return;
 
   state=state || {};
 
   if(state.active !== true || !state.src){
+    stopScreenHls();
     frame.src='about:blank';
+    frame.style.display='block';
+    video.style.display='none';
     panel.classList.remove('active');
     screenMediaActive=false;
     screenMediaUrl='';
@@ -3753,7 +3817,7 @@ function applyRemoteClubScreen(state){
 
   // Do not reload the iframe every time a duplicate Socket.IO event arrives.
   if(screenMediaUrl !== src){
-    frame.src=src;
+    playScreenMedia(src);
     screenMediaUrl=src;
   }
 
