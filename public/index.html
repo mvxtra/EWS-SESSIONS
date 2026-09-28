@@ -986,6 +986,10 @@ let laserSystems=[];
 let floorWashLights=[];
 let fixtureGlows=[];
 let laserBeams=[];
+let floorVisualCanvas=null;
+let floorVisualCtx=null;
+let floorVisualTexture=null;
+let floorVisualMaterial=null;
 let strobeFixtures=[];
 let ewsBaseLightIntensities=[];
 
@@ -1746,17 +1750,28 @@ function createWalls(){
 
 function createDanceFloor(){
 
+  // Dark club floor with a subtle animated psychedelic projection.
+  // It stays almost black; color only appears as a low-level moving visual.
+  floorVisualCanvas=document.createElement('canvas');
+  floorVisualCanvas.width=512;
+  floorVisualCanvas.height=512;
+  floorVisualCtx=floorVisualCanvas.getContext('2d');
+  floorVisualTexture=new THREE.CanvasTexture(floorVisualCanvas);
+  floorVisualTexture.wrapS=THREE.RepeatWrapping;
+  floorVisualTexture.wrapT=THREE.RepeatWrapping;
+  floorVisualTexture.minFilter=THREE.LinearFilter;
+
+  floorVisualMaterial=new THREE.MeshStandardMaterial({
+    map:floorVisualTexture,
+    color:0x090909,
+    metalness:.18,
+    roughness:.78
+  });
+
   const floor =
     new THREE.Mesh(
-      new THREE.BoxGeometry(
-        14,.12,14
-      ),
-      new THREE.MeshStandardMaterial({
-        map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
-        color:0x151515,
-        metalness:.35,
-        roughness:.58
-      })
+      new THREE.BoxGeometry(14,.12,14),
+      floorVisualMaterial
     );
 
   floor.position.set(
@@ -1769,7 +1784,7 @@ function createDanceFloor(){
 
   const frameMat =
     new THREE.MeshBasicMaterial({
-      color:0xffffff
+      color:0x171717
     });
 
   const lines=[
@@ -1802,6 +1817,55 @@ function createDanceFloor(){
     }
   );
 
+}
+
+function updateFloorVisual(time){
+  if(!floorVisualCtx || !floorVisualTexture) return;
+  const ctx=floorVisualCtx, w=512, h=512;
+  ctx.fillStyle='#030303';
+  ctx.fillRect(0,0,w,h);
+
+  const cx=w*.5, cy=h*.5;
+  const pulse=.5+.5*Math.sin(time*.72);
+  const maxR=370;
+
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  for(let i=0;i<9;i++){
+    const phase=time*(.32+i*.018)+i*.9;
+    const radius=((time*(18+i*2.2)+i*42)%maxR);
+    const x=cx+Math.sin(phase*1.17)*72;
+    const y=cy+Math.cos(phase*.83)*72;
+    const hue=(195+i*31+time*7)%360;
+    const alpha=(.035+.018*pulse)*(1-radius/maxR);
+    const grad=ctx.createRadialGradient(x,y,0,x,y,Math.max(20,radius));
+    grad.addColorStop(0,'hsla('+hue+',95%,62%,'+alpha+')');
+    grad.addColorStop(.45,'hsla('+(hue+35)+',90%,42%,'+(alpha*.55)+')');
+    grad.addColorStop(1,'hsla('+hue+',90%,30%,0)');
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.arc(x,y,Math.max(20,radius),0,Math.PI*2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha=.18;
+  ctx.lineWidth=2;
+  for(let i=0;i<8;i++){
+    const hue=(205+i*28+time*5)%360;
+    ctx.strokeStyle='hsla('+hue+',90%,55%,.16)';
+    ctx.beginPath();
+    for(let x=0;x<=w;x+=8){
+      const y=cy + Math.sin(x*.026+i*.8+time*.9)*45 + Math.sin(x*.008-time*.55)*35;
+      if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Keep the projection intentionally dark.
+  floorVisualMaterial.emissive=new THREE.Color(0x050505);
+  floorVisualMaterial.emissiveIntensity=.55+.25*bassLevel;
+  floorVisualTexture.needsUpdate=true;
 }
 
 function createMainScreen(){
@@ -3601,6 +3665,8 @@ function animate(){
     fogMaterial.opacity=.12+audioLevel*.16+bassLevel*.08;
     fogMaterial.size=2.5+bassLevel*1.2;
   }
+
+  updateFloorVisual(time);
 
   const strobeHit=Math.max(0,bassLevel-.28);
   const strobePulse=strobeHit>0
