@@ -270,6 +270,7 @@ io.on('connection',socket=>{
       jumping:false,
       dance:0,
       danceStartedAt:0,
+      avatar:['male','female'].includes(String(data.avatar))?String(data.avatar):'male',
       lastUpdateAt:Date.now()
     };
     players.set(socket.id,player);
@@ -331,12 +332,24 @@ io.on('connection',socket=>{
       const dance=Number(data.dance);
       player.dance=EMOTES.has(dance)?dance:0;
     }
+    if(['male','female'].includes(String(data.avatar))){
+      player.avatar=String(data.avatar);
+    }
     if(Number.isFinite(Number(data.danceStartedAt))){
       player.danceStartedAt=Number(data.danceStartedAt)||0;
     }
 
     player.lastUpdateAt=now;
     socket.broadcast.emit('player-state',publicPlayer(player));
+  });
+
+  socket.on('player-avatar',data=>{
+    const player=players.get(socket.id);
+    if(!player) return;
+    const avatar=String(data?.avatar||'');
+    if(!['male','female'].includes(avatar)) return;
+    player.avatar=avatar;
+    io.emit('player-state',publicPlayer(player));
   });
 
   socket.on('player-emote',data=>{
