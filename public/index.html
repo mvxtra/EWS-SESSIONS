@@ -1005,6 +1005,12 @@ let freqData=null;
 let audioLevel=0;
 let bassLevel=0;
 
+// Mouse wheel controls the club strobe.
+// Scroll up = stronger/faster strobe, scroll down = weaker/slower.
+let strobeWheelLevel=.0;
+let strobeWheelSpeed=32;
+let strobeWheelTimer=0;
+
 let audioContext=null;
 let audioSource=null;
 
@@ -3452,6 +3458,16 @@ function applyRemoteClubScreen(state){
    ANIMATION
 ========================================================= */
 
+// Scroll-wheel strobe control.
+document.addEventListener('wheel',e=>{
+  if(mode!=='club' || chatMode) return;
+  e.preventDefault();
+  const direction=e.deltaY<0 ? 1 : -1;
+  strobeWheelLevel=THREE.MathUtils.clamp(strobeWheelLevel+direction*.08,0,1);
+  strobeWheelSpeed=THREE.MathUtils.lerp(10,42,strobeWheelLevel);
+  strobeWheelTimer=performance.now()+180;
+},{passive:false});
+
 function animate(){
 
   requestAnimationFrame(
@@ -3677,9 +3693,16 @@ function animate(){
   updateFloorVisual(time);
 
   const strobeHit=Math.max(0,bassLevel-.28);
-  const strobePulse=strobeHit>0
+  const musicStrobe=strobeHit>0
     ? Math.pow(Math.max(0,Math.sin(time*32)),18)*Math.min(1,strobeHit*3.2)
     : 0;
+
+  // Manual wheel control adds a continuous club-strobe pulse.
+  const wheelStrobe=strobeWheelLevel>0
+    ? Math.pow(Math.max(0,Math.sin(time*strobeWheelSpeed)),18)*strobeWheelLevel
+    : 0;
+
+  const strobePulse=Math.max(musicStrobe,wheelStrobe);
   const clubBlackout=1-(strobePulse*.94);
 
   lightObjects.forEach((light,i)=>{
