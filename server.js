@@ -279,8 +279,10 @@ io.on('connection',socket=>{
     socket.emit('player-spawn',publicPlayer(player));
     sendPlayersSnapshot(socket);
     socket.broadcast.emit('player-state',publicPlayer(player));
+    socket.broadcast.emit('player-joined',publicPlayer(player));
     broadcastOnline();
-    // Send a direct authoritative snapshot to the newly joined socket as well.
+    // Send direct authoritative snapshots to the newly joined socket.
+    socket.emit('players-state',getPlayers().filter(p=>p.id!==socket.id));
     socket.emit('online-users',getOnlineUsers());
     socket.emit('club-screen-state',clubScreenState);
     socket.emit('online',getOnlineUsers());
