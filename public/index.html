@@ -143,6 +143,9 @@ let lastSent = 0;
 let lastScreenVersion = 0;
 let screenUrlLoaded = '';
 let screenRequestTimer = null;
+let dustField = null;
+let hazeField = null;
+let mistField = null;
 
 function msg(text) {
   $('authMsg').textContent = text || '';
@@ -392,6 +395,7 @@ function init3D() {
   scene.add(side2);
 
   buildClubDetails();
+  buildAtmosphere();
 
   cssRenderer=new THREE.CSS3DRenderer();
   cssRenderer.setSize(innerWidth,innerHeight);
@@ -499,6 +503,106 @@ function buildClubDetails() {
   addSpeakerStack(-8.55);
   addSpeakerStack(8.55);
 
+}
+
+function buildAtmosphere() {
+  // Fine airborne dust: tiny, slow particles spread through the room.
+  const dustCount = 900;
+  const dustPositions = new Float32Array(dustCount * 3);
+
+  for(let i=0;i<dustCount;i++){
+    const i3=i*3;
+    dustPositions[i3] = (Math.random()-.5) * 34;
+    dustPositions[i3+1] = .35 + Math.random() * 7.5;
+    dustPositions[i3+2] = -14 + Math.random() * 28;
+  }
+
+  const dustGeometry = new THREE.BufferGeometry();
+  dustGeometry.setAttribute(
+    'position',
+    new THREE.BufferAttribute(dustPositions,3)
+  );
+
+  dustField = new THREE.Points(
+    dustGeometry,
+    new THREE.PointsMaterial({
+      color:0xb8b8b8,
+      size:.035,
+      transparent:true,
+      opacity:.38,
+      depthWrite:false,
+      sizeAttenuation:true
+    })
+  );
+
+  scene.add(dustField);
+
+  // Soft haze: larger, translucent particles mainly around the outer room.
+  const hazeCount = 120;
+  const hazePositions = new Float32Array(hazeCount * 3);
+
+  for(let i=0;i<hazeCount;i++){
+    const i3=i*3;
+    const edge = Math.random() < .65 ? 1 : 0;
+    const x=edge
+      ? (Math.random()<.5 ? -1 : 1) * (7 + Math.random()*9)
+      : (Math.random()-.5)*12;
+
+    hazePositions[i3] = x;
+    hazePositions[i3+1] = .45 + Math.random() * 3.8;
+    hazePositions[i3+2] = -12 + Math.random() * 23;
+  }
+
+  const hazeGeometry = new THREE.BufferGeometry();
+  hazeGeometry.setAttribute(
+    'position',
+    new THREE.BufferAttribute(hazePositions,3)
+  );
+
+  hazeField = new THREE.Points(
+    hazeGeometry,
+    new THREE.PointsMaterial({
+      color:0xaaaaaa,
+      size:1.7,
+      transparent:true,
+      opacity:.055,
+      depthWrite:false,
+      sizeAttenuation:true
+    })
+  );
+
+  scene.add(hazeField);
+
+  // Denser low mist gives the floor a soft atmospheric layer.
+  const mistCount = 150;
+  const mistPositions = new Float32Array(mistCount * 3);
+
+  for(let i=0;i<mistCount;i++){
+    const i3=i*3;
+    mistPositions[i3] = (Math.random()-.5) * 32;
+    mistPositions[i3+1] = .12 + Math.random() * 1.25;
+    mistPositions[i3+2] = -13 + Math.random() * 25;
+  }
+
+  const mistGeometry = new THREE.BufferGeometry();
+  mistGeometry.setAttribute(
+    'position',
+    new THREE.BufferAttribute(mistPositions,3)
+  );
+
+  mistField = new THREE.Points(
+    mistGeometry,
+    new THREE.PointsMaterial({
+      color:0xc0c0c0,
+      size:2.35,
+      transparent:true,
+      opacity:.035,
+      depthWrite:false,
+      sizeAttenuation:true
+    })
+  );
+
+  scene.add(mistField);
 }
 
 function resize() {
@@ -843,6 +947,21 @@ function animate() {
 
   sendPlayerState(performance.now());
   updateRemoteAvatars(time);
+
+  if(dustField){
+    dustField.rotation.y += dt*.006;
+    dustField.position.y = Math.sin(time*.18)*.03;
+  }
+
+  if(hazeField){
+    hazeField.rotation.y -= dt*.002;
+    hazeField.position.x = Math.sin(time*.11)*.45;
+  }
+
+  if(mistField){
+    mistField.rotation.y += dt*.004;
+    mistField.position.x = Math.cos(time*.09)*.35;
+  }
 
   if(screenAnchor && cssObject) {
     cssObject.position.copy(screenAnchor.position);
