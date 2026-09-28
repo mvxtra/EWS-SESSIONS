@@ -5,7 +5,6 @@ const fs = require('fs');
 const crypto = require('crypto');
 const https = require('https');
 const { Server } = require('socket.io');
-const NodeMediaServer = require('node-media-server');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -23,12 +22,8 @@ const io = new Server(server, {
 });
 
 const PORT = Number(process.env.PORT || 3000);
-const RTMP_PORT = Number(process.env.RTMP_PORT || 1935);
-const NMS_HTTP_PORT = Number(process.env.NMS_HTTP_PORT || 8000);
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const HLS_DIR = path.join(__dirname, 'hls');
-const HLS_STREAM_DIR = path.join(HLS_DIR, 'ews');
 const USERS_FILE = path.join(__dirname, 'users.json');
 
 const SCREEN_HOST = 'mvxtra';
@@ -55,9 +50,7 @@ const SPAWN_POINTS = [
   { x: -8, z: 3 }
 ];
 
-for (const dir of [PUBLIC_DIR, HLS_DIR, HLS_STREAM_DIR]) {
-  fs.mkdirSync(dir, { recursive: true });
-}
+fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 
 if (!fs.existsSync(USERS_FILE)) {
   fs.writeFileSync(USERS_FILE, JSON.stringify([], null, 2), 'utf8');
@@ -66,21 +59,6 @@ if (!fs.existsSync(USERS_FILE)) {
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(PUBLIC_DIR));
-
-app.use('/hls', express.static(HLS_DIR, {
-  setHeaders: (res, filePath) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-
-    if (filePath.endsWith('.m3u8')) {
-      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-    }
-
-    if (filePath.endsWith('.ts')) {
-      res.setHeader('Content-Type', 'video/mp2t');
-    }
-  }
-}));
 
 /* =========================================================
    USERS / AUTH
@@ -915,59 +893,6 @@ io.on('connection', socket => {
 });
 
 /* =========================================================
-   NODE MEDIA SERVER
-========================================================= */
-
-const nmsConfig = {
-  rtmp: {
-    port: Number(RTMP_PORT),
-    chunk_size: 60000,
-    gop_cache: true,
-    ping: 30,
-    ping_timeout: 60
-  },
-
-  http: {
-    port: Number(NMS_HTTP_PORT),
-    mediaroot: HLS_DIR,
-    allow_origin: '*'
-  },
-
-  trans: {
-    ffmpeg: process.env.FFMPEG_PATH || 'ffmpeg',
-    tasks: [
-      {
-        app: 'live',
-        hls: true,
-        hlsFlags:
-          '[hls_time=2:hls_list_size=6:hls_flags=delete_segments+append_list]',
-        hlsKeepSegments: 6,
-        dash: false
-      }
-    ]
-  }
-};
-
-let nms = null;
-
-try {
-  nms = new NodeMediaServer(nmsConfig);
-  nms.run();
-
-  console.log('RTMP SERVER READY');
-  console.log(
-    'RTMP: rtmp://localhost:' +
-    RTMP_PORT +
-    '/live'
-  );
-} catch (error) {
-  console.error(
-    'NODE MEDIA SERVER ERROR:',
-    error
-  );
-}
-
-/* =========================================================
    MAIN PAGE
 ========================================================= */
 
@@ -1048,14 +973,6 @@ function shutdown() {
   console.log(
     'EWS SESSIONS shutting down...'
   );
-
-  try {
-    if (nms) {
-      nms.stop();
-    }
-  } catch (error) {
-    console.error(error);
-  }
 
   server.close(() => process.exit(0));
 }
