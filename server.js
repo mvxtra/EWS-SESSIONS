@@ -3,6 +3,7 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const https = require('https');
 const { Server } = require('socket.io');
 
 const app = express();
@@ -151,6 +152,103 @@ app.post('/api/register', (req, res) => {
 
   saveUsers(users);
   res.json({ ok: true, username });
+});
+
+const translationCache = new Map();
+const MAX_TRANSLATION_CACHE = 500;
+
+function httpsGetText(url, timeout = 4000) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(
+      url,
+      {
+        headers: {
+          'User-Agent': 'EWS-SESSIONS/2.0'
+        }
+      },
+      response => {
+        let body = '';
+
+        response.setEncoding('utf8');
+        response.on('data', chunk => {
+          body += chunk;
+        });
+
+        response.on('end', () => {
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            resolve(body);
+          } else {
+            reject(new Error('HTTP ' + response.statusCode));
+          }
+        });
+      }
+    );
+
+    request.setTimeout(timeout, () => {
+      request.destroy(new Error('translation timeout'));
+    });
+
+    request.on('error', reject);
+  });
+}
+
+async function translateText(text, targetLanguage) {
+  const source = String(text || '').trim();
+  if (!source) return '';
+
+  const target = normalizeLanguage(targetLanguage);
+  const key = target + '\n' + source;
+
+  if (translationCache.has(key)) {
+    return translationCache.get(key);
+  }
+
+  try {
+    const url =
+      'https://translate.googleapis.com/translate_a/single' +
+      '?client=gtx' +
+      '&sl=auto' +
+      '&tl=' + encodeURIComponent(target) +
+      '&dt=t' +
+      '&q=' + encodeURIComponent(source);
+
+    const raw = await httpsGetText(url);
+    const data = JSON.parse(raw);
+
+    const translated =
+      Array.isArray(data) && Array.isArray(data[0])
+        ? data[0]
+            .map(part => Array.isArray(part) ? part[0] : '')
+            .join('')
+        : source;
+
+    const result = translated || source;
+
+    if (translationCache.size >= MAX_TRANSLATION_CACHE) {
+      const first = translationCache.keys().next().value;
+      if (first) translationCache.delete(first);
+    }
+
+    translationCache.set(key, result);
+    return result;
+  } catch (error) {
+    console.error('[TRANSLATION]', error.message);
+    return source;
+  }
+}
+
+app.post('/api/translate', async (req, res) => {
+  const source = String(req.body?.text || '').trim().slice(0, 500);
+  const target = String(req.body?.target || 'en');
+
+  if (!source) {
+    return res.json({ ok: true, text: '' });
+  }
+
+  res.json({
+    ok: true,
+    text: await translateText(source, target)
+  });
 });
 
 app.post('/api/login', (req, res) => {
