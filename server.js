@@ -945,16 +945,6 @@ server.listen(
     console.log('        EWS SESSIONS SERVER READY');
     console.log('========================================');
     console.log('WEB:  http://localhost:' + PORT);
-    console.log(
-      'RTMP: rtmp://localhost:' +
-      RTMP_PORT +
-      '/live'
-    );
-    console.log(
-      'HLS:  http://localhost:' +
-      PORT +
-      '/hls/'
-    );
     console.log('SCREEN OWNER: mvxtra');
     console.log('MULTIPLAYER: ON');
     console.log('ONLINE USERS: ON');
