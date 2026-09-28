@@ -1,1087 +1,213 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-
-<meta charset="UTF-8">
-
-<meta
-  name="viewport"
-  content="width=device-width,initial-scale=1.0"
->
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EWS SESSIONS</title>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
-
 <script src="/socket.io/socket.io.js"></script>
-
 <style>
-
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-}
-
-html,
-body{
-  width:100%;
-  height:100%;
-  overflow:hidden;
-  background:#050505;
-  color:#fff;
-  font-family:Arial,Helvetica,sans-serif;
-}
-
-#app{
-  position:relative;
-  width:100vw;
-  height:100vh;
-}
-
-#canvas3d{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  display:block;
-}
-
-/* 3D HTML layer — the club screen is physically anchored in Three.js */
-#css3d-container{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  z-index:15;
-  pointer-events:none;
-  overflow:hidden;
-}
-
-#css3d-screen{
-  width:1400px;
-  height:600px;
-  position:absolute;
-  left:0;
-  top:0;
-  background:#000;
-  border:1px solid #222;
-  box-shadow:0 0 45px rgba(0,0,0,.9);
-  pointer-events:auto;
-  overflow:hidden;
-  display:block;
-  visibility:hidden;
-  opacity:0;
-}
-
-#css3d-screen.active{
-  display:block;
-  visibility:visible;
-  opacity:1;
-}
-
-#css3d-screen iframe{
-  width:100%;
-  height:100%;
-  border:0;
-  display:block;
-  background:#000;
-}
-
-#screen-audio-hint{
-  position:absolute;
-  left:50%;
-  bottom:14px;
-  transform:translateX(-50%);
-  z-index:3;
-  padding:7px 11px;
-  border:1px solid rgba(255,255,255,.38);
-  background:rgba(0,0,0,.72);
-  color:#fff;
-  font:10px monospace;
-  letter-spacing:2px;
-  pointer-events:none;
-  opacity:.85;
-  white-space:nowrap;
-}
-
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
-#login{
-  position:absolute;
-  inset:0;
-  z-index:1000;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-
-  background:
-    radial-gradient(
-      circle at 50% 40%,
-      rgba(255,255,255,.08),
-      transparent 25%
-    ),
-    radial-gradient(
-      circle at 50% 50%,
-      #171717,
-      #030303 70%
-    );
-}
-
-.login-box{
-  width:380px;
-  padding:42px;
-
-  background:rgba(5,5,5,.88);
-
-  border:1px solid #444;
-
-  box-shadow:
-    0 0 80px rgba(255,255,255,.06),
-    inset 0 0 40px rgba(255,255,255,.02);
-
-  text-align:center;
-}
-
-.login-box h1{
-  font-size:31px;
-  letter-spacing:8px;
-  font-weight:900;
-  color:#fff;
-  margin-bottom:8px;
-}
-
-.login-box p{
-  font-size:10px;
-  letter-spacing:5px;
-  color:#777;
-  margin-bottom:30px;
-}
-
-.tabs{
-  display:flex;
-  margin-bottom:20px;
-  border:1px solid #333;
-}
-
-.tab{
-  flex:1;
-  padding:11px;
-  border:0;
-  background:#0c0c0c;
-  color:#666;
-  cursor:pointer;
-  letter-spacing:2px;
-}
-
-.tab.active{
-  background:#fff;
-  color:#000;
-}
-
-input{
-  width:100%;
-  height:45px;
-  margin-bottom:12px;
-  padding:0 14px;
-
-  border:1px solid #333;
-  background:#080808;
-  color:#fff;
-
-  outline:none;
-}
-
-input:focus{
-  border-color:#aaa;
-}
-
-.btn{
-  width:100%;
-  height:45px;
-
-  border:0;
-
-  background:#fff;
-  color:#000;
-
-  font-weight:bold;
-  letter-spacing:2px;
-
-  cursor:pointer;
-}
-
-.btn:hover{
-  background:#ddd;
-}
-
-.error{
-  min-height:20px;
-  margin-top:12px;
-  color:#ff5555;
-  font-size:12px;
-}
-
-/* =========================================================
-   HUD
-========================================================= */
-
-#hud{
-  position:absolute;
-  inset:0;
-  z-index:20;
-
-  display:none;
-
-  pointer-events:none;
-}
-
-#top-logo{
-  position:absolute;
-
-  top:18px;
-  left:20px;
-
-  font-size:16px;
-  font-weight:900;
-  letter-spacing:5px;
-
-  text-shadow:0 0 20px #fff;
-}
-
-#top-logo span{
-  display:block;
-
-  margin-top:4px;
-
-  font-size:8px;
-  letter-spacing:3px;
-  color:#777;
-}
-
-#online-box{
-  position:absolute;
-
-  top:18px;
-  right:18px;
-
-  width:190px;
-
-  padding:13px;
-
-  background:rgba(0,0,0,.72);
-
-  border:1px solid #333;
-
-  pointer-events:auto;
-}
-
-#online-box h3{
-  font-size:10px;
-  letter-spacing:3px;
-  color:#aaa;
-  margin-bottom:9px;
-}
-
-#online-list{
-  list-style:none;
-
-  max-height:180px;
-  overflow:auto;
-
-  color:#ddd;
-  font-size:12px;
-}
-
-#online-list li{
-  padding:4px 0;
-
-  border-bottom:1px solid #161616;
-}
-
-#online-list li::before{
-  content:"●";
-
-  color:#fff;
-
-  margin-right:7px;
-
-  font-size:8px;
-}
-
-/* =========================================================
-   CHAT
-========================================================= */
-
-#chat{
-  position:absolute;
-
-  left:18px;
-  bottom:18px;
-
-  width:390px;
-  height:250px;
-
-  padding:12px;
-
-  display:flex;
-  flex-direction:column;
-
-  background:rgba(0,0,0,.75);
-
-  border:1px solid #333;
-
-  pointer-events:auto;
-}
-
-#chat-title{
-  font-size:9px;
-  letter-spacing:3px;
-  color:#777;
-
-  margin-bottom:8px;
-}
-
-#chat-messages{
-  flex:1;
-
-  overflow-y:auto;
-
-  margin-bottom:8px;
-}
-
-.msg{
-  margin-bottom:7px;
-
-  font-size:12px;
-  line-height:1.4;
-}
-
-.msg .u{
-  color:#fff;
-  font-weight:bold;
-}
-
-.msg .t{
-  color:#aaa;
-}
-
-#chat-form{
-  display:flex;
-  gap:6px;
-}
-
-#chat-input{
-  flex:1;
-  height:35px;
-  margin:0;
-}
-
-#chat-send{
-  width:45px;
-
-  border:0;
-
-  background:#fff;
-  color:#000;
-
-  cursor:pointer;
-}
-
-
-/* =========================================================
-   CLUB SCREEN / MEDIA
-========================================================= */
-
-#screen-control{
-  position:fixed;
-  top:18px;
-  left:50%;
-  transform:translateX(-50%);
-  z-index:41;
-  height:32px;
-  padding:0 16px;
-  border:1px solid #444;
-  background:rgba(0,0,0,.82);
-  color:#fff;
-  cursor:pointer;
-  font-size:10px;
-  font-weight:bold;
-  letter-spacing:3px;
-  pointer-events:auto;
-}
-
-#screen-control:hover{
-  background:#fff;
-  color:#000;
-}
-
-#screen-menu{
-  position:fixed;
-  top:58px;
-  left:50%;
-  transform:translateX(-50%);
-  z-index:40;
-  width:min(520px,calc(100vw - 30px));
-  padding:10px;
-  background:rgba(5,5,5,.96);
-  border:1px solid #444;
-  box-shadow:0 18px 60px rgba(0,0,0,.75);
-  display:none;
-  pointer-events:auto;
-}
-#screen-menu.open{display:block;}
-#screen-menu-row{display:flex;gap:6px;align-items:center;}
-#screen-url{
-  flex:1;
-  min-width:0;
-  height:32px;
-  box-sizing:border-box;
-  padding:0 10px;
-  background:#090909;
-  border:1px solid #333;
-  color:#fff;
-  outline:none;
-  font:11px monospace;
-}
-#screen-menu button{
-  height:32px;
-  padding:0 12px;
-  border:1px solid #444;
-  background:#111;
-  color:#fff;
-  cursor:pointer;
-  font-size:10px;
-  font-weight:bold;
-  letter-spacing:1px;
-}
-#screen-menu button:hover{background:#fff;color:#000;}
-#screen-status{
-  min-height:14px;
-  margin-top:7px;
-  color:#777;
-  font:9px monospace;
-  letter-spacing:1px;
-}
-
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050505;color:#fff;font-family:Arial,Helvetica,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+#app{position:relative;width:100vw;height:100vh}
+#canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#css3d{position:absolute;inset:0;z-index:20;pointer-events:none}
+#screen3d{width:1400px;height:600px;background:#000;border:6px solid #111;box-shadow:0 0 50px #000;overflow:hidden;opacity:0;visibility:hidden;pointer-events:auto;transition:opacity .15s}
+#screen3d.active{opacity:1;visibility:visible}
+#screen3d iframe{display:block;width:100%;height:100%;border:0;background:#000}
+#screenHint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);padding:8px 12px;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.8);font-size:12px;letter-spacing:1px;pointer-events:none}
+#screenHint.hide{display:none}
+#logo{position:absolute;left:22px;top:18px;z-index:40;font-weight:900;font-size:28px;letter-spacing:8px;text-shadow:0 0 18px rgba(255,255,255,.18)}
+#status{position:absolute;left:24px;top:58px;z-index:40;font-size:11px;letter-spacing:1.6px;opacity:.72}
+#onlineBox,#chatBox,#screenBox{position:absolute;z-index:40;background:rgba(0,0,0,.76);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(8px)}
+#onlineBox{right:18px;top:18px;width:190px;padding:12px}
+#onlineTitle{font-size:10px;letter-spacing:2px;opacity:.65;margin-bottom:8px}
+#onlineList{margin:0;padding:0;list-style:none;max-height:180px;overflow:auto;font-size:13px}
+#onlineList li{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+#chatBox{left:18px;bottom:18px;width:340px;padding:10px}
+#chatLog{height:150px;overflow:auto;font-size:12px;line-height:1.4}
+.chatLine{margin:0 0 5px}
+.chatUser{font-weight:800;margin-right:5px}
+#chatForm{display:flex;gap:6px;margin-top:8px}
+#chatInput{flex:1;min-width:0;background:#050505;color:#fff;border:1px solid #444;padding:8px}
+#chatSend{width:64px;background:#fff;color:#000;border:0}
+#screenBox{left:18px;top:18px;width:330px;padding:12px;display:none}
+#screenBox.open{display:block}
+#screenTitle{font-size:10px;letter-spacing:2px;opacity:.65;margin-bottom:8px}
+#screenUrl{width:100%;padding:8px;background:#050505;color:#fff;border:1px solid #444}
+.screenRow{display:flex;gap:6px;margin-top:7px}
+.screenRow button{flex:1;padding:7px;border:0}
+#screenLoad{background:#fff;color:#000}
+#screenClear{background:#222;color:#fff;border:1px solid #555!important}
+#auth{position:absolute;inset:0;z-index:100;display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,#171717 0,#070707 42%,#000 100%)}
+#auth.hidden{display:none}
+.authCard{width:min(390px,calc(100vw - 36px));padding:30px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.75);box-shadow:0 0 60px rgba(255,255,255,.05)}
+.authLogo{text-align:center;font-size:34px;font-weight:900;letter-spacing:9px;margin-bottom:4px}
+.authSub{text-align:center;font-size:10px;letter-spacing:3px;opacity:.55;margin-bottom:24px}
+.authCard input{width:100%;margin-bottom:9px;padding:11px;background:#080808;color:#fff;border:1px solid #444}
+.authBtns{display:flex;gap:8px}
+.authBtns button{flex:1;padding:10px;border:0}
+#loginBtn{background:#fff;color:#000}
+#registerBtn{background:#222;color:#fff;border:1px solid #555!important}
+#authMsg{min-height:18px;margin-top:10px;font-size:12px;text-align:center;opacity:.75}
+#lang{width:100%;padding:8px;background:#080808;color:#fff;border:1px solid #444;margin-bottom:9px}
+#hint{position:absolute;z-index:35;left:50%;bottom:18px;transform:translateX(-50%);font-size:11px;letter-spacing:1.3px;opacity:.45;pointer-events:none}
 @media(max-width:700px){
-  #screen-menu-row{flex-wrap:wrap;}
-  #screen-url{flex-basis:100%;}
+  #onlineBox{width:150px}
+  #chatBox{width:calc(100vw - 36px)}
+  #screen3d{width:1000px;height:430px}
 }
-
-/* =========================================================
-   EMOTES / DANCES
-========================================================= */
-.emote-btn{height:36px;border:1px solid #333;background:#111;color:#fff;cursor:pointer;font-size:10px;letter-spacing:1px;}
-.emote-btn:hover{background:#fff;color:#000;}
-#emote-stop{grid-column:1/-1;}
-/* =========================================================
-   OTHER HUD
-========================================================= */
-
-#hint{
-  position:absolute;
-
-  right:18px;
-  bottom:18px;
-
-  padding:9px 12px;
-
-  background:rgba(0,0,0,.65);
-
-  border:1px solid #292929;
-
-  color:#777;
-
-  font-size:10px;
-  letter-spacing:1px;
-}
-
-#lang-bar{
-  position:absolute;
-
-  right:220px;
-  top:18px;
-
-  pointer-events:auto;
-}
-
-#lang{
-  background:#080808;
-
-  border:1px solid #333;
-
-  color:#aaa;
-
-  padding:7px 10px;
-}
-
-#zone-label{
-  position:absolute;
-
-  left:50%;
-  bottom:90px;
-
-  transform:translateX(-50%);
-
-  font-size:10px;
-
-  letter-spacing:5px;
-
-  color:rgba(255,255,255,.4);
-
-  pointer-events:none;
-}
-
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media(max-width:700px){
-
-  #top-logo{
-    top:12px;
-    left:12px;
-    font-size:22px;
-  }
-
-  #top-logo span{
-    font-size:9px;
-  }
-
-  #lang-bar{
-    right:12px;
-    top:12px;
-  }
-
-  #lang{
-    padding:6px 7px;
-    font-size:11px;
-  }
-
-  #online-box{
-    top:52px;
-    right:12px;
-
-    width:145px;
-
-    padding:9px;
-
-    max-height:105px;
-  }
-
-  #online-list{
-    max-height:62px;
-    font-size:10px;
-  }
-
-  #online-box h3{
-    font-size:8px;
-    margin-bottom:5px;
-  }
-
-  #online-list li{
-    padding:2px 0;
-  }
-
-  #screen-control{
-    top:12px;
-    left:50%;
-    height:30px;
-    padding:0 12px;
-    font-size:9px;
-  }
-
-  #chat{
-    left:10px;
-    right:10px;
-    bottom:10px;
-
-    width:auto;
-
-    height:31vh;
-
-    min-height:190px;
-    max-height:270px;
-
-    padding:9px;
-
-    z-index:200;
-
-    background:rgba(0,0,0,.86);
-  }
-
-  #chat-title{
-    font-size:8px;
-    margin-bottom:6px;
-  }
-
-  #chat-messages{
-    font-size:11px;
-    margin-bottom:6px;
-  }
-
-  .msg{
-    font-size:11px;
-    margin-bottom:5px;
-  }
-
-  #chat-input{
-    height:38px;
-
-    font-size:14px;
-
-    padding:0 9px;
-  }
-
-  #chat-send{
-    width:44px;
-
-    font-size:18px;
-  }
-
-  #hint{
-    display:none;
-  }
-
-  #zone-label{
-    bottom:calc(31vh + 20px);
-
-    font-size:8px;
-  }
-}
-
-@media(max-width:420px){
-
-  #online-box{
-    width:125px;
-  }
-
-  #chat{
-    height:34vh;
-    min-height:185px;
-  }
-
-  #zone-label{
-    bottom:calc(34vh + 20px);
-  }
-}
-
 </style>
 </head>
-
 <body>
-
 <div id="app">
+<canvas id="canvas"></canvas>
+<div id="css3d"><div id="screen3d"><iframe id="screenFrame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe><div id="screenHint">CLICK SCREEN FOR SOUND</div></div></div>
+<div id="logo">EWS</div>
+<div id="status">SESSIONS / OFFLINE</div>
+<div id="onlineBox"><div id="onlineTitle">ONLINE</div><ul id="onlineList"></ul></div>
 
-<canvas id="canvas3d"></canvas>
-
-<div id="css3d-container">
-  <div id="css3d-screen">
-    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-    <div id="screen-audio-hint">CLICK SCREEN FOR SOUND</div>
+<div id="screenBox">
+  <div id="screenTitle">CLUB SCREEN / MVXTRA ONLY</div>
+  <input id="screenUrl" placeholder="YouTube / Twitch / https://">
+  <div class="screenRow">
+    <button id="screenLoad">LOAD</button>
+    <button id="screenClear">CLEAR</button>
   </div>
 </div>
 
-<!-- =====================================================
-     LOGIN
-===================================================== -->
-
-<div id="login">
-
-  <div class="login-box">
-
-    <h1>EWS</h1>
-
-    <p>
-      SESSIONS / UNDERGROUND CLUB
-    </p>
-
-    <div class="tabs">
-
-      <button
-        class="tab active"
-        onclick="switchTab('login')">
-        ВХОД
-      </button>
-
-      <button
-        class="tab"
-        onclick="switchTab('register')">
-        РЕГИСТРАЦИЯ
-      </button>
-
-    </div>
-
-    <input
-      id="f-username"
-      placeholder="USERNAME"
-      autocomplete="username"
-    >
-
-    <input
-      id="f-password"
-      type="password"
-      placeholder="PASSWORD"
-      autocomplete="current-password"
-    >
-
-    <button
-      class="btn"
-      id="submitBtn"
-      onclick="doLogin()">
-      ВОЙТИ
-    </button>
-
-    <div
-      id="error"
-      class="error">
-    </div>
-
-  </div>
-
+<div id="chatBox">
+  <div id="chatLog"></div>
+  <form id="chatForm"><input id="chatInput" autocomplete="off" maxlength="240" placeholder="say something..."><button id="chatSend" type="submit">SEND</button></form>
 </div>
 
-<!-- =====================================================
-     HUD
-===================================================== -->
+<div id="hint">CLICK TO ENTER · WASD MOVE · SPACE JUMP · ESC RELEASE MOUSE</div>
 
-<div id="hud">
-
-  <div id="top-logo">
-    EWS
-    <span>SESSIONS</span>
-  </div>
-
-  <button id="screen-control" type="button" onclick="toggleScreenMenu()">SCREEN</button>
-
-  <div id="screen-menu">
-    <div id="screen-menu-row">
-      <input id="screen-url" type="text" placeholder="YouTube / Twitch / https:// site">
-      <button type="button" onclick="loadClubScreen()">LOAD</button>
-      <button type="button" onclick="clearClubScreen()">CLEAR</button>
+<div id="auth">
+  <div class="authCard">
+    <div class="authLogo">EWS</div>
+    <div class="authSub">SESSIONS / UNDERGROUND CLUB</div>
+    <input id="authUser" autocomplete="username" maxlength="24" placeholder="username">
+    <input id="authPass" type="password" autocomplete="current-password" maxlength="128" placeholder="password">
+    <select id="lang">
+      <option value="en">ENGLISH</option>
+      <option value="ru">РУССКИЙ</option>
+      <option value="nl">NEDERLANDS</option>
+      <option value="de">DEUTSCH</option>
+      <option value="es">ESPAÑOL</option>
+      <option value="fr">FRANÇAIS</option>
+    </select>
+    <div class="authBtns">
+      <button id="loginBtn" type="button">ENTER</button>
+      <button id="registerBtn" type="button">REGISTER</button>
     </div>
-    <div id="screen-status"></div>
+    <div id="authMsg"></div>
   </div>
-
-  <div id="chat">
-
-    <div id="chat-title">
-      EWS SESSIONS / CHAT
-    </div>
-
-    <div id="chat-messages"></div>
-
-    <form id="chat-form">
-
-      <input
-        id="chat-input"
-        autocomplete="off"
-        placeholder="write something..."
-      >
-
-      <button id="chat-send">
-        →
-      </button>
-
-    </form>
-
-  </div>
-
-
-
-
-  <div id="hint">
-    WASD MOVE · MOUSE LOOK · C CHAT
-  </div>
-
 </div>
-
 </div>
 
 <script>
+'use strict';
 
-let mode='login';
+const $ = id => document.getElementById(id);
 
-let socket=null;
-let currentUser=null;
+let currentUser = '';
+let socket = null;
+let scene = null;
+let camera = null;
+let renderer = null;
+let cssScene = null;
+let cssRenderer = null;
+let cssObject = null;
+let screenAnchor = null;
+let clock = new THREE.Clock();
+let remotePlayers = new Map();
 
-let scene;
-let camera;
-let renderer;
-let cssScene;
-let cssRenderer;
-let cssScreenObject;
+let yaw = 0;
+let pitch = 0;
+let playerX = 0;
+let playerZ = 10;
+let grounded = true;
+let jumpVelocity = 0;
 
-let keys={};
+const keys = Object.create(null);
+const GROUND_Y = 0;
+const GRAVITY = 18;
+const JUMP = 7;
+const MOVE_SPEED = 4.7;
 
-// JUMP / GRAVITY
-let jumpVelocity=0;
-let playerY=1.7;
-const GROUND_Y=1.7;
-const JUMP_FORCE=7.2;
-const GRAVITY=18;
-let isGrounded=true;
+let lastSent = 0;
+let lastScreenVersion = 0;
+let screenUrlLoaded = '';
+let screenRequestTimer = null;
 
-let yaw=0;
-let pitch=0;
-
-let pointerLocked=false;
-let chatMode=false;
-
-let clock=new THREE.Clock();
-
-let neonObjects=[];
-let lightObjects=[];
-
-let particles;
-let fogParticles;
-let fogMaterial;
-let clubLights=[];
-let strobeLights=[];
-let musicLightTargets=[];
-let laserSystems=[];
-let floorWashLights=[];
-let fixtureGlows=[];
-
-let analyser=null;
-let freqData=null;
-
-let audioLevel=0;
-let bassLevel=0;
-
-
-
-
-let screenTexture;
-let screenCanvas;
-let screenCtx;
-let screenMesh;
-let screenMediaActive=false;
-let screenMediaUrl='';
-let pendingScreenState=null;
-let screenSyncTimer=null;
-let onlineUserList=[];
-let remotePlayers=new Map();
-let lastPlayerBroadcast=0;
-let clubScreenHost=null;
-let activeDance=0;
-let danceStartedAt=0;
-
-let playerBody;
-
-// SOLID CLUB OBJECTS — the local player cannot walk through these.
-const collisionBoxes = [
-  // Main stage
-  {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9},
-  // Floor PA / subwoofer footprints
-  {minX:-8.9,maxX:-6.1,minZ:-11.45,maxZ:-9.65},
-  {minX:6.1,maxX:8.9,minZ:-11.45,maxZ:-9.65},
-  // Rear entrance frame
-  {minX:-3.6,maxX:3.6,minZ:15.7,maxZ:16.7}
-];
-const PLAYER_RADIUS=.38;
-
-function blockedPosition(x,z){
-  for(const b of collisionBoxes){
-    const cx=Math.max(b.minX,Math.min(x,b.maxX));
-    const cz=Math.max(b.minZ,Math.min(z,b.maxZ));
-    const dx=x-cx;
-    const dz=z-cz;
-    if(dx*dx+dz*dz < PLAYER_RADIUS*PLAYER_RADIUS) return true;
-  }
-  return false;
+function msg(text) {
+  $('authMsg').textContent = text || '';
 }
 
-function tryMovePlayer(dx,dz){
-  const nx=THREE.MathUtils.clamp(camera.position.x+dx,-16,16);
-  const nz=THREE.MathUtils.clamp(camera.position.z+dz,-15.5,15.5);
-  // Resolve X and Z separately so the avatar slides along objects instead of freezing.
-  if(!blockedPosition(nx,camera.position.z)) camera.position.x=nx;
-  if(!blockedPosition(camera.position.x,nz)) camera.position.z=nz;
-}
+async function auth(path) {
+  const username = $('authUser').value.trim();
+  const password = $('authPass').value;
 
-function createEWSLogo(){
-  const loader=new THREE.TextureLoader();
-  loader.load('/assets/logo.png',texture=>{
-    texture.encoding=THREE.sRGBEncoding;
-    const mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide});
-    const logo=new THREE.Mesh(new THREE.PlaneGeometry(4.6,4.6),mat);
-    logo.position.set(0,3.65,-16.25);
-    scene.add(logo);
-  },undefined,err=>console.warn('[EWS LOGO]',err));
-}
-
-/* =========================================================
-   EWS TEXTURES
-   CC0 seamless textures from ShareTextures
-========================================================= */
-
-const EWS_TEXTURES = {
-  concrete: 'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
-  floor: 'https://images.sharetextures.com/u/stone_floor_1-min.webp'
-};
-
-const ewsTextureLoader = new THREE.TextureLoader();
-
-function loadEWSTexture(url, repeatX=4, repeatY=4){
-  const texture = ewsTextureLoader.load(url);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(repeatX, repeatY);
-  texture.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 8);
-  texture.encoding = THREE.sRGBEncoding;
-  return texture;
-}
-
-/* =========================================================
-   LOGIN
-========================================================= */
-
-function switchTab(type){
-
-  mode=type;
-
-  document
-    .querySelectorAll('.tab')
-    .forEach(
-      t=>t.classList.remove('active')
-    );
-
-  if(type==='login'){
-
-    document
-      .querySelectorAll('.tab')[0]
-      .classList.add('active');
-
-    document.getElementById(
-      'submitBtn'
-    ).textContent='ВОЙТИ';
-
-  }else{
-
-    document
-      .querySelectorAll('.tab')[1]
-      .classList.add('active');
-
-    document.getElementById(
-      'submitBtn'
-    ).textContent='СОЗДАТЬ АККАУНТ';
-
-  }
-
-  document.getElementById(
-    'error'
-  ).textContent='';
-
-}
-
-async function doLogin(){
-
-  const username =
-    document
-      .getElementById('f-username')
-      .value
-      .trim();
-
-  const password =
-    document
-      .getElementById('f-password')
-      .value;
-
-  const error =
-    document.getElementById('error');
-
-  error.textContent='';
-
-  if(!username || !password){
-
-    error.textContent=
-      'Введите логин и пароль';
-
+  if (!username || !password) {
+    msg('ENTER USERNAME AND PASSWORD');
     return;
   }
 
-  try{
+  try {
+    const response = await fetch(path,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({username,password})
+    });
 
-    const res =
-      await fetch(
-        '/api/'+mode,
-        {
-          method:'POST',
+    const data = await response.json();
 
-          headers:{
-            'Content-Type':
-              'application/json'
-          },
-
-          body:JSON.stringify({
-            username,
-            password
-          })
-        }
-      );
-
-    const data =
-      await res.json();
-
-    if(data.error){
-
-      error.textContent=
-        data.error;
-
+    if (!response.ok || !data.ok) {
+      msg(data.error || 'LOGIN ERROR');
       return;
     }
 
-    startSession(username);
-
-  }catch(err){
-
-    console.error(err);
-
-    error.textContent=
-      'Ошибка соединения';
-
+    currentUser = data.username;
+    localStorage.setItem('ews-username', currentUser);
+    enterClub();
+  } catch {
+    msg('SERVER CONNECTION ERROR');
   }
-
 }
 
-/* =========================================================
-   SESSION
-========================================================= */
+$('loginBtn').onclick = () => auth('/api/login');
+$('registerBtn').onclick = () => auth('/api/register');
 
-function startSession(username){
+$('authPass').addEventListener('keydown',e=>{
+  if(e.key==='Enter') auth('/api/login');
+});
 
-  currentUser=username;
+function isHost() {
+  return currentUser.toLowerCase() === 'mvxtra';
+}
 
-  document.getElementById('login').style.display='none';
-  document.getElementById('hud').style.display='block';
+function setStatus(text) {
+  $('status').textContent = 'SESSIONS / ' + text;
+}
 
-  clubScreenHost='mvxtra';
-
-  const screenButton=document.getElementById('screen-control');
-  if(screenButton){
-    screenButton.style.display=isClubHost()?'block':'none';
-  }
-
-  const audioHint=document.getElementById('screen-audio-hint');
-  if(audioHint){
-    audioHint.style.display=isClubHost()?'none':'block';
-  }
-
+function enterClub() {
+  $('auth').classList.add('hidden');
+  $('hint').style.display = 'block';
+  $('screenBox').classList.toggle('open',isHost());
   init3D();
+  connectSocket();
+}
 
-  // One socket per page. Reconnect uses the same handlers and rejoins the club.
-  if(socket){
-    try{ socket.disconnect(); }catch(e){}
+function connectSocket() {
+  if (socket) {
+    try { socket.disconnect(); } catch {}
   }
 
-  socket=io({
+  socket = io({
     transports:['websocket','polling'],
     reconnection:true,
     reconnectionAttempts:Infinity,
@@ -1090,2941 +216,654 @@ function startSession(username){
   });
 
   socket.on('connect',()=>{
-    console.log('[EWS MP] CONNECT',socket.id);
-
+    setStatus('ONLINE');
     socket.emit('join',{
       username:currentUser,
-      language:document.getElementById('lang').value
+      language:$('lang').value
     });
 
-    // Re-sync the world and screen after the join has reached the server.
-    setTimeout(()=>{
-      if(socket && socket.connected){
-        socket.emit('request-world');
-        socket.emit('screen:request');
-      }
-    },250);
+    setTimeout(requestWorldAndScreen,250);
+    setTimeout(requestWorldAndScreen,1200);
 
-    setTimeout(()=>{
-      if(socket && socket.connected){
-        socket.emit('request-world');
-        socket.emit('screen:request');
-      }
-    },1500);
-
-    // A SCREEN action made just before the socket finished connecting
-    // is sent now, once the connection is ready.
-    if(pendingScreenState){
-      const pending=pendingScreenState;
-      pendingScreenState=null;
-      socket.emit('screen:set',pending);
-    }
-
-    // Keep SCREEN state self-healing for guests and reconnects.
-    if(screenSyncTimer){
-      clearInterval(screenSyncTimer);
-    }
-    screenSyncTimer=setInterval(()=>{
-      if(socket && socket.connected){
-        socket.emit('screen:request');
-      }
-    },2000);
+    if(screenRequestTimer) clearInterval(screenRequestTimer);
+    screenRequestTimer = setInterval(requestWorldAndScreen,2500);
   });
 
-  socket.on('disconnect',reason=>{
-    console.warn('[EWS MP] DISCONNECT',reason);
-
-    if(screenSyncTimer){
-      clearInterval(screenSyncTimer);
-      screenSyncTimer=null;
-    }
-
-    onlineUserList=[];
-
-    const ul=document.getElementById('online-list');
-    if(ul) ul.innerHTML='';
-
-    remotePlayers.forEach(p=>{
-      if(p && p.group && scene) scene.remove(p.group);
-    });
+  socket.on('disconnect',()=>{
+    setStatus('RECONNECTING');
+    $('onlineList').innerHTML = '';
+    remotePlayers.forEach(removeRemotePlayer);
     remotePlayers.clear();
   });
 
   socket.on('world:state',world=>{
-    if(!world || !Array.isArray(world.players)) return;
+    if(!world) return;
 
-    const alive=new Set();
+    const alive = new Set();
 
-    world.players.forEach(data=>{
-      if(!data || !data.id || data.id===socket.id) return;
-      alive.add(data.id);
-      updateRemotePlayer(data);
-    });
+    if(Array.isArray(world.players)){
+      world.players.forEach(data=>{
+        if(!data || data.id === socket.id) return;
+        alive.add(data.id);
+        updateRemotePlayer(data);
+      });
+    }
 
-    Array.from(remotePlayers.keys()).forEach(id=>{
+    [...remotePlayers.keys()].forEach(id=>{
       if(!alive.has(id)) removeRemotePlayer(id);
     });
 
-    if(world.screen){
-      applyRemoteClubScreen(world.screen);
-    }
+    if(world.screen) applyScreen(world.screen);
   });
 
   socket.on('online:state',list=>{
-    const users=Array.isArray(list)?list:[];
+    const users = Array.isArray(list) ? list : [];
+    $('onlineList').innerHTML='';
 
-    onlineUserList=users;
-
-    const ul=document.getElementById('online-list');
-    if(!ul) return;
-
-    ul.innerHTML='';
-
-    users.forEach(user=>{
-      const li=document.createElement('li');
-
-      const name=
-        typeof user==='string'
-          ? user
-          : String(user?.username||'');
-
+    users.forEach(item=>{
+      const name = String(item && item.username || '');
       if(!name) return;
-
-      li.textContent=
-        name.toLowerCase()===String(currentUser||'').toLowerCase()
-          ? name+' (YOU)'
-          : name;
-
-      ul.appendChild(li);
+      const li = document.createElement('li');
+      li.textContent = name + (name.toLowerCase()===currentUser.toLowerCase() ? ' (YOU)' : '');
+      $('onlineList').appendChild(li);
     });
   });
 
   socket.on('player:joined',data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
+    if(data && data.id && data.id !== socket.id) updateRemotePlayer(data);
   });
 
   socket.on('player:state',data=>{
-    if(!data || !data.id || data.id===socket.id) return;
-    updateRemotePlayer(data);
+    if(data && data.id && data.id !== socket.id) updateRemotePlayer(data);
   });
 
-  socket.on('player:left',id=>{
-    removeRemotePlayer(id);
+  socket.on('player:left',id=>removeRemotePlayer(id));
+
+  socket.on('screen:state',state=>applyScreen(state));
+
+  socket.on('chat:message',message=>{
+    addChat(message.user,message.text);
   });
 
-  socket.on('screen:state',state=>{
-    applyRemoteClubScreen(state);
-  });
-
-  socket.on('chat-message',message=>{
-    const el=document.createElement('div');
-    el.className='msg';
-
-    const time=new Date(message.ts).toLocaleTimeString();
-
-    const user=document.createElement('span');
-    user.className='u';
-    user.textContent=message.user;
-
-    const text=document.createElement('span');
-    text.className='t';
-    text.textContent=' '+time+' '+message.text;
-
-    el.appendChild(user);
-    el.appendChild(document.createTextNode(' '));
-    el.appendChild(text);
-
-    const box=document.getElementById('chat-messages');
-    if(box){
-      box.appendChild(el);
-      box.scrollTop=box.scrollHeight;
-    }
+  socket.on('club:ready',info=>{
+    if(info && info.screen) applyScreen(info.screen);
   });
 }
 
-/* =========================================================
-   CHAT
-========================================================= */
+function requestWorldAndScreen() {
+  if(!socket || !socket.connected) return;
+  socket.emit('world:request');
+  socket.emit('screen:request');
+}
 
-document
-  .getElementById('chat-form')
-  .addEventListener(
-    'submit',
-    function(e){
+function addChat(user,text) {
+  const line = document.createElement('div');
+  line.className='chatLine';
 
-      e.preventDefault();
+  const who = document.createElement('span');
+  who.className='chatUser';
+  who.textContent=String(user||'');
+  
+  const body = document.createElement('span');
+  body.textContent=String(text||'');
 
-      if(!socket)return;
+  line.append(who,body);
+  $('chatLog').appendChild(line);
+  $('chatLog').scrollTop=$('chatLog').scrollHeight;
+}
 
-      const input =
-        document.getElementById(
-          'chat-input'
-        );
+$('chatForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const value=$('chatInput').value.trim();
+  if(!value || !socket || !socket.connected) return;
+  socket.emit('chat:message',value);
+  $('chatInput').value='';
+});
 
-      const text =
-        input.value.trim();
+document.addEventListener('keydown',e=>{
+  if(e.target && /input|select|textarea/i.test(e.target.tagName)) return;
+  keys[e.code]=true;
 
-      if(!text)return;
+  if(e.code==='Space' && grounded && !document.pointerLockElement) {
+    return;
+  }
 
-      socket.emit(
-        'chat-message',
-        {
-          user:currentUser,
-          text:text,
+  if(e.code==='Space' && grounded) {
+    jumpVelocity=JUMP;
+    grounded=false;
+    e.preventDefault();
+  }
+});
 
-          lang:
-            document.getElementById(
-              'lang'
-            ).value
-        }
-      );
+document.addEventListener('keyup',e=>{
+  keys[e.code]=false;
+});
 
-      input.value='';
+function init3D() {
+  if(renderer) return;
 
-      // Enter sends the message and immediately returns control to the club.
-      chatMode=false;
-      input.blur();
-      keys={};
-      const canvas=document.getElementById('canvas3d');
-      if(canvas && document.pointerLockElement!==canvas){
-        try{ canvas.requestPointerLock(); }catch(err){}
-      }
+  const canvas=$('canvas');
 
-    }
+  renderer=new THREE.WebGLRenderer({
+    canvas,
+    antialias:true,
+    powerPreference:'high-performance'
+  });
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.shadowMap.enabled=true;
+
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x040404);
+  scene.fog=new THREE.Fog(0x040404,18,48);
+
+  camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.05,120);
+  camera.position.set(playerX,1.65,playerZ);
+  camera.rotation.order='YXZ';
+
+  const ambient=new THREE.AmbientLight(0xffffff,.16);
+  scene.add(ambient);
+
+  const key=new THREE.PointLight(0xffffff,2.2,35);
+  key.position.set(0,8,1);
+  key.castShadow=true;
+  scene.add(key);
+
+  const floor=new THREE.Mesh(
+    new THREE.PlaneGeometry(40,36),
+    new THREE.MeshStandardMaterial({color:0x111111,roughness:.8,metalness:.15})
   );
+  floor.rotation.x=-Math.PI/2;
+  floor.receiveShadow=true;
+  scene.add(floor);
 
-/* =========================================================
-   LANGUAGE
-========================================================= */
+  const wallMaterial=new THREE.MeshStandardMaterial({color:0x080808,roughness:.9});
+  const backWall=new THREE.Mesh(new THREE.BoxGeometry(40,12,.5),wallMaterial);
+  backWall.position.set(0,6,-15.7);
+  scene.add(backWall);
 
-document
-  .getElementById('lang')
-  .addEventListener(
-    'change',
-    function(){
+  const side1=new THREE.Mesh(new THREE.BoxGeometry(.5,12,32),wallMaterial);
+  side1.position.set(-20,6,0);
+  scene.add(side1);
 
-      if(socket){
+  const side2=side1.clone();
+  side2.position.x=20;
+  scene.add(side2);
 
-        socket.emit(
-          'language-change',
-          this.value
-        );
+  buildClubDetails();
 
-      }
-
-    }
-  );
-
-/* =========================================================
-   THREE.JS
-========================================================= */
-
-function init3D(){
-
-  scene =
-    new THREE.Scene();
-
-  scene.background =
-    new THREE.Color(
-      0x000000
-    );
-
-  scene.fog =
-    new THREE.FogExp2(
-      0x000000,
-      0.068
-    );
-
-  camera =
-    new THREE.PerspectiveCamera(
-      72,
-      innerWidth/innerHeight,
-      0.1,
-      150
-    );
-
-  camera.position.set(
-    0,
-    1.7,
-    13
-  );
-
-  renderer =
-    new THREE.WebGLRenderer({
-      canvas:
-        document.getElementById(
-          'canvas3d'
-        ),
-
-      antialias:true
-    });
-
-  renderer.setSize(
-    innerWidth,
-    innerHeight
-  );
-
-  renderer.setPixelRatio(
-    Math.min(
-      devicePixelRatio,
-      2
-    )
-  );
-
-  // =====================================================
-  // CSS3D SCREEN — permanently anchored to the physical wall
-  // =====================================================
-  cssScene = new THREE.Scene();
-  cssRenderer = new THREE.CSS3DRenderer();
-  cssRenderer.setSize(innerWidth, innerHeight);
+  cssRenderer=new THREE.CSS3DRenderer();
+  cssRenderer.setSize(innerWidth,innerHeight);
   cssRenderer.domElement.style.position='absolute';
   cssRenderer.domElement.style.left='0';
   cssRenderer.domElement.style.top='0';
   cssRenderer.domElement.style.width='100%';
   cssRenderer.domElement.style.height='100%';
-  cssRenderer.domElement.style.zIndex='19';
   cssRenderer.domElement.style.pointerEvents='none';
-  cssRenderer.domElement.style.transform='translateZ(0)';
-  document.getElementById('css3d-container').appendChild(cssRenderer.domElement);
+  $('css3d').appendChild(cssRenderer.domElement);
 
-  const cssScreenEl=document.getElementById('css3d-screen');
-  cssScreenObject=new THREE.CSS3DObject(cssScreenEl);
-  cssScreenObject.position.set(0,3.65,-16.455);
-  cssScreenObject.rotation.set(0,0,0);
-  cssScreenObject.scale.set(0.01,0.01,0.01);
-  cssScene.add(cssScreenObject);
+  cssScene=new THREE.Scene();
 
-  renderer.shadowMap.enabled=true;
+  screenAnchor=new THREE.Object3D();
+  screenAnchor.position.set(0,5.4,-15.35);
+  scene.add(screenAnchor);
 
-  renderer.shadowMap.type =
-    THREE.PCFSoftShadowMap;
+  cssObject=new THREE.CSS3DObject($('screen3d'));
+  cssObject.position.set(0,0,0);
+  cssObject.scale.set(.01,.01,.01);
+  cssScene.add(cssObject);
 
-  const ambient =
-    new THREE.AmbientLight(
-      0xffffff,
-      0.045
-    );
-
-  scene.add(ambient);
-
-  const ceilingLight =
-    new THREE.PointLight(
-      0xffffff,
-      0.65,
-      40
-    );
-
-  ceilingLight.position.set(
-    0,
-    5.5,
-    -5
-  );
-
-  scene.add(
-    ceilingLight
-  );
-
-  lightObjects.push(
-    ceilingLight
-  );
-
-  createLight(
-    -7,3,-7,
-    0xffffff,
-    1.6,
-    16
-  );
-
-  createLight(
-    7,3,-7,
-    0xffffff,
-    1.6,
-    16
-  );
-
-  createLight(
-    -8,2,5,
-    0x666666,
-    0.8,
-    14
-  );
-
-  createLight(
-    8,2,5,
-    0x666666,
-    0.8,
-    14
-  );
-
-  createFloor();
-  createCeiling();
-  createWalls();
-  createDanceFloor();
-  createMainScreen();
-  createEWSLogo();
-  createStage();
-  // Old architectural columns removed.
-  createEntrance();
-  createNeonArchitecture();
-  createCeilingBeams();
-  createSpeakers();
-  createParticles();
-  createFog();
-  createClubLighting();
-  createPlayer();
-
-  setupControls();
-
-  animate();
-
-}
-
-/* =========================================================
-   OBJECTS
-========================================================= */
-
-function createBox(
-  w,h,d,
-  x,y,z,
-  material,
-  cast=true,
-  receive=true
-){
-
-  const mesh =
-    new THREE.Mesh(
-      new THREE.BoxGeometry(
-        w,h,d
-      ),
-      material
-    );
-
-  mesh.position.set(
-    x,y,z
-  );
-
-  mesh.castShadow=
-    cast;
-
-  mesh.receiveShadow=
-    receive;
-
-  scene.add(mesh);
-
-  return mesh;
-
-}
-
-function createLight(
-  x,y,z,
-  color,
-  intensity,
-  distance
-){
-
-  const light =
-    new THREE.PointLight(
-      color,
-      intensity,
-      distance
-    );
-
-  light.position.set(
-    x,y,z
-  );
-
-  light.castShadow=true;
-
-  scene.add(light);
-
-  lightObjects.push(
-    light
-  );
-
-  return light;
-
-}
-
-function createFloor(){
-
-  const texture = loadEWSTexture(EWS_TEXTURES.floor,8,10);
-
-  const mat = new THREE.MeshStandardMaterial({
-    map:texture,
-    color:0x121212,
-    metalness:.18,
-    roughness:.82
+  renderer.domElement.addEventListener('click',()=>{
+    if($('screen3d').classList.contains('active')) {
+      $('screenHint').classList.add('hide');
+      try { document.exitPointerLock(); } catch {}
+    } else {
+      renderer.domElement.requestPointerLock();
+    }
   });
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(36,42),
-    mat
-  );
-
-  floor.rotation.x=-Math.PI/2;
-  floor.receiveShadow=true;
-  scene.add(floor);
+  window.addEventListener('resize',resize);
+  animate();
 }
 
-function createCeiling(){
+function buildClubDetails() {
+  const mats=[
+    new THREE.MeshStandardMaterial({color:0x181818,roughness:.6,metalness:.35}),
+    new THREE.MeshStandardMaterial({color:0x303030,roughness:.45,metalness:.45})
+  ];
 
-  const texture = loadEWSTexture(EWS_TEXTURES.concrete,7,8);
+  for(let i=-3;i<=3;i++){
+    const pillar=new THREE.Mesh(new THREE.BoxGeometry(.4,7,.4),mats[i%2?0:1]);
+    pillar.position.set(i*4.5,3,-14.7);
+    scene.add(pillar);
+  }
 
-  const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(36,42),
-    new THREE.MeshStandardMaterial({
-      map:texture,
-      color:0x080808,
-      roughness:1
+  const stage=new THREE.Mesh(
+    new THREE.BoxGeometry(18,.35,4),
+    new THREE.MeshStandardMaterial({color:0x0b0b0b,roughness:.7,metalness:.25})
+  );
+  stage.position.set(0,.18,-8);
+  scene.add(stage);
+
+  for(let i=0;i<8;i++){
+    const glow=new THREE.Mesh(
+      new THREE.BoxGeometry(1.2,.05,5),
+      new THREE.MeshBasicMaterial({color:0x444444})
+    );
+    glow.position.set(-8.4+i*2.4,.38,-8);
+    scene.add(glow);
+  }
+
+  const screenFrame=new THREE.Mesh(
+    new THREE.BoxGeometry(14.6,6.6,.35),
+    new THREE.MeshStandardMaterial({color:0x020202,roughness:.4,metalness:.7})
+  );
+  screenFrame.position.set(0,5.35,-15.1);
+  scene.add(screenFrame);
+
+  const signCanvas=document.createElement('canvas');
+  signCanvas.width=1024;
+  signCanvas.height=256;
+  const ctx=signCanvas.getContext('2d');
+  ctx.fillStyle='#050505';
+  ctx.fillRect(0,0,1024,256);
+  ctx.fillStyle='#ffffff';
+  ctx.font='900 120px Arial';
+  ctx.textAlign='center';
+  ctx.fillText('EWS',512,145);
+
+  const sign=new THREE.Mesh(
+    new THREE.PlaneGeometry(7,1.75),
+    new THREE.MeshBasicMaterial({
+      map:new THREE.CanvasTexture(signCanvas),
+      transparent:true
     })
   );
-
-  ceiling.rotation.x=Math.PI/2;
-  ceiling.position.y=6;
-  scene.add(ceiling);
-}
-
-function createWalls(){
-
-  const texture = loadEWSTexture(EWS_TEXTURES.concrete,6,2);
-
-  const mat = new THREE.MeshStandardMaterial({
-    map:texture,
-    color:0x101010,
-    roughness:.93,
-    metalness:.04
-  });
-
-  createBox(36,6,.5,0,3,-17,mat);
-  createBox(36,6,.5,0,3,17,mat);
-  createBox(.5,6,34,-18,3,0,mat);
-  createBox(.5,6,34,18,3,0,mat);
-}
-
-function createDanceFloor(){
-
-  const floor =
-    new THREE.Mesh(
-      new THREE.BoxGeometry(
-        14,.12,14
-      ),
-      new THREE.MeshStandardMaterial({
-        map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
-        color:0x151515,
-        metalness:.35,
-        roughness:.58
-      })
-    );
-
-  floor.position.set(
-    0,.08,-1
-  );
-
-  floor.receiveShadow=true;
-
-  scene.add(floor);
-
-  const frameMat =
-    new THREE.MeshBasicMaterial({
-      color:0xffffff
-    });
-
-  const lines=[
-    [-7,.16,-1,14,.04,.04],
-    [7,.16,-1,14,.04,.04],
-    [0,.16,-8,.04,.04,14],
-    [0,.16,6,.04,.04,14]
-  ];
-
-  lines.forEach(
-    l=>{
-
-      const mesh =
-        createBox(
-          l[3],
-          l[4],
-          l[5],
-          l[0],
-          l[1],
-          l[2],
-          frameMat,
-          false,
-          false
-        );
-
-      neonObjects.push(
-        mesh
-      );
-
-    }
-  );
-
-}
-
-function createMainScreen(){
-  screenCanvas=document.createElement('canvas');
-  screenCanvas.width=1024;
-  screenCanvas.height=512;
-  screenCtx=screenCanvas.getContext('2d');
-  screenCtx.fillStyle='#050505';
-  screenCtx.fillRect(0,0,1024,512);
-  screenTexture=new THREE.CanvasTexture(screenCanvas);
-  screenTexture.needsUpdate=true;
-
-  const frame=new THREE.Mesh(
-    new THREE.BoxGeometry(14.6,6.6,.42),
-    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
-  );
-  frame.position.set(0,3.65,-16.72);
-  scene.add(frame);
-
-  screenMesh=new THREE.Mesh(
-    new THREE.PlaneGeometry(14,6),
-    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide,transparent:true,opacity:0})
-  );
-  screenMesh.position.set(0,3.65,-16.48);
-  scene.add(screenMesh);
-
-  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
-    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
-    m.position.set(a[3],a[4],a[5]);
-    scene.add(m);
-  });
-}
-
-function createStage(){
-
-  const stageMat =
-    new THREE.MeshStandardMaterial({
-      color:0x111111,
-      metalness:.6,
-      roughness:.35
-    });
-
-  createBox(
-    17,.45,3,
-    0,.3,-12.5,
-    stageMat
-  );
-
-  const stripMat =
-    new THREE.MeshBasicMaterial({
-      color:0xffffff
-    });
-
-  const strip =
-    createBox(
-      16,.04,.08,
-      0,.54,-11,
-      stripMat,
-      false,
-      false
-    );
-
-  neonObjects.push(
-    strip
-  );
-
-}
-
-
-
-
-
-function createColumns(){
-
-  // Removed the old square architectural columns.
-  // The room now stays visually open for the lighting and dance floor.
-
-}
-
-function createEntrance(){
-
-  const frameMat =
-    new THREE.MeshStandardMaterial({
-      color:0x191919,
-      metalness:.7
-    });
-
-  createBox(
-    7,5.5,.6,
-    0,2.75,16.3,
-    frameMat
-  );
-
-  createBox(
-    5.8,4.7,.1,
-    0,2.35,15.98,
-    new THREE.MeshBasicMaterial({
-      color:0x020202
-    }),
-    false,
-    false
-  );
-
-  const signCanvas =
-    document.createElement(
-      'canvas'
-    );
-
-  signCanvas.width=600;
-  signCanvas.height=160;
-
-  const ctx =
-    signCanvas.getContext(
-      '2d'
-    );
-
-  ctx.fillStyle='#050505';
-
-  ctx.fillRect(
-    0,
-    0,
-    600,
-    160
-  );
-
-  ctx.fillStyle='#fff';
-
-  ctx.font=
-    'bold 58px Arial';
-
-  ctx.textAlign='center';
-
-  ctx.fillText(
-    'EWS SESSIONS',
-    300,
-    95
-  );
-
-  const tex =
-    new THREE.CanvasTexture(
-      signCanvas
-    );
-
-  const sign =
-    new THREE.Mesh(
-      new THREE.PlaneGeometry(
-        5,
-        1.35
-      ),
-      new THREE.MeshBasicMaterial({
-        map:tex
-      })
-    );
-
-  sign.position.set(
-    0,
-    5.4,
-    15.65
-  );
-
+  sign.position.set(0,9.8,-15.0);
   scene.add(sign);
-
 }
 
-function createNeonArchitecture(){
+function resize() {
+  if(!renderer || !camera) return;
 
-  // High-contrast emissive-looking neon that stays visible in a dark club.
-  const neonMat=new THREE.MeshBasicMaterial({
-    color:0xffffff,
-    transparent:true,
-    opacity:.96,
-    blending:THREE.AdditiveBlending,
-    depthWrite:false
-  });
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
 
-  for(let z=-14;z<=14;z+=4){
-    const left=createBox(.085,4.2,.085,-17.42,3,z,neonMat,false,false);
-    const right=createBox(.085,4.2,.085,17.42,3,z,neonMat,false,false);
-    left.userData.neonColor=0x22ccff;
-    right.userData.neonColor=0xff2bd6;
-    neonObjects.push(left,right);
-  }
-
-  for(let z=-15;z<=15;z+=5){
-    const beam=createBox(34,.075,.075,0,5.35,z,neonMat,false,false);
-    beam.userData.neonColor=(Math.abs(z)%10===0)?0x22ccff:0xff2bd6;
-    neonObjects.push(beam);
-  }
-
-  // Dance-floor perimeter.
-  const floorMat=new THREE.MeshBasicMaterial({
-    color:0xffffff,
-    transparent:true,
-    opacity:1,
-    blending:THREE.AdditiveBlending,
-    depthWrite:false
-  });
-
-  [
-    [14,.10,.12,0,.19,-8,0x22ccff],
-    [14,.10,.12,0,.19,6,0xff2bd6],
-    [.12,.10,14,-7,.19,-1,0x22ccff],
-    [.12,.10,14,7,.19,-1,0xff2bd6]
-  ].forEach(a=>{
-    const m=createBox(a[0],a[1],a[2],a[3],a[4],a[5],floorMat,false,false);
-    m.userData.neonColor=a[6];
-    neonObjects.push(m);
-  });
-
-  // Extra wall accents so the club has depth at the sides.
-  [-12,-6,0,6,12].forEach((z,i)=>{
-    const l=createBox(.10,4.4,.10,-16.9,3,z,floorMat,false,false);
-    l.userData.neonColor=i%2?0xff2bd6:0x22ccff;
-    neonObjects.push(l);
-
-    const rr=createBox(.10,4.4,.10,16.9,3,z,floorMat,false,false);
-    rr.userData.neonColor=i%2?0x22ccff:0xff2bd6;
-    neonObjects.push(rr);
-  });
-
-}
-function createCeilingBeams(){
-
-  const mat =
-    new THREE.MeshStandardMaterial({
-      color:0x151515,
-      metalness:.8,
-      roughness:.3
-    });
-
-  for(
-    let x=-14;
-    x<=14;
-    x+=4
-  ){
-
-    createBox(
-      .3,.3,34,
-      x,5.7,0,
-      mat
-    );
-
-  }
-
+  renderer.setSize(innerWidth,innerHeight);
+  if(cssRenderer) cssRenderer.setSize(innerWidth,innerHeight);
 }
 
-function createSpeakers(){
-
-  // PRO PA — stage stacks grounded on the stage, wall fills on real floor stands.
-  const cabinet=new THREE.MeshStandardMaterial({color:0x080808,metalness:.58,roughness:.38});
-  const grille=new THREE.MeshStandardMaterial({color:0x181818,metalness:.05,roughness:.92});
-  const rubber=new THREE.MeshStandardMaterial({color:0x020202,roughness:.82});
-  const metal=new THREE.MeshStandardMaterial({color:0x262626,metalness:.82,roughness:.3});
-  const led=new THREE.MeshBasicMaterial({color:0x22ccff,transparent:true,opacity:.72});
-
-  function speakerBox(w,h,d){
-    const g=new THREE.Group();
-    const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),cabinet);
-    body.castShadow=true; body.receiveShadow=true; g.add(body);
-
-    const face=new THREE.Mesh(new THREE.BoxGeometry(w*.88,h*.84,.035),grille);
-    face.position.z=-d/2-.02; g.add(face);
-
-    const woofer=new THREE.Mesh(
-      new THREE.CylinderGeometry(Math.min(w,h)*.25,Math.min(w,h)*.25,.055,32),
-      rubber
-    );
-    woofer.rotation.x=Math.PI/2;
-    woofer.position.set(0,-h*.12,-d/2-.055);
-    g.add(woofer);
-
-    const wooferRing=new THREE.Mesh(
-      new THREE.TorusGeometry(Math.min(w,h)*.25,.035,8,32),
-      new THREE.MeshBasicMaterial({color:0x555555})
-    );
-    wooferRing.rotation.x=Math.PI/2;
-    wooferRing.position.set(0,-h*.12,-d/2-.09);
-    g.add(wooferRing);
-
-    const horn=new THREE.Mesh(new THREE.BoxGeometry(w*.34,h*.16,.07),rubber);
-    horn.position.set(0,h*.27,-d/2-.06); g.add(horn);
-
-    const line=new THREE.Mesh(new THREE.BoxGeometry(w*.7,.025,.025),led);
-    line.position.set(0,-h*.45,-d/2-.07); g.add(line);
-    return g;
-  }
-
-  // MAIN STAGE PA — moved toward the center/front edge of the stage and rotated toward dancers.
-  function stageStack(x,side){
-    const g=new THREE.Group();
-
-    // x is deliberately closer to center; y=stage deck, so nothing hangs.
-    g.position.set(x,0,-12.0);
-    // Front (-Z) points into the room; slight inward toe-in.
-    g.rotation.y=side<0 ? -0.12 : 0.12;
-
-    // Sub sits directly on the stage.
-    const sub=new THREE.Mesh(new THREE.BoxGeometry(2.15,1.05,1.15),cabinet);
-    sub.position.y=.525;
-    sub.castShadow=true; sub.receiveShadow=true;
-    g.add(sub);
-
-    const subGrille=new THREE.Mesh(new THREE.BoxGeometry(1.9,.80,.035),grille);
-    subGrille.position.set(0,.525,-.592);
-    g.add(subGrille);
-
-    // Top cabinet is physically sitting on the sub via a short riser.
-    const riser=new THREE.Mesh(new THREE.BoxGeometry(1.05,.16,.72),metal);
-    riser.position.y=1.13;
-    g.add(riser);
-
-    const top=speakerBox(1.58,2.18,.78);
-    top.position.y=2.30;
-    g.add(top);
-
-    // Small rubber feet at the stage contact point.
-    [-.72,.72].forEach(px=>{
-      const foot=new THREE.Mesh(new THREE.BoxGeometry(.22,.08,.35),rubber);
-      foot.position.set(px,0.04,.30);
-      g.add(foot);
-    });
-
-    scene.add(g);
-  }
-
-  // Close to the center of the stage, symmetric left/right.
-  stageStack(-4.9,-1);
-  stageStack(4.9,1);
-
-  // WALL FILLS — each has a proper floor-standing support column/base.
-  function wallSpeaker(x,z,side){
-    const g=new THREE.Group();
-    // Base is on the floor; the speaker is NOT floating.
-    g.position.set(x,0,z);
-    g.rotation.y=side<0 ? -Math.PI/2 : Math.PI/2;
-
-    const base=new THREE.Mesh(new THREE.BoxGeometry(1.45,.22,1.25),metal);
-    base.position.y=.11;
-    base.castShadow=true; base.receiveShadow=true;
-    g.add(base);
-
-    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.09,.12,2.25,16),metal);
-    pole.position.y=1.25;
-    pole.castShadow=true;
-    g.add(pole);
-
-    const mount=new THREE.Mesh(new THREE.BoxGeometry(.55,.18,.45),metal);
-    mount.position.y=2.36;
-    g.add(mount);
-
-    const box=speakerBox(1.18,1.65,.78);
-    box.position.y=3.22;
-    g.add(box);
-
-    // Secondary rear brace visually anchors the speaker to the wall.
-    const brace=new THREE.Mesh(new THREE.BoxGeometry(.16,1.0,.16),metal);
-    brace.position.set(side<0?.56:-.56,2.75,.34);
-    brace.rotation.z=side<0?.28:-.28;
-    g.add(brace);
-
-    scene.add(g);
-  }
-
-  wallSpeaker(-15.15,-5.6,-1);
-  wallSpeaker(15.15,-5.6,1);
-}
-function createFog(){
-  const count=420;
-  const geo=new THREE.BufferGeometry();
-  const pos=new Float32Array(count*3);
-  const scale=new Float32Array(count);
-  for(let i=0;i<count;i++){
-    pos[i*3]=(Math.random()-.5)*32;
-    pos[i*3+1]=.45+Math.random()*3.8;
-    pos[i*3+2]=(Math.random()-.5)*31;
-    scale[i]=1.5+Math.random()*2.8;
-  }
-  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  geo.setAttribute('aScale',new THREE.BufferAttribute(scale,1));
-  const canvas=document.createElement('canvas');
-  canvas.width=128; canvas.height=128;
-  const ctx=canvas.getContext('2d');
-  const g=ctx.createRadialGradient(64,64,4,64,64,62);
-  g.addColorStop(0,'rgba(255,255,255,.18)');
-  g.addColorStop(.45,'rgba(210,210,210,.08)');
-  g.addColorStop(1,'rgba(255,255,255,0)');
-  ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
-  const tex=new THREE.CanvasTexture(canvas);
-  fogMaterial=new THREE.PointsMaterial({map:tex,size:2.7,transparent:true,opacity:.18,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
-  fogParticles=new THREE.Points(geo,fogMaterial);
-  scene.add(fogParticles);
-}
-
-function createClubLighting(){
-
-  const colors=[0x22ccff,0xff2bd6,0x7a5cff,0xffffff,0xff3b5c,0x19ffe0];
-
-  // MOVING HEADS
-  const positions=[
-    [-13,5.45,-10],[13,5.45,-10],
-    [-13,5.45,0],[13,5.45,0],
-    [-9,5.45,10],[9,5.45,10]
-  ];
-
-  positions.forEach((p,i)=>{
-    const color=colors[i%colors.length];
-
-    const spot=new THREE.SpotLight(
-      color,
-      2.4,
-      34,
-      Math.PI/9,
-      .62,
-      1.15
-    );
-
-    spot.position.set(p[0],p[1],p[2]);
-    spot.target.position.set(0,.9,-2);
-    scene.add(spot);
-    scene.add(spot.target);
-    clubLights.push(spot);
-
-    // Visible fixture housing + glowing lens.
-    const fixture=new THREE.Group();
-    fixture.position.set(p[0],p[1]+.02,p[2]);
-
-    const body=new THREE.Mesh(
-      new THREE.CylinderGeometry(.25,.34,.55,12),
-      new THREE.MeshStandardMaterial({
-        color:0x080808,
-        metalness:.85,
-        roughness:.22
-      })
-    );
-    fixture.add(body);
-
-    const ring=new THREE.Mesh(
-      new THREE.TorusGeometry(.20,.045,10,24),
-      new THREE.MeshBasicMaterial({
-        color:color,
-        transparent:true,
-        opacity:.9,
-        blending:THREE.AdditiveBlending,
-        depthWrite:false
-      })
-    );
-
-    ring.position.y=-.18;
-    ring.rotation.x=Math.PI/2;
-    fixture.add(ring);
-    fixtureGlows.push(ring);
-
-    scene.add(fixture);
-  });
-
-  // FLOOR WASHES
-  const washPositions=[
-    [-6,.45,-7],[0,.45,-7],[6,.45,-7],
-    [-6,.45,5],[0,.45,5],[6,.45,5]
-  ];
-
-  washPositions.forEach((p,i)=>{
-    const wash=new THREE.PointLight(
-      colors[(i+1)%colors.length],
-      1.1,
-      13
-    );
-
-    wash.position.set(p[0],p[1],p[2]);
-    scene.add(wash);
-    floorWashLights.push(wash);
-  });
-
-  // FRONT-TRUSS STROBES
-  for(let i=0;i<4;i++){
-    const strobe=new THREE.PointLight(
-      i%2?0xff2bd6:0x22ccff,
-      0,
-      26
-    );
-
-    strobe.position.set(-9+i*6,4.9,-8);
-    scene.add(strobe);
-    strobeLights.push(strobe);
-  }
-
-  // LASER GUNS
-  const laserPositions=[
-    [-13.4,5.15,-8.8],
-    [-4.6,5.35,-12.3],
-    [4.6,5.35,-12.3],
-    [13.4,5.15,-8.8],
-    [-8.8,5.2,2.5],
-    [8.8,5.2,2.5]
-  ];
-
-  laserPositions.forEach((p,i)=>{
-    const color=colors[i%4];
-    const group=new THREE.Group();
-    group.position.set(p[0],p[1],p[2]);
-
-    const housing=new THREE.Mesh(
-      new THREE.BoxGeometry(.42,.28,.68),
-      new THREE.MeshStandardMaterial({
-        color:0x050505,
-        metalness:.9,
-        roughness:.2
-      })
-    );
-    group.add(housing);
-
-    const muzzle=new THREE.Mesh(
-      new THREE.CylinderGeometry(.075,.11,.26,16),
-      new THREE.MeshBasicMaterial({
-        color:color,
-        transparent:true,
-        opacity:1,
-        blending:THREE.AdditiveBlending,
-        depthWrite:false
-      })
-    );
-
-    muzzle.rotation.x=Math.PI/2;
-    muzzle.position.z=-.42;
-    group.add(muzzle);
-    scene.add(group);
-
-    const coreMat=new THREE.LineBasicMaterial({
-      color:color,
-      transparent:true,
-      opacity:.82,
-      blending:THREE.AdditiveBlending,
-      depthWrite:false
-    });
-
-    const glowMat=new THREE.LineBasicMaterial({
-      color:color,
-      transparent:true,
-      opacity:.11,
-      blending:THREE.AdditiveBlending,
-      depthWrite:false
-    });
-
-    const coreGeo=new THREE.BufferGeometry();
-    coreGeo.setAttribute(
-      'position',
-      new THREE.BufferAttribute(new Float32Array(6),3)
-    );
-
-    const glowGeo=new THREE.BufferGeometry();
-    glowGeo.setAttribute(
-      'position',
-      new THREE.BufferAttribute(new Float32Array(6),3)
-    );
-
-    const core=new THREE.Line(coreGeo,coreMat);
-    const glow=new THREE.Line(glowGeo,glowMat);
-
-    scene.add(core);
-    scene.add(glow);
-
-    laserSystems.push({
-      group,
-      core,
-      glow,
-      phase:i*.83,
-      speed:.45+i*.045
-    });
-  });
-
-}
-function createParticles(){
-
-  const count=900;
-
-  const geo =
-    new THREE.BufferGeometry();
-
-  const pos =
-    new Float32Array(
-      count*3
-    );
-
-  for(
-    let i=0;
-    i<count;
-    i++
-  ){
-
-    pos[i*3]=
-      (Math.random()-.5)*34;
-
-    pos[i*3+1]=
-      Math.random()*5.8;
-
-    pos[i*3+2]=
-      (Math.random()-.5)*34;
-
-  }
-
-  geo.setAttribute(
-    'position',
-    new THREE.BufferAttribute(
-      pos,
-      3
-    )
-  );
-
-  particles =
-    new THREE.Points(
-      geo,
-      new THREE.PointsMaterial({
-        color:0xffffff,
-        size:.035,
-        transparent:true,
-        opacity:.28
-      })
-    );
-
-  scene.add(
-    particles
-  );
-
-}
-
-function createPlayer(){
-
-  playerBody =
-    new THREE.Group();
-
-  const body =
-    new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        .25,
-        .32,
-        1,
-        12
-      ),
-      new THREE.MeshStandardMaterial({
-        color:0xffffff,
-        roughness:.7
-      })
-    );
-
-  body.position.y=.5;
-
-  playerBody.add(
-    body
-  );
-
-  const head =
-    new THREE.Mesh(
-      new THREE.SphereGeometry(
-        .23,
-        16,
-        16
-      ),
-      new THREE.MeshStandardMaterial({
-        color:0xdddddd,
-        roughness:.7
-      })
-    );
-
-  head.position.y=1.25;
-
-  playerBody.add(
-    head
-  );
-
-  playerBody.position.set(
-    0,
-    0,
-    13
-  );
-
-  scene.add(
-    playerBody
-  );
-
-}
-
-/* =========================================================
-   CONTROLS
-========================================================= */
-
-function setupControls(){
-
-  window.addEventListener(
-    'resize',
-    function(){
-
-      if(
-        !camera ||
-        !renderer
-      ){
-        return;
+function normalizeScreenUrl(value) {
+  let raw=String(value||'').trim();
+  if(!raw) return null;
+
+  try {
+    const u=new URL(raw);
+
+    if(u.hostname==='youtu.be') {
+      const id=u.pathname.split('/').filter(Boolean)[0];
+      if(!id) return null;
+      return {
+        src:'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1',
+        name:'YOUTUBE'
+      };
+    }
+
+    if(u.hostname.endsWith('youtube.com')) {
+      let id=u.searchParams.get('v');
+
+      if(!id && u.pathname.startsWith('/shorts/')) {
+        id=u.pathname.split('/')[2];
       }
 
-      camera.aspect=
-        innerWidth/
-        innerHeight;
-
-      camera.updateProjectionMatrix();
-
-      renderer.setSize(
-        innerWidth,
-        innerHeight
-      );
-
-      if(cssRenderer){
-        cssRenderer.setSize(innerWidth,innerHeight);
+      if(!id && u.pathname.startsWith('/embed/')) {
+        id=u.pathname.split('/')[2];
       }
 
-    }
-  );
-
-  window.addEventListener(
-    'keydown',
-    function(e){
-
-      // While typing, movement keys must never get stuck in the 3D controller.
-      const active=document.activeElement;
-      const typing=active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA');
-
-      if(e.code==='Escape' && chatMode){
-        e.preventDefault();
-        chatMode=false;
-        const input=document.getElementById('chat-input');
-        if(input) input.blur();
-        keys={};
-        return;
+      if(!id && u.pathname.startsWith('/live/')) {
+        id=u.pathname.split('/')[2];
       }
 
-      if(typing && !chatMode){
-        return;
+      if(!id) return null;
+
+      return {
+        src:'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1',
+        name:'YOUTUBE'
+      };
+    }
+
+    if(u.hostname==='twitch.tv' || u.hostname==='www.twitch.tv' || u.hostname.endsWith('.twitch.tv')) {
+      const bits=u.pathname.split('/').filter(Boolean);
+      if(!bits.length) return null;
+
+      const host=location.hostname;
+      const parent=encodeURIComponent(host);
+
+      if(bits[0]==='videos' && bits[1]) {
+        return {
+          src:'https://player.twitch.tv/?video='+encodeURIComponent(bits[1])+'&parent='+parent+'&autoplay=true',
+          name:'TWITCH'
+        };
       }
 
-      if(chatMode && active && active.id==='chat-input'){
-        if(e.code==='KeyW' || e.code==='KeyA' || e.code==='KeyS' || e.code==='KeyD' || e.code==='ArrowUp' || e.code==='ArrowDown' || e.code==='ArrowLeft' || e.code==='ArrowRight'){
-          return;
-        }
-      }
-
-      if(!chatMode){
-        if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
-        if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
-        if(e.code==='Digit3'){ playDance(3); e.preventDefault(); return; }
-        if(e.code==='Digit4'){ playDance(4); e.preventDefault(); return; }
-        if(e.code==='Digit5'){ playDance(5); e.preventDefault(); return; }
-        if(e.code==='Digit6'){ playDance(6); e.preventDefault(); return; }
-        if(['KeyW','KeyA','KeyS','KeyD','Space'].includes(e.code) && activeDance){ stopDance(); }
-      }
-
-      keys[e.code]=true;
-
-      if(
-        e.code==='KeyC'
-      ){
-
-        chatMode=
-          !chatMode;
-
-        toggleChat();
-
-      }
-
-      // SPACE = JUMP
-      // Пока открыт чат — пробел остаётся обычным пробелом.
-      if(
-        e.code==='Space' &&
-        !chatMode &&
-        pointerLocked &&
-        isGrounded
-      ){
-
-        e.preventDefault();
-
-        jumpVelocity=JUMP_FORCE;
-        isGrounded=false;
-
-      }
-
-    }
-  );
-
-  window.addEventListener(
-    'keyup',
-    function(e){
-
-      keys[e.code]=false;
-
-    }
-  );
-
-  const canvas =
-    document.getElementById(
-      'canvas3d'
-    );
-
-  canvas.addEventListener(
-    'click',
-    function(){
-
-      if(!chatMode){
-
-        canvas.requestPointerLock();
-
-      }
-
-    }
-  );
-
-  document.addEventListener(
-    'pointerlockchange',
-    function(){
-
-      pointerLocked=
-        document.pointerLockElement===
-        canvas;
-
-    }
-  );
-
-  document.addEventListener(
-    'mousemove',
-    function(e){
-
-      if(!pointerLocked)return;
-
-      yaw-=
-        e.movementX*.002;
-
-      pitch-=
-        e.movementY*.002;
-
-      pitch=
-        Math.max(
-          -1.45,
-          Math.min(
-            1.45,
-            pitch
-          )
-        );
-
-    }
-  );
-
-}
-
-function toggleChat(){
-
-  const input =
-    document.getElementById(
-      'chat-input'
-    );
-
-  if(chatMode){
-
-    if(document.pointerLockElement) document.exitPointerLock();
-
-    input.focus();
-
-  }else{
-
-    input.blur();
-    keys={};
-    const canvas=document.getElementById('canvas3d');
-    if(canvas && document.pointerLockElement!==canvas){
-      try{ canvas.requestPointerLock(); }catch(err){}
+      return {
+        src:'https://player.twitch.tv/?channel='+encodeURIComponent(bits[0])+'&parent='+parent+'&autoplay=true',
+        name:'TWITCH'
+      };
     }
 
-  }
-
-}
-
-
-/* =========================================================
-   CLUB SCREEN MEDIA
-========================================================= */
-
-function toggleScreenMenu(){
-  if(!isClubHost()) return;
-
-  const menu=document.getElementById('screen-menu');
-  if(!menu) return;
-
-  menu.classList.toggle('open');
-
-  if(menu.classList.contains('open')){
-    const input=document.getElementById('screen-url');
-    setTimeout(()=>input && input.focus(),40);
-  }
-}
-
-function setScreenStatus(text){
-  const el=document.getElementById('screen-status');
-  if(el) el.textContent=text;
-}
-
-function youtubeEmbed(url){
-  try{
-    const u=new URL(url);
-    let id='';
-
-    if(u.hostname.includes('youtu.be')){
-      id=u.pathname.split('/').filter(Boolean)[0]||'';
-    }else if(u.hostname.includes('youtube.com')){
-      id=u.searchParams.get('v')||'';
-
-      if(!id && u.pathname.startsWith('/shorts/')){
-        id=u.pathname.split('/')[2]||'';
-      }
-
-      if(!id && u.pathname.startsWith('/embed/')){
-        id=u.pathname.split('/')[2]||'';
-      }
-    }
-
-    if(!id) return null;
-
-    return 'https://www.youtube.com/embed/'+
-      encodeURIComponent(id)+
-      '?autoplay=1&rel=0&playsinline=1';
-  }catch(e){
-    return null;
-  }
-}
-
-function twitchEmbed(url){
-  try{
-    const u=new URL(url);
-
-    if(!u.hostname.includes('twitch.tv')){
-      return null;
-    }
-
-    const parts=u.pathname.split('/').filter(Boolean);
-
-    if(!parts.length){
-      return null;
-    }
-
-    const parent=
-      location.hostname ||
-      'ews-sessions.onrender.com';
-
-    if(parts[0]==='videos' && parts[1]){
-      return 'https://player.twitch.tv/?video='+
-        encodeURIComponent(parts[1])+
-        '&parent='+encodeURIComponent(parent)+
-        '&autoplay=true';
-    }
-
-    return 'https://player.twitch.tv/?channel='+
-      encodeURIComponent(parts[0])+
-      '&parent='+encodeURIComponent(parent)+
-      '&autoplay=true';
-  }catch(e){
-    return null;
-  }
-}
-
-function normalizeClubScreenUrl(raw){
-  const value=String(raw||'').trim();
-
-  if(!value) return null;
-
-  const yt=youtubeEmbed(value);
-  if(yt){
-    return {
-      src:yt,
-      name:'YOUTUBE'
-    };
-  }
-
-  const tw=twitchEmbed(value);
-  if(tw){
-    return {
-      src:tw,
-      name:'TWITCH'
-    };
-  }
-
-  try{
-    const u=new URL(value);
-
-    if(
-      u.protocol!=='http:' &&
-      u.protocol!=='https:'
-    ){
-      return null;
-    }
+    if(u.protocol!=='https:') return null;
 
     return {
       src:u.href,
-      name:'WEBSITE'
+      name:'HTTPS'
     };
-  }catch(e){
+  } catch {
     return null;
   }
 }
 
-function isClubHost(){
-  return String(currentUser||'').trim().toLowerCase()==='mvxtra';
-}
-
-function loadClubScreen(){
-  if(!isClubHost()){
-    return;
-  }
-
-  const input=document.getElementById('screen-url');
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('css3d-screen');
-
-  if(!input || !frame || !panel){
-    return;
-  }
-
-  const result=normalizeClubScreenUrl(input.value);
-
-  if(!result){
-    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или https:// сайт.');
-    return;
-  }
-
-  frame.src=result.src;
-
-  panel.classList.add('active');
-
-  screenMediaActive=true;
-  screenMediaUrl=result.src;
-
-  setScreenStatus(
-    result.name+
-    ' LOADED — общий экран клуба.'
-  );
-
-  const screenState={
-    active:true,
-    src:result.src,
-    url:input.value.trim(),
-    name:result.name
-  };
-
-  pendingScreenState=screenState;
-
-  if(socket && socket.connected){
-    socket.emit('screen:set',screenState);
-    pendingScreenState=null;
-  }
-
-  const menu=document.getElementById('screen-menu');
-  if(menu) menu.classList.remove('open');
-}
-
-function clearClubScreen(){
-  if(!isClubHost()){
-    return;
-  }
-
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('css3d-screen');
-
-  if(frame) frame.src='about:blank';
-  if(panel) panel.classList.remove('active');
-
-  screenMediaActive=false;
-  screenMediaUrl='';
-
-  const screenState={active:false};
-  pendingScreenState=screenState;
-
-  if(socket && socket.connected){
-    socket.emit('screen:set',screenState);
-    pendingScreenState=null;
-  }
-
-  setScreenStatus('Экран очищен.');
-}
-
-function enableScreenInteraction(){
-  if(document.pointerLockElement){
-    try{
-      document.exitPointerLock();
-    }catch(e){}
-  }
-
-  const panel=document.getElementById('css3d-screen');
-
-  if(panel){
-    panel.style.pointerEvents='auto';
-  }
-}
-
-document.addEventListener('mousedown',function(e){
-  const screen=
-    e.target &&
-    e.target.closest
-      ? e.target.closest('#css3d-screen')
-      : null;
-
-  if(screen){
-    enableScreenInteraction();
-  }
-});
-
-function openMobileScreen(src){
-  const wrap=document.getElementById('mobile-screen-player');
-  const frame=document.getElementById('mobile-screen-frame');
-
-  if(!wrap || !frame || window.innerWidth>700){
-    return;
-  }
-
-  frame.setAttribute(
-    'allow',
-    'autoplay; fullscreen; encrypted-media; picture-in-picture'
-  );
-
-  frame.setAttribute('allowfullscreen','');
-  frame.src=src;
-  wrap.classList.add('open');
-}
-
-function closeMobileScreen(){
-  const wrap=document.getElementById('mobile-screen-player');
-  const frame=document.getElementById('mobile-screen-frame');
-
-  if(frame) frame.src='about:blank';
-  if(wrap) wrap.classList.remove('open');
-}
-
-function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('css3d-screen');
-
-  if(!frame || !panel){
-    return;
-  }
-
-  state=state || {};
+function applyScreen(state) {
+  state=state||{};
 
   const version=Number(state.version)||0;
+  if(version && version<lastScreenVersion) return;
 
-  // Ignore an old packet arriving after a newer screen state.
-  if(
-    typeof applyRemoteClubScreen.lastVersion==='number' &&
-    version &&
-    version < applyRemoteClubScreen.lastVersion
-  ){
-    return;
-  }
+  if(version) lastScreenVersion=version;
 
-  if(version){
-    applyRemoteClubScreen.lastVersion=version;
-  }
+  const box=$('screen3d');
+  const frame=$('screenFrame');
 
-  if(
-    state.active!==true ||
-    !state.src
-  ){
+  if(state.active!==true || !state.src) {
+    box.classList.remove('active');
+    $('screenHint').classList.add('hide');
     frame.src='about:blank';
-    frame.style.display='block';
-    frame.style.visibility='hidden';
-    frame.style.opacity='0';
-    panel.style.display='block';
-    panel.style.visibility='hidden';
-    panel.style.opacity='0';
-    panel.classList.remove('active');
-
-    screenMediaActive=false;
-    screenMediaUrl='';
-
-    const audioHint=document.getElementById('screen-audio-hint');
-    if(audioHint) audioHint.style.display='none';
-
-    closeMobileScreen();
+    screenUrlLoaded='';
     return;
   }
 
-  let src='';
-  const originalUrl=String(state.url||'').trim();
+  const original=String(state.url||'').trim();
+  const normalized=original ? normalizeScreenUrl(original) : null;
+  const src=normalized ? normalized.src : String(state.src).trim();
 
-  if(originalUrl){
-    const normalized=
-      normalizeClubScreenUrl(originalUrl);
+  if(!src) return;
 
-    src=
-      normalized
-        ? normalized.src
-        : String(state.src||'').trim();
-  }else{
-    src=String(state.src||'').trim();
-  }
-
-  if(!src){
-    return;
-  }
-
-  if(screenMediaUrl!==src){
+  if(src!==screenUrlLoaded) {
     frame.src=src;
-    screenMediaUrl=src;
+    screenUrlLoaded=src;
   }
 
-  // Force the shared screen visible on every client, including reconnects.
-  panel.style.display='block';
-  panel.style.visibility='visible';
-  panel.style.opacity='1';
-  frame.style.display='block';
-  frame.style.visibility='visible';
-  frame.style.width='100%';
-  frame.style.height='100%';
+  box.classList.add('active');
+  $('screenHint').classList.toggle('hide',isHost());
 
-  frame.setAttribute(
-    'allow',
-    'autoplay; fullscreen; encrypted-media; picture-in-picture'
-  );
-
-  frame.setAttribute('allowfullscreen','');
-
-  screenMediaActive=true;
-  panel.classList.add('active');
-
-  const audioHint=document.getElementById('screen-audio-hint');
-  if(audioHint){
-    audioHint.style.display=isClubHost()?'none':'block';
-  }
-
-  openMobileScreen(src);
+  // CSS3DObject keeps the DOM screen in the actual 3D room.
+  cssObject.element.style.display='block';
 }
 
-/* =========================================================
-   ANIMATION
-========================================================= */
+$('screenLoad').onclick=()=>{
+  if(!isHost() || !socket || !socket.connected) return;
 
-function animate(){
+  const normalized=normalizeScreenUrl($('screenUrl').value);
 
-  requestAnimationFrame(
-    animate
-  );
-
-  if(!scene)return;
-
-  const dt =
-    Math.min(
-      clock.getDelta(),
-      .05
-    );
-
-  const time =
-    performance.now()/1000;
-
-  // The club no longer has its own OBS/HLS audio connection.
-  // YouTube/Twitch audio stays inside their iframe players.
-  // Lighting keeps its autonomous club animation.
-  let bass=
-    .25+
-    Math.sin(time*3)*.12;
-
-  let level=
-    .25+
-    Math.sin(time*1.5)*.08;
-
-  const speed=
-    chatMode || activeDance
-      ?0
-      :5*dt;
-
-  let forward=0;
-  let side=0;
-
-  if(
-    keys['KeyW']
-  ){
-    forward+=1;
-  }
-
-  if(
-    keys['KeyS']
-  ){
-    forward-=1;
-  }
-
-  if(
-    keys['KeyA']
-  ){
-    side-=1;
-  }
-
-  if(
-    keys['KeyD']
-  ){
-    side+=1;
-  }
-
-  // =========================
-  // JUMP PHYSICS
-  // =========================
-
-  if(!chatMode){
-
-    jumpVelocity-=
-      GRAVITY*dt;
-
-    playerY+=
-      jumpVelocity*dt;
-
-    if(playerY<=GROUND_Y){
-
-      playerY=GROUND_Y;
-      jumpVelocity=0;
-      isGrounded=true;
-
-    }
-
-  }
-
-  if(
-    pointerLocked &&
-    !chatMode
-  ){
-
-    const fx=
-      -Math.sin(yaw);
-
-    const fz=
-      -Math.cos(yaw);
-
-    const rx=
-      Math.cos(yaw);
-
-    const rz=
-      -Math.sin(yaw);
-
-    tryMovePlayer(
-      (fx*forward+rx*side)*speed,
-      (fz*forward+rz*side)*speed
-    );
-
-  }
-
-  camera.position.x=
-    THREE.MathUtils.clamp(
-      camera.position.x,
-      -16,
-      16
-    );
-
-  camera.position.z=
-    THREE.MathUtils.clamp(
-      camera.position.z,
-      -15.5,
-      15.5
-    );
-
-  camera.position.y=playerY;
-
-  camera.rotation.order=
-    'YXZ';
-
-  camera.rotation.y=
-    yaw;
-
-  camera.rotation.x=
-    pitch;
-
-  if(playerBody){
-
-    playerBody.position.x=
-      camera.position.x;
-
-    playerBody.position.z=
-      camera.position.z;
-
-    playerBody.visible=false;
-
-  }
-
-  broadcastPlayerState(performance.now());
-
-  if(particles){
-    particles.rotation.y+=.00015;
-    particles.material.opacity=.22+audioLevel*.18;
-  }
-
-  if(fogParticles){
-    fogParticles.rotation.y+=dt*.006;
-    fogParticles.position.x=Math.sin(time*.12)*.7;
-    fogParticles.position.z=Math.cos(time*.10)*.55;
-    fogMaterial.opacity=.12+audioLevel*.16+bassLevel*.08;
-    fogMaterial.size=2.5+bassLevel*1.2;
-  }
-
-  clubLights.forEach((light,i)=>{
-    const sweepX=Math.sin(time*(.32+i*.055)+i)*7.8;
-    const sweepZ=-2+Math.cos(time*(.26+i*.043)+i*.7)*8.2;
-
-    light.target.position.x=sweepX;
-    light.target.position.y=.7+Math.sin(time*(.7+i*.08))*1.1;
-    light.target.position.z=sweepZ;
-
-    light.intensity=1.15+bassLevel*5.8+audioLevel*1.4;
-  });
-
-  floorWashLights.forEach((light,i)=>{
-    const wave=.5+.5*Math.sin(time*2.3+i*.85);
-    light.intensity=.6+wave*.75+bassLevel*2.25;
-  });
-
-  fixtureGlows.forEach((ring,i)=>{
-    ring.material.opacity=Math.min(
-      1,
-      .58+bassLevel*.9+Math.sin(time*4+i)*.12
-    );
-  });
-
-  strobeLights.forEach((light,i)=>{
-    const hit=Math.max(0,bassLevel-.34);
-    light.intensity=Math.min(
-      12,
-      hit*24*(i%2?.72:1)
-    );
-  });
-
-  laserSystems.forEach((laser,i)=>{
-    const aimX=Math.sin(time*laser.speed+laser.phase)*11.5;
-    const aimY=1.0+Math.sin(time*(laser.speed*.77)+laser.phase*1.7)*2.15;
-    const aimZ=-1.5+Math.cos(time*(laser.speed*.83)+laser.phase)*10.5;
-    const target=new THREE.Vector3(aimX,aimY,aimZ);
-
-    laser.group.lookAt(target);
-
-    const origin=laser.group.position;
-    const end=origin.clone()
-      .add(target.clone().sub(origin).normalize().multiplyScalar(34));
-
-    const ca=laser.core.geometry.attributes.position.array;
-    ca[0]=origin.x;
-    ca[1]=origin.y;
-    ca[2]=origin.z;
-    ca[3]=end.x;
-    ca[4]=end.y;
-    ca[5]=end.z;
-    laser.core.geometry.attributes.position.needsUpdate=true;
-
-    const ga=laser.glow.geometry.attributes.position.array;
-    ga[0]=origin.x;
-    ga[1]=origin.y;
-    ga[2]=origin.z;
-    ga[3]=end.x;
-    ga[4]=end.y;
-    ga[5]=end.z;
-    laser.glow.geometry.attributes.position.needsUpdate=true;
-
-    const pulse=.55+bassLevel*.8;
-    laser.core.material.opacity=Math.min(1,.58+pulse*.32);
-    laser.glow.material.opacity=Math.min(.26,.08+pulse*.10);
-  });
-
-  remotePlayers.forEach(p=>{
-    const t=performance.now()/1000;
-    const swing=p.moving?Math.sin(t*8)*.35:0;
-    const limbs=p.group.children.filter(o=>o.isMesh);
-    if(limbs.length>=5){ limbs[2].rotation.x=swing; limbs[3].rotation.x=-swing; limbs[4].rotation.x=-swing; }
-  });
-
-  neonObjects.forEach(
-    (obj,index)=>{
-      const pulse=.72+Math.sin(time*3+index*.4)*.16+bassLevel*.55;
-      const base=new THREE.Color(obj.userData.neonColor || 0xffffff);
-      const boost=Math.min(1.65,pulse);
-
-      obj.material.color.copy(base).multiplyScalar(boost);
-      obj.material.opacity=Math.min(
-        1,
-        .78+audioLevel*.22+bassLevel*.16
-      );
-
-      if(obj.material.emissive){
-        obj.material.emissive.copy(base).multiplyScalar(boost*.6);
-      }
-    }
-  );
-
-  lightObjects.forEach(
-    (light,index)=>{
-
-      light.intensity=
-        1+
-        bassLevel*2+
-        Math.sin(
-          time*2+
-          index
-        )*.15;
-
-    }
-  );
-
-  if(screenCtx){
-
-    screenCtx.fillStyle=
-      '#050505';
-
-    screenCtx.fillRect(
-      0,
-      0,
-      1024,
-      512
-    );
-
-    const grd =
-      screenCtx.createLinearGradient(
-        0,
-        0,
-        1024,
-        0
-      );
-
-    const intensity=
-      40+
-      Math.floor(
-        bassLevel*120
-      );
-
-    grd.addColorStop(
-      0,
-      `rgb(${intensity},${intensity},${intensity})`
-    );
-
-    grd.addColorStop(
-      .5,
-      '#050505'
-    );
-
-    grd.addColorStop(
-      1,
-      `rgb(${intensity},${intensity},${intensity})`
-    );
-
-    screenCtx.fillStyle=
-      grd;
-
-    screenCtx.fillRect(
-      0,
-      0,
-      1024,
-      512
-    );
-
-    screenCtx.fillStyle=
-      '#fff';
-
-    screenCtx.font=
-      'bold 80px Arial';
-
-    screenCtx.textAlign=
-      'center';
-
-    screenCtx.fillText(
-      'EWS SESSIONS',
-      512,
-      200
-    );
-
-    screenCtx.font=
-      '22px Arial';
-
-    screenCtx.fillStyle=
-      '#777';
-
-    screenCtx.fillText(
-      'UNDERGROUND CLUB',
-      512,
-      245
-    );
-
-    const bars=48;
-
-    const bw=
-      800/bars;
-
-    for(
-      let i=0;
-      i<bars;
-      i++
-    ){
-
-      let value;
-
-      if(
-        freqData &&
-        audioStarted
-      ){
-
-        value=
-          freqData[
-            Math.floor(
-              i*
-              freqData.length/
-              bars
-            )
-          ]/255;
-
-      }else{
-
-        value=
-          .2+
-          Math.sin(
-            time*4+
-            i*.5
-          )*.15;
-
-      }
-
-      const h=
-        value*180;
-
-      screenCtx.fillStyle=
-        '#fff';
-
-      screenCtx.fillRect(
-        112+i*bw,
-        450-h,
-        bw-3,
-        h
-      );
-
-    }
-
-    screenTexture.needsUpdate=true;
-
-  }
-
-
-  remotePlayers.forEach(p=>{
-    if(p.dance) animateRemoteDance(p,time);
-    else resetRemoteDancePose(p);
-  });
-
-  renderer.render(
-    scene,
-    camera
-  );
-
-  // Keep the HTML player exactly on the physical screen anchor.
-  if(cssScreenObject && screenMesh){
-    cssScreenObject.position.copy(screenMesh.position);
-    cssScreenObject.rotation.copy(screenMesh.rotation);
-    cssScreenObject.scale.set(0.01,0.01,0.01);
-    cssScreenObject.position.z += 0.035;
-  }
-
-  if(cssRenderer && cssScene){
-    cssRenderer.render(cssScene,camera);
-  }
-
-}
-
-/* =========================================================
-   REMOTE PLAYERS / SILHOUETTES
-========================================================= */
-/* =========================================================
-   REMOTE PLAYERS / AVATARS
-========================================================= */
-
-function createRemotePlayer(data){
-  if(
-    !scene ||
-    !data ||
-    !data.id ||
-    data.id===socket?.id
-  ){
+  if(!normalized) {
+    addChat('SYSTEM','Use a YouTube, Twitch or HTTPS link.');
     return;
   }
 
-  if(remotePlayers.has(data.id)){
-    removeRemotePlayer(data.id);
-  }
+  socket.emit('screen:set',{
+    active:true,
+    src:normalized.src,
+    url:$('screenUrl').value.trim(),
+    name:normalized.name
+  });
+};
 
-  const g=new THREE.Group();
+$('screenClear').onclick=()=>{
+  if(!isHost() || !socket || !socket.connected) return;
+  socket.emit('screen:set',{active:false});
+};
 
-  g.userData.username=
-    String(data.username||'PLAYER');
+function createLabel(name) {
+  const canvas=document.createElement('canvas');
+  canvas.width=512;
+  canvas.height=96;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,512,96);
+  ctx.fillStyle='#ffffff';
+  ctx.font='700 34px Arial';
+  ctx.textAlign='center';
+  ctx.fillText(String(name||'PLAYER'),256,58);
 
-  /*
-    Stable avatar:
-    no external model files, no GLTF dependency, no skin loading.
-    The same socket id always produces the same accent colours.
-  */
-  let seed=0;
-
-  for(
-    let i=0;
-    i<String(data.id).length;
-    i++
-  ){
-    seed=
-      (seed*31+
-       String(data.id).charCodeAt(i))
-      >>>0;
-  }
-
-  const rnd=()=>{
-    seed=
-      (seed*1664525+
-       1013904223)
-      >>>0;
-
-    return seed/4294967296;
-  };
-
-  const bodyColors=[
-    0x9aa0a6,
-    0xb8b8b8,
-    0x6f7780,
-    0xd0d0d0,
-    0x777777,
-    0xa6a6a6
-  ];
-
-  const accentColors=[
-    0xffffff,
-    0x55ccff,
-    0xff5577,
-    0xffc857,
-    0x9cff57,
-    0xc77dff
-  ];
-
-  const bodyColor=
-    bodyColors[
-      Math.floor(
-        rnd()*bodyColors.length
-      )
-    ];
-
-  const accentColor=
-    accentColors[
-      Math.floor(
-        rnd()*accentColors.length
-      )
-    ];
-
-  const bodyMat=
-    new THREE.MeshStandardMaterial({
-      color:bodyColor,
-      metalness:.72,
-      roughness:.28
-    });
-
-  const darkMat=
-    new THREE.MeshStandardMaterial({
-      color:0x101216,
-      metalness:.65,
-      roughness:.32
-    });
-
-  const accentMat=
-    new THREE.MeshStandardMaterial({
-      color:accentColor,
-      emissive:accentColor,
-      emissiveIntensity:1.8,
-      metalness:.25,
-      roughness:.25
-    });
-
-  const torso=
-    new THREE.Mesh(
-      new THREE.BoxGeometry(.58,.78,.34),
-      bodyMat
-    );
-
-  torso.position.y=.92;
-  torso.castShadow=true;
-  g.add(torso);
-
-  const chest=
-    new THREE.Mesh(
-      new THREE.BoxGeometry(.30,.25,.025),
-      accentMat
-    );
-
-  chest.position.set(
-    0,
-    1.02,
-    -.185
+  const tex=new THREE.CanvasTexture(canvas);
+  const sprite=new THREE.Sprite(
+    new THREE.SpriteMaterial({
+      map:tex,
+      transparent:true,
+      depthTest:false
+    })
   );
 
-  g.add(chest);
+  sprite.scale.set(2.3,.43,1);
+  sprite.position.y=2.9;
+  return sprite;
+}
 
-  const head=
-    new THREE.Mesh(
-      new THREE.BoxGeometry(.46,.42,.40),
-      bodyMat
-    );
+function avatarSeed(id) {
+  let n=0;
+  for(let i=0;i<String(id).length;i++) n=(n*31+String(id).charCodeAt(i))>>>0;
+  return n;
+}
 
-  head.position.y=1.57;
+function createRemotePlayer(data) {
+  const g=new THREE.Group();
+  g.userData.id=data.id;
+
+  const seed=avatarSeed(data.id);
+  const bodyColor=0x777777 + (seed % 4)*0x080808;
+  const accent=seed%2 ? 0xdddddd : 0xaaaaaa;
+
+  const body=new THREE.Mesh(
+    new THREE.BoxGeometry(.8,1.25,.45),
+    new THREE.MeshStandardMaterial({color:bodyColor,roughness:.65})
+  );
+  body.position.y=1.35;
+  body.castShadow=true;
+  g.add(body);
+
+  const head=new THREE.Mesh(
+    new THREE.SphereGeometry(.38,12,12),
+    new THREE.MeshStandardMaterial({color:accent,roughness:.6})
+  );
+  head.position.y=2.3;
   head.castShadow=true;
   g.add(head);
 
-  const face=
-    new THREE.Mesh(
-      new THREE.BoxGeometry(.34,.13,.025),
-      darkMat
-    );
-
-  face.position.set(
-    0,
-    1.57,
-    -.215
+  const legL=new THREE.Mesh(
+    new THREE.BoxGeometry(.22,.95,.24),
+    new THREE.MeshStandardMaterial({color:0x292929})
   );
+  legL.position.set(-.2,.48,0);
+  legL.castShadow=true;
+  g.add(legL);
 
-  g.add(face);
+  const legR=legL.clone();
+  legR.position.x=.2;
+  g.add(legR);
 
-  const eyeL=
-    new THREE.Mesh(
-      new THREE.BoxGeometry(.075,.045,.018),
-      accentMat
-    );
-
-  const eyeR=eyeL.clone();
-
-  eyeL.position.set(
-    -.105,
-    1.58,
-    -.23
+  const armL=new THREE.Mesh(
+    new THREE.BoxGeometry(.2,1.02,.22),
+    new THREE.MeshStandardMaterial({color:0x444444})
   );
+  armL.position.set(-.56,1.38,0);
+  armL.rotation.z=.05;
+  armL.castShadow=true;
+  g.add(armL);
 
-  eyeR.position.set(
-    .105,
-    1.58,
-    -.23
-  );
+  const armR=armL.clone();
+  armR.position.x=.56;
+  armR.rotation.z=-.05;
+  g.add(armR);
 
-  g.add(
-    eyeL,
-    eyeR
-  );
+  g.add(createLabel(data.username));
 
-  const antenna=
-    new THREE.Mesh(
-      new THREE.CylinderGeometry(.018,.018,.22,8),
-      darkMat
-    );
-
-  antenna.position.set(
-    0,
-    1.89,
-    0
-  );
-
-  g.add(antenna);
-
-  const tip=
-    new THREE.Mesh(
-      new THREE.SphereGeometry(.045,10,10),
-      accentMat
-    );
-
-  tip.position.set(
-    0,
-    2.02,
-    0
-  );
-
-  g.add(tip);
-
-  const armGeo=
-    new THREE.BoxGeometry(
-      .16,
-      .70,
-      .18
-    );
-
-  const legGeo=
-    new THREE.BoxGeometry(
-      .19,
-      .78,
-      .22
-    );
-
-  const leftArm=
-    new THREE.Mesh(
-      armGeo,
-      bodyMat
-    );
-
-  const rightArm=
-    new THREE.Mesh(
-      armGeo,
-      bodyMat
-    );
-
-  leftArm.position.set(
-    -.42,
-    .92,
-    0
-  );
-
-  rightArm.position.set(
-    .42,
-    .92,
-    0
-  );
-
-  g.add(
-    leftArm,
-    rightArm
-  );
-
-  const handGeo=
-    new THREE.SphereGeometry(
-      .105,
-      10,
-      10
-    );
-
-  const leftHand=
-    new THREE.Mesh(
-      handGeo,
-      darkMat
-    );
-
-  const rightHand=
-    leftHand.clone();
-
-  leftHand.position.set(
-    -.42,
-    .53,
-    0
-  );
-
-  rightHand.position.set(
-    .42,
-    .53,
-    0
-  );
-
-  g.add(
-    leftHand,
-    rightHand
-  );
-
-  const leftLeg=
-    new THREE.Mesh(
-      legGeo,
-      darkMat
-    );
-
-  const rightLeg=
-    new THREE.Mesh(
-      legGeo,
-      darkMat
-    );
-
-  leftLeg.position.set(
-    -.16,
-    .30,
-    0
-  );
-
-  rightLeg.position.set(
-    .16,
-    .30,
-    0
-  );
-
-  g.add(
-    leftLeg,
-    rightLeg
-  );
-
-  const footGeo=
-    new THREE.BoxGeometry(
-      .24,
-      .12,
-      .38
-    );
-
-  const leftFoot=
-    new THREE.Mesh(
-      footGeo,
-      darkMat
-    );
-
-  const rightFoot=
-    leftFoot.clone();
-
-  leftFoot.position.set(
-    -.16,
-    -.10,
-    -.07
-  );
-
-  rightFoot.position.set(
-    .16,
-    -.10,
-    -.07
-  );
-
-  g.add(
-    leftFoot,
-    rightFoot
-  );
-
-  const parts={
-    torso,
-    head,
-    leftArm,
-    rightArm,
-    leftLeg,
-    rightLeg,
-    eyeL,
-    eyeR
-  };
-
-  const labelCanvas=
-    document.createElement('canvas');
-
-  labelCanvas.width=256;
-  labelCanvas.height=64;
-
-  const ctx=
-    labelCanvas.getContext('2d');
-
-  ctx.clearRect(
-    0,
-    0,
-    256,
-    64
-  );
-
-  ctx.font=
-    'bold 24px Arial';
-
-  ctx.textAlign='center';
-  ctx.fillStyle='#ffffff';
-
-  ctx.fillText(
-    g.userData.username,
-    128,
-    32
-  );
-
-  const tex=
-    new THREE.CanvasTexture(
-      labelCanvas
-    );
-
-  const label=
-    new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map:tex,
-        transparent:true,
-        depthTest:false
-      })
-    );
-
-  label.scale.set(
-    1.7,
-    .42,
-    1
-  );
-
-  label.position.y=2.22;
-
-  g.add(label);
-
-  const x=
-    Number.isFinite(Number(data.x))
-      ? Number(data.x)
-      : 0;
-
-  const z=
-    Number.isFinite(Number(data.z))
-      ? Number(data.z)
-      : 13;
-
-  const y=
-    Number.isFinite(Number(data.y))
-      ? Number(data.y)
-      : 0;
-
-  const ry=
-    Number.isFinite(
-      Number(data.yaw ?? data.ry)
-    )
-      ? Number(data.yaw ?? data.ry)
-      : 0;
-
-  g.position.set(
-    x,
-    y,
-    z
-  );
-
-  g.rotation.y=ry;
-  g.visible=true;
+  g.position.set(Number(data.x)||0,GROUND_Y,Number(data.z)||0);
+  g.rotation.y=Number(data.yaw)||0;
 
   scene.add(g);
-
-  remotePlayers.set(
-    data.id,
-    {
-      group:g,
-      last:{
-        x,
-        z,
-        yaw:ry
-      },
-      moving:Boolean(data.moving),
-      username:
-        String(data.username||'PLAYER'),
-      dance:
-        Number(data.dance)||0,
-      danceStartedAt:
-        Number(data.danceStartedAt)||0,
-      parts,
-      baseY:y
-    }
-  );
+  remotePlayers.set(data.id,{
+    group:g,
+    data,
+    targetX:g.position.x,
+    targetZ:g.position.z,
+    targetYaw:g.rotation.y
+  });
 }
 
-function updateRemotePlayer(data){
-  if(
-    !data ||
-    !data.id ||
-    data.id===socket?.id
-  ){
-    return;
-  }
+function updateRemotePlayer(data) {
+  let p=remotePlayers.get(data.id);
 
-  if(!remotePlayers.has(data.id)){
+  if(!p) {
     createRemotePlayer(data);
+    p=remotePlayers.get(data.id);
   }
 
-  const p=remotePlayers.get(data.id);
+  if(!p) return;
 
-  if(!p || !p.group){
-    return;
-  }
-
-  const rawX=Number(data.x);
-  const rawZ=Number(data.z);
-  const rawY=Number(data.y);
-  const rawYaw=
-    Number(data.yaw ?? data.ry);
-
-  const nx=
-    Number.isFinite(rawX)
-      ? rawX
-      : p.group.position.x;
-
-  const nz=
-    Number.isFinite(rawZ)
-      ? rawZ
-      : p.group.position.z;
-
-  const ny=
-    Number.isFinite(rawY)
-      ? rawY
-      : p.group.position.y;
-
-  const nyaw=
-    Number.isFinite(rawYaw)
-      ? rawYaw
-      : p.group.rotation.y;
-
-  const dx=
-    nx-p.group.position.x;
-
-  const dz=
-    nz-p.group.position.z;
-
-  p.moving=
-    Boolean(data.moving) ||
-    Math.hypot(dx,dz)>.002;
-
-  if(data.dance!==undefined){
-    p.dance=
-      Number(data.dance)||0;
-  }
-
-  if(data.danceStartedAt!==undefined){
-    p.danceStartedAt=
-      Number(data.danceStartedAt)||0;
-  }
-
-  p.group.position.x=nx;
-  p.group.position.y=ny;
-  p.group.position.z=nz;
-  p.group.rotation.y=nyaw;
-
-  p.last={
-    x:nx,
-    z:nz,
-    yaw:nyaw
-  };
+  p.data=data;
+  p.targetX=Number(data.x)||0;
+  p.targetZ=Number(data.z)||0;
+  p.targetYaw=Number(data.yaw)||0;
 }
 
-function removeRemotePlayer(id){
+function removeRemotePlayer(id) {
   const p=remotePlayers.get(id);
+  if(!p) return;
 
-  if(!p){
-    return;
-  }
-
-  if(scene && p.group){
-    scene.remove(p.group);
-
-    p.group.traverse(obj=>{
-      if(obj.geometry){
-        obj.geometry.dispose();
-      }
-
-      if(obj.material){
-        if(obj.material.map){
-          obj.material.map.dispose();
-        }
-
-        obj.material.dispose();
-      }
-    });
-  }
-
+  scene.remove(p.group);
   remotePlayers.delete(id);
 }
 
-function broadcastPlayerState(now){
-  if(
-    !socket ||
-    !socket.connected ||
-    !camera
-  ){
-    return;
-  }
+function updateRemoteAvatars(time) {
+  remotePlayers.forEach(p=>{
+    p.group.position.x += (p.targetX-p.group.position.x)*.22;
+    p.group.position.z += (p.targetZ-p.group.position.z)*.22;
+    p.group.rotation.y += THREE.MathUtils.clamp(
+      p.targetYaw-p.group.rotation.y,
+      -.12,.12
+    );
 
-  if(now-lastPlayerBroadcast<50){
-    return;
-  }
+    const swing=p.data.moving ? Math.sin(time*9)*.35 : 0;
+    if(p.group.children[2]) p.group.children[2].rotation.x=swing;
+    if(p.group.children[3]) p.group.children[3].rotation.x=-swing;
+    if(p.group.children[4]) p.group.children[4].rotation.x=-swing;
+    if(p.group.children[5]) p.group.children[5].rotation.x=swing;
+  });
+}
 
-  lastPlayerBroadcast=now;
+function sendPlayerState(now) {
+  if(!socket || !socket.connected) return;
+  if(now-lastSent<60) return;
 
-  const lastX=
-    broadcastPlayerState.lastX ??
-    camera.position.x;
+  lastSent=now;
 
-  const lastZ=
-    broadcastPlayerState.lastZ ??
-    camera.position.z;
+  socket.emit('player:state',{
+    x:playerX,
+    z:playerZ,
+    yaw
+  });
+}
 
-  const moving=
-    Math.abs(
-      camera.position.x-lastX
-    )>.0005 ||
-    Math.abs(
-      camera.position.z-lastZ
-    )>.0005;
+function movePlayer(dt) {
+  if(!document.pointerLockElement) return;
 
-  broadcastPlayerState.lastX=
-    camera.position.x;
+  const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+  const side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
 
-  broadcastPlayerState.lastZ=
-    camera.position.z;
+  if(!forward && !side) return;
 
-  socket.emit(
-    'player-state',
-    {
-      x:camera.position.x,
-      y:Math.max(
-        0,
-        playerY-GROUND_Y
-      ),
-      z:camera.position.z,
-      yaw,
-      pitch,
-      moving,
-      jumping:!isGrounded,
-      dance:activeDance,
-      danceStartedAt
+  const length=Math.hypot(forward,side)||1;
+  const f=forward/length;
+  const s=side/length;
+
+  const fx=-Math.sin(yaw);
+  const fz=-Math.cos(yaw);
+  const rx=Math.cos(yaw);
+  const rz=-Math.sin(yaw);
+
+  playerX += (fx*f+rx*s)*MOVE_SPEED*dt;
+  playerZ += (fz*f+rz*s)*MOVE_SPEED*dt;
+
+  playerX=THREE.MathUtils.clamp(playerX,-16,16);
+  playerZ=THREE.MathUtils.clamp(playerZ,-14,14);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt=Math.min(clock.getDelta(),.05);
+  const time=performance.now()/1000;
+
+  if(!scene) return;
+
+  if(document.pointerLockElement) movePlayer(dt);
+
+  if(document.pointerLockElement) {
+    jumpVelocity -= GRAVITY*dt;
+    camera.position.y += jumpVelocity*dt;
+
+    if(camera.position.y<=1.65) {
+      camera.position.y=1.65;
+      jumpVelocity=0;
+      grounded=true;
     }
-  );
-}
-
-/* =========================================================
-   EMOTES / DANCES
-========================================================= */
-
-
-function playDance(id){
-  if(chatMode || !socket) return;
-  activeDance=Math.max(1,Math.min(6,Number(id)||1));
-  danceStartedAt=Date.now();
-  keys={};
-  try{ if(document.pointerLockElement) document.exitPointerLock(); }catch(e){}
-  const menu=document.getElementById('emotes-menu');
-  if(menu) menu.classList.remove('open');
-  broadcastPlayerState(Date.now(),true);
-}
-
-function stopDance(){
-  activeDance=0;
-  danceStartedAt=0;
-  const menu=document.getElementById('emotes-menu');
-  if(menu) menu.classList.remove('open');
-  broadcastPlayerState(Date.now(),true);
-}
-
-function animateRemoteDance(p,time){
-  if(!p || !p.parts) return;
-  const q=p.parts;
-  const t=Math.max(0,(Date.now()-(p.danceStartedAt||Date.now()))/1000);
-  const w=t*Math.PI*2;
-  q.torso.rotation.set(0,0,0);
-  q.head.rotation.set(0,0,0);
-  q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
-  q.leftLeg.rotation.set(0,0,0); q.rightLeg.rotation.set(0,0,0);
-  if(!p.dance) return;
-  if(p.dance===1){
-    q.leftArm.rotation.z=-1.1+Math.sin(w*2)*.35; q.rightArm.rotation.z=1.1-Math.sin(w*2)*.35;
-    q.leftLeg.rotation.z=Math.sin(w)*.35; q.rightLeg.rotation.z=-Math.sin(w)*.35;
-    q.torso.rotation.y=Math.sin(w)*.18;
-  }else if(p.dance===2){
-    q.leftArm.rotation.z=-.55+Math.sin(w*2)*.9; q.rightArm.rotation.z=.55-Math.sin(w*2)*.9;
-    q.leftLeg.rotation.z=Math.sin(w*2)*.28; q.rightLeg.rotation.z=-Math.sin(w*2)*.28;
-    q.torso.rotation.z=Math.sin(w)*.16;
-  }else if(p.dance===3){
-    q.leftArm.rotation.z=-1.25+Math.sin(w*2)*.25; q.rightArm.rotation.z=.25+Math.sin(w*2+.8)*.8;
-    q.leftLeg.rotation.z=Math.sin(w*2)*.55; q.rightLeg.rotation.z=-Math.sin(w*2)*.55;
-    q.torso.rotation.y=Math.sin(w)*.35;
-  }else if(p.dance===4){
-    const step=Math.sin(w*2)>0?1:-1;
-    q.leftArm.rotation.z=-.85*step; q.rightArm.rotation.z=.85*step;
-    q.leftLeg.rotation.z=.35*step; q.rightLeg.rotation.z=-.35*step;
-    q.head.rotation.y=Math.sin(w*2)*.35;
-  }else if(p.dance===5){
-    const bounce=Math.abs(Math.sin(w*2))*0.22;
-    p.group.position.y=(p.baseY||p.group.position.y)+bounce;
-    q.leftArm.rotation.z=-.8-Math.sin(w*2)*.3; q.rightArm.rotation.z=.8+Math.sin(w*2)*.3;
-  }else if(p.dance===6){
-    q.leftArm.rotation.z=-1.35+Math.sin(w*3)*.5; q.rightArm.rotation.z=.15;
-    q.rightArm.rotation.x=Math.sin(w*2)*.5; q.head.rotation.z=Math.sin(w*2)*.15;
   }
+
+  camera.position.x=playerX;
+  camera.position.z=playerZ;
+  camera.rotation.y=yaw;
+  camera.rotation.x=pitch;
+
+  sendPlayerState(performance.now());
+  updateRemoteAvatars(time);
+
+  if(screenAnchor && cssObject) {
+    cssObject.position.copy(screenAnchor.position);
+    cssObject.rotation.copy(screenAnchor.rotation);
+    cssObject.scale.set(.01,.01,.01);
+  }
+
+  renderer.render(scene,camera);
+  cssRenderer.render(cssScene,camera);
 }
 
-function resetRemoteDancePose(p){
-  if(!p || !p.parts) return;
-  p.group.position.y=p.baseY||0;
-  const q=p.parts;
-  q.torso.rotation.set(0,0,0); q.head.rotation.set(0,0,0);
-  q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
-  q.leftLeg.rotation.set(0,0,0); q.rightLeg.rotation.set(0,0,0);
-}
+document.addEventListener('click',e=>{
+  if(e.target.closest && (
+    e.target.closest('#auth') ||
+    e.target.closest('#chatBox') ||
+    e.target.closest('#onlineBox') ||
+    e.target.closest('#screenBox') ||
+    e.target.closest('#screen3d')
+  )) return;
 
-/* =========================================================
-   CLEANUP
-========================================================= */
+  if(renderer && renderer.domElement && !document.pointerLockElement) {
+    try { renderer.domElement.requestPointerLock(); } catch {}
+  }
+});
 
-// No local OBS/HLS player is used by EWS SESSIONS.
-// YouTube/Twitch media belongs to the shared club SCREEN iframe.
+document.addEventListener('mousemove',e=>{
+  if(!document.pointerLockElement) return;
+  yaw -= e.movementX*.0022;
+  pitch -= e.movementY*.0022;
+  pitch=THREE.MathUtils.clamp(pitch,-1.35,1.35);
+});
 
+document.addEventListener('pointerlockchange',()=>{
+  $('hint').style.opacity=document.pointerLockElement ? '.15' : '.55';
+});
 
+const remembered=localStorage.getItem('ews-username');
+if(remembered) $('authUser').value=remembered;
 </script>
-
 </body>
 </html>
