@@ -3049,15 +3049,13 @@ function setupControls(){
 
       keys[e.code]=true;
 
-      if(
-        e.code==='KeyC'
-      ){
-
-        chatMode=
-          !chatMode;
-
+      if(e.code==='Enter' && !typing){
+        e.preventDefault();
+        chatMode=true;
         toggleChat();
-
+        const input=document.getElementById('chat-input');
+        if(input) input.focus();
+        return;
       }
 
       // SPACE = JUMP
