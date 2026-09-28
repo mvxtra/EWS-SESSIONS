@@ -13,6 +13,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 
@@ -401,6 +402,81 @@ input:focus{
   color:#000;
 }
 
+#wardrobe-control{
+  position:absolute;
+  top:18px;
+  left:50%;
+  transform:translateX(-50%);
+  height:32px;
+  padding:0 15px;
+  border:1px solid #444;
+  background:rgba(5,5,5,.92);
+  color:#fff;
+  cursor:pointer;
+  font:10px monospace;
+  font-weight:bold;
+  letter-spacing:2px;
+  pointer-events:auto;
+}
+#wardrobe-control:hover{background:#fff;color:#000;}
+
+#wardrobe-menu{
+  position:fixed;
+  top:58px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:45;
+  width:min(560px,calc(100vw - 30px));
+  padding:14px;
+  background:rgba(5,5,5,.97);
+  border:1px solid #444;
+  box-shadow:0 20px 70px rgba(0,0,0,.85);
+  display:none;
+  pointer-events:auto;
+}
+#wardrobe-menu.open{display:block;}
+#wardrobe-title{
+  font:10px monospace;
+  letter-spacing:3px;
+  color:#aaa;
+  margin-bottom:12px;
+}
+#wardrobe-options{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:8px;
+}
+.wardrobe-option{
+  min-height:58px;
+  border:1px solid #333;
+  background:#0c0c0c;
+  color:#fff;
+  cursor:pointer;
+  text-align:left;
+  padding:10px;
+}
+.wardrobe-option:hover,
+.wardrobe-option.active{
+  border-color:#fff;
+  background:#181818;
+}
+.wardrobe-option strong{
+  display:block;
+  font:11px monospace;
+  letter-spacing:2px;
+}
+.wardrobe-option span{
+  display:block;
+  margin-top:5px;
+  color:#777;
+  font:9px monospace;
+}
+#wardrobe-status{
+  margin-top:10px;
+  min-height:12px;
+  color:#777;
+  font:9px monospace;
+}
 #screen-menu{
   position:fixed;
   top:58px;
@@ -806,6 +882,20 @@ input:focus{
   <button id="audio-control" type="button" aria-hidden="true" tabindex="-1" style="display:none"></button>
 
   <button id="screen-control" type="button" onclick="toggleScreenMenu()">SCREEN</button>
+  <button id="wardrobe-control" type="button" onclick="toggleWardrobe()">WARDROBE</button>
+
+  <div id="wardrobe-menu">
+    <div id="wardrobe-title">EWS SESSIONS / AVATAR</div>
+    <div id="wardrobe-options">
+      <button class="wardrobe-option" data-avatar="male" onclick="selectAvatar('male')">
+        <strong>LOOK 01</strong><span>MALE BASE</span>
+      </button>
+      <button class="wardrobe-option" data-avatar="female" onclick="selectAvatar('female')">
+        <strong>LOOK 02</strong><span>FEMALE BASE</span>
+      </button>
+    </div>
+    <div id="wardrobe-status"></div>
+  </div>
 
   <div id="screen-menu">
     <div id="screen-menu-row">
@@ -923,6 +1013,12 @@ let activeDance=0;
 let danceStartedAt=0;
 
 let playerBody;
+let avatarChoice=localStorage.getItem('ewsAvatar')||'male';
+let avatarLoader=null;
+const AVATAR_MODELS={
+  male:'/Universal%20Base%20Characters%5BStandard%5D/Base%20Characters/Godot%20-%20UE/Superhero_Male_FullBody.gltf',
+  female:'/Universal%20Base%20Characters%5BStandard%5D/Base%20Characters/Godot%20-%20UE/Superhero_Female_FullBody.gltf'
+};
 
 // SOLID CLUB OBJECTS — the local player cannot walk through these.
 const collisionBoxes = [
@@ -1129,7 +1225,8 @@ function startSession(username){
       {
         username: currentUser,
         language:
-          document.getElementById('lang').value
+          document.getElementById('lang').value,
+        avatar: avatarChoice
       }
     );
 
@@ -3714,44 +3811,103 @@ function animate(){
 /* =========================================================
    REMOTE PLAYERS / SILHOUETTES
 ========================================================= */
+function getAvatarModelPath(choice){
+  return AVATAR_MODELS[choice]||AVATAR_MODELS.male;
+}
+
+function applyAvatarMaterials(root){
+  root.traverse(o=>{
+    if(!o.isMesh) return;
+    o.castShadow=true;
+    o.receiveShadow=true;
+    if(Array.isArray(o.material)){
+      o.material=o.material.map(m=>m.clone());
+    }else if(o.material){
+      o.material=o.material.clone();
+    }
+  });
+}
+
+function loadRemoteAvatar(p,choice){
+  if(!p || !p.group) return;
+  p.avatar=choice||'male';
+
+  if(!avatarLoader) avatarLoader=new THREE.GLTFLoader();
+  const requestChoice=p.avatar;
+  const token=Date.now()+Math.random();
+  p.avatarLoadToken=token;
+
+  avatarLoader.load(
+    getAvatarModelPath(requestChoice),
+    gltf=>{
+      if(!p.group || p.avatarLoadToken!==token) return;
+
+      if(p.model){
+        p.group.remove(p.model);
+        p.model.traverse(o=>{
+          if(o.geometry)o.geometry.dispose();
+          if(o.material){
+            if(o.material.map)o.material.map.dispose();
+            o.material.dispose();
+          }
+        });
+      }
+
+      const model=gltf.scene.clone(true);
+      applyAvatarMaterials(model);
+
+      const box=new THREE.Box3().setFromObject(model);
+      const size=new THREE.Vector3();
+      box.getSize(size);
+      const height=Math.max(size.y,0.001);
+      const targetHeight=1.72;
+      model.scale.setScalar(targetHeight/height);
+
+      const scaledBox=new THREE.Box3().setFromObject(model);
+      const center=new THREE.Vector3();
+      scaledBox.getCenter(center);
+      model.position.y=-scaledBox.min.y;
+      model.position.x=-center.x;
+      model.position.z=-center.z;
+      model.rotation.y=Math.PI;
+
+      p.group.add(model);
+      p.model=model;
+      p.parts=null;
+    },
+    undefined,
+    err=>console.warn('[EWS AVATAR]',requestChoice,err)
+  );
+}
+
 function createRemotePlayer(data){
   if(!scene || !data || !data.id || data.id===socket?.id) return;
 
-  // If a stale object exists for this socket, replace it cleanly.
   if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
 
   const g=new THREE.Group();
   g.userData.username=data.username||'PLAYER';
 
-  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
-  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
-
-  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
-  torso.position.y=.78;
-  g.add(torso);
-
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
-  head.position.y=1.42;
-  g.add(head);
-
-  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
-  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
-  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
-  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
-  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
-  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
-
-  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg};
+  const placeholder=new THREE.Mesh(
+    new THREE.CylinderGeometry(.22,.30,.85,8),
+    new THREE.MeshStandardMaterial({color:0x333333,roughness:1})
+  );
+  placeholder.position.y=.43;
+  g.add(placeholder);
 
   const labelCanvas=document.createElement('canvas');
   labelCanvas.width=256; labelCanvas.height=64;
   const ctx=labelCanvas.getContext('2d');
   ctx.clearRect(0,0,256,64);
-  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
+  ctx.font='bold 24px Arial';
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffffff';
   ctx.fillText(g.userData.username,128,32);
   const tex=new THREE.CanvasTexture(labelCanvas);
   const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+  label.scale.set(1.7,.42,1);
+  label.position.y=1.95;
+  g.add(label);
 
   const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
   const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
@@ -3763,18 +3919,21 @@ function createRemotePlayer(data){
   g.visible=true;
   scene.add(g);
 
-  remotePlayers.set(data.id,{
+  const p={
     group:g,
     last:{x,z,yaw:ry},
     moving:!!data.moving,
     username:data.username||'PLAYER',
+    avatar:data.avatar||'male',
     dance:Number(data.dance)||0,
     danceStartedAt:Number(data.danceStartedAt)||0,
-    parts,
+    parts:null,
+    model:null,
     baseY:y
-  });
+  };
+  remotePlayers.set(data.id,p);
+  loadRemoteAvatar(p,p.avatar);
 }
-
 function updateRemotePlayer(data){
   if(!data.id || data.id===socket?.id) return;
   if(!remotePlayers.has(data.id)) createRemotePlayer(data);
@@ -3796,6 +3955,7 @@ function updateRemotePlayer(data){
   p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
   if(data.dance!==undefined) p.dance=Number(data.dance)||0;
   if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
+  if(data.avatar && data.avatar!==p.avatar) loadRemoteAvatar(p,data.avatar);
   p.group.position.x=nx;
   p.group.position.y=ny;
   p.group.position.z=nz;
@@ -3830,6 +3990,7 @@ function broadcastPlayerState(now){
     username:currentUser,
     moving:moving,
     jumping:!isGrounded,
+    avatar:avatarChoice,
     dance:activeDance,
     danceStartedAt:danceStartedAt
   });
@@ -3841,6 +4002,38 @@ function broadcastPlayerState(now){
    EMOTES / DANCES
 ========================================================= */
 
+
+function setWardrobeStatus(text){
+  const el=document.getElementById('wardrobe-status');
+  if(el) el.textContent=text||'';
+}
+
+function updateWardrobeButtons(){
+  document.querySelectorAll('.wardrobe-option').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.avatar===avatarChoice);
+  });
+}
+
+function toggleWardrobe(){
+  const menu=document.getElementById('wardrobe-menu');
+  if(!menu)return;
+  menu.classList.toggle('open');
+  updateWardrobeButtons();
+  setWardrobeStatus('SELECT YOUR LOOK');
+  try{ if(document.pointerLockElement) document.exitPointerLock(); }catch(e){}
+}
+
+function selectAvatar(choice){
+  if(!AVATAR_MODELS[choice]) return;
+  avatarChoice=choice;
+  localStorage.setItem('ewsAvatar',avatarChoice);
+  updateWardrobeButtons();
+  setWardrobeStatus('LOOK SAVED');
+  if(socket && socket.connected){
+    socket.emit('player-avatar',{avatar:avatarChoice});
+    broadcastPlayerState(Date.now(),true);
+  }
+}
 
 function playDance(id){
   if(chatMode || !socket) return;
