@@ -13,7 +13,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors:{origin:'*',methods:['GET','POST']},
   pingInterval:10000,
-  pingTimeout:30000,
+  pingTimeout:45000,
+  upgradeTimeout:10000,
   connectionStateRecovery:{
     maxDisconnectionDuration:120000,
     skipMiddlewares:true
