@@ -14,8 +14,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
-
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
@@ -482,38 +480,6 @@ input:focus{
   letter-spacing:1px;
 }
 
-#stream-indicator{
-  position:absolute;
-
-  top:18px;
-  left:50%;
-
-  transform:translateX(-50%);
-
-  padding:6px 12px;
-
-  background:rgba(0,0,0,.75);
-
-  border:1px solid #333;
-
-  color:#777;
-
-  font-family:monospace;
-
-  font-size:10px;
-  letter-spacing:2px;
-}
-
-#stream-indicator.live{
-  color:#fff;
-  border-color:#aaa;
-}
-
-#stream-indicator.error{
-  color:#ff5555;
-  border-color:#ff5555;
-}
-
 #lang-bar{
   position:absolute;
 
@@ -610,17 +576,6 @@ input:focus{
 
   #online-list li{
     padding:2px 0;
-  }
-
-  #stream-indicator{
-    top:52px;
-    left:12px;
-
-    transform:none;
-
-    padding:5px 8px;
-
-    font-size:8px;
   }
 
   #screen-control{
@@ -721,13 +676,6 @@ input:focus{
   </div>
 </div>
 
-<audio
-  id="ews-audio"
-  crossorigin="anonymous"
-  playsinline
-  preload="auto">
-</audio>
-
 <!-- =====================================================
      LOGIN
 ===================================================== -->
@@ -797,13 +745,6 @@ input:focus{
     EWS
     <span>SESSIONS</span>
   </div>
-
-  <div id="stream-indicator" style="display:none">
-    AUDIO: READY
-  </div>
-
-  <!-- Hidden compatibility control: audio UI is intentionally not shown. -->
-  <button id="audio-control" type="button" aria-hidden="true" tabindex="-1" style="display:none"></button>
 
   <button id="screen-control" type="button" onclick="toggleScreenMenu()">SCREEN</button>
 
@@ -1479,8 +1420,6 @@ function init3D(){
   createFog();
   createClubLighting();
   createPlayer();
-
-  setupAudio();
 
   setupControls();
 
@@ -2351,475 +2290,6 @@ function createPlayer(){
 }
 
 /* =========================================================
-   AUDIO
-========================================================= */
-
-function setupAudio(){
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  indicator.textContent=
-    'AUDIO: READY';
-
-  indicator.classList.remove(
-    'live',
-    'error'
-  );
-
-  button.textContent=
-    '▶ AUDIO: START';
-
-  button.classList.remove(
-    'live'
-  );
-
-}
-
-async function unlockEWSAudio(){
-
-  const audio = document.getElementById('ews-audio');
-  if(!audio) return false;
-
-  try{
-    if(audioContext && audioContext.state === 'suspended'){
-      await audioContext.resume();
-    }
-
-    if(audioStarted && audio.paused){
-      await audio.play();
-      return true;
-    }
-
-    // If the stream was blocked by autoplay policy, retry the full
-    // HLS startup from this real user interaction.
-    if(!audioStarted){
-      await startSSHAudio();
-      return true;
-    }
-  }catch(err){
-    console.warn('[EWS AUDIO UNLOCK]', err);
-  }
-
-  return false;
-}
-
-async function startSSHAudio(){
-
-  const audio =
-    document.getElementById(
-      'ews-audio'
-    );
-
-  const indicator =
-    document.getElementById(
-      'stream-indicator'
-    );
-
-  const button =
-    document.getElementById(
-      'audio-control'
-    );
-
-  if(!audio)return;
-
-  const hlsUrl =
-    window.location.origin+
-    '/hls/ews/index.m3u8';
-
-  indicator.classList.remove(
-    'error'
-  );
-
-  indicator.classList.add(
-    'live'
-  );
-
-  indicator.textContent=
-    'AUDIO: CONNECTING...';
-
-  button.disabled=true;
-
-  button.textContent=
-    '● AUDIO: CONNECTING';
-
-  try{
-
-    if(!audioContext){
-
-      audioContext =
-        new(
-          window.AudioContext ||
-          window.webkitAudioContext
-        )();
-
-      audioSource =
-        audioContext.createMediaElementSource(
-          audio
-        );
-
-      analyser =
-        audioContext.createAnalyser();
-
-      analyser.fftSize=256;
-
-      analyser.smoothingTimeConstant=.82;
-
-      freqData =
-        new Uint8Array(
-          analyser.frequencyBinCount
-        );
-
-      audioSource.connect(
-        analyser
-      );
-
-      analyser.connect(
-        audioContext.destination
-      );
-
-    }
-
-    if(
-      audioContext.state===
-      'suspended'
-    ){
-
-      await audioContext.resume();
-
-    }
-
-    if(hls){
-
-      try{
-        hls.destroy();
-      }catch(e){}
-
-      hls=null;
-
-    }
-
-    if(
-      window.Hls &&
-      Hls.isSupported()
-    ){
-
-      hls =
-        new Hls({
-
-          enableWorker:true,
-
-          lowLatencyMode:true,
-
-          backBufferLength:30,
-
-          maxBufferLength:10,
-
-          maxMaxBufferLength:20,
-
-          liveSyncDurationCount:3,
-
-          liveMaxLatencyDurationCount:6
-
-        });
-
-      hls.loadSource(
-        hlsUrl
-      );
-
-      hls.attachMedia(
-        audio
-      );
-
-      hls.on(
-        Hls.Events.MANIFEST_PARSED,
-        async function(){
-
-          indicator.textContent=
-            'AUDIO: LIVE';
-
-          button.textContent=
-            '● AUDIO: LIVE';
-
-          button.classList.add(
-            'live'
-          );
-
-          button.disabled=false;
-
-          audioStarted=true;
-
-          try{
-
-            await audio.play();
-
-          }catch(err){
-
-            console.warn(
-              'Audio play blocked:',
-              err
-            );
-
-            indicator.textContent=
-              'AUDIO: PRESS START';
-
-            button.textContent=
-              '▶ AUDIO: START';
-
-            button.classList.remove(
-              'live'
-            );
-
-          }
-
-        }
-      );
-
-      hls.on(
-        Hls.Events.ERROR,
-        function(
-          event,
-          data
-        ){
-
-          console.error(
-            '[HLS]',
-            data
-          );
-
-          if(!data.fatal)return;
-
-          if(
-            data.type===
-            Hls.ErrorTypes.NETWORK_ERROR
-          ){
-
-            indicator.textContent=
-              'AUDIO: RECONNECTING...';
-
-            button.textContent=
-              '● AUDIO: RECONNECTING';
-
-            setTimeout(
-              function(){
-
-                if(hls){
-
-                  try{
-                    hls.startLoad();
-                  }catch(e){}
-
-                }
-
-              },
-              1000
-            );
-
-          }
-
-          else if(
-            data.type===
-            Hls.ErrorTypes.MEDIA_ERROR
-          ){
-
-            indicator.textContent=
-              'AUDIO: RECOVERING...';
-
-            try{
-
-              hls.recoverMediaError();
-
-            }catch(e){
-
-              console.error(e);
-
-            }
-
-          }
-
-          else{
-
-            indicator.textContent=
-              'AUDIO: NO STREAM';
-
-            indicator.classList.remove(
-              'live'
-            );
-
-            indicator.classList.add(
-              'error'
-            );
-
-            button.textContent=
-              '▶ AUDIO: RETRY';
-
-            button.classList.remove(
-              'live'
-            );
-
-            button.disabled=false;
-
-          }
-
-        }
-      );
-
-    }
-
-    else if(
-      audio.canPlayType(
-        'application/vnd.apple.mpegurl'
-      )
-    ){
-
-      audio.src=
-        hlsUrl;
-
-      audio.addEventListener(
-        'loadedmetadata',
-        async function(){
-
-          try{
-
-            await audio.play();
-
-          }catch(err){
-
-            console.error(err);
-
-          }
-
-        },
-        {
-          once:true
-        }
-      );
-
-    }
-
-    else{
-
-      throw new Error(
-        'HLS is not supported by this browser'
-      );
-
-    }
-
-    audio.onplaying=function(){
-
-      indicator.textContent=
-        'AUDIO: LIVE';
-
-      indicator.classList.add(
-        'live'
-      );
-
-      indicator.classList.remove(
-        'error'
-      );
-
-      button.textContent=
-        '● AUDIO: LIVE';
-
-      button.classList.add(
-        'live'
-      );
-
-      button.disabled=false;
-
-      audioStarted=true;
-
-    };
-
-    audio.onpause=function(){
-
-      if(
-        audioStarted &&
-        !audio.ended
-      ){
-
-        indicator.textContent=
-          'AUDIO: PAUSED';
-
-        button.textContent=
-          '▶ AUDIO: RESUME';
-
-        button.classList.remove(
-          'live'
-        );
-
-      }
-
-    };
-
-    audio.onerror=function(){
-
-      console.error(
-        '[AUDIO]',
-        audio.error
-      );
-
-      indicator.textContent=
-        'AUDIO: ERROR';
-
-      indicator.classList.remove(
-        'live'
-      );
-
-      indicator.classList.add(
-        'error'
-      );
-
-      button.textContent=
-        '▶ AUDIO: RETRY';
-
-      button.classList.remove(
-        'live'
-      );
-
-      button.disabled=false;
-
-    };
-
-  }catch(err){
-
-    console.error(
-      '[EWS AUDIO ERROR]',
-      err
-    );
-
-    indicator.textContent=
-      'AUDIO: NO STREAM';
-
-    indicator.classList.remove(
-      'live'
-    );
-
-    indicator.classList.add(
-      'error'
-    );
-
-    button.textContent=
-      '▶ AUDIO: RETRY';
-
-    button.classList.remove(
-      'live'
-    );
-
-    button.disabled=false;
-
-  }
-
-}
-
-/* =========================================================
    CONTROLS
 ========================================================= */
 
@@ -2986,27 +2456,6 @@ function setupControls(){
   );
 
 }
-
-/* =========================================================
-   AUDIO AUTOPLAY UNLOCK
-   Browsers may block live audio after a reconnect/re-entry.
-   The first click/touch/key interaction gives the page a real
-   user gesture, so we use it to resume the existing HLS audio.
-========================================================= */
-(function(){
-  const unlock=async function(){
-    const ok=await unlockEWSAudio();
-    if(ok){
-      document.removeEventListener('pointerdown',unlock);
-      document.removeEventListener('touchstart',unlock);
-      document.removeEventListener('keydown',unlock);
-    }
-  };
-
-  document.addEventListener('pointerdown',unlock,{passive:true});
-  document.addEventListener('touchstart',unlock,{passive:true});
-  document.addEventListener('keydown',unlock,{passive:true});
-})();
 
 function toggleChat(){
 
@@ -3388,80 +2837,16 @@ function animate(){
   const time =
     performance.now()/1000;
 
-  let bass=.2;
-  let level=.2;
+  // The club no longer has its own OBS/HLS audio connection.
+  // YouTube/Twitch audio stays inside their iframe players.
+  // Lighting keeps its autonomous club animation.
+  let bass=
+    .25+
+    Math.sin(time*3)*.12;
 
-  if(
-    analyser &&
-    freqData &&
-    audioStarted
-  ){
-
-    analyser.getByteFrequencyData(
-      freqData
-    );
-
-    let b=0;
-
-    for(
-      let i=0;
-      i<10 &&
-      i<freqData.length;
-      i++
-    ){
-
-      b+=freqData[i];
-
-    }
-
-    bass=
-      b/
-      (
-        Math.min(
-          10,
-          freqData.length
-        )*255
-      );
-
-    let total=0;
-
-    for(
-      let i=0;
-      i<freqData.length;
-      i++
-    ){
-
-      total+=freqData[i];
-
-    }
-
-    level=
-      total/
-      (
-        freqData.length*255
-      );
-
-  }
-
-  else{
-
-    bass=
-      .25+
-      Math.sin(time*3)*.12;
-
-    level=
-      .25+
-      Math.sin(time*1.5)*.08;
-
-  }
-
-  bassLevel=
-    bassLevel*.82+
-    bass*.18;
-
-  audioLevel=
-    audioLevel*.88+
-    level*.12;
+  let level=
+    .25+
+    Math.sin(time*1.5)*.08;
 
   const speed=
     chatMode || activeDance
@@ -4558,28 +3943,9 @@ function resetRemoteDancePose(p){
    CLEANUP
 ========================================================= */
 
-window.addEventListener(
-  'beforeunload',
-  function(){
+// No local OBS/HLS player is used by EWS SESSIONS.
+// YouTube/Twitch media belongs to the shared club SCREEN iframe.
 
-    try{
-
-      if(hls){
-        hls.destroy();
-      }
-
-    }catch(e){}
-
-    try{
-
-      if(audioContext){
-        audioContext.close();
-      }
-
-    }catch(e){}
-
-  }
-);
 
 </script>
 
