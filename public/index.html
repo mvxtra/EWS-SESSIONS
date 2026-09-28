@@ -953,6 +953,11 @@ let neonObjects=[];
 let lightObjects=[];
 
 let particles;
+let fogParticles;
+let fogMaterial;
+let clubLights=[];
+let strobeLights=[];
+let musicLightTargets=[];
 
 let analyser=null;
 let freqData=null;
@@ -1574,6 +1579,8 @@ function init3D(){
   createCeilingBeams();
   createSpeakers();
   createParticles();
+  createFog();
+  createClubLighting();
   createPlayer();
 
   setupAudio();
@@ -2133,6 +2140,51 @@ function createSpeakers(){
     }
   );
 
+}
+
+function createFog(){
+  const count=220;
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(count*3);
+  const scale=new Float32Array(count);
+  for(let i=0;i<count;i++){
+    pos[i*3]=(Math.random()-.5)*32;
+    pos[i*3+1]=.45+Math.random()*3.8;
+    pos[i*3+2]=(Math.random()-.5)*31;
+    scale[i]=1.5+Math.random()*2.8;
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('aScale',new THREE.BufferAttribute(scale,1));
+  const canvas=document.createElement('canvas');
+  canvas.width=128; canvas.height=128;
+  const ctx=canvas.getContext('2d');
+  const g=ctx.createRadialGradient(64,64,4,64,64,62);
+  g.addColorStop(0,'rgba(255,255,255,.18)');
+  g.addColorStop(.45,'rgba(210,210,210,.08)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle=g; ctx.fillRect(0,0,128,128);
+  const tex=new THREE.CanvasTexture(canvas);
+  fogMaterial=new THREE.PointsMaterial({map:tex,size:2.7,transparent:true,opacity:.18,depthWrite:false,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+  fogParticles=new THREE.Points(geo,fogMaterial);
+  scene.add(fogParticles);
+}
+
+function createClubLighting(){
+  const colors=[0xffffff,0x777777,0xcccccc,0x999999];
+  const positions=[[-12,4,-8],[12,4,-8],[-12,4,6],[12,4,6],[0,5,-12]];
+  positions.forEach((p,i)=>{
+    const spot=new THREE.SpotLight(colors[i%colors.length],2.2,28,Math.PI/7,.55,1.2);
+    spot.position.set(p[0],p[1],p[2]);
+    spot.target.position.set(0,0,p[2]<0?-3:2);
+    scene.add(spot); scene.add(spot.target);
+    clubLights.push(spot);
+  });
+  for(let i=0;i<2;i++){
+    const strobe=new THREE.PointLight(0xffffff,0,22);
+    strobe.position.set(i?7:-7,4,-6);
+    scene.add(strobe);
+    strobeLights.push(strobe);
+  }
 }
 
 function createParticles(){
@@ -3297,15 +3349,30 @@ function animate(){
   broadcastPlayerState(performance.now());
 
   if(particles){
-
-    particles.rotation.y+=
-      .00015;
-
-    particles.material.opacity=
-      .22+
-      audioLevel*.18;
-
+    particles.rotation.y+=.00015;
+    particles.material.opacity=.22+audioLevel*.18;
   }
+
+  if(fogParticles){
+    fogParticles.rotation.y+=dt*.006;
+    fogParticles.position.x=Math.sin(time*.12)*.7;
+    fogParticles.position.z=Math.cos(time*.10)*.55;
+    fogMaterial.opacity=.12+audioLevel*.16+bassLevel*.08;
+    fogMaterial.size=2.5+bassLevel*1.2;
+  }
+
+  clubLights.forEach((light,i)=>{
+    const targetX=Math.sin(time*(.35+i*.05))*7;
+    const targetZ=-3+Math.cos(time*(.28+i*.04))*7;
+    light.target.position.x=targetX;
+    light.target.position.z=targetZ;
+    light.intensity=1.15+bassLevel*4.2+audioLevel*.8;
+  });
+
+  strobeLights.forEach((light,i)=>{
+    const pulse=Math.max(0,bassLevel-.48)*9;
+    light.intensity=(pulse*(i?(.7+.3*Math.sin(time*16)):1));
+  });
 
   remotePlayers.forEach(p=>{
     const t=performance.now()/1000;
@@ -3331,11 +3398,8 @@ function animate(){
           pulse
         );
 
-      obj.material.color.setRGB(
-        value,
-        value,
-        value
-      );
+      obj.material.color.setRGB(value,value,value);
+      if(obj.material.emissive) obj.material.emissive.setRGB(value*.55,value*.55,value*.55);
 
     }
   );
