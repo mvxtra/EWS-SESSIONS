@@ -439,22 +439,6 @@ function buildClubDetails() {
     scene.add(pillar);
   }
 
-  const stage=new THREE.Mesh(
-    new THREE.BoxGeometry(18,.35,4),
-    new THREE.MeshStandardMaterial({color:0x0b0b0b,roughness:.7,metalness:.25})
-  );
-  stage.position.set(0,.18,-8);
-  scene.add(stage);
-
-  for(let i=0;i<8;i++){
-    const glow=new THREE.Mesh(
-      new THREE.BoxGeometry(1.2,.05,5),
-      new THREE.MeshBasicMaterial({color:0x444444})
-    );
-    glow.position.set(-8.4+i*2.4,.38,-8);
-    scene.add(glow);
-  }
-
   const screenFrame=new THREE.Mesh(
     new THREE.BoxGeometry(14.6,6.6,.35),
     new THREE.MeshStandardMaterial({color:0x020202,roughness:.4,metalness:.7})
