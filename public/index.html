@@ -783,6 +783,9 @@ input:focus{
   }
 }
 
+
+#sofa-prompt{position:fixed;left:50%;bottom:86px;transform:translateX(-50%) translateY(8px);padding:10px 16px;border:1px solid rgba(255,255,255,.35);background:rgba(5,5,5,.82);color:#fff;font:600 13px Arial,sans-serif;letter-spacing:1.4px;opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;z-index:80}
+#sofa-prompt.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 
@@ -942,6 +945,7 @@ input:focus{
   <div id="hint">
     WASD MOVE · MOUSE LOOK · ENTER CHAT · E SIT / STAND
   </div>
+  <div id="sofa-prompt">E — SIT DOWN</div>
 
 </div>
 
@@ -1014,6 +1018,7 @@ let strobeWheelTimer=0;
 // Cozy lounge sofas / seating interaction.
 let seated=false;
 let seatedSeat=null;
+let sofaPromptVisible=false;
 const sofaSeats=[];
 
 let audioContext=null;
@@ -1162,6 +1167,17 @@ function nearestSofaSeat(){
     if(d<bestDist){best=s;bestDist=d;}
   }
   return bestDist<1.65 ? best : null;
+}
+
+function updateSofaPrompt(){
+  const el=document.getElementById('sofa-prompt');
+  if(!el || !camera) return;
+  const near=!!nearestSofaSeat();
+  const show=near && !seated && !chatMode;
+  if(show!==sofaPromptVisible){
+    sofaPromptVisible=show;
+    el.classList.toggle('show',show);
+  }
 }
 
 function toggleSofaSeat(){
@@ -3797,6 +3813,8 @@ function animate(){
     playerBody.visible=false;
 
   }
+
+  updateSofaPrompt();
 
   broadcastPlayerState(performance.now());
 
