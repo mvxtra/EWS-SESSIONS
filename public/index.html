@@ -378,6 +378,29 @@ input:focus{
    CLUB SCREEN / MEDIA
 ========================================================= */
 
+#screen-control{
+  position:fixed;
+  top:18px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:41;
+  height:32px;
+  padding:0 16px;
+  border:1px solid #444;
+  background:rgba(0,0,0,.82);
+  color:#fff;
+  cursor:pointer;
+  font-size:10px;
+  font-weight:bold;
+  letter-spacing:3px;
+  pointer-events:auto;
+}
+
+#screen-control:hover{
+  background:#fff;
+  color:#000;
+}
+
 #screen-menu{
   position:fixed;
   top:148px;
@@ -615,6 +638,14 @@ input:focus{
     font-size:8px;
   }
 
+  #screen-control{
+    top:12px;
+    left:50%;
+    height:30px;
+    padding:0 12px;
+    font-size:9px;
+  }
+
   #chat{
     left:10px;
     right:10px;
@@ -785,6 +816,11 @@ input:focus{
   <div id="stream-indicator">
     AUDIO: READY
   </div>
+
+  <!-- Hidden compatibility control: audio UI is intentionally not shown. -->
+  <button id="audio-control" type="button" aria-hidden="true" tabindex="-1" style="display:none"></button>
+
+  <button id="screen-control" type="button" onclick="toggleScreenMenu()">SCREEN</button>
 
   <div id="screen-menu">
     <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
