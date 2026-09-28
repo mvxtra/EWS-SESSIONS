@@ -1050,9 +1050,12 @@ const AVATAR_MODELS={
 };
 
 // SOLID CLUB OBJECTS — the local player cannot walk through these.
+const STAGE_TOP_Y=.525;
+const EYE_HEIGHT=1.7;
+
 const collisionBoxes = [
-  // Main stage
-  {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9},
+  // Main stage — solid wall at floor level, but jumpable as a raised platform.
+  {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9,type:'platform',maxY:STAGE_TOP_Y},
   // Floor PA / subwoofer footprints
   {minX:-8.9,maxX:-6.1,minZ:-11.45,maxZ:-9.65},
   {minX:6.1,maxX:8.9,minZ:-11.45,maxZ:-9.65},
@@ -1062,14 +1065,43 @@ const collisionBoxes = [
 const PLAYER_RADIUS=.38;
 
 function blockedPosition(x,z){
+  const feetY=playerY-EYE_HEIGHT;
   for(const b of collisionBoxes){
     const cx=Math.max(b.minX,Math.min(x,b.maxX));
     const cz=Math.max(b.minZ,Math.min(z,b.maxZ));
     const dx=x-cx;
     const dz=z-cz;
-    if(dx*dx+dz*dz < PLAYER_RADIUS*PLAYER_RADIUS) return true;
+    if(dx*dx+dz*dz >= PLAYER_RADIUS*PLAYER_RADIUS) continue;
+
+    // A raised platform is only a horizontal obstacle while the player's feet
+    // are below its top. Once airborne above it, the player can cross the edge.
+    if(b.type==='platform' && feetY >= (b.maxY-.03)) continue;
+
+    return true;
   }
   return false;
+}
+
+function insideStage(x,z){
+  return x > -8.7+PLAYER_RADIUS &&
+         x <  8.7-PLAYER_RADIUS &&
+         z > -14.2+PLAYER_RADIUS &&
+         z < -10.9-PLAYER_RADIUS;
+}
+
+function addSofaColliders(x,z,rotationY){
+  // Match the visible L-shaped sofa footprint so the player cannot walk through it.
+  if(Math.abs(Math.sin(rotationY)) < .5){
+    collisionBoxes.push(
+      {minX:x-.10,maxX:x+5.50,minZ:z-.82,maxZ:z+.82,type:'sofa'},
+      {minX:x-.82,maxX:x+.82,minZ:z-3.95,maxZ:z+.78,type:'sofa'}
+    );
+  }else{
+    collisionBoxes.push(
+      {minX:x-5.50,maxX:x+.10,minZ:z-.82,maxZ:z+.82,type:'sofa'},
+      {minX:x-.82,maxX:x+.82,minZ:z-.78,maxZ:z+3.95,type:'sofa'}
+    );
+  }
 }
 
 function tryMovePlayer(dx,dz){
@@ -1138,6 +1170,7 @@ function createCornerSofa(x,z,rotationY,label){
   group.add(glow);
 
   scene.add(group);
+  addSofaColliders(x,z,rotationY);
 
   // Main sitting point on the long section, facing toward the dancefloor.
   const fx=-Math.sin(rotationY), fz=-Math.cos(rotationY);
@@ -1152,11 +1185,12 @@ function createCornerSofa(x,z,rotationY,label){
 }
 
 function createLoungeSofas(){
-  // Sofas are pushed into the four side-corners, leaving the dancefloor open.
-  createCornerSofa(-15.9,12.9,0,'LEFT FRONT CORNER');
-  createCornerSofa(15.9,12.9,Math.PI,'RIGHT FRONT CORNER');
-  createCornerSofa(-15.9,-7.7,0,'LEFT REAR CORNER');
-  createCornerSofa(15.9,-7.7,Math.PI,'RIGHT REAR CORNER');
+  // Four proper L-shaped sofas, each tight into a real room corner.
+  // They stay outside the dancefloor and leave a clear route around the room.
+  createCornerSofa(-16.9,13.6,0,'LEFT FRONT CORNER');
+  createCornerSofa(16.9,13.6,Math.PI,'RIGHT FRONT CORNER');
+  createCornerSofa(-16.9,-13.6,0,'LEFT REAR CORNER');
+  createCornerSofa(16.9,-13.6,Math.PI,'RIGHT REAR CORNER');
 }
 
 function nearestSofaSeat(){
@@ -3735,18 +3769,36 @@ function animate(){
 
   if(!chatMode){
 
+    const previousFeetY=playerY-EYE_HEIGHT;
+
     jumpVelocity-=
       GRAVITY*dt;
 
     playerY+=
       jumpVelocity*dt;
 
-    if(playerY<=GROUND_Y){
+    const currentFeetY=playerY-EYE_HEIGHT;
+
+    // Land on the stage only while descending through its top surface.
+    // This makes SPACE a real jump-up action instead of letting the avatar
+    // clip through the stage or get stuck against its front face.
+    if(
+      jumpVelocity<=0 &&
+      previousFeetY>=STAGE_TOP_Y &&
+      currentFeetY<=STAGE_TOP_Y &&
+      insideStage(camera.position.x,camera.position.z)
+    ){
+      playerY=STAGE_TOP_Y+EYE_HEIGHT;
+      jumpVelocity=0;
+      isGrounded=true;
+    }else if(playerY<=GROUND_Y){
 
       playerY=GROUND_Y;
       jumpVelocity=0;
       isGrounded=true;
 
+    }else{
+      isGrounded=false;
     }
 
   }
