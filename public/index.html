@@ -1525,6 +1525,7 @@ function startSession(username){
       if(!data || !data.id || data.id===socket.id) return;
       updateRemotePlayer(data);
     });
+    if(state.screen) applyRemoteClubScreen(state.screen);
   });
 
   socket.on('connect',function(){
@@ -4546,7 +4547,9 @@ function updateRemotePlayer(data){
   p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
   if(data.dance!==undefined) p.dance=Number(data.dance)||0;
   if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
-  if(data.avatar && data.avatar!==p.avatar) loadRemoteAvatar(p,data.avatar);
+  // Remote avatars stay on the guaranteed-visible placeholder while presence
+  // synchronization is being stabilized. Do not start GLTF network loads here.
+  if(data.avatar) p.avatar=data.avatar;
   p.group.position.x=nx;
   p.group.position.y=ny;
   p.group.position.z=nz;
