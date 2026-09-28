@@ -1255,7 +1255,6 @@ function buildSpeakerStacks(){
       new THREE.TorusGeometry(.42,.055,12,36),
       edgeMaterial
     );
-    subRing.rotation.x=Math.PI/2;
     subRing.position.set(0,.78,.61);
     group.add(subRing);
 
@@ -1265,7 +1264,6 @@ function buildSpeakerStacks(){
         color:0x141414,roughness:.72,metalness:.04
       })
     );
-    subCone.rotation.x=Math.PI/2;
     subCone.position.set(0,.78,.615);
     group.add(subCone);
 
@@ -1274,7 +1272,6 @@ function buildSpeakerStacks(){
         new THREE.TorusGeometry(.245,.036,10,28),
         edgeMaterial
       );
-      ring.rotation.x=Math.PI/2;
       ring.position.set(0,2.16+i*.72,.505);
       group.add(ring);
 
@@ -1284,7 +1281,6 @@ function buildSpeakerStacks(){
           color:0x161616,roughness:.76,metalness:.03
         })
       );
-      driver.rotation.x=Math.PI/2;
       driver.position.set(0,2.16+i*.72,.51);
       group.add(driver);
     }
@@ -2125,20 +2121,6 @@ function animateLighting(time){
     item.light.intensity=
       1.0+
       .38*(.5+.5*Math.sin(time*1.5+item.phase));
-  });
-
-  moverBeams.forEach(item=>{
-    const pulse=
-      .5+.5*Math.sin(time*1.7+item.phase);
-
-    item.mesh.material.opacity=
-      .010+pulse*.014;
-
-    item.mesh.rotation.x=
-      Math.sin(time*.4+item.phase)*.16;
-
-    item.mesh.rotation.z=
-      Math.cos(time*.36+item.phase)*.18;
   });
 
   const beat=
