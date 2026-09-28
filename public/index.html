@@ -940,7 +940,7 @@ input:focus{
 
 
   <div id="hint">
-    WASD MOVE · MOUSE LOOK · C CHAT
+    WASD MOVE · MOUSE LOOK · ENTER CHAT · E SIT / STAND
   </div>
 
 </div>
@@ -1011,6 +1011,11 @@ let strobeWheelLevel=.0;
 let strobeWheelSpeed=32;
 let strobeWheelTimer=0;
 
+// Cozy lounge sofas / seating interaction.
+let seated=false;
+let seatedSeat=null;
+const sofaSeats=[];
+
 let audioContext=null;
 let audioSource=null;
 
@@ -1068,6 +1073,100 @@ function tryMovePlayer(dx,dz){
   // Resolve X and Z separately so the avatar slides along objects instead of freezing.
   if(!blockedPosition(nx,camera.position.z)) camera.position.x=nx;
   if(!blockedPosition(camera.position.x,nz)) camera.position.z=nz;
+}
+
+function createSofa(x,z,rotationY,label){
+  const group=new THREE.Group();
+  group.position.set(x,0,z);
+  group.rotation.y=rotationY;
+
+  const frameMat=new THREE.MeshStandardMaterial({color:0x090909,roughness:.72,metalness:.12});
+  const leatherMat=new THREE.MeshStandardMaterial({color:0x151515,roughness:.48,metalness:.08});
+  const cushionMat=new THREE.MeshStandardMaterial({color:0x1d1d1d,roughness:.62,metalness:.04});
+
+  const base=new THREE.Mesh(new THREE.BoxGeometry(5.2,.62,1.35),frameMat);
+  base.position.set(0,.45,0);
+  base.castShadow=true; base.receiveShadow=true; group.add(base);
+
+  const seat=new THREE.Mesh(new THREE.BoxGeometry(4.85,.34,1.12),cushionMat);
+  seat.position.set(0,.86,-.08);
+  seat.castShadow=true; seat.receiveShadow=true; group.add(seat);
+
+  const back=new THREE.Mesh(new THREE.BoxGeometry(5.2,1.65,.42),leatherMat);
+  back.position.set(0,1.45,.52);
+  back.castShadow=true; back.receiveShadow=true; group.add(back);
+
+  [-2.15,0,2.15].forEach(px=>{
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(1.48,.32,.9),leatherMat);
+    pillow.position.set(px,.99,-.08);
+    pillow.rotation.x=-.05;
+    pillow.castShadow=true; pillow.receiveShadow=true; group.add(pillow);
+  });
+
+  const armMat=new THREE.MeshStandardMaterial({color:0x101010,roughness:.52,metalness:.08});
+  [-2.5,2.5].forEach(px=>{
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(.42,1.02,1.35),armMat);
+    arm.position.set(px,1.0,0);
+    arm.castShadow=true; arm.receiveShadow=true; group.add(arm);
+  });
+
+  // Low warm lounge light keeps the sofa area readable without breaking the dark club mood.
+  const glow=new THREE.PointLight(0xffe7d0,.16,4.5);
+  glow.position.set(0,1.25,-.15);
+  group.add(glow);
+
+  scene.add(group);
+
+  // Sitting point is just in front of the cushion, facing the club.
+  const fx=-Math.sin(rotationY), fz=-Math.cos(rotationY);
+  sofaSeats.push({
+    group,
+    x:x+fx*.72,
+    y:1.16,
+    z:z+fz*.72,
+    yaw:rotationY,
+    label:label||'SOFA'
+  });
+}
+
+function createLoungeSofas(){
+  // Four matching black sofas in the club corners / lounge pockets.
+  createSofa(-11.7,11.2,-Math.PI/2,'LEFT REAR');
+  createSofa(11.7,11.2,Math.PI/2,'RIGHT REAR');
+  createSofa(-11.7,-3.6,-Math.PI/2,'LEFT FRONT');
+  createSofa(11.7,-3.6,Math.PI/2,'RIGHT FRONT');
+}
+
+function nearestSofaSeat(){
+  if(!camera || !sofaSeats.length) return null;
+  let best=null, bestDist=Infinity;
+  for(const s of sofaSeats){
+    const d=Math.hypot(camera.position.x-s.x,camera.position.z-s.z);
+    if(d<bestDist){best=s;bestDist=d;}
+  }
+  return bestDist<1.65 ? best : null;
+}
+
+function toggleSofaSeat(){
+  if(chatMode) return;
+  if(seated){
+    seated=false;
+    seatedSeat=null;
+    isGrounded=true;
+    playerY=GROUND_Y;
+    keys={};
+    return;
+  }
+  const seat=nearestSofaSeat();
+  if(!seat) return;
+  seated=true;
+  seatedSeat=seat;
+  keys={};
+  jumpVelocity=0;
+  isGrounded=true;
+  camera.position.set(seat.x,seat.y,seat.z);
+  yaw=seat.yaw;
+  pitch=0;
 }
 
 function createEWSLogo(){
@@ -1625,6 +1724,7 @@ function init3D(){
   createNeonArchitecture();
   createCeilingBeams();
   createSpeakers();
+  createLoungeSofas();
   createParticles();
   createFog();
   createClubLighting();
@@ -3151,6 +3251,7 @@ function setupControls(){
       }
 
       if(!chatMode){
+        if(e.code==='KeyE'){ toggleSofaSeat(); e.preventDefault(); return; }
         if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
         if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
         if(e.code==='Digit3'){ playDance(3); e.preventDefault(); return; }
@@ -3616,7 +3717,8 @@ function animate(){
 
   if(
     pointerLocked &&
-    !chatMode
+    !chatMode &&
+    !seated
   ){
 
     const fx=
@@ -3652,7 +3754,13 @@ function animate(){
       15.5
     );
 
-  camera.position.y=playerY;
+  if(seated && seatedSeat){
+    camera.position.set(seatedSeat.x,seatedSeat.y,seatedSeat.z);
+    yaw=seatedSeat.yaw;
+    pitch=0;
+  }else{
+    camera.position.y=playerY;
+  }
 
   camera.rotation.order=
     'YXZ';
