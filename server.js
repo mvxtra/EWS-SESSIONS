@@ -220,7 +220,8 @@ app.post('/api/translate',async(req,res)=>{
 const onlineUsers=new Map();
 const players=new Map();
 const disconnectTimers=new Map();
-const clubScreenState={active:false,src:'',url:'',name:'',owner:SCREEN_HOST};
+const clubScreenState={active:false,src:'',url:'',name:'',owner:SCREEN_HOST,version:0};
+let clubScreenVersion=0;
 const SPAWN_POINTS=[
   {x:0,z:13},{x:3,z:10},{x:-3,z:10},{x:6,z:7},
   {x:-6,z:7},{x:8,z:3},{x:-8,z:3}
@@ -443,11 +444,15 @@ io.on('connection',socket=>{
       (typeof state.url==='string'&&state.url.trim()) ||
       (typeof state.src==='string'&&state.src.trim())
     )){
+      clubScreenVersion=Math.max(clubScreenVersion+1,Date.now());
+      clubScreenState.version=clubScreenVersion;
       clubScreenState.active=true;
       clubScreenState.src=typeof state.src==='string'?state.src.trim().slice(0,2000):'';
       clubScreenState.url=typeof state.url==='string'?state.url.trim().slice(0,2000):'';
       clubScreenState.name=String(state.name||'MEDIA').slice(0,100);
     }else{
+      clubScreenVersion=Math.max(clubScreenVersion+1,Date.now());
+      clubScreenState.version=clubScreenVersion;
       clubScreenState.active=false;
       clubScreenState.src='';
       clubScreenState.url='';
