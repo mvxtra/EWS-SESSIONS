@@ -27,10 +27,14 @@ button{cursor:pointer}
 #onlineTitle{font-size:10px;letter-spacing:2px;opacity:.65;margin-bottom:8px}
 #onlineList{margin:0;padding:0;list-style:none;max-height:180px;overflow:auto;font-size:13px}
 #onlineList li{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.08)}
-#chatBox{left:18px;bottom:18px;width:340px;padding:10px}
+#chatBox{left:18px;bottom:18px;width:370px;padding:10px}
+#chatTop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+#chatTitle{font-size:10px;letter-spacing:2px;opacity:.65}
+#chatLang{width:125px;background:#050505;color:#fff;border:1px solid #444;padding:5px;font-size:10px}
 #chatLog{height:150px;overflow:auto;font-size:12px;line-height:1.4}
-.chatLine{margin:0 0 5px}
+.chatLine{margin:0 0 7px}
 .chatUser{font-weight:800;margin-right:5px}
+.chatTranslated{opacity:.92}
 #chatForm{display:flex;gap:6px;margin-top:8px}
 #chatInput{flex:1;min-width:0;background:#050505;color:#fff;border:1px solid #444;padding:8px}
 #chatSend{width:64px;background:#fff;color:#000;border:0}
@@ -80,6 +84,27 @@ button{cursor:pointer}
 </div>
 
 <div id="chatBox">
+  <div id="chatTop">
+    <div id="chatTitle">CHAT</div>
+    <select id="chatLang">
+      <option value="en">EN</option>
+      <option value="ru">RU</option>
+      <option value="nl">NL</option>
+      <option value="de">DE</option>
+      <option value="es">ES</option>
+      <option value="fr">FR</option>
+      <option value="it">IT</option>
+      <option value="pt">PT</option>
+      <option value="pl">PL</option>
+      <option value="uk">UK</option>
+      <option value="tr">TR</option>
+      <option value="zh">ZH</option>
+      <option value="ja">JA</option>
+      <option value="ko">KO</option>
+      <option value="ar">AR</option>
+      <option value="hi">HI</option>
+    </select>
+  </div>
   <div id="chatLog"></div>
   <form id="chatForm"><input id="chatInput" autocomplete="off" maxlength="240" placeholder="say something..."><button id="chatSend" type="submit">SEND</button></form>
 </div>
@@ -143,6 +168,10 @@ let lastSent = 0;
 let lastScreenVersion = 0;
 let screenUrlLoaded = '';
 let screenRequestTimer = null;
+let chatLanguage = localStorage.getItem('ews-chat-language') || 'en';
+let chatMessages = [];
+const chatTranslationCache = new Map();
+let chatRenderToken = 0;
 let dustField = null;
 let hazeField = null;
 let mistField = null;
@@ -202,6 +231,15 @@ function enterClub() {
   $('auth').classList.add('hidden');
   $('hint').style.display = 'block';
   $('screenBox').classList.toggle('open',isHost());
+
+  chatLanguage = localStorage.getItem('ews-chat-language') || $('lang').value || 'en';
+
+  if(!Array.from($('chatLang').options).some(option => option.value===chatLanguage)){
+    chatLanguage='en';
+  }
+
+  $('chatLang').value=chatLanguage;
+
   init3D();
   connectSocket();
 }
@@ -286,7 +324,11 @@ function connectSocket() {
   socket.on('screen:state',state=>applyScreen(state));
 
   socket.on('chat:message',message=>{
-    addChat(message.user,message.text);
+    addChat(
+      message.user,
+      message.text,
+      Number(message.ts)||Date.now()
+    );
   });
 
   socket.on('club:ready',info=>{
@@ -300,26 +342,100 @@ function requestWorldAndScreen() {
   socket.emit('screen:request');
 }
 
-function addChat(user,text) {
-  const line = document.createElement('div');
-  line.className='chatLine';
+async function translateChatText(text,target){
+  const source=String(text||'').trim();
+  const lang=String(target||'en').toLowerCase();
 
-  const who = document.createElement('span');
-  who.className='chatUser';
-  who.textContent=String(user||'');
-  
-  const body = document.createElement('span');
-  body.textContent=String(text||'');
+  if(!source) return '';
 
-  line.append(who,body);
-  $('chatLog').appendChild(line);
-  $('chatLog').scrollTop=$('chatLog').scrollHeight;
+  const key=lang+'\\n'+source;
+
+  if(chatTranslationCache.has(key)){
+    return chatTranslationCache.get(key);
+  }
+
+  try{
+    const response=await fetch('/api/translate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        text:source,
+        target:lang
+      })
+    });
+
+    if(!response.ok) throw new Error('translation http '+response.status);
+
+    const data=await response.json();
+    const result=String(data.text||source);
+
+    chatTranslationCache.set(key,result);
+    return result;
+  }catch(error){
+    console.warn('[EWS CHAT TRANSLATION]',error.message);
+    return source;
+  }
 }
+
+async function renderChat(){
+  const token=++chatRenderToken;
+  const log=$('chatLog');
+  if(!log) return;
+
+  const messages=chatMessages.slice(-80);
+  log.innerHTML='';
+
+  for(const message of messages){
+    const line=document.createElement('div');
+    line.className='chatLine';
+
+    const who=document.createElement('span');
+    who.className='chatUser';
+    who.textContent=message.user;
+
+    const body=document.createElement('span');
+    body.className='chatTranslated';
+    body.textContent='…';
+
+    line.append(who,body);
+    log.appendChild(line);
+
+    const translated=await translateChatText(message.text,chatLanguage);
+
+    if(token!==chatRenderToken) return;
+
+    body.textContent=translated;
+    log.scrollTop=log.scrollHeight;
+  }
+}
+
+function addChat(user,text,ts){
+  chatMessages.push({
+    user:String(user||''),
+    text:String(text||''),
+    ts:Number(ts)||Date.now()
+  });
+
+  if(chatMessages.length>80){
+    chatMessages=chatMessages.slice(-80);
+  }
+
+  renderChat();
+}
+
+$('chatLang').addEventListener('change',()=>{
+  chatLanguage=$('chatLang').value || 'en';
+  localStorage.setItem('ews-chat-language',chatLanguage);
+  renderChat();
+});
 
 $('chatForm').addEventListener('submit',e=>{
   e.preventDefault();
+
   const value=$('chatInput').value.trim();
+
   if(!value || !socket || !socket.connected) return;
+
   socket.emit('chat:message',value);
   $('chatInput').value='';
 });
