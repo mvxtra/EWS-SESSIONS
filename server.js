@@ -22,6 +22,28 @@ const USERS_FILE = path.join(__dirname,'users.json');
 const SCREEN_HOST = 'mvxtra';
 const GROUND_Y = 1.7;
 const EMOTES = new Set([1,2,3,4,5,6]);
+const PLAYER_RADIUS = 0.38;
+const COLLISION_BOXES = [
+  {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9},
+  {minX:-8.8,maxX:-7.2,minZ:-11.6,maxZ:-10.3},
+  {minX:7.2,maxX:8.8,minZ:-11.6,maxZ:-10.3},
+  {minX:-11.8,maxX:-10.2,minZ:-11.6,maxZ:-9.7},
+  {minX:10.2,maxX:11.8,minZ:-11.6,maxZ:-9.7},
+  {minX:-15.7,maxX:-14.3,minZ:4.3,maxZ:5.7},
+  {minX:14.3,maxX:15.7,minZ:4.3,maxZ:5.7},
+  {minX:-15.7,maxX:-14.3,minZ:-5.7,maxZ:-4.3},
+  {minX:14.3,maxX:15.7,minZ:-5.7,maxZ:-4.3},
+  {minX:-3.6,maxX:3.6,minZ:15.7,maxZ:16.7}
+];
+function blockedPosition(x,z){
+  for(const b of COLLISION_BOXES){
+    const cx=Math.max(b.minX,Math.min(x,b.maxX));
+    const cz=Math.max(b.minZ,Math.min(z,b.maxZ));
+    const dx=x-cx, dz=z-cz;
+    if(dx*dx+dz*dz < PLAYER_RADIUS*PLAYER_RADIUS) return true;
+  }
+  return false;
+}
 
 for(const dir of [PUBLIC_DIR,HLS_DIR,HLS_STREAM_DIR]) fs.mkdirSync(dir,{recursive:true});
 if(!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE,JSON.stringify([],null,2),'utf8');
@@ -295,8 +317,9 @@ io.on('connection',socket=>{
     const maxDistance=Math.max(0.75,8*dt+0.35);
 
     if(distance<=maxDistance){
-      player.x=nextX;
-      player.z=nextZ;
+      // Resolve each axis separately so the player slides along solid objects.
+      if(!blockedPosition(nextX,player.z)) player.x=nextX;
+      if(!blockedPosition(player.x,nextZ)) player.z=nextZ;
     }
 
     if(Boolean(data.jumping) && Number.isFinite(y)){
