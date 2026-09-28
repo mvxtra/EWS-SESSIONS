@@ -70,11 +70,15 @@ body{
   box-shadow:0 0 45px rgba(0,0,0,.9);
   pointer-events:auto;
   overflow:hidden;
-  display:none;
+  display:block;
+  visibility:hidden;
+  opacity:0;
 }
 
 #css3d-screen.active{
   display:block;
+  visibility:visible;
+  opacity:1;
 }
 
 #css3d-screen iframe{
@@ -861,6 +865,7 @@ let screenMesh;
 let screenMediaActive=false;
 let screenMediaUrl='';
 let pendingScreenState=null;
+let screenSyncTimer=null;
 let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
@@ -1114,10 +1119,25 @@ function startSession(username){
       pendingScreenState=null;
       socket.emit('screen:set',pending);
     }
+
+    // Keep SCREEN state self-healing for guests and reconnects.
+    if(screenSyncTimer){
+      clearInterval(screenSyncTimer);
+    }
+    screenSyncTimer=setInterval(()=>{
+      if(socket && socket.connected){
+        socket.emit('screen:request');
+      }
+    },2000);
   });
 
   socket.on('disconnect',reason=>{
     console.warn('[EWS MP] DISCONNECT',reason);
+
+    if(screenSyncTimer){
+      clearInterval(screenSyncTimer);
+      screenSyncTimer=null;
+    }
 
     onlineUserList=[];
 
@@ -2804,7 +2824,10 @@ function applyRemoteClubScreen(state){
     !state.src
   ){
     frame.src='about:blank';
-    frame.style.display='none';
+    frame.style.display='block';
+    frame.style.visibility='hidden';
+    frame.style.opacity='0';
+    panel.style.display='block';
     panel.style.visibility='hidden';
     panel.style.opacity='0';
     panel.classList.remove('active');
