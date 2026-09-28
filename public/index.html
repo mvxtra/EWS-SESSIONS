@@ -2084,11 +2084,50 @@ function createMainScreen(){
   screenMesh.position.set(0,3.65,-16.58);
   scene.add(screenMesh);
 
-  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  [[14.2,.035,.035,0,6.68,-16.57],[14.2,.035,.035,0,.62,-16.57],[.035,6.1,.035,-7.08,3.65,-16.57],[.035,6.1,.035,7.08,3.65,-16.57]].forEach(a=>{
-    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
-    m.position.set(a[3],a[4],a[5]);
-    scene.add(m);
+  // WHITE NEON SCREEN FRAME — bright core + soft atmospheric glow.
+  const borderSegments=[
+    [14.2,.045,.045,0,6.68,-16.57],
+    [14.2,.045,.045,0,.62,-16.57],
+    [.045,6.1,.045,-7.08,3.65,-16.57],
+    [.045,6.1,.045,7.08,3.65,-16.57]
+  ];
+
+  const neonCoreMat=new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:1,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+
+  const neonGlowMat=new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.22,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+
+  borderSegments.forEach(a=>{
+    const glowScale=3.2;
+    const glow=new THREE.Mesh(
+      new THREE.BoxGeometry(
+        a[0]===14.2 ? a[0] : a[0]*glowScale,
+        a[1]===.045 ? a[1]*glowScale : a[1],
+        .09
+      ),
+      neonGlowMat
+    );
+    glow.position.set(a[3],a[4],a[5]-.01);
+    scene.add(glow);
+
+    const core=new THREE.Mesh(
+      new THREE.BoxGeometry(a[0],a[1],a[2]),
+      neonCoreMat
+    );
+    core.position.set(a[3],a[4],a[5]);
+    scene.add(core);
+    neonObjects.push(core,glow);
   });
 }
 
