@@ -1,1345 +1,4042 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<meta
+  name="viewport"
+  content="width=device-width,initial-scale=1.0"
+>
+
 <title>EWS SESSIONS</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+
+<script src="/socket.io/socket.io.js"></script>
+
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-html,body { width:100%; height:100%; overflow:hidden; background:#0a0a0f; color:#e8e8e8; font-family:'Consolas','Courier New',monospace; }
-canvas { display:block; }
 
-#auth {
-  position:fixed; inset:0; z-index:1000;
-  display:flex; align-items:center; justify-content:center;
-  background:radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 100%);
-}
-#auth-box {
-  width:340px; padding:36px 28px;
-  background:rgba(20,20,35,0.92);
-  border:1px solid #ff6600;
-  border-radius:4px;
-  box-shadow:0 0 40px rgba(255,102,0,0.15);
-}
-#auth-box h1 {
-  font-size:22px; text-align:center; margin-bottom:4px;
-  letter-spacing:4px; color:#ff6600;
-}
-#auth-box .subtitle {
-  text-align:center; font-size:10px; color:#888; margin-bottom:24px;
-  letter-spacing:2px;
-}
-#auth-box input {
-  width:100%; padding:12px 14px; margin-bottom:12px;
-  background:rgba(0,0,0,0.4);
-  border:1px solid #333; border-radius:3px;
-  color:#e8e8e8; font-size:14px; font-family:inherit;
-  outline:none; transition:border-color 0.2s;
-}
-#auth-box input:focus { border-color:#ff6600; }
-#auth-box input::placeholder { color:#555; }
-#auth-box button {
-  width:100%; padding:12px;
-  background:transparent;
-  border:1px solid #ff6600; border-radius:3px;
-  color:#ff6600; font-size:14px; font-family:inherit;
-  cursor:pointer; transition:all 0.2s;
-  letter-spacing:2px; margin-bottom:8px;
-}
-#auth-box button:hover { background:rgba(255,102,0,0.15); }
-#auth-box button.primary { background:#ff6600; color:#0a0a0f; }
-#auth-box button.primary:hover { background:#ff8533; }
-#auth-error {
-  color:#ff4444; font-size:12px; text-align:center;
-  min-height:16px; margin-top:4px;
-}
-.auth-tabs { display:flex; gap:4px; margin-bottom:20px; }
-.auth-tabs button {
-  flex:1; padding:10px; background:transparent;
-  border:1px solid #333; color:#888;
-  font-size:12px; font-family:inherit; cursor:pointer;
-  letter-spacing:2px; border-radius:3px; margin:0;
-}
-.auth-tabs button.active {
-  border-color:#ff6600; color:#ff6600;
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
 }
 
-#game { position:fixed; inset:0; }
-#canvas { position:fixed; inset:0; width:100%; height:100%; }
+html,
+body{
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:#050505;
+  color:#fff;
+  font-family:Arial,Helvetica,sans-serif;
+}
 
-/* TOP BAR */
-#top-bar {
-  position:fixed; top:0; left:0; right:0; z-index:50;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:8px 14px;
-  background:linear-gradient(180deg, rgba(0,0,0,0.7), transparent);
+#app{
+  position:relative;
+  width:100vw;
+  height:100vh;
+}
+
+#canvas3d{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+/* 3D HTML layer — the club screen is physically anchored in Three.js */
+#css3d-container{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:15;
   pointer-events:none;
+  overflow:hidden;
 }
-#top-bar .logo {
-  font-size:13px; letter-spacing:3px; color:#ff6600;
-  text-shadow:0 0 8px rgba(255,102,0,0.4);
-}
-#top-bar .audio-status {
-  font-size:11px; color:#888; letter-spacing:1px;
-}
-#audio-btn {
+
+#css3d-screen{
+  width:1400px;
+  height:600px;
+  position:absolute;
+  left:0;
+  top:0;
+  background:#000;
+  border:1px solid #222;
+  box-shadow:0 0 45px rgba(0,0,0,.9);
   pointer-events:auto;
-  padding:5px 12px; background:transparent;
-  border:1px solid #ff6600; border-radius:3px;
-  color:#ff6600; font-size:11px; cursor:pointer;
-  font-family:inherit; letter-spacing:1px;
-}
-#audio-btn:hover { background:rgba(255,102,0,0.15); }
-#audio-btn.active { background:#ff6600; color:#0a0a0f; }
-
-/* ONLINE LIST */
-#online-panel {
-  position:fixed; top:42px; left:14px; z-index:50;
-  width:200px; max-height:260px; overflow-y:auto;
-  background:rgba(10,10,15,0.85);
-  border:1px solid #222; border-radius:4px;
-  padding:8px 10px;
-}
-#online-panel h3 {
-  font-size:10px; letter-spacing:3px; color:#888;
-  margin-bottom:6px;
-}
-#online-list { font-size:12px; }
-#online-list .online-row {
-  display:flex; align-items:center; gap:6px;
-  padding:3px 0;
-}
-#online-list .dot {
-  width:7px; height:7px; border-radius:50%;
-  background:#0c0;
-  flex-shrink:0;
-}
-#online-list .dot.me { background:#ff6600; }
-#online-list .dot.host { background:#ffcc00; }
-#online-list .uname { color:#ccc; }
-#online-list .uname.me { color:#ff6600; }
-#online-list .uname.host { color:#ffcc00; }
-
-/* CHAT */
-#chat-panel {
-  position:fixed; bottom:0; left:0; right:0; z-index:50;
-  height:160px; pointer-events:none;
-  display:flex; flex-direction:column; justify-content:flex-end;
-}
-#chat-messages {
-  flex:1; overflow-y:auto;
-  padding:6px 14px;
-  font-size:12px; line-height:1.5;
-  max-height:120px;
-}
-#chat-messages .chat-msg { margin-bottom:2px; }
-#chat-messages .chat-user { color:#ff6600; }
-#chat-messages .chat-text { color:#ddd; }
-#chat-messages .chat-orig { color:#666; font-size:10px; font-style:italic; }
-#chat-input-row {
-  display:flex; gap:6px; padding:6px 14px;
-  pointer-events:auto;
-}
-#chat-input {
-  flex:1; padding:8px 12px;
-  background:rgba(0,0,0,0.6);
-  border:1px solid #333; border-radius:3px;
-  color:#e8e8e8; font-size:13px; font-family:inherit;
-  outline:none;
-}
-#chat-input:focus { border-color:#ff6600; }
-#chat-send {
-  padding:8px 16px; background:transparent;
-  border:1px solid #ff6600; border-radius:3px;
-  color:#ff6600; font-size:12px; cursor:pointer;
-  font-family:inherit; letter-spacing:1px;
-}
-#chat-send:hover { background:rgba(255,102,0,0.15); }
-.chat-hidden #chat-panel { display:none; }
-
-/* BOTTOM CONTROLS */
-#bottom-controls {
-  position:fixed; bottom:166px; left:14px; z-index:50;
-  display:flex; flex-direction:column; gap:6px;
-}
-#bottom-controls button, #bottom-controls select {
-  padding:7px 14px; background:rgba(10,10,15,0.85);
-  border:1px solid #ff6600; border-radius:3px;
-  color:#ff6600; font-size:11px; cursor:pointer;
-  font-family:inherit; letter-spacing:1px;
-  outline:none;
-}
-#bottom-controls button:hover { background:rgba(255,102,0,0.15); }
-#bottom-controls select { color:#ff6600; }
-#bottom-controls select option { background:#0a0a0f; }
-
-/* SCREEN MODAL */
-#screen-modal {
-  position:fixed; inset:0; z-index:200;
-  display:none; align-items:center; justify-content:center;
-  background:rgba(0,0,0,0.85);
-}
-#screen-modal.show { display:flex; }
-#screen-modal-box {
-  width:420px; padding:28px;
-  background:rgba(20,20,35,0.95);
-  border:1px solid #ff6600; border-radius:4px;
-}
-#screen-modal-box h2 {
-  font-size:14px; letter-spacing:3px; color:#ff6600;
-  margin-bottom:16px; text-align:center;
-}
-#screen-modal-box input {
-  width:100%; padding:10px 12px; margin-bottom:12px;
-  background:rgba(0,0,0,0.4);
-  border:1px solid #333; border-radius:3px;
-  color:#e8e8e8; font-size:13px; font-family:inherit;
-  outline:none;
-}
-#screen-modal-box input:focus { border-color:#ff6600; }
-#screen-modal-box input::placeholder { color:#555; }
-#screen-modal-box .btn-row { display:flex; gap:8px; }
-#screen-modal-box button {
-  flex:1; padding:10px;
-  background:transparent;
-  border:1px solid #ff6600; border-radius:3px;
-  color:#ff6600; font-size:12px; cursor:pointer;
-  font-family:inherit; letter-spacing:1px;
-}
-#screen-modal-box button:hover { background:rgba(255,102,0,0.15); }
-#screen-modal-box button.primary { background:#ff6600; color:#0a0a0f; }
-#screen-modal-box .close-btn {
-  flex:0 0 auto; padding:4px 10px; border-color:#333; color:#888;
-}
-#screen-modal-box .screen-hint {
-  font-size:10px; color:#666; margin-top:8px; text-align:center;
-}
-#screen-modal-box .denied {
-  color:#ff4444; font-size:12px; text-align:center; padding:20px 0;
-}
-
-/* EMOTES PANEL */
-#emotes-panel {
-  position:fixed; bottom:166px; right:14px; z-index:50;
-  display:none; flex-direction:column; gap:4px;
-  background:rgba(10,10,15,0.85);
-  border:1px solid #222; border-radius:4px;
-  padding:8px;
-}
-#emotes-panel.show { display:flex; }
-#emotes-panel h3 {
-  font-size:9px; letter-spacing:3px; color:#888;
-  margin-bottom:4px; text-align:center;
-}
-#emotes-panel button {
-  padding:6px 18px; background:transparent;
-  border:1px solid #333; border-radius:3px;
-  color:#ccc; font-size:11px; cursor:pointer;
-  font-family:inherit; letter-spacing:1px;
-  text-align:center;
-}
-#emotes-panel button:hover { border-color:#ff6600; color:#ff6600; }
-#emotes-panel button.stop { border-color:#ff4444; color:#ff4444; }
-
-/* HINT */
-#hint {
-  position:fixed; bottom:170px; right:14px; z-index:40;
-  font-size:10px; color:#555; text-align:right;
-  letter-spacing:1px; pointer-events:none;
-}
-
-/* MOBILE */
-#mobile-controls {
-  position:fixed; bottom:170px; left:14px; z-index:50;
+  overflow:hidden;
   display:none;
 }
-.mobile-only { display:none; }
-@media(max-width:768px) {
-  .mobile-only { display:block; }
-  #mobile-controls { display:block; }
-  #hint { display:none; }
-  #online-panel { width:150px; font-size:11px; }
-  #bottom-controls { bottom:200px; }
-  #emotes-panel { bottom:200px; }
-}
-#joystick {
-  width:120px; height:120px;
-  background:rgba(255,102,0,0.1);
-  border:2px solid rgba(255,102,0,0.3);
-  border-radius:50%;
-  position:relative; touch-action:none;
-}
-#joystick-knob {
-  width:40px; height:40px;
-  background:rgba(255,102,0,0.5);
-  border-radius:50%;
-  position:absolute; top:40px; left:40px;
-  touch-action:none;
-}
-#look-btn {
-  position:fixed; bottom:180px; right:14px; z-index:50;
-  width:70px; height:70px;
-  background:rgba(255,102,0,0.1);
-  border:2px solid rgba(255,102,0,0.3);
-  border-radius:50%;
-  display:none; touch-action:none;
-  font-size:9px; color:#888; text-align:center;
-  line-height:70px; letter-spacing:1px;
-}
-.mobile-only #look-btn { display:block; }
 
-#loading {
-  position:fixed; inset:0; z-index:9999;
-  display:flex; align-items:center; justify-content:center;
-  background:#0a0a0f; color:#ff6600;
-  font-size:14px; letter-spacing:4px;
+#css3d-screen.active{
+  display:block;
 }
-.spinner {
-  width:30px; height:30px;
-  border:2px solid #333; border-top-color:#ff6600;
-  border-radius:50%; animation:spin 1s linear infinite;
-  margin-right:12px;
+
+#css3d-screen iframe{
+  width:100%;
+  height:100%;
+  border:0;
+  display:block;
+  background:#000;
 }
-@keyframes spin { to { transform:rotate(360deg); } }
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+#login{
+  position:absolute;
+  inset:0;
+  z-index:1000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(255,255,255,.08),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      #171717,
+      #030303 70%
+    );
+}
+
+.login-box{
+  width:380px;
+  padding:42px;
+
+  background:rgba(5,5,5,.88);
+
+  border:1px solid #444;
+
+  box-shadow:
+    0 0 80px rgba(255,255,255,.06),
+    inset 0 0 40px rgba(255,255,255,.02);
+
+  text-align:center;
+}
+
+.login-box h1{
+  font-size:31px;
+  letter-spacing:8px;
+  font-weight:900;
+  color:#fff;
+  margin-bottom:8px;
+}
+
+.login-box p{
+  font-size:10px;
+  letter-spacing:5px;
+  color:#777;
+  margin-bottom:30px;
+}
+
+.tabs{
+  display:flex;
+  margin-bottom:20px;
+  border:1px solid #333;
+}
+
+.tab{
+  flex:1;
+  padding:11px;
+  border:0;
+  background:#0c0c0c;
+  color:#666;
+  cursor:pointer;
+  letter-spacing:2px;
+}
+
+.tab.active{
+  background:#fff;
+  color:#000;
+}
+
+input{
+  width:100%;
+  height:45px;
+  margin-bottom:12px;
+  padding:0 14px;
+
+  border:1px solid #333;
+  background:#080808;
+  color:#fff;
+
+  outline:none;
+}
+
+input:focus{
+  border-color:#aaa;
+}
+
+.btn{
+  width:100%;
+  height:45px;
+
+  border:0;
+
+  background:#fff;
+  color:#000;
+
+  font-weight:bold;
+  letter-spacing:2px;
+
+  cursor:pointer;
+}
+
+.btn:hover{
+  background:#ddd;
+}
+
+.error{
+  min-height:20px;
+  margin-top:12px;
+  color:#ff5555;
+  font-size:12px;
+}
+
+/* =========================================================
+   HUD
+========================================================= */
+
+#hud{
+  position:absolute;
+  inset:0;
+  z-index:20;
+
+  display:none;
+
+  pointer-events:none;
+}
+
+#top-logo{
+  position:absolute;
+
+  top:18px;
+  left:20px;
+
+  font-size:16px;
+  font-weight:900;
+  letter-spacing:5px;
+
+  text-shadow:0 0 20px #fff;
+}
+
+#top-logo span{
+  display:block;
+
+  margin-top:4px;
+
+  font-size:8px;
+  letter-spacing:3px;
+  color:#777;
+}
+
+#online-box{
+  position:absolute;
+
+  top:18px;
+  right:18px;
+
+  width:190px;
+
+  padding:13px;
+
+  background:rgba(0,0,0,.72);
+
+  border:1px solid #333;
+
+  pointer-events:auto;
+}
+
+#online-box h3{
+  font-size:10px;
+  letter-spacing:3px;
+  color:#aaa;
+  margin-bottom:9px;
+}
+
+#online-list{
+  list-style:none;
+
+  max-height:180px;
+  overflow:auto;
+
+  color:#ddd;
+  font-size:12px;
+}
+
+#online-list li{
+  padding:4px 0;
+
+  border-bottom:1px solid #161616;
+}
+
+#online-list li::before{
+  content:"●";
+
+  color:#fff;
+
+  margin-right:7px;
+
+  font-size:8px;
+}
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+#chat{
+  position:absolute;
+
+  left:18px;
+  bottom:18px;
+
+  width:390px;
+  height:250px;
+
+  padding:12px;
+
+  display:flex;
+  flex-direction:column;
+
+  background:rgba(0,0,0,.75);
+
+  border:1px solid #333;
+
+  pointer-events:auto;
+}
+
+#chat-title{
+  font-size:9px;
+  letter-spacing:3px;
+  color:#777;
+
+  margin-bottom:8px;
+}
+
+#chat-messages{
+  flex:1;
+
+  overflow-y:auto;
+
+  margin-bottom:8px;
+}
+
+.msg{
+  margin-bottom:7px;
+
+  font-size:12px;
+  line-height:1.4;
+}
+
+.msg .u{
+  color:#fff;
+  font-weight:bold;
+}
+
+.msg .t{
+  color:#aaa;
+}
+
+#chat-form{
+  display:flex;
+  gap:6px;
+}
+
+#chat-input{
+  flex:1;
+  height:35px;
+  margin:0;
+}
+
+#chat-send{
+  width:45px;
+
+  border:0;
+
+  background:#fff;
+  color:#000;
+
+  cursor:pointer;
+}
+
+
+/* =========================================================
+   CLUB SCREEN / MEDIA
+========================================================= */
+
+#screen-control{
+  position:fixed;
+  top:108px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:31;
+  pointer-events:auto;
+  height:34px;
+  padding:0 18px;
+  border:1px solid #444;
+  background:rgba(0,0,0,.78);
+  color:#fff;
+  font-size:10px;
+  font-weight:bold;
+  letter-spacing:3px;
+  cursor:pointer;
+}
+
+#screen-control:hover{
+  background:#fff;
+  color:#000;
+}
+
+#screen-menu{
+  position:fixed;
+  top:148px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:40;
+  width:min(560px,calc(100vw - 30px));
+  padding:16px;
+  background:rgba(4,4,4,.96);
+  border:1px solid #444;
+  box-shadow:0 20px 70px rgba(0,0,0,.7);
+  display:none;
+  pointer-events:auto;
+}
+
+#screen-menu.open{display:block;}
+
+#screen-menu-title{
+  font-size:10px;
+  letter-spacing:3px;
+  color:#fff;
+  margin-bottom:10px;
+}
+
+#screen-menu-row{
+  display:flex;
+  gap:7px;
+}
+
+#screen-url{
+  flex:1;
+  margin:0;
+  height:38px;
+}
+
+.screen-btn{
+  height:38px;
+  padding:0 13px;
+  border:1px solid #444;
+  background:#111;
+  color:#fff;
+  cursor:pointer;
+  font-size:10px;
+  letter-spacing:1px;
+}
+
+.screen-btn:hover{
+  background:#fff;
+  color:#000;
+}
+
+#screen-status{
+  margin-top:9px;
+  color:#777;
+  font-size:10px;
+  line-height:1.4;
+}
+
+#css3d-container{position:absolute;inset:0;width:100%;height:100%;z-index:15;pointer-events:none;overflow:hidden;}
+#css3d-screen{width:1400px;height:600px;position:absolute;left:0;top:0;background:#000;border:1px solid #222;box-shadow:0 0 45px rgba(0,0,0,.9);pointer-events:auto;overflow:hidden;display:none;}
+#css3d-screen.active{display:block;}
+#css3d-screen iframe{width:100%;height:100%;border:0;display:block;background:#000;pointer-events:auto;}
+#css3d-screen-close{position:absolute;top:7px;right:7px;z-index:2;width:28px;height:28px;border:1px solid #555;background:rgba(0,0,0,.85);color:#fff;cursor:pointer;font-size:14px;line-height:26px;}
+
+@media(max-width:700px){
+  #screen-menu-row{flex-wrap:wrap;}
+  #screen-url{flex-basis:100%;}
+}
+
+/* =========================================================
+   EMOTES / DANCES
+========================================================= */
+#emotes-control{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:32;pointer-events:auto;height:34px;padding:0 18px;border:1px solid #444;background:rgba(0,0,0,.82);color:#fff;font-size:10px;font-weight:bold;letter-spacing:3px;cursor:pointer;}
+#emotes-control:hover{background:#fff;color:#000;}
+#emotes-menu{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:41;width:250px;padding:10px;background:rgba(4,4,4,.97);border:1px solid #444;box-shadow:0 20px 70px rgba(0,0,0,.7);display:none;pointer-events:auto;}
+#emotes-menu.open{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.emote-btn{height:36px;border:1px solid #333;background:#111;color:#fff;cursor:pointer;font-size:10px;letter-spacing:1px;}
+.emote-btn:hover{background:#fff;color:#000;}
+#emote-stop{grid-column:1/-1;}
+/* =========================================================
+   OTHER HUD
+========================================================= */
+
+#hint{
+  position:absolute;
+
+  right:18px;
+  bottom:18px;
+
+  padding:9px 12px;
+
+  background:rgba(0,0,0,.65);
+
+  border:1px solid #292929;
+
+  color:#777;
+
+  font-size:10px;
+  letter-spacing:1px;
+}
+
+#stream-indicator{
+  position:absolute;
+
+  top:18px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  padding:6px 12px;
+
+  background:rgba(0,0,0,.75);
+
+  border:1px solid #333;
+
+  color:#777;
+
+  font-family:monospace;
+
+  font-size:10px;
+  letter-spacing:2px;
+}
+
+#stream-indicator.live{
+  color:#fff;
+  border-color:#aaa;
+}
+
+#stream-indicator.error{
+  color:#ff5555;
+  border-color:#ff5555;
+}
+
+#lang-bar{
+  position:absolute;
+
+  right:220px;
+  top:18px;
+
+  pointer-events:auto;
+}
+
+#lang{
+  background:#080808;
+
+  border:1px solid #333;
+
+  color:#aaa;
+
+  padding:7px 10px;
+}
+
+#zone-label{
+  position:absolute;
+
+  left:50%;
+  bottom:90px;
+
+  transform:translateX(-50%);
+
+  font-size:10px;
+
+  letter-spacing:5px;
+
+  color:rgba(255,255,255,.4);
+
+  pointer-events:none;
+}
+
+#audio-control{
+  position:absolute;
+
+  top:58px;
+  left:50%;
+
+  transform:translateX(-50%);
+
+  z-index:100;
+
+  pointer-events:auto;
+
+  padding:9px 14px;
+
+  border:1px solid #444;
+
+  background:rgba(0,0,0,.78);
+
+  color:#aaa;
+
+  font-family:monospace;
+
+  font-size:10px;
+
+  letter-spacing:2px;
+
+  cursor:pointer;
+}
+
+#audio-control.live{
+  color:#fff;
+  border-color:#aaa;
+}
+
+#audio-control:disabled{
+  opacity:.7;
+  cursor:wait;
+}
+
+#ews-audio{
+  position:absolute;
+
+  width:1px;
+  height:1px;
+
+  opacity:0;
+
+  pointer-events:none;
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media(max-width:700px){
+
+  #top-logo{
+    top:12px;
+    left:12px;
+    font-size:22px;
+  }
+
+  #top-logo span{
+    font-size:9px;
+  }
+
+  #lang-bar{
+    right:12px;
+    top:12px;
+  }
+
+  #lang{
+    padding:6px 7px;
+    font-size:11px;
+  }
+
+  #online-box{
+    top:52px;
+    right:12px;
+
+    width:145px;
+
+    padding:9px;
+
+    max-height:105px;
+  }
+
+  #online-list{
+    max-height:62px;
+    font-size:10px;
+  }
+
+  #online-box h3{
+    font-size:8px;
+    margin-bottom:5px;
+  }
+
+  #online-list li{
+    padding:2px 0;
+  }
+
+  #stream-indicator{
+    top:52px;
+    left:12px;
+
+    transform:none;
+
+    padding:5px 8px;
+
+    font-size:8px;
+  }
+
+  #audio-control{
+    top:84px;
+    left:12px;
+
+    transform:none;
+
+    padding:8px 10px;
+
+    font-size:8px;
+
+    z-index:150;
+  }
+
+  #chat{
+    left:10px;
+    right:10px;
+    bottom:10px;
+
+    width:auto;
+
+    height:31vh;
+
+    min-height:190px;
+    max-height:270px;
+
+    padding:9px;
+
+    z-index:200;
+
+    background:rgba(0,0,0,.86);
+  }
+
+  #chat-title{
+    font-size:8px;
+    margin-bottom:6px;
+  }
+
+  #chat-messages{
+    font-size:11px;
+    margin-bottom:6px;
+  }
+
+  .msg{
+    font-size:11px;
+    margin-bottom:5px;
+  }
+
+  #chat-input{
+    height:38px;
+
+    font-size:14px;
+
+    padding:0 9px;
+  }
+
+  #chat-send{
+    width:44px;
+
+    font-size:18px;
+  }
+
+  #hint{
+    display:none;
+  }
+
+  #zone-label{
+    bottom:calc(31vh + 20px);
+
+    font-size:8px;
+  }
+}
+
+@media(max-width:420px){
+
+  #online-box{
+    width:125px;
+  }
+
+  #chat{
+    height:34vh;
+    min-height:185px;
+  }
+
+  #zone-label{
+    bottom:calc(34vh + 20px);
+  }
+}
+
 </style>
 </head>
+
 <body>
 
-<div id="loading"><div class="spinner"></div>LOADING</div>
+<div id="app">
 
-<!-- AUTH -->
-<div id="auth">
-  <div id="auth-box">
-    <h1>EWS SESSIONS</h1>
-    <div class="subtitle">UNDERGROUND CLUB</div>
-    <div class="auth-tabs">
-      <button id="tab-login" class="active" onclick="switchAuthTab('login')">ВХОД</button>
-      <button id="tab-register" onclick="switchAuthTab('register')">РЕГИСТРАЦИЯ</button>
-    </div>
-    <input id="auth-username" placeholder="username" maxlength="24" autocomplete="off">
-    <input id="auth-password" type="password" placeholder="password" maxlength="100">
-    <button id="auth-submit" class="primary" onclick="doAuth()">ВОЙТИ</button>
-    <div id="auth-error"></div>
+<canvas id="canvas3d"></canvas>
+
+<div id="css3d-container">
+  <div id="css3d-screen">
+    <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
   </div>
 </div>
 
-<!-- GAME -->
-<div id="game" class="chat-hidden">
-  <canvas id="canvas"></canvas>
+<audio
+  id="ews-audio"
+  crossorigin="anonymous"
+  playsinline
+  preload="auto">
+</audio>
 
-  <!-- TOP BAR -->
-  <div id="top-bar">
-    <div class="logo">EWS SESSIONS</div>
-    <div style="display:flex; align-items:center; gap:10px;">
-      <span class="audio-status" id="audio-status">AUDIO: OFF</span>
-      <button id="audio-btn" onclick="toggleAudio()">▶ AUDIO: START</button>
+<!-- =====================================================
+     LOGIN
+===================================================== -->
+
+<div id="login">
+
+  <div class="login-box">
+
+    <h1>EWS</h1>
+
+    <p>
+      SESSIONS / UNDERGROUND CLUB
+    </p>
+
+    <div class="tabs">
+
+      <button
+        class="tab active"
+        onclick="switchTab('login')">
+        ВХОД
+      </button>
+
+      <button
+        class="tab"
+        onclick="switchTab('register')">
+        РЕГИСТРАЦИЯ
+      </button>
+
     </div>
+
+    <input
+      id="f-username"
+      placeholder="USERNAME"
+      autocomplete="username"
+    >
+
+    <input
+      id="f-password"
+      type="password"
+      placeholder="PASSWORD"
+      autocomplete="current-password"
+    >
+
+    <button
+      class="btn"
+      id="submitBtn"
+      onclick="doLogin()">
+      ВОЙТИ
+    </button>
+
+    <div
+      id="error"
+      class="error">
+    </div>
+
   </div>
 
-  <!-- ONLINE -->
-  <div id="online-panel">
-    <h3>ONLINE</h3>
-    <div id="online-list"></div>
+</div>
+
+<!-- =====================================================
+     HUD
+===================================================== -->
+
+<div id="hud">
+
+  <div id="top-logo">
+    EWS
+    <span>SESSIONS</span>
   </div>
 
-  <!-- BOTTOM CONTROLS -->
-  <div id="bottom-controls">
-    <button id="btn-screen" onclick="openScreenModal()">SCREEN</button>
-    <button id="btn-emotes" onclick="toggleEmotes()">EMOTES</button>
-    <select id="lang-select" onchange="changeLanguage()">
-      <option value="ru">Русский</option>
-      <option value="en">English</option>
-      <option value="es">Español</option>
-      <option value="de">Deutsch</option>
-      <option value="fr">Français</option>
+  <div id="stream-indicator">
+    AUDIO: READY
+  </div>
+
+  <button
+    id="audio-control"
+    onclick="startSSHAudio()">
+    ▶ AUDIO: START
+  </button>
+
+  <button
+    id="screen-control"
+    onclick="toggleScreenMenu()">
+    SCREEN
+  </button>
+
+  <div id="screen-menu">
+    <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
+    <div id="screen-menu-row">
+      <input
+        id="screen-url"
+        type="url"
+        placeholder="YouTube / Twitch / website URL"
+        autocomplete="off"
+      >
+      <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
+      <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
+    </div>
+    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
+  </div>
+
+  <button id="emotes-control" onclick="toggleEmotesMenu()">EMOTES</button>
+
+  <div id="emotes-menu">
+    <button class="emote-btn" onclick="playDance(1)">DANCE 01</button>
+    <button class="emote-btn" onclick="playDance(2)">DANCE 02</button>
+    <button class="emote-btn" onclick="playDance(3)">SHUFFLE</button>
+    <button class="emote-btn" onclick="playDance(4)">ROBOT</button>
+    <button class="emote-btn" onclick="playDance(5)">BOUNCE</button>
+    <button class="emote-btn" onclick="playDance(6)">WAVE</button>
+    <button id="emote-stop" class="emote-btn" onclick="stopDance()">STOP DANCE</button>
+  </div>
+
+  <div id="lang-bar">
+
+    <select id="lang">
+
+      <option value="ru">RU</option>
+      <option value="en">EN</option>
+      <option value="es">ES</option>
+      <option value="de">DE</option>
+      <option value="fr">FR</option>
       <option value="zh">中文</option>
       <option value="ja">日本語</option>
       <option value="ko">한국어</option>
-      <option value="ar">العربية</option>
-      <option value="hi">हिन्दी</option>
-      <option value="pt">Português</option>
-      <option value="it">Italiano</option>
-      <option value="tr">Türkçe</option>
-      <option value="uk">Українська</option>
+      <option value="ar">AR</option>
+      <option value="hi">HI</option>
+      <option value="pt">PT</option>
+      <option value="it">IT</option>
+      <option value="tr">TR</option>
+      <option value="uk">UA</option>
+
     </select>
+
   </div>
 
-  <!-- EMOTES -->
-  <div id="emotes-panel">
-    <h3>DANCES</h3>
-    <button onclick="sendDance(1)">DANCE 01</button>
-    <button onclick="sendDance(2)">DANCE 02</button>
-    <button onclick="sendDance(3)">SHUFFLE</button>
-    <button onclick="sendDance(4)">ROBOT</button>
-    <button onclick="sendDance(5)">BOUNCE</button>
-    <button onclick="sendDance(6)">WAVE</button>
-    <button class="stop" onclick="sendDance(0)">STOP DANCE</button>
+  <div id="online-box">
+
+    <h3>
+      ONLINE
+    </h3>
+
+    <ul id="online-list"></ul>
+
   </div>
 
-  <!-- HINT -->
-  <div id="hint">
-    WASD MOVE · MOUSE LOOK<br>C CHAT · SPACE JUMP
-  </div>
+  <div id="chat">
 
-  <!-- SCREEN MODAL -->
-  <div id="screen-modal">
-    <div id="screen-modal-box">
-      <h2>CLUB SCREEN</h2>
-      <div id="screen-content">
-        <input id="screen-url" placeholder="YouTube or Twitch URL">
-        <div class="btn-row">
-          <button class="primary" onclick="loadScreen()">LOAD</button>
-          <button onclick="clearScreen()">CLEAR</button>
-          <button class="close-btn" onclick="closeScreenModal()">×</button>
-        </div>
-        <div class="screen-hint">YouTube и Twitch открываются со звуком через embed.</div>
-      </div>
-      <div id="screen-denied" style="display:none;"></div>
+    <div id="chat-title">
+      EWS SESSIONS / CHAT
     </div>
-  </div>
 
-  <!-- CHAT -->
-  <div id="chat-panel">
     <div id="chat-messages"></div>
-    <div id="chat-input-row">
-      <input id="chat-input" placeholder="C — открыть/закрыть чат" maxlength="500" autocomplete="off">
-      <button id="chat-send" onclick="sendChat()">→</button>
-    </div>
+
+    <form id="chat-form">
+
+      <input
+        id="chat-input"
+        autocomplete="off"
+        placeholder="write something..."
+      >
+
+      <button id="chat-send">
+        →
+      </button>
+
+    </form>
+
   </div>
 
-  <!-- MOBILE -->
-  <div id="mobile-controls" class="mobile-only">
-    <div id="joystick"><div id="joystick-knob"></div></div>
+
+
+
+  <div id="hint">
+    WASD MOVE · MOUSE LOOK · C CHAT
   </div>
-  <div id="look-btn" class="mobile-only">LOOK</div>
+
 </div>
 
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</div>
+
 <script>
-// =====================================================
-// STATE
-// =====================================================
-let socket = null;
-let scene, camera, renderer;
-let myUsername = null;
-let myLanguage = 'ru';
-let isHost = false;
-let myPlayer = null;
-let players = {};
-let playerMeshes = {};
-let keys = {};
-let mouseLocked = false;
-let chatOpen = false;
-let audioCtx = null;
-let clock = new THREE.Clock();
-let lastStateSent = 0;
-let mobileMove = {x:0, z:0};
-let lookActive = false;
-let lookStartX = 0, lookStartY = 0;
-let myYaw = 0, myPitch = 0;
-let myX = 0, myY = 1.7, myZ = 13;
-let myMoving = false;
-let myJumping = false;
-let myDance = 0;
-let velY = 0;
-const GRAVITY = 25;
-const JUMP_FORCE = 9;
-const MOVE_SPEED = 7;
-const BOUNDS = {xMin:-16, xMax:16, zMin:-15.5, zMax:15.5};
 
-// =====================================================
-// AUTH
-// =====================================================
-let authMode = 'login';
-function switchAuthTab(mode) {
-  authMode = mode;
-  document.getElementById('tab-login').classList.toggle('active', mode==='login');
-  document.getElementById('tab-register').classList.toggle('active', mode==='register');
-  document.getElementById('auth-submit').textContent = mode==='login' ? 'ВОЙТИ' : 'СОЗДАТЬ';
-  document.getElementById('auth-error').textContent = '';
+let mode='login';
+
+let socket=null;
+let currentUser=null;
+
+let scene;
+let camera;
+let renderer;
+let cssScene;
+let cssRenderer;
+let cssScreenObject;
+
+let keys={};
+
+// JUMP / GRAVITY
+let jumpVelocity=0;
+let playerY=1.7;
+const GROUND_Y=1.7;
+const JUMP_FORCE=7.2;
+const GRAVITY=18;
+let isGrounded=true;
+
+let yaw=0;
+let pitch=0;
+
+let pointerLocked=false;
+let chatMode=false;
+
+let clock=new THREE.Clock();
+
+let neonObjects=[];
+let lightObjects=[];
+
+let particles;
+
+let analyser=null;
+let freqData=null;
+
+let audioLevel=0;
+let bassLevel=0;
+
+let audioContext=null;
+let audioSource=null;
+
+let audioStarted=false;
+
+let hls=null;
+
+let screenTexture;
+let screenCanvas;
+let screenCtx;
+let screenMesh;
+let screenMediaActive=false;
+let screenMediaUrl='';
+let onlineUserList=[];
+let remotePlayers=new Map();
+let lastPlayerBroadcast=0;
+let clubScreenHost=null;
+let activeDance=0;
+let danceStartedAt=0;
+
+let playerBody;
+
+/* =========================================================
+   EWS TEXTURES
+   CC0 seamless textures from ShareTextures
+========================================================= */
+
+const EWS_TEXTURES = {
+  concrete: 'https://images.sharetextures.com/u/concrete_black_mat-min.webp',
+  floor: 'https://images.sharetextures.com/u/stone_floor_1-min.webp'
+};
+
+const ewsTextureLoader = new THREE.TextureLoader();
+
+function loadEWSTexture(url, repeatX=4, repeatY=4){
+  const texture = ewsTextureLoader.load(url);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.anisotropy = Math.min(8, renderer ? renderer.capabilities.getMaxAnisotropy() : 8);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
-function doAuth() {
-  const u = document.getElementById('auth-username').value.trim();
-  const p = document.getElementById('auth-password').value;
-  if(!u || !p) { document.getElementById('auth-error').textContent = 'Заполните оба поля'; return; }
-  const endpoint = authMode==='login' ? '/api/login' : '/api/register';
-  fetch(endpoint, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({username:u, password:p})
-  }).then(r=>r.json()).then(data=>{
-    if(data.ok) {
-      myUsername = data.username;
-      document.getElementById('auth').style.display='none';
-      document.getElementById('game').classList.remove('chat-hidden');
-      chatOpen = true;
-      initGame();
-    } else {
-      document.getElementById('auth-error').textContent = data.error || 'Ошибка';
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
+function switchTab(type){
+
+  mode=type;
+
+  document
+    .querySelectorAll('.tab')
+    .forEach(
+      t=>t.classList.remove('active')
+    );
+
+  if(type==='login'){
+
+    document
+      .querySelectorAll('.tab')[0]
+      .classList.add('active');
+
+    document.getElementById(
+      'submitBtn'
+    ).textContent='ВОЙТИ';
+
+  }else{
+
+    document
+      .querySelectorAll('.tab')[1]
+      .classList.add('active');
+
+    document.getElementById(
+      'submitBtn'
+    ).textContent='СОЗДАТЬ АККАУНТ';
+
+  }
+
+  document.getElementById(
+    'error'
+  ).textContent='';
+
+}
+
+async function doLogin(){
+
+  const username =
+    document
+      .getElementById('f-username')
+      .value
+      .trim();
+
+  const password =
+    document
+      .getElementById('f-password')
+      .value;
+
+  const error =
+    document.getElementById('error');
+
+  error.textContent='';
+
+  if(!username || !password){
+
+    error.textContent=
+      'Введите логин и пароль';
+
+    return;
+  }
+
+  try{
+
+    const res =
+      await fetch(
+        '/api/'+mode,
+        {
+          method:'POST',
+
+          headers:{
+            'Content-Type':
+              'application/json'
+          },
+
+          body:JSON.stringify({
+            username,
+            password
+          })
+        }
+      );
+
+    const data =
+      await res.json();
+
+    if(data.error){
+
+      error.textContent=
+        data.error;
+
+      return;
     }
-  }).catch(()=>{
-    document.getElementById('auth-error').textContent = 'Сервер недоступен';
+
+    startSession(username);
+
+  }catch(err){
+
+    console.error(err);
+
+    error.textContent=
+      'Ошибка соединения';
+
+  }
+
+}
+
+/* =========================================================
+   SESSION
+========================================================= */
+
+function startSession(username){
+
+  currentUser=username;
+
+  document.getElementById(
+    'login'
+  ).style.display='none';
+
+  document.getElementById(
+    'hud'
+  ).style.display='block';
+
+  // SCREEN button is a HUD control and belongs only to mvxtra.
+  clubScreenHost='mvxtra';
+  const screenButton=document.getElementById('screen-control');
+  if(screenButton){
+    screenButton.style.display = String(currentUser).toLowerCase()==='mvxtra' ? 'block' : 'none';
+  }
+
+  init3D();
+
+  socket=io();
+
+  socket.on('connect',function(){
+
+    socket.emit(
+      'join',
+      {
+        username: currentUser,
+        language:
+          document.getElementById('lang').value
+      }
+    );
+
   });
+
+  socket.on(
+    'online-users',
+    list=>{
+
+      onlineUserList=Array.isArray(list)?list:[];
+      // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
+      clubScreenHost='mvxtra';
+
+      const ul =
+        document.getElementById('online-list');
+
+      ul.innerHTML='';
+
+      const screenButton=document.getElementById('screen-control');
+      if(screenButton){ screenButton.style.display=isClubHost()?'block':'none'; }
+
+      if(!Array.isArray(list)) return;
+
+      list.forEach(user=>{
+
+        const li =
+          document.createElement('li');
+
+        const name =
+          typeof user === 'string'
+            ? user
+            : user.username;
+
+        li.textContent =
+          name === currentUser
+            ? name + ' (YOU)'
+            : name;
+
+        ul.appendChild(li);
+
+      });
+
+    }
+  );
+
+  socket.on(
+    'chat-message',
+    message=>{
+
+      const el =
+        document.createElement(
+          'div'
+        );
+
+      el.className='msg';
+
+      const time =
+        new Date(
+          message.ts
+        ).toLocaleTimeString();
+
+      const user =
+        document.createElement(
+          'span'
+        );
+
+      user.className='u';
+
+      user.textContent=
+        message.user;
+
+      const text =
+        document.createElement(
+          'span'
+        );
+
+      text.className='t';
+
+      text.textContent=
+        ' '+time+' '+message.text;
+
+      el.appendChild(user);
+
+      el.appendChild(
+        document.createTextNode(' ')
+      );
+
+      el.appendChild(text);
+
+      const box =
+        document.getElementById(
+          'chat-messages'
+        );
+
+      box.appendChild(el);
+
+      box.scrollTop=
+        box.scrollHeight;
+
+    }
+  );
+
+  socket.on('club-screen-state', state=>{
+    applyRemoteClubScreen(state);
+  });
+
+  // =====================================================
+  // MULTIPLAYER — initial snapshot + live updates
+  // =====================================================
+
+  socket.on('players-state', list=>{
+    if(!Array.isArray(list)) return;
+
+    // Server sends everyone except the current socket.
+    // Rebuild only the missing players so existing objects keep moving smoothly.
+    const alive = new Set();
+
+    list.forEach(data=>{
+      if(!data || !data.id || data.id===socket.id) return;
+      alive.add(data.id);
+      updateRemotePlayer(data);
+    });
+
+    // Remove players that are no longer present in the server snapshot.
+    Array.from(remotePlayers.keys()).forEach(id=>{
+      if(!alive.has(id)) removeRemotePlayer(id);
+    });
+  });
+
+  socket.on('player-joined', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
+  socket.on('player-state', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
+  // Compatibility with the older multiplayer event name.
+  socket.on('player-move', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
+  socket.on('player-left', id=>{
+    removeRemotePlayer(id);
+  });
+
+  socket.on('player-removed', id=>{
+    removeRemotePlayer(id);
+  });
+
+  // Ask the server for a fresh snapshot after every connection.
+  socket.on('joined', ()=>{
+    socket.emit('request-players');
+    socket.emit('request-club-screen');
+  });
+
 }
-document.getElementById('auth-password').addEventListener('keydown', e=>{
-  if(e.key==='Enter') doAuth();
-});
-document.getElementById('auth-username').addEventListener('keydown', e=>{
-  if(e.key==='Enter') document.getElementById('auth-password').focus();
-});
 
-// =====================================================
-// AUDIO
-// =====================================================
-function toggleAudio() {
-  if(!audioCtx) {
-    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    // simple ambient hum
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type='sine';
-    osc.frequency.value=55;
-    gain.gain.value=0.03;
-    osc.connect(gain).connect(audioCtx.destination);
-    osc.start();
-    document.getElementById('audio-status').textContent='AUDIO: READY';
-    document.getElementById('audio-btn').classList.add('active');
-    document.getElementById('audio-btn').textContent='■ AUDIO: ON';
-  } else {
-    audioCtx.close();
-    audioCtx = null;
-    document.getElementById('audio-status').textContent='AUDIO: OFF';
-    document.getElementById('audio-btn').classList.remove('active');
-    document.getElementById('audio-btn').textContent='▶ AUDIO: START';
-  }
-}
+/* =========================================================
+   CHAT
+========================================================= */
 
-// =====================================================
-// THREE.JS INIT
-// =====================================================
-function initGame() {
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a0a0f);
-  scene.fog = new THREE.Fog(0x0a0a0f, 18, 40);
+document
+  .getElementById('chat-form')
+  .addEventListener(
+    'submit',
+    function(e){
 
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
-  camera.position.set(0, 1.7, 13);
+      e.preventDefault();
 
-  renderer = new THREE.WebGLRenderer({canvas:document.getElementById('canvas'), antialias:false});
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      if(!socket)return;
 
-  // LIGHTS
-  const ambient = new THREE.AmbientLight(0x404060, 0.6);
+      const input =
+        document.getElementById(
+          'chat-input'
+        );
+
+      const text =
+        input.value.trim();
+
+      if(!text)return;
+
+      socket.emit(
+        'chat-message',
+        {
+          user:currentUser,
+          text:text,
+
+          lang:
+            document.getElementById(
+              'lang'
+            ).value
+        }
+      );
+
+      input.value='';
+
+      // Enter sends the message and immediately returns control to the club.
+      chatMode=false;
+      input.blur();
+      keys={};
+      const canvas=document.getElementById('canvas3d');
+      if(canvas && document.pointerLockElement!==canvas){
+        try{ canvas.requestPointerLock(); }catch(err){}
+      }
+
+    }
+  );
+
+/* =========================================================
+   LANGUAGE
+========================================================= */
+
+document
+  .getElementById('lang')
+  .addEventListener(
+    'change',
+    function(){
+
+      if(socket){
+
+        socket.emit(
+          'language-change',
+          this.value
+        );
+
+      }
+
+    }
+  );
+
+/* =========================================================
+   THREE.JS
+========================================================= */
+
+function init3D(){
+
+  scene =
+    new THREE.Scene();
+
+  scene.background =
+    new THREE.Color(
+      0x000000
+    );
+
+  scene.fog =
+    new THREE.FogExp2(
+      0x000000,
+      0.045
+    );
+
+  camera =
+    new THREE.PerspectiveCamera(
+      72,
+      innerWidth/innerHeight,
+      0.1,
+      150
+    );
+
+  camera.position.set(
+    0,
+    1.7,
+    13
+  );
+
+  renderer =
+    new THREE.WebGLRenderer({
+      canvas:
+        document.getElementById(
+          'canvas3d'
+        ),
+
+      antialias:true
+    });
+
+  renderer.setSize(
+    innerWidth,
+    innerHeight
+  );
+
+  renderer.setPixelRatio(
+    Math.min(
+      devicePixelRatio,
+      2
+    )
+  );
+
+  // =====================================================
+  // CSS3D SCREEN — permanently anchored to the physical wall
+  // =====================================================
+  cssScene = new THREE.Scene();
+  cssRenderer = new THREE.CSS3DRenderer();
+  cssRenderer.setSize(innerWidth, innerHeight);
+  cssRenderer.domElement.style.position='absolute';
+  cssRenderer.domElement.style.left='0';
+  cssRenderer.domElement.style.top='0';
+  cssRenderer.domElement.style.width='100%';
+  cssRenderer.domElement.style.height='100%';
+  cssRenderer.domElement.style.zIndex='15';
+  cssRenderer.domElement.style.pointerEvents='none';
+  cssRenderer.domElement.style.transform='translateZ(0)';
+  document.getElementById('css3d-container').appendChild(cssRenderer.domElement);
+
+  const cssScreenEl=document.getElementById('css3d-screen');
+  cssScreenObject=new THREE.CSS3DObject(cssScreenEl);
+  cssScreenObject.position.set(0,3.65,-16.455);
+  cssScreenObject.rotation.set(0,0,0);
+  cssScreenObject.scale.set(0.01,0.01,0.01);
+  cssScene.add(cssScreenObject);
+
+  renderer.shadowMap.enabled=true;
+
+  renderer.shadowMap.type =
+    THREE.PCFSoftShadowMap;
+
+  const ambient =
+    new THREE.AmbientLight(
+      0xffffff,
+      0.045
+    );
+
   scene.add(ambient);
-  const orangeLight = new THREE.PointLight(0xff6600, 1.5, 30);
-  orangeLight.position.set(0, 5, 0);
-  scene.add(orangeLight);
-  const screenLight = new THREE.PointLight(0x4488ff, 0.8, 20);
-  screenLight.position.set(0, 4, -14);
-  scene.add(screenLight);
-  const barLight = new THREE.PointLight(0x00ffcc, 0.6, 12);
-  barLight.position.set(-12, 3, 0);
-  scene.add(barLight);
 
-  buildClub();
-  buildMyAvatar();
+  const ceilingLight =
+    new THREE.PointLight(
+      0xffffff,
+      0.65,
+      40
+    );
 
-  // SOCKET
-  socket = io();
-  setupSocket();
+  ceilingLight.position.set(
+    0,
+    5.5,
+    -5
+  );
 
-  // EVENTS
-  window.addEventListener('resize', onResize);
-  document.addEventListener('keydown', onKeyDown);
-  document.addEventListener('keyup', onKeyUp);
-  document.addEventListener('mousedown', onMouseDown);
-  document.addEventListener('mouseup', onMouseUp);
-  document.addEventListener('mousemove', onMouseMove);
-  document.addEventListener('pointerlockchange', onPointerLockChange);
+  scene.add(
+    ceilingLight
+  );
 
-  document.getElementById('loading').style.display='none';
+  lightObjects.push(
+    ceilingLight
+  );
+
+  createLight(
+    -7,3,-7,
+    0xffffff,
+    1.6,
+    16
+  );
+
+  createLight(
+    7,3,-7,
+    0xffffff,
+    1.6,
+    16
+  );
+
+  createLight(
+    -8,2,5,
+    0x666666,
+    0.8,
+    14
+  );
+
+  createLight(
+    8,2,5,
+    0x666666,
+    0.8,
+    14
+  );
+
+  createFloor();
+  createCeiling();
+  createWalls();
+  createDanceFloor();
+  createMainScreen();
+  createStage();
+  createBar();
+  createLounge();
+  createColumns();
+  createEntrance();
+  createNeonArchitecture();
+  createCeilingBeams();
+  createSpeakers();
+  createParticles();
+  createPlayer();
+
+  setupAudio();
+
+  setupControls();
+
   animate();
+
 }
 
-function onResize() {
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+/* =========================================================
+   OBJECTS
+========================================================= */
+
+function createBox(
+  w,h,d,
+  x,y,z,
+  material,
+  cast=true,
+  receive=true
+){
+
+  const mesh =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        w,h,d
+      ),
+      material
+    );
+
+  mesh.position.set(
+    x,y,z
+  );
+
+  mesh.castShadow=
+    cast;
+
+  mesh.receiveShadow=
+    receive;
+
+  scene.add(mesh);
+
+  return mesh;
+
 }
 
-// =====================================================
-// CLUB GEOMETRY
-// =====================================================
-function buildClub() {
-  // FLOOR
-  const floorGeo = new THREE.PlaneGeometry(34, 34);
-  const floorCanvas = document.createElement('canvas');
-  floorCanvas.width = 512; floorCanvas.height = 512;
-  const fc = floorCanvas.getContext('2d');
-  fc.fillStyle = '#1a1a22'; fc.fillRect(0,0,512,512);
-  fc.strokeStyle = '#2a2a35'; fc.lineWidth = 2;
-  for(let i=0; i<=16; i++) {
-    fc.beginPath(); fc.moveTo(i*32,0); fc.lineTo(i*32,512); fc.stroke();
-    fc.beginPath(); fc.moveTo(0,i*32); fc.lineTo(512,i*32); fc.stroke();
-  }
-  // dance floor circle
-  fc.strokeStyle = '#ff6600'; fc.lineWidth = 3;
-  fc.beginPath(); fc.arc(256, 256, 80, 0, Math.PI*2); fc.stroke();
-  fc.strokeStyle = 'rgba(255,102,0,0.3)'; fc.lineWidth = 1;
-  fc.beginPath(); fc.arc(256, 256, 100, 0, Math.PI*2); fc.stroke();
-  const floorTex = new THREE.CanvasTexture(floorCanvas);
-  const floorMat = new THREE.MeshBasicMaterial({map:floorTex});
-  const floor = new THREE.Mesh(floorGeo, floorMat);
-  floor.rotation.x = -Math.PI/2;
+function createLight(
+  x,y,z,
+  color,
+  intensity,
+  distance
+){
+
+  const light =
+    new THREE.PointLight(
+      color,
+      intensity,
+      distance
+    );
+
+  light.position.set(
+    x,y,z
+  );
+
+  light.castShadow=true;
+
+  scene.add(light);
+
+  lightObjects.push(
+    light
+  );
+
+  return light;
+
+}
+
+function createFloor(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.floor,8,10);
+
+  const mat = new THREE.MeshStandardMaterial({
+    map:texture,
+    color:0x121212,
+    metalness:.18,
+    roughness:.82
+  });
+
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(36,42),
+    mat
+  );
+
+  floor.rotation.x=-Math.PI/2;
+  floor.receiveShadow=true;
+  scene.add(floor);
+}
+
+function createCeiling(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.concrete,7,8);
+
+  const ceiling = new THREE.Mesh(
+    new THREE.PlaneGeometry(36,42),
+    new THREE.MeshStandardMaterial({
+      map:texture,
+      color:0x080808,
+      roughness:1
+    })
+  );
+
+  ceiling.rotation.x=Math.PI/2;
+  ceiling.position.y=6;
+  scene.add(ceiling);
+}
+
+function createWalls(){
+
+  const texture = loadEWSTexture(EWS_TEXTURES.concrete,6,2);
+
+  const mat = new THREE.MeshStandardMaterial({
+    map:texture,
+    color:0x101010,
+    roughness:.93,
+    metalness:.04
+  });
+
+  createBox(36,6,.5,0,3,-17,mat);
+  createBox(36,6,.5,0,3,17,mat);
+  createBox(.5,6,34,-18,3,0,mat);
+  createBox(.5,6,34,18,3,0,mat);
+}
+
+function createDanceFloor(){
+
+  const floor =
+    new THREE.Mesh(
+      new THREE.BoxGeometry(
+        14,.12,14
+      ),
+      new THREE.MeshStandardMaterial({
+        map:loadEWSTexture(EWS_TEXTURES.floor,4,4),
+        color:0x151515,
+        metalness:.35,
+        roughness:.58
+      })
+    );
+
+  floor.position.set(
+    0,.08,-1
+  );
+
+  floor.receiveShadow=true;
+
   scene.add(floor);
 
-  // WALLS
-  const wallMat = new THREE.MeshBasicMaterial({color:0x15151f});
-  const wallGeo1 = new THREE.PlaneGeometry(34, 10);
-  // back wall (with screen)
-  const backWall = new THREE.Mesh(wallGeo1, wallMat);
-  backWall.position.set(0, 5, -17);
-  backWall.rotation.y = 0;
-  scene.add(backWall);
-  // front wall
-  const frontWall = new THREE.Mesh(wallGeo1, wallMat);
-  frontWall.position.set(0, 5, 17);
-  frontWall.rotation.y = Math.PI;
-  scene.add(frontWall);
-  // left wall
-  const leftWall = new THREE.Mesh(wallGeo1.clone(), wallMat);
-  leftWall.position.set(-17, 5, 0);
-  leftWall.rotation.y = Math.PI/2;
-  scene.add(leftWall);
-  // right wall
-  const rightWall = new THREE.Mesh(wallGeo1.clone(), wallMat);
-  rightWall.position.set(17, 5, 0);
-  rightWall.rotation.y = -Math.PI/2;
-  scene.add(rightWall);
-
-  // CEILING
-  const ceilGeo = new THREE.PlaneGeometry(34, 34);
-  const ceilMat = new THREE.MeshBasicMaterial({color:0x12121a});
-  const ceiling = new THREE.Mesh(ceilGeo, ceilMat);
-  ceiling.position.y = 10;
-  ceiling.rotation.x = Math.PI/2;
-  scene.add(ceiling);
-
-  // SCREEN on back wall
-  const screenFrameGeo = new THREE.BoxGeometry(10, 5.5, 0.3);
-  const screenFrameMat = new THREE.MeshBasicMaterial({color:0x222});
-  const screenFrame = new THREE.Mesh(screenFrameGeo, screenFrameMat);
-  screenFrame.position.set(0, 5, -16.7);
-  scene.add(screenFrame);
-
-  // screen surface (canvas texture)
-  const screenCanvas = document.createElement('canvas');
-  screenCanvas.width = 640; screenCanvas.height = 360;
-  const sc = screenCanvas.getContext('2d');
-  sc.fillStyle = '#000'; sc.fillRect(0,0,640,360);
-  sc.fillStyle = '#ff6600'; sc.font = 'bold 28px monospace';
-  sc.textAlign = 'center';
-  sc.fillText('EWS SESSIONS', 320, 180);
-  sc.fillStyle = '#444'; sc.font = '14px monospace';
-  sc.fillText('SCREEN OFFLINE', 320, 210);
-  const screenTex = new THREE.CanvasTexture(screenCanvas);
-  window.screenCanvas = screenCanvas;
-  window.screenTex = screenTex;
-  const screenMat = new THREE.MeshBasicMaterial({map:screenTex});
-  const screenGeo = new THREE.PlaneGeometry(9, 5);
-  window.screenMesh = new THREE.Mesh(screenGeo, screenMat);
-  window.screenMesh.position.set(0, 5, -16.5);
-  scene.add(window.screenMesh);
-
-  // screen iframe container (hidden by default)
-  window.screenIframe = null;
-
-  // BAR (left side)
-  const barGeo = new THREE.BoxGeometry(2, 1.2, 10);
-  const barMat = new THREE.MeshBasicMaterial({color:0x1a1a2e});
-  const bar = new THREE.Mesh(barGeo, barMat);
-  bar.position.set(-13, 0.6, 0);
-  scene.add(bar);
-
-  // bar top
-  const barTopGeo = new THREE.BoxGeometry(2.2, 0.1, 10.2);
-  const barTopMat = new THREE.MeshBasicMaterial({color:0x2a2a3e});
-  const barTop = new THREE.Mesh(barTopGeo, barTopMat);
-  barTop.position.set(-13, 1.25, 0);
-  scene.add(barTop);
-
-  // bottles on bar
-  for(let i=0; i<6; i++) {
-    const bottleGeo = new THREE.BoxGeometry(0.25, 0.6, 0.25);
-    const colors = [0x00ff66, 0xff6600, 0x00aaff, 0xff0066, 0xffff00, 0x00ffaa];
-    const bottleMat = new THREE.MeshBasicMaterial({color:colors[i]});
-    const bottle = new THREE.Mesh(bottleGeo, bottleMat);
-    bottle.position.set(-13, 1.65, -4 + i*1.5);
-    scene.add(bottle);
-  }
-
-  // bar shelf behind
-  const shelfGeo = new THREE.BoxGeometry(0.4, 0.1, 8);
-  const shelfMat = new THREE.MeshBasicMaterial({color:0x222});
-  const shelf = new THREE.Mesh(shelfGeo, shelfMat);
-  shelf.position.set(-14.5, 2.5, 0);
-  scene.add(shelf);
-  for(let i=0; i<5; i++) {
-    const shelfBottleGeo = new THREE.BoxGeometry(0.2, 0.5, 0.2);
-    const sbMat = new THREE.MeshBasicMaterial({color:colors[Math.min(i,colors.length-1)]});
-    const sb = new THREE.Mesh(shelfBottleGeo, sbMat);
-    sb.position.set(-14.5, 2.8, -3 + i*1.5);
-    scene.add(sb);
-  }
-
-  // SOFAS (right side)
-  function makeSofa(x, z, rot) {
-    const group = new THREE.Group();
-    // base
-    const baseGeo = new THREE.BoxGeometry(4, 0.5, 1.8);
-    const sofaMat = new THREE.MeshBasicMaterial({color:0x2a1a3e});
-    const base = new THREE.Mesh(baseGeo, sofaMat);
-    base.position.y = 0.35;
-    group.add(base);
-    // back
-    const backGeo = new THREE.BoxGeometry(4, 1.2, 0.3);
-    const back = new THREE.Mesh(backGeo, sofaMat);
-    back.position.set(0, 1, -0.75);
-    group.add(back);
-    // arms
-    const armGeo = new THREE.BoxGeometry(0.3, 0.8, 1.8);
-    const armL = new THREE.Mesh(armGeo, sofaMat);
-    armL.position.set(-2, 0.75, 0);
-    group.add(armL);
-    const armR = new THREE.Mesh(armGeo, sofaMat);
-    armR.position.set(2, 0.75, 0);
-    group.add(armR);
-    // cushions
-    for(let i=0; i<2; i++) {
-      const cushGeo = new THREE.BoxGeometry(1.8, 0.2, 1.4);
-      const cushMat = new THREE.MeshBasicMaterial({color:0x3a2a4e});
-      const cush = new THREE.Mesh(cushGeo, cushMat);
-      cush.position.set(-1 + i*2, 0.7, 0);
-      group.add(cush);
-    }
-    group.position.set(x, 0, z);
-    group.rotation.y = rot;
-    scene.add(group);
-  }
-  makeSofa(11, -4, -Math.PI/2);
-  makeSofa(11, 2, -Math.PI/2);
-  makeSofa(11, 8, -Math.PI/2);
-
-  // DJ BOOTH (front center)
-  const djGeo = new THREE.BoxGeometry(4, 1, 2);
-  const djMat = new THREE.MeshBasicMaterial({color:0x1a1a2e});
-  const djBooth = new THREE.Mesh(djGeo, djMat);
-  djBooth.position.set(0, 0.5, 14);
-  scene.add(djBooth);
-  const djTopGeo = new THREE.BoxGeometry(4.2, 0.08, 2.2);
-  const djTopMat = new THREE.MeshBasicMaterial({color:0x333});
-  const djTop = new THREE.Mesh(djTopGeo, djTopMat);
-  djTop.position.set(0, 1.04, 14);
-  scene.add(djTop);
-
-  // SPEAKERS
-  function makeSpeaker(x, z) {
-    const g = new THREE.Group();
-    const boxGeo = new THREE.BoxGeometry(1.2, 2.5, 1);
-    const boxMat = new THREE.MeshBasicMaterial({color:0x1a1a1a});
-    const box = new THREE.Mesh(boxGeo, boxMat);
-    g.add(box);
-    const coneGeo = new THREE.CircleGeometry(0.35, 8);
-    const coneMat = new THREE.MeshBasicMaterial({color:0x444});
-    const c1 = new THREE.Mesh(coneGeo, coneMat);
-    c1.position.set(0, 0.5, 0.51);
-    g.add(c1);
-    const c2 = new THREE.Mesh(coneGeo.clone(), coneMat);
-    c2.position.set(0, -0.5, 0.51);
-    g.add(c2);
-    g.position.set(x, 1.5, z);
-    scene.add(g);
-  }
-  makeSpeaker(-8, -14);
-  makeSpeaker(8, -14);
-
-  // ORANGE ACCENTS - glowing strips
-  const stripGeo = new THREE.BoxGeometry(34, 0.05, 0.1);
-  const stripMat = new THREE.MeshBasicMaterial({color:0xff6600});
-  const strip1 = new THREE.Mesh(stripGeo, stripMat);
-  strip1.position.set(0, 3, -16.8);
-  scene.add(strip1);
-  const strip2 = new THREE.Mesh(stripGeo.clone(), stripMat);
-  strip2.position.set(0, 6.5, -16.8);
-  scene.add(strip2);
-}
-
-// =====================================================
-// AVATARS (PS2 / LOW-POLY STYLE)
-// =====================================================
-function makeAvatarMesh(player) {
-  const group = new THREE.Group();
-  const colors = [0xff6600, 0x00aaff, 0x00ff66, 0xff0066, 0xffff00, 0xaa00ff, 0x00ffff, 0xff4444];
-  const c = colors[Math.abs(hashCode(player.username)) % colors.length];
-
-  // BODY
-  const bodyGeo = new THREE.BoxGeometry(0.7, 0.9, 0.4);
-  const bodyMat = new THREE.MeshBasicMaterial({color:c});
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 1.15;
-  group.add(body);
-
-  // HEAD
-  const headGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45);
-  const headMat = new THREE.MeshBasicMaterial({color:0xffcca0});
-  const head = new THREE.Mesh(headGeo, headMat);
-  head.position.y = 1.85;
-  group.add(head);
-
-  // HAIR
-  const hairGeo = new THREE.BoxGeometry(0.5, 0.15, 0.5);
-  const hairMat = new THREE.MeshBasicMaterial({color:c});
-  const hair = new THREE.Mesh(hairGeo, hairMat);
-  hair.position.y = 2.12;
-  group.add(hair);
-
-  // ARMS
-  const armGeo = new THREE.BoxGeometry(0.18, 0.7, 0.18);
-  const armMat = new THREE.MeshBasicMaterial({color:0xffcca0});
-  const armL = new THREE.Mesh(armGeo, armMat);
-  armL.position.set(-0.44, 1.2, 0);
-  group.add(armL);
-  const armR = new THREE.Mesh(armGeo.clone(), armMat);
-  armR.position.set(0.44, 1.2, 0);
-  group.add(armR);
-
-  // LEGS
-  const legGeo = new THREE.BoxGeometry(0.22, 0.7, 0.22);
-  const legMat = new THREE.MeshBasicMaterial({color:0x222244});
-  const legL = new THREE.Mesh(legGeo, legMat);
-  legL.position.set(-0.18, 0.35, 0);
-  group.add(legL);
-  const legR = new THREE.Mesh(legGeo.clone(), legMat);
-  legR.position.set(0.18, 0.35, 0);
-  group.add(legR);
-
-  // NAME TAG (sprite)
-  const tagCanvas = document.createElement('canvas');
-  tagCanvas.width = 256; tagCanvas.height = 64;
-  const tc = tagCanvas.getContext('2d');
-  tc.fillStyle = 'rgba(0,0,0,0.6)';
-  tc.fillRect(0,0,256,64);
-  tc.fillStyle = '#ff6600';
-  tc.font = 'bold 22px monospace';
-  tc.textAlign = 'center';
-  tc.fillText(player.username, 128, 38);
-  const tagTex = new THREE.CanvasTexture(tagCanvas);
-  const tagMat = new THREE.SpriteMaterial({map:tagTex, depthTest:false});
-  const tag = new THREE.Sprite(tagMat);
-  tag.position.y = 2.5;
-  tag.scale.set(1.5, 0.4, 1);
-  group.add(tag);
-
-  group.userData = {armL, armR, legL, legR, head, tag, color:c};
-  return group;
-}
-
-function hashCode(str) {
-  let h = 0;
-  for(let i=0; i<str.length; i++) h = ((h<<5)-h) + str.charCodeAt(i);
-  return h;
-}
-
-function buildMyAvatar() {
-  // We don't render our own avatar in first person
-}
-
-// =====================================================
-// SOCKET
-// =====================================================
-function setupSocket() {
-  socket.on('connect', () => {
-    socket.emit('join', {username:myUsername, language:myLanguage});
-  });
-
-  socket.on('screen-host', (data) => {
-    isHost = data.host;
-    if(!isHost) {
-      document.getElementById('btn-screen').style.opacity = '0.5';
-    }
-  });
-
-  socket.on('player-spawn', (data) => {
-    myX = data.x; myY = data.y; myZ = data.z;
-    myYaw = data.yaw || 0; myPitch = data.pitch || 0;
-    myPlayer = data;
-    camera.position.set(myX, myY, myZ);
-    updateCameraRotation();
-  });
-
-  socket.on('players-state', (list) => {
-    // Clear old
-    for(const id in playerMeshes) {
-      scene.remove(playerMeshes[id]);
-      delete playerMeshes[id];
-    }
-    players = {};
-    list.forEach(p => {
-      players[p.id] = p;
-      addPlayerMesh(p);
+  const frameMat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
     });
-  });
 
-  socket.on('player-state', (p) => {
-    if(p.id === socket.id) return;
-    players[p.id] = p;
-    if(!playerMeshes[p.id]) {
-      addPlayerMesh(p);
-    } else {
-      playerMeshes[p.id].position.set(p.x, 0, p.z);
-      playerMeshes[p.id].rotation.y = p.yaw || 0;
+  const lines=[
+    [-7,.16,-1,14,.04,.04],
+    [7,.16,-1,14,.04,.04],
+    [0,.16,-8,.04,.04,14],
+    [0,.16,6,.04,.04,14]
+  ];
+
+  lines.forEach(
+    l=>{
+
+      const mesh =
+        createBox(
+          l[3],
+          l[4],
+          l[5],
+          l[0],
+          l[1],
+          l[2],
+          frameMat,
+          false,
+          false
+        );
+
+      neonObjects.push(
+        mesh
+      );
+
     }
-  });
+  );
 
-  socket.on('player-left', (id) => {
-    if(playerMeshes[id]) {
-      scene.remove(playerMeshes[id]);
-      delete playerMeshes[id];
-    }
-    delete players[id];
-  });
+}
 
-  socket.on('player-removed', (id) => {
-    if(playerMeshes[id]) {
-      scene.remove(playerMeshes[id]);
-      delete playerMeshes[id];
-    }
-    delete players[id];
-  });
+function createMainScreen(){
+  screenCanvas=document.createElement('canvas');
+  screenCanvas.width=1024;
+  screenCanvas.height=512;
+  screenCtx=screenCanvas.getContext('2d');
+  screenCtx.fillStyle='#050505';
+  screenCtx.fillRect(0,0,1024,512);
+  screenTexture=new THREE.CanvasTexture(screenCanvas);
+  screenTexture.needsUpdate=true;
 
-  socket.on('online-users', updateOnline);
-  socket.on('online', updateOnline);
+  const frame=new THREE.Mesh(
+    new THREE.BoxGeometry(14.6,6.6,.42),
+    new THREE.MeshStandardMaterial({color:0x080808,metalness:.75,roughness:.28})
+  );
+  frame.position.set(0,3.65,-16.72);
+  scene.add(frame);
 
-  socket.on('club-screen-state', (state) => {
-    updateScreen(state);
-  });
+  screenMesh=new THREE.Mesh(
+    new THREE.PlaneGeometry(14,6),
+    new THREE.MeshBasicMaterial({map:screenTexture,side:THREE.FrontSide,transparent:true,opacity:0})
+  );
+  screenMesh.position.set(0,3.65,-16.48);
+  scene.add(screenMesh);
 
-  socket.on('chat-message', (data) => {
-    addChatMessage(data);
-  });
-
-  socket.on('language-updated', (data) => {
-    myLanguage = data.language;
-    document.getElementById('lang-select').value = data.language;
+  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
+  [[14.2,.035,.035,0,6.68,-16.43],[14.2,.035,.035,0,.62,-16.43],[.035,6.1,.035,-7.08,3.65,-16.43],[.035,6.1,.035,7.08,3.65,-16.43]].forEach(a=>{
+    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
+    m.position.set(a[3],a[4],a[5]);
+    scene.add(m);
   });
 }
 
-function addPlayerMesh(p) {
-  const mesh = makeAvatarMesh(p);
-  mesh.position.set(p.x, 0, p.z);
-  mesh.rotation.y = p.yaw || 0;
-  scene.add(mesh);
-  playerMeshes[p.id] = mesh;
+function createStage(){
+
+  const stageMat =
+    new THREE.MeshStandardMaterial({
+      color:0x111111,
+      metalness:.6,
+      roughness:.35
+    });
+
+  createBox(
+    17,.45,3,
+    0,.3,-12.5,
+    stageMat
+  );
+
+  const stripMat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  const strip =
+    createBox(
+      16,.04,.08,
+      0,.54,-11,
+      stripMat,
+      false,
+      false
+    );
+
+  neonObjects.push(
+    strip
+  );
+
 }
 
-function updateOnline(list) {
-  const el = document.getElementById('online-list');
-  el.innerHTML = '';
-  list.forEach(u => {
-    const row = document.createElement('div');
-    row.className = 'online-row';
-    const dot = document.createElement('div');
-    dot.className = 'dot';
-    const name = document.createElement('div');
-    name.className = 'uname';
-    name.textContent = u.username;
-    if(u.username === myUsername) { dot.classList.add('me'); name.classList.add('me'); }
-    if(u.username === 'mvxtra') { dot.classList.add('host'); name.classList.add('host'); }
-    row.appendChild(dot);
-    row.appendChild(name);
-    el.appendChild(row);
+function createBar(){
+
+  // REALISTIC CLUB BAR
+  // The visitor side is the front (towards the dance floor).
+  // The bartender stands BEHIND the counter in a separate low-fenced work zone.
+
+  const darkMat = new THREE.MeshStandardMaterial({
+    color:0x101010,
+    metalness:.45,
+    roughness:.5
   });
+
+  const counterMat = new THREE.MeshStandardMaterial({
+    color:0x191919,
+    metalness:.55,
+    roughness:.3
+  });
+
+  const topMat = new THREE.MeshStandardMaterial({
+    color:0x262626,
+    metalness:.7,
+    roughness:.22
+  });
+
+  const railMat = new THREE.MeshStandardMaterial({
+    color:0x252525,
+    metalness:.75,
+    roughness:.2
+  });
+
+  // Main bar body — solid front, not a hollow box.
+  createBox(
+    9.2,1.05,1.15,
+    -12,.72,7,
+    counterMat
+  );
+
+  // Heavy countertop.
+  createBox(
+    9.45,.16,1.45,
+    -12,1.32,7,
+    topMat
+  );
+
+  // Dark recessed front panel for depth.
+  createBox(
+    8.55,.68,.08,
+    -12,.78,6.40,
+    darkMat,
+    false,
+    false
+  );
+
+  // Subtle illuminated strip under the countertop.
+  const barGlow = createBox(
+    8.7,.035,.035,
+    -12,1.235,6.34,
+    new THREE.MeshBasicMaterial({color:0x9d7cff}),
+    false,
+    false
+  );
+  neonObjects.push(barGlow);
+
+  // Separate bartender work area behind the counter.
+  // Low railings visually define the service zone without making it look fenced-in.
+  const workBackZ = 9.35;
+  const workSideZ = 8.15;
+  const railY = 1.05;
+  const railH = .72;
+
+  // Back rail.
+  createBox(
+    9.0,.10,.10,
+    -12,railY,workBackZ,
+    railMat,
+    false,
+    false
+  );
+
+  // Side rails.
+  createBox(
+    .10,.10,2.55,
+    -16.48,railY,workSideZ,
+    railMat,
+    false,
+    false
+  );
+
+  createBox(
+    .10,.10,2.55,
+    -7.52,railY,workSideZ,
+    railMat,
+    false,
+    false
+  );
+
+  // Upright posts for the low barrier.
+  [-16.48,-12,-7.52].forEach(x=>{
+    createBox(
+      .12,railH,.12,
+      x,railH/2,workBackZ,
+      railMat,
+      false,
+      false
+    );
+  });
+
+  [-16.48,-7.52].forEach(x=>{
+    createBox(
+      .12,railH,.12,
+      x,railH/2,workSideZ,
+      railMat,
+      false,
+      false
+    );
+  });
+
+  // Back bar / bottle shelf.
+  createBox(
+    8.2,.12,.65,
+    -12,1.75,9.0,
+    darkMat
+  );
+
+  createBox(
+    8.2,.10,.10,
+    -12,2.08,8.72,
+    railMat,
+    false,
+    false
+  );
+
+  // Bottles and glasses on the back shelf.
+  for(let i=0;i<9;i++){
+    const bottle = new THREE.Mesh(
+      new THREE.CylinderGeometry(.07,.09,.58,12),
+      new THREE.MeshStandardMaterial({
+        color: i%3===0 ? 0x555555 : 0x888888,
+        metalness:.55,
+        roughness:.25
+      })
+    );
+    bottle.position.set(-15.4+i*.85,2.10,8.88);
+    scene.add(bottle);
+
+    const neck = new THREE.Mesh(
+      new THREE.CylinderGeometry(.035,.045,.18,10),
+      bottle.material
+    );
+    neck.position.set(-15.4+i*.85,2.48,8.88);
+    scene.add(neck);
+  }
+
+  // Three simple bar stools on the visitor side.
+  const stoolMat = new THREE.MeshStandardMaterial({
+    color:0x151515,
+    metalness:.6,
+    roughness:.35
+  });
+
+  [-14.5,-12,-9.5].forEach(x=>{
+    const seat = new THREE.Mesh(
+      new THREE.CylinderGeometry(.34,.34,.12,20),
+      stoolMat
+    );
+    seat.position.set(x,.95,5.15);
+    scene.add(seat);
+
+    createBox(.07,.9,.07,x,.48,5.15,stoolMat,false,false);
+
+    const foot = new THREE.Mesh(
+      new THREE.TorusGeometry(.25,.025,8,20),
+      stoolMat
+    );
+    foot.rotation.x=Math.PI/2;
+    foot.position.set(x,.30,5.15);
+    scene.add(foot);
+  });
+
+  // BARTENDER — behind the counter, inside the work zone.
+  const skinMat = new THREE.MeshStandardMaterial({color:0x8a6b5a,roughness:.8});
+  const shirtMat = new THREE.MeshStandardMaterial({color:0x161616,metalness:.1,roughness:.8});
+  const apronMat = new THREE.MeshStandardMaterial({color:0x303030,roughness:.75});
+
+  // Legs.
+  createBox(.24,.85,.24,-12.30,.55,8.25,shirtMat);
+  createBox(.24,.85,.24,-11.70,.55,8.25,shirtMat);
+
+  // Torso + apron.
+  createBox(.72,.9,.38,-12,1.28,8.25,shirtMat);
+  createBox(.48,.55,.40,-12,1.22,8.04,apronMat,false,false);
+
+  // Head + hair.
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(.23,16,12),
+    skinMat
+  );
+  head.position.set(-12,1.98,8.25);
+  scene.add(head);
+
+  const hair = new THREE.Mesh(
+    new THREE.SphereGeometry(.235,16,12,0,Math.PI*2,0,Math.PI*.48),
+    new THREE.MeshStandardMaterial({color:0x080808,roughness:.9})
+  );
+  hair.position.set(-12,2.04,8.25);
+  scene.add(hair);
+
+  // Arms angled forward toward the bar.
+  const armL = createBox(.16,.62,.16,-12.40,1.40,7.78,shirtMat);
+  armL.rotation.z=-.25;
+  const armR = createBox(.16,.62,.16,-11.60,1.40,7.78,shirtMat);
+  armR.rotation.z=.25;
+
+  // Small service light above the working area.
+  const barLight = new THREE.PointLight(0x9d7cff,1.15,8);
+  barLight.position.set(-12,3.0,8.2);
+  scene.add(barLight);
 }
 
-// =====================================================
-// SCREEN
-// =====================================================
-function updateScreen(state) {
-  if(state.active && state.url) {
-    // Show iframe on screen
-    const url = state.url;
-    let embedUrl = '';
-    // YouTube
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-    if(ytMatch) {
-      embedUrl = 'https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=1';
+function createLounge(){
+
+  const sofaMat =
+    new THREE.MeshStandardMaterial({
+      color:0x181818,
+      roughness:.9
+    });
+
+  createBox(
+    6,.8,1.6,
+    11,.7,8,
+    sofaMat
+  );
+
+  createBox(
+    1.6,1.4,5.5,
+    14,1.2,8,
+    sofaMat
+  );
+
+  for(
+    let i=0;
+    i<3;
+    i++
+  ){
+
+    const table =
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          .65,
+          .65,
+          .08,
+          32
+        ),
+        new THREE.MeshStandardMaterial({
+          color:0x101010,
+          metalness:.7
+        })
+      );
+
+    table.position.set(
+      8+i*3,
+      .75,
+      4
+    );
+
+    scene.add(table);
+
+  }
+
+}
+
+function createColumns(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x101010,
+      metalness:.55,
+      roughness:.35
+    });
+
+  const positions=[
+    [-15,5],
+    [15,5],
+    [-15,-5],
+    [15,-5]
+  ];
+
+  positions.forEach(
+    p=>{
+
+      createBox(
+        1,6,1,
+        p[0],
+        3,
+        p[1],
+        mat
+      );
+
+      const ring =
+        new THREE.Mesh(
+          new THREE.TorusGeometry(
+            .72,
+            .06,
+            8,
+            32
+          ),
+          new THREE.MeshBasicMaterial({
+            color:0xffffff
+          })
+        );
+
+      ring.position.set(
+        p[0],
+        2,
+        p[1]
+      );
+
+      scene.add(ring);
+
+      neonObjects.push(
+        ring
+      );
+
     }
-    // Twitch
-    const twitchMatch = url.match(/twitch\.tv\/(\w+)/);
-    if(twitchMatch) {
-      embedUrl = 'https://player.twitch.tv/?channel=' + twitchMatch[1] + '&parent=' + location.hostname;
-    }
-    if(embedUrl) {
-      if(window.screenIframe) {
-        window.screenIframe.src = embedUrl;
-      } else {
-        window.screenIframe = document.createElement('iframe');
-        window.screenIframe.style.position = 'fixed';
-        window.screenIframe.style.width = '0';
-        window.screenIframe.style.height = '0';
-        window.screenIframe.style.border = 'none';
-        window.screenIframe.style.pointerEvents = 'none';
-        window.screenIframe.src = embedUrl;
-        document.body.appendChild(window.screenIframe);
+  );
+
+}
+
+function createEntrance(){
+
+  const frameMat =
+    new THREE.MeshStandardMaterial({
+      color:0x191919,
+      metalness:.7
+    });
+
+  createBox(
+    7,5.5,.6,
+    0,2.75,16.3,
+    frameMat
+  );
+
+  createBox(
+    5.8,4.7,.1,
+    0,2.35,15.98,
+    new THREE.MeshBasicMaterial({
+      color:0x020202
+    }),
+    false,
+    false
+  );
+
+  const signCanvas =
+    document.createElement(
+      'canvas'
+    );
+
+  signCanvas.width=600;
+  signCanvas.height=160;
+
+  const ctx =
+    signCanvas.getContext(
+      '2d'
+    );
+
+  ctx.fillStyle='#050505';
+
+  ctx.fillRect(
+    0,
+    0,
+    600,
+    160
+  );
+
+  ctx.fillStyle='#fff';
+
+  ctx.font=
+    'bold 58px Arial';
+
+  ctx.textAlign='center';
+
+  ctx.fillText(
+    'EWS SESSIONS',
+    300,
+    95
+  );
+
+  const tex =
+    new THREE.CanvasTexture(
+      signCanvas
+    );
+
+  const sign =
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(
+        5,
+        1.35
+      ),
+      new THREE.MeshBasicMaterial({
+        map:tex
+      })
+    );
+
+  sign.position.set(
+    0,
+    5.4,
+    15.65
+  );
+
+  scene.add(sign);
+
+}
+
+function createNeonArchitecture(){
+
+  const mat =
+    new THREE.MeshBasicMaterial({
+      color:0xffffff
+    });
+
+  for(
+    let z=-14;
+    z<=14;
+    z+=4
+  ){
+
+    const left =
+      createBox(
+        .06,4,.06,
+        -17.5,
+        3,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    const right =
+      createBox(
+        .06,4,.06,
+        17.5,
+        3,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    neonObjects.push(
+      left,
+      right
+    );
+
+  }
+
+  for(
+    let z=-15;
+    z<=15;
+    z+=5
+  ){
+
+    const beam =
+      createBox(
+        34,.05,.05,
+        0,
+        5.4,
+        z,
+        mat,
+        false,
+        false
+      );
+
+    neonObjects.push(
+      beam
+    );
+
+  }
+
+}
+
+function createCeilingBeams(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x151515,
+      metalness:.8,
+      roughness:.3
+    });
+
+  for(
+    let x=-14;
+    x<=14;
+    x+=4
+  ){
+
+    createBox(
+      .3,.3,34,
+      x,5.7,0,
+      mat
+    );
+
+  }
+
+}
+
+function createSpeakers(){
+
+  const mat =
+    new THREE.MeshStandardMaterial({
+      color:0x050505,
+      metalness:.4,
+      roughness:.7
+    });
+
+  const positions=[
+    [-8,2,-11],
+    [8,2,-11],
+    [-11,2,-10],
+    [11,2,-10]
+  ];
+
+  positions.forEach(
+    p=>{
+
+      createBox(
+        1.2,2.5,.8,
+        p[0],
+        p[1],
+        p[2],
+        mat
+      );
+
+      for(
+        let i=0;
+        i<3;
+        i++
+      ){
+
+        const cone =
+          new THREE.Mesh(
+            new THREE.CylinderGeometry(
+              .23,
+              .23,
+              .12,
+              24
+            ),
+            new THREE.MeshBasicMaterial({
+              color:0xaaaaaa
+            })
+          );
+
+        cone.rotation.x=
+          Math.PI/2;
+
+        cone.position.set(
+          p[0],
+          1.3+i*.6,
+          p[2]-.45
+        );
+
+        scene.add(cone);
+
       }
-      // Update screen canvas
-      const sc = window.screenCanvas.getContext('2d');
-      sc.fillStyle = '#000'; sc.fillRect(0,0,640,360);
-      sc.fillStyle = '#ff6600'; sc.font = 'bold 20px monospace';
-      sc.textAlign = 'center';
-      sc.fillText('▶ ' + (state.name || 'LIVE'), 320, 180);
-      sc.fillStyle = '#666'; sc.font = '12px monospace';
-      sc.fillText(url.slice(0,60), 320, 210);
-      window.screenTex.needsUpdate = true;
+
     }
-  } else {
-    // Clear screen
-    if(window.screenIframe) {
-      window.screenIframe.src = '';
+  );
+
+}
+
+function createParticles(){
+
+  const count=900;
+
+  const geo =
+    new THREE.BufferGeometry();
+
+  const pos =
+    new Float32Array(
+      count*3
+    );
+
+  for(
+    let i=0;
+    i<count;
+    i++
+  ){
+
+    pos[i*3]=
+      (Math.random()-.5)*34;
+
+    pos[i*3+1]=
+      Math.random()*5.8;
+
+    pos[i*3+2]=
+      (Math.random()-.5)*34;
+
+  }
+
+  geo.setAttribute(
+    'position',
+    new THREE.BufferAttribute(
+      pos,
+      3
+    )
+  );
+
+  particles =
+    new THREE.Points(
+      geo,
+      new THREE.PointsMaterial({
+        color:0xffffff,
+        size:.035,
+        transparent:true,
+        opacity:.28
+      })
+    );
+
+  scene.add(
+    particles
+  );
+
+}
+
+function createPlayer(){
+
+  playerBody =
+    new THREE.Group();
+
+  const body =
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        .25,
+        .32,
+        1,
+        12
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xffffff,
+        roughness:.7
+      })
+    );
+
+  body.position.y=.5;
+
+  playerBody.add(
+    body
+  );
+
+  const head =
+    new THREE.Mesh(
+      new THREE.SphereGeometry(
+        .23,
+        16,
+        16
+      ),
+      new THREE.MeshStandardMaterial({
+        color:0xdddddd,
+        roughness:.7
+      })
+    );
+
+  head.position.y=1.25;
+
+  playerBody.add(
+    head
+  );
+
+  playerBody.position.set(
+    0,
+    0,
+    13
+  );
+
+  scene.add(
+    playerBody
+  );
+
+}
+
+/* =========================================================
+   AUDIO
+========================================================= */
+
+function setupAudio(){
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  indicator.textContent=
+    'AUDIO: READY';
+
+  indicator.classList.remove(
+    'live',
+    'error'
+  );
+
+  button.textContent=
+    '▶ AUDIO: START';
+
+  button.classList.remove(
+    'live'
+  );
+
+}
+
+async function unlockEWSAudio(){
+
+  const audio = document.getElementById('ews-audio');
+  if(!audio) return false;
+
+  try{
+    if(audioContext && audioContext.state === 'suspended'){
+      await audioContext.resume();
     }
-    const sc = window.screenCanvas.getContext('2d');
-    sc.fillStyle = '#000'; sc.fillRect(0,0,640,360);
-    sc.fillStyle = '#ff6600'; sc.font = 'bold 28px monospace';
-    sc.textAlign = 'center';
-    sc.fillText('EWS SESSIONS', 320, 180);
-    sc.fillStyle = '#444'; sc.font = '14px monospace';
-    sc.fillText('SCREEN OFFLINE', 320, 210);
-    window.screenTex.needsUpdate = true;
+
+    if(audioStarted && audio.paused){
+      await audio.play();
+      return true;
+    }
+
+    // If the stream was blocked by autoplay policy, retry the full
+    // HLS startup from this real user interaction.
+    if(!audioStarted){
+      await startSSHAudio();
+      return true;
+    }
+  }catch(err){
+    console.warn('[EWS AUDIO UNLOCK]', err);
+  }
+
+  return false;
+}
+
+async function startSSHAudio(){
+
+  const audio =
+    document.getElementById(
+      'ews-audio'
+    );
+
+  const indicator =
+    document.getElementById(
+      'stream-indicator'
+    );
+
+  const button =
+    document.getElementById(
+      'audio-control'
+    );
+
+  if(!audio)return;
+
+  const hlsUrl =
+    window.location.origin+
+    '/hls/ews/index.m3u8';
+
+  indicator.classList.remove(
+    'error'
+  );
+
+  indicator.classList.add(
+    'live'
+  );
+
+  indicator.textContent=
+    'AUDIO: CONNECTING...';
+
+  button.disabled=true;
+
+  button.textContent=
+    '● AUDIO: CONNECTING';
+
+  try{
+
+    if(!audioContext){
+
+      audioContext =
+        new(
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+      audioSource =
+        audioContext.createMediaElementSource(
+          audio
+        );
+
+      analyser =
+        audioContext.createAnalyser();
+
+      analyser.fftSize=256;
+
+      analyser.smoothingTimeConstant=.82;
+
+      freqData =
+        new Uint8Array(
+          analyser.frequencyBinCount
+        );
+
+      audioSource.connect(
+        analyser
+      );
+
+      analyser.connect(
+        audioContext.destination
+      );
+
+    }
+
+    if(
+      audioContext.state===
+      'suspended'
+    ){
+
+      await audioContext.resume();
+
+    }
+
+    if(hls){
+
+      try{
+        hls.destroy();
+      }catch(e){}
+
+      hls=null;
+
+    }
+
+    if(
+      window.Hls &&
+      Hls.isSupported()
+    ){
+
+      hls =
+        new Hls({
+
+          enableWorker:true,
+
+          lowLatencyMode:true,
+
+          backBufferLength:30,
+
+          maxBufferLength:10,
+
+          maxMaxBufferLength:20,
+
+          liveSyncDurationCount:3,
+
+          liveMaxLatencyDurationCount:6
+
+        });
+
+      hls.loadSource(
+        hlsUrl
+      );
+
+      hls.attachMedia(
+        audio
+      );
+
+      hls.on(
+        Hls.Events.MANIFEST_PARSED,
+        async function(){
+
+          indicator.textContent=
+            'AUDIO: LIVE';
+
+          button.textContent=
+            '● AUDIO: LIVE';
+
+          button.classList.add(
+            'live'
+          );
+
+          button.disabled=false;
+
+          audioStarted=true;
+
+          try{
+
+            await audio.play();
+
+          }catch(err){
+
+            console.warn(
+              'Audio play blocked:',
+              err
+            );
+
+            indicator.textContent=
+              'AUDIO: PRESS START';
+
+            button.textContent=
+              '▶ AUDIO: START';
+
+            button.classList.remove(
+              'live'
+            );
+
+          }
+
+        }
+      );
+
+      hls.on(
+        Hls.Events.ERROR,
+        function(
+          event,
+          data
+        ){
+
+          console.error(
+            '[HLS]',
+            data
+          );
+
+          if(!data.fatal)return;
+
+          if(
+            data.type===
+            Hls.ErrorTypes.NETWORK_ERROR
+          ){
+
+            indicator.textContent=
+              'AUDIO: RECONNECTING...';
+
+            button.textContent=
+              '● AUDIO: RECONNECTING';
+
+            setTimeout(
+              function(){
+
+                if(hls){
+
+                  try{
+                    hls.startLoad();
+                  }catch(e){}
+
+                }
+
+              },
+              1000
+            );
+
+          }
+
+          else if(
+            data.type===
+            Hls.ErrorTypes.MEDIA_ERROR
+          ){
+
+            indicator.textContent=
+              'AUDIO: RECOVERING...';
+
+            try{
+
+              hls.recoverMediaError();
+
+            }catch(e){
+
+              console.error(e);
+
+            }
+
+          }
+
+          else{
+
+            indicator.textContent=
+              'AUDIO: NO STREAM';
+
+            indicator.classList.remove(
+              'live'
+            );
+
+            indicator.classList.add(
+              'error'
+            );
+
+            button.textContent=
+              '▶ AUDIO: RETRY';
+
+            button.classList.remove(
+              'live'
+            );
+
+            button.disabled=false;
+
+          }
+
+        }
+      );
+
+    }
+
+    else if(
+      audio.canPlayType(
+        'application/vnd.apple.mpegurl'
+      )
+    ){
+
+      audio.src=
+        hlsUrl;
+
+      audio.addEventListener(
+        'loadedmetadata',
+        async function(){
+
+          try{
+
+            await audio.play();
+
+          }catch(err){
+
+            console.error(err);
+
+          }
+
+        },
+        {
+          once:true
+        }
+      );
+
+    }
+
+    else{
+
+      throw new Error(
+        'HLS is not supported by this browser'
+      );
+
+    }
+
+    audio.onplaying=function(){
+
+      indicator.textContent=
+        'AUDIO: LIVE';
+
+      indicator.classList.add(
+        'live'
+      );
+
+      indicator.classList.remove(
+        'error'
+      );
+
+      button.textContent=
+        '● AUDIO: LIVE';
+
+      button.classList.add(
+        'live'
+      );
+
+      button.disabled=false;
+
+      audioStarted=true;
+
+    };
+
+    audio.onpause=function(){
+
+      if(
+        audioStarted &&
+        !audio.ended
+      ){
+
+        indicator.textContent=
+          'AUDIO: PAUSED';
+
+        button.textContent=
+          '▶ AUDIO: RESUME';
+
+        button.classList.remove(
+          'live'
+        );
+
+      }
+
+    };
+
+    audio.onerror=function(){
+
+      console.error(
+        '[AUDIO]',
+        audio.error
+      );
+
+      indicator.textContent=
+        'AUDIO: ERROR';
+
+      indicator.classList.remove(
+        'live'
+      );
+
+      indicator.classList.add(
+        'error'
+      );
+
+      button.textContent=
+        '▶ AUDIO: RETRY';
+
+      button.classList.remove(
+        'live'
+      );
+
+      button.disabled=false;
+
+    };
+
+  }catch(err){
+
+    console.error(
+      '[EWS AUDIO ERROR]',
+      err
+    );
+
+    indicator.textContent=
+      'AUDIO: NO STREAM';
+
+    indicator.classList.remove(
+      'live'
+    );
+
+    indicator.classList.add(
+      'error'
+    );
+
+    button.textContent=
+      '▶ AUDIO: RETRY';
+
+    button.classList.remove(
+      'live'
+    );
+
+    button.disabled=false;
+
+  }
+
+}
+
+/* =========================================================
+   CONTROLS
+========================================================= */
+
+function setupControls(){
+
+  window.addEventListener(
+    'resize',
+    function(){
+
+      if(
+        !camera ||
+        !renderer
+      ){
+        return;
+      }
+
+      camera.aspect=
+        innerWidth/
+        innerHeight;
+
+      camera.updateProjectionMatrix();
+
+      renderer.setSize(
+        innerWidth,
+        innerHeight
+      );
+
+      if(cssRenderer){
+        cssRenderer.setSize(innerWidth,innerHeight);
+      }
+
+    }
+  );
+
+  window.addEventListener(
+    'keydown',
+    function(e){
+
+      // While typing, movement keys must never get stuck in the 3D controller.
+      const active=document.activeElement;
+      const typing=active && (active.tagName==='INPUT' || active.tagName==='TEXTAREA');
+
+      if(e.code==='Escape' && chatMode){
+        e.preventDefault();
+        chatMode=false;
+        const input=document.getElementById('chat-input');
+        if(input) input.blur();
+        keys={};
+        return;
+      }
+
+      if(typing && !chatMode){
+        return;
+      }
+
+      if(chatMode && active && active.id==='chat-input'){
+        if(e.code==='KeyW' || e.code==='KeyA' || e.code==='KeyS' || e.code==='KeyD' || e.code==='ArrowUp' || e.code==='ArrowDown' || e.code==='ArrowLeft' || e.code==='ArrowRight'){
+          return;
+        }
+      }
+
+      if(!chatMode){
+        if(e.code==='KeyB'){ toggleEmotesMenu(); e.preventDefault(); return; }
+        if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
+        if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
+        if(e.code==='Digit3'){ playDance(3); e.preventDefault(); return; }
+        if(e.code==='Digit4'){ playDance(4); e.preventDefault(); return; }
+        if(e.code==='Digit5'){ playDance(5); e.preventDefault(); return; }
+        if(e.code==='Digit6'){ playDance(6); e.preventDefault(); return; }
+        if(['KeyW','KeyA','KeyS','KeyD','Space'].includes(e.code) && activeDance){ stopDance(); }
+      }
+
+      keys[e.code]=true;
+
+      if(
+        e.code==='KeyC'
+      ){
+
+        chatMode=
+          !chatMode;
+
+        toggleChat();
+
+      }
+
+      // SPACE = JUMP
+      // Пока открыт чат — пробел остаётся обычным пробелом.
+      if(
+        e.code==='Space' &&
+        !chatMode &&
+        pointerLocked &&
+        isGrounded
+      ){
+
+        e.preventDefault();
+
+        jumpVelocity=JUMP_FORCE;
+        isGrounded=false;
+
+      }
+
+    }
+  );
+
+  window.addEventListener(
+    'keyup',
+    function(e){
+
+      keys[e.code]=false;
+
+    }
+  );
+
+  const canvas =
+    document.getElementById(
+      'canvas3d'
+    );
+
+  canvas.addEventListener(
+    'click',
+    function(){
+
+      if(!chatMode){
+
+        canvas.requestPointerLock();
+
+      }
+
+    }
+  );
+
+  document.addEventListener(
+    'pointerlockchange',
+    function(){
+
+      pointerLocked=
+        document.pointerLockElement===
+        canvas;
+
+    }
+  );
+
+  document.addEventListener(
+    'mousemove',
+    function(e){
+
+      if(!pointerLocked)return;
+
+      yaw-=
+        e.movementX*.002;
+
+      pitch-=
+        e.movementY*.002;
+
+      pitch=
+        Math.max(
+          -1.45,
+          Math.min(
+            1.45,
+            pitch
+          )
+        );
+
+    }
+  );
+
+}
+
+/* =========================================================
+   AUDIO AUTOPLAY UNLOCK
+   Browsers may block live audio after a reconnect/re-entry.
+   The first click/touch/key interaction gives the page a real
+   user gesture, so we use it to resume the existing HLS audio.
+========================================================= */
+(function(){
+  const unlock=async function(){
+    const ok=await unlockEWSAudio();
+    if(ok){
+      document.removeEventListener('pointerdown',unlock);
+      document.removeEventListener('touchstart',unlock);
+      document.removeEventListener('keydown',unlock);
+    }
+  };
+
+  document.addEventListener('pointerdown',unlock,{passive:true});
+  document.addEventListener('touchstart',unlock,{passive:true});
+  document.addEventListener('keydown',unlock,{passive:true});
+})();
+
+function toggleChat(){
+
+  const input =
+    document.getElementById(
+      'chat-input'
+    );
+
+  if(chatMode){
+
+    if(document.pointerLockElement) document.exitPointerLock();
+
+    input.focus();
+
+  }else{
+
+    input.blur();
+    keys={};
+    const canvas=document.getElementById('canvas3d');
+    if(canvas && document.pointerLockElement!==canvas){
+      try{ canvas.requestPointerLock(); }catch(err){}
+    }
+
+  }
+
+}
+
+
+/* =========================================================
+   CLUB SCREEN MEDIA
+========================================================= */
+
+function toggleScreenMenu(){
+  const menu=document.getElementById('screen-menu');
+  if(!menu) return;
+  menu.classList.toggle('open');
+  if(menu.classList.contains('open')){
+    const input=document.getElementById('screen-url');
+    setTimeout(()=>input && input.focus(),40);
   }
 }
 
-function openScreenModal() {
-  document.getElementById('screen-modal').classList.add('show');
-  if(!isHost) {
-    document.getElementById('screen-content').style.display = 'none';
-    const denied = document.getElementById('screen-denied');
-    denied.style.display = 'block';
-    denied.textContent = 'Только mvxtra может управлять экраном';
-  } else {
-    document.getElementById('screen-content').style.display = 'block';
-    document.getElementById('screen-denied').style.display = 'none';
+function setScreenStatus(text){
+  const el=document.getElementById('screen-status');
+  if(el) el.textContent=text;
+}
+
+function youtubeEmbed(url){
+  try{
+    const u=new URL(url);
+    let id='';
+    if(u.hostname.includes('youtu.be')){
+      id=u.pathname.split('/').filter(Boolean)[0]||'';
+    }else if(u.hostname.includes('youtube.com')){
+      id=u.searchParams.get('v')||'';
+      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
+      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
+    }
+    if(!id) return null;
+    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
+  }catch(e){ return null; }
+}
+
+function twitchEmbed(url){
+  try{
+    const u=new URL(url);
+    if(!u.hostname.includes('twitch.tv')) return null;
+    const parts=u.pathname.split('/').filter(Boolean);
+    if(!parts.length) return null;
+    const parent=location.hostname || 'ews-sessions.onrender.com';
+    if(parts[0]==='videos' && parts[1]){
+      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+    }
+    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+  }catch(e){ return null; }
+}
+
+function normalizeClubScreenUrl(raw){
+  const value=String(raw||'').trim();
+  if(!value) return null;
+
+  const yt=youtubeEmbed(value);
+  if(yt) return {src:yt,name:'YOUTUBE'};
+
+  const tw=twitchEmbed(value);
+  if(tw) return {src:tw,name:'TWITCH'};
+
+  try{
+    const u=new URL(value);
+    if(u.protocol!=='http:' && u.protocol!=='https:') return null;
+    return {src:u.href,name:'WEBSITE'};
+  }catch(e){
+    return null;
   }
 }
-function closeScreenModal() {
-  document.getElementById('screen-modal').classList.remove('show');
-}
-function loadScreen() {
-  const url = document.getElementById('screen-url').value.trim();
-  if(!url) return;
-  socket.emit('club-screen-state', {
-    active:true,
-    url:url,
-    name:url
-  });
-  closeScreenModal();
-}
-function clearScreen() {
-  socket.emit('club-screen-state', {
-    active:false,
-    url:'',
-    name:''
-  });
-  document.getElementById('screen-url').value = '';
-  closeScreenModal();
+
+function isClubHost(){
+  return String(currentUser||'').trim().toLowerCase()==='mvxtra';
 }
 
-// =====================================================
-// EMOTES / DANCES
-// =====================================================
-function toggleEmotes() {
-  document.getElementById('emotes-panel').classList.toggle('show');
-}
-function sendDance(id) {
-  myDance = id;
-  socket.emit('player-emote', {dance:id});
-  if(id === 0) myDance = 0;
+function loadClubScreen(){
+  if(!isClubHost()){ setScreenStatus('Только главный пользователь клуба может включать экран.'); return; }
+  const input=document.getElementById('screen-url'); const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
+  if(!input||!frame||!panel)return; const result=normalizeClubScreenUrl(input.value);
+  if(!result){setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');return;}
+  frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
+  setScreenStatus(result.name+' LOADED — экран закреплён. Нажми ESC, чтобы выйти из управления камерой и кликать по плееру.');
+  if(socket)socket.emit('club-screen-state',{src:result.src,url:input.value.trim(),name:result.name,active:true,owner:currentUser});
+  const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
 }
 
-// =====================================================
-// CHAT
-// =====================================================
-function sendChat() {
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if(!text) return;
-  socket.emit('chat-message', {text});
-  input.value = '';
+function clearClubScreen(){
+  if(!isClubHost())return; const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
+  if(frame)frame.src='about:blank'; if(panel)panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl='';
+  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser}); setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
 }
-document.getElementById('chat-input').addEventListener('keydown', e=>{
-  if(e.key === 'Enter') { e.preventDefault(); sendChat(); }
+
+// When the user wants to click the embedded player, release pointer lock first.
+// The 3D screen remains physically fixed to the wall; only mouse control is released.
+function enableScreenInteraction(){
+  if(document.pointerLockElement){
+    try{ document.exitPointerLock(); }catch(e){}
+  }
+  const panel=document.getElementById('css3d-screen');
+  if(panel){ panel.style.pointerEvents='auto'; }
+}
+
+document.addEventListener('mousedown',function(e){
+  const screen=e.target && e.target.closest ? e.target.closest('#css3d-screen') : null;
+  if(screen) enableScreenInteraction();
 });
 
-function addChatMessage(data) {
-  const el = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'chat-msg';
-  let html = '<span class="chat-user">' + escapeHtml(data.user || data.username || '') + ':</span> ';
-  html += '<span class="chat-text">' + escapeHtml(data.text || '') + '</span>';
-  if(data.original && data.original !== data.text) {
-    html += '<div class="chat-orig">' + escapeHtml(data.original) + '</div>';
+/* =========================================================
+   REMOTE CLUB SCREEN
+   The server sends one shared screen state to every guest.
+   This function is intentionally separate from loadClubScreen()
+   because friends must never need to be the host to display it.
+========================================================= */
+function applyRemoteClubScreen(state){
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('css3d-screen');
+  if(!frame || !panel) return;
+
+  state=state || {};
+
+  if(state.active !== true || !state.src){
+    frame.src='about:blank';
+    panel.classList.remove('active');
+    screenMediaActive=false;
+    screenMediaUrl='';
+    return;
   }
-  div.innerHTML = html;
-  el.appendChild(div);
-  el.scrollTop = el.scrollHeight;
-  // limit messages
-  while(el.children.length > 50) el.removeChild(el.firstChild);
-}
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c]));
+
+  // Prefer the original URL so every guest builds its own embed URL.
+  // This is important for Twitch because the embed parent must match the
+  // hostname used by the guest's browser, not the host's browser.
+  let src='';
+  const originalUrl=String(state.url||'').trim();
+  if(originalUrl){
+    const normalized=normalizeClubScreenUrl(originalUrl);
+    src=normalized ? normalized.src : originalUrl;
+  }else{
+    src=String(state.src||'').trim();
+  }
+  if(!src) return;
+
+  // Do not reload the iframe every time a duplicate Socket.IO event arrives.
+  if(screenMediaUrl !== src){
+    frame.src=src;
+    screenMediaUrl=src;
+  }
+
+  screenMediaActive=true;
+  panel.classList.add('active');
+
+  // Make sure the iframe can play media on every guest browser.
+  frame.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture');
+  frame.setAttribute('allowfullscreen','');
 }
 
-// =====================================================
-// LANGUAGE
-// =====================================================
-function changeLanguage() {
-  const lang = document.getElementById('lang-select').value;
-  myLanguage = lang;
-  socket.emit('language-change', lang);
-}
+/* =========================================================
+   ANIMATION
+========================================================= */
 
-// =====================================================
-// INPUT
-// =====================================================
-function onKeyDown(e) {
-  keys[e.code] = true;
-  if(e.code === 'KeyC') {
-    chatOpen = !chatOpen;
-    document.getElementById('game').classList.toggle('chat-hidden', !chatOpen);
-    if(chatOpen) document.getElementById('chat-input').focus();
-  }
-  if(e.code === 'Space' && !chatOpen) {
-    if(myY <= 1.71) { velY = JUMP_FORCE; myJumping = true; }
-    e.preventDefault();
-  }
-  if(chatOpen && document.activeElement === document.getElementById('chat-input')) {
-    keys = {};
-  }
-}
-function onKeyUp(e) { keys[e.code] = false; }
+function animate(){
 
-function onMouseDown(e) {
-  if(!mouseLocked && !chatOpen && e.target.tagName === 'CANVAS') {
-    document.getElementById('canvas').requestPointerLock();
-  }
-}
-function onMouseUp() {}
-function onMouseMove(e) {
-  if(mouseLocked) {
-    myYaw -= e.movementX * 0.002;
-    myPitch -= e.movementY * 0.002;
-    myPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, myPitch));
-    updateCameraRotation();
-  }
-}
-function onPointerLockChange() {
-  mouseLocked = document.pointerLockElement === document.getElementById('canvas');
-}
-function updateCameraRotation() {
-  camera.rotation.order = 'YXZ';
-  camera.rotation.y = myYaw;
-  camera.rotation.x = myPitch;
-}
+  requestAnimationFrame(
+    animate
+  );
 
-// =====================================================
-// ANIMATION
-// =====================================================
-function animate() {
-  requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.1);
+  if(!scene)return;
 
-  // MOVEMENT
-  if(!chatOpen) {
-    let dx = 0, dz = 0;
-    if(keys['KeyW'] || keys['ArrowUp']) dz -= 1;
-    if(keys['KeyS'] || keys['ArrowDown']) dz += 1;
-    if(keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
-    if(keys['KeyD'] || keys['ArrowRight']) dx += 1;
-    // mobile
-    if(mobileMove.x) dx = mobileMove.x;
-    if(mobileMove.z) dz = mobileMove.z;
+  const dt =
+    Math.min(
+      clock.getDelta(),
+      .05
+    );
 
-    if(dx || dz) {
-      const len = Math.sqrt(dx*dx + dz*dz);
-      dx /= len; dz /= len;
-      const cos = Math.cos(myYaw);
-      const sin = Math.sin(myYaw);
-      const moveX = (dx * cos - dz * sin) * MOVE_SPEED * dt;
-      const moveZ = (dx * sin + dz * cos) * MOVE_SPEED * dt;
-      myX = Math.max(BOUNDS.xMin, Math.min(BOUNDS.xMax, myX + moveX));
-      myZ = Math.max(BOUNDS.zMin, Math.min(BOUNDS.zMax, myZ + moveZ));
-      myMoving = true;
-    } else {
-      myMoving = false;
+  const time =
+    performance.now()/1000;
+
+  let bass=.2;
+  let level=.2;
+
+  if(
+    analyser &&
+    freqData &&
+    audioStarted
+  ){
+
+    analyser.getByteFrequencyData(
+      freqData
+    );
+
+    let b=0;
+
+    for(
+      let i=0;
+      i<10 &&
+      i<freqData.length;
+      i++
+    ){
+
+      b+=freqData[i];
+
     }
-  } else {
-    myMoving = false;
+
+    bass=
+      b/
+      (
+        Math.min(
+          10,
+          freqData.length
+        )*255
+      );
+
+    let total=0;
+
+    for(
+      let i=0;
+      i<freqData.length;
+      i++
+    ){
+
+      total+=freqData[i];
+
+    }
+
+    level=
+      total/
+      (
+        freqData.length*255
+      );
+
   }
 
-  // GRAVITY / JUMP
-  if(myJumping || myY > 1.7) {
-    velY -= GRAVITY * dt;
-    myY += velY * dt;
-    if(myY <= 1.7) { myY = 1.7; velY = 0; myJumping = false; }
+  else{
+
+    bass=
+      .25+
+      Math.sin(time*3)*.12;
+
+    level=
+      .25+
+      Math.sin(time*1.5)*.08;
+
   }
 
-  camera.position.set(myX, myY, myZ);
+  bassLevel=
+    bassLevel*.82+
+    bass*.18;
 
-  // SEND STATE (throttled)
-  const now = Date.now();
-  if(now - lastStateSent > 50) {
-    lastStateSent = now;
-    socket.emit('player-state', {
-      x:myX, y:myY, z:myZ,
-      yaw:myYaw, pitch:myPitch,
-      moving:myMoving, jumping:myJumping,
-      dance:myDance, danceStartedAt: myDance ? now : 0
-    });
+  audioLevel=
+    audioLevel*.88+
+    level*.12;
+
+  const speed=
+    chatMode || activeDance
+      ?0
+      :5*dt;
+
+  let forward=0;
+  let side=0;
+
+  if(
+    keys['KeyW']
+  ){
+    forward+=1;
   }
 
-  // ANIMATE OTHER PLAYERS
-  for(const id in playerMeshes) {
-    const mesh = playerMeshes[id];
-    const p = players[id];
-    if(!p) continue;
-    const ud = mesh.userData;
-    const t = clock.getElapsedTime() * 6;
+  if(
+    keys['KeyS']
+  ){
+    forward-=1;
+  }
 
-    if(p.dance && p.dance > 0) {
-      // DANCE ANIMATIONS
-      switch(p.dance) {
-        case 1: // DANCE 01 - sway
-          ud.armL.rotation.x = Math.sin(t) * 0.8;
-          ud.armR.rotation.x = -Math.sin(t) * 0.8;
-          ud.body && (mesh.children[0].position.y = 1.15 + Math.abs(Math.sin(t*2)) * 0.1);
-          ud.legL.rotation.x = Math.sin(t) * 0.3;
-          ud.legR.rotation.x = -Math.sin(t) * 0.3;
-          break;
-        case 2: // DANCE 02 - arms up
-          ud.armL.rotation.x = -Math.PI/2 + Math.sin(t) * 0.3;
-          ud.armR.rotation.x = -Math.PI/2 - Math.sin(t) * 0.3;
-          ud.legL.rotation.x = Math.sin(t*2) * 0.2;
-          ud.legR.rotation.x = -Math.sin(t*2) * 0.2;
-          break;
-        case 3: // SHUFFLE
-          ud.legL.rotation.x = Math.sin(t*3) * 0.5;
-          ud.legR.rotation.x = -Math.sin(t*3) * 0.5;
-          ud.armL.rotation.x = Math.sin(t*3) * 0.4;
-          ud.armR.rotation.x = -Math.sin(t*3) * 0.4;
-          mesh.children[0].position.y = 1.15 + Math.abs(Math.sin(t*3)) * 0.05;
-          break;
-        case 4: // ROBOT
-          const step = Math.floor(t) % 4;
-          ud.armL.rotation.x = [-0.5, 0, 0.5, 0][step];
-          ud.armR.rotation.x = [0, 0.5, 0, -0.5][step];
-          ud.armL.rotation.z = step===0 ? -0.5 : 0;
-          ud.armR.rotation.z = step===2 ? 0.5 : 0;
-          ud.legL.rotation.x = 0;
-          ud.legR.rotation.x = 0;
-          break;
-        case 5: // BOUNCE
-          mesh.children[0].position.y = 1.15 + Math.abs(Math.sin(t*4)) * 0.15;
-          ud.armL.rotation.x = Math.sin(t*4) * 0.3;
-          ud.armR.rotation.x = -Math.sin(t*4) * 0.3;
-          ud.legL.rotation.x = Math.sin(t*4) * 0.1;
-          ud.legR.rotation.x = -Math.sin(t*4) * 0.1;
-          break;
-        case 6: // WAVE
-          ud.armR.rotation.x = -Math.PI * 0.7;
-          ud.armR.rotation.z = Math.sin(t*4) * 0.5;
-          ud.armL.rotation.x = 0;
-          ud.legL.rotation.x = 0;
-          ud.legR.rotation.x = 0;
-          break;
+  if(
+    keys['KeyA']
+  ){
+    side-=1;
+  }
+
+  if(
+    keys['KeyD']
+  ){
+    side+=1;
+  }
+
+  // =========================
+  // JUMP PHYSICS
+  // =========================
+
+  if(!chatMode){
+
+    jumpVelocity-=
+      GRAVITY*dt;
+
+    playerY+=
+      jumpVelocity*dt;
+
+    if(playerY<=GROUND_Y){
+
+      playerY=GROUND_Y;
+      jumpVelocity=0;
+      isGrounded=true;
+
+    }
+
+  }
+
+  if(
+    pointerLocked &&
+    !chatMode
+  ){
+
+    const fx=
+      -Math.sin(yaw);
+
+    const fz=
+      -Math.cos(yaw);
+
+    const rx=
+      Math.cos(yaw);
+
+    const rz=
+      -Math.sin(yaw);
+
+    camera.position.x+=
+      (
+        fx*forward+
+        rx*side
+      )*speed;
+
+    camera.position.z+=
+      (
+        fz*forward+
+        rz*side
+      )*speed;
+
+  }
+
+  camera.position.x=
+    THREE.MathUtils.clamp(
+      camera.position.x,
+      -16,
+      16
+    );
+
+  camera.position.z=
+    THREE.MathUtils.clamp(
+      camera.position.z,
+      -15.5,
+      15.5
+    );
+
+  camera.position.y=playerY;
+
+  camera.rotation.order=
+    'YXZ';
+
+  camera.rotation.y=
+    yaw;
+
+  camera.rotation.x=
+    pitch;
+
+  if(playerBody){
+
+    playerBody.position.x=
+      camera.position.x;
+
+    playerBody.position.z=
+      camera.position.z;
+
+    playerBody.visible=false;
+
+  }
+
+  broadcastPlayerState(performance.now());
+
+  if(particles){
+
+    particles.rotation.y+=
+      .00015;
+
+    particles.material.opacity=
+      .22+
+      audioLevel*.18;
+
+  }
+
+  remotePlayers.forEach(p=>{
+    const t=performance.now()/1000;
+    const swing=p.moving?Math.sin(t*8)*.35:0;
+    const limbs=p.group.children.filter(o=>o.isMesh);
+    if(limbs.length>=5){ limbs[2].rotation.x=swing; limbs[3].rotation.x=-swing; limbs[4].rotation.x=-swing; }
+  });
+
+  neonObjects.forEach(
+    (obj,index)=>{
+
+      const pulse=
+        .5+
+        Math.sin(
+          time*3+
+          index*.4
+        )*.25+
+        bassLevel*.7;
+
+      const value=
+        Math.min(
+          1,
+          pulse
+        );
+
+      obj.material.color.setRGB(
+        value,
+        value,
+        value
+      );
+
+    }
+  );
+
+  lightObjects.forEach(
+    (light,index)=>{
+
+      light.intensity=
+        1+
+        bassLevel*2+
+        Math.sin(
+          time*2+
+          index
+        )*.15;
+
+    }
+  );
+
+  if(screenCtx){
+
+    screenCtx.fillStyle=
+      '#050505';
+
+    screenCtx.fillRect(
+      0,
+      0,
+      1024,
+      512
+    );
+
+    const grd =
+      screenCtx.createLinearGradient(
+        0,
+        0,
+        1024,
+        0
+      );
+
+    const intensity=
+      40+
+      Math.floor(
+        bassLevel*120
+      );
+
+    grd.addColorStop(
+      0,
+      `rgb(${intensity},${intensity},${intensity})`
+    );
+
+    grd.addColorStop(
+      .5,
+      '#050505'
+    );
+
+    grd.addColorStop(
+      1,
+      `rgb(${intensity},${intensity},${intensity})`
+    );
+
+    screenCtx.fillStyle=
+      grd;
+
+    screenCtx.fillRect(
+      0,
+      0,
+      1024,
+      512
+    );
+
+    screenCtx.fillStyle=
+      '#fff';
+
+    screenCtx.font=
+      'bold 80px Arial';
+
+    screenCtx.textAlign=
+      'center';
+
+    screenCtx.fillText(
+      'EWS SESSIONS',
+      512,
+      200
+    );
+
+    screenCtx.font=
+      '22px Arial';
+
+    screenCtx.fillStyle=
+      '#777';
+
+    screenCtx.fillText(
+      'UNDERGROUND CLUB',
+      512,
+      245
+    );
+
+    const bars=48;
+
+    const bw=
+      800/bars;
+
+    for(
+      let i=0;
+      i<bars;
+      i++
+    ){
+
+      let value;
+
+      if(
+        freqData &&
+        audioStarted
+      ){
+
+        value=
+          freqData[
+            Math.floor(
+              i*
+              freqData.length/
+              bars
+            )
+          ]/255;
+
+      }else{
+
+        value=
+          .2+
+          Math.sin(
+            time*4+
+            i*.5
+          )*.15;
+
       }
-    } else if(p.moving) {
-      // WALK ANIMATION
-      ud.armL.rotation.x = Math.sin(t) * 0.6;
-      ud.armR.rotation.x = -Math.sin(t) * 0.6;
-      ud.legL.rotation.x = -Math.sin(t) * 0.5;
-      ud.legR.rotation.x = Math.sin(t) * 0.5;
-      mesh.children[0].position.y = 1.15 + Math.abs(Math.sin(t*2)) * 0.03;
-    } else {
-      // IDLE - reset
-      ud.armL.rotation.x = 0;
-      ud.armR.rotation.x = 0;
-      ud.armL.rotation.z = 0;
-      ud.armR.rotation.z = 0;
-      ud.legL.rotation.x = 0;
-      ud.legR.rotation.x = 0;
-      mesh.children[0].position.y = 1.15;
+
+      const h=
+        value*180;
+
+      screenCtx.fillStyle=
+        '#fff';
+
+      screenCtx.fillRect(
+        112+i*bw,
+        450-h,
+        bw-3,
+        h
+      );
+
     }
+
+    screenTexture.needsUpdate=true;
+
   }
 
-  renderer.render(scene, camera);
+
+  remotePlayers.forEach(p=>{
+    if(p.dance) animateRemoteDance(p,time);
+    else resetRemoteDancePose(p);
+  });
+
+  renderer.render(
+    scene,
+    camera
+  );
+
+  // Keep the HTML player exactly on the physical screen anchor.
+  if(cssScreenObject && screenMesh){
+    cssScreenObject.position.copy(screenMesh.position);
+    cssScreenObject.rotation.copy(screenMesh.rotation);
+    cssScreenObject.scale.set(0.01,0.01,0.01);
+    cssScreenObject.position.z += 0.035;
+  }
+
+  if(cssRenderer && cssScene){
+    cssRenderer.render(cssScene,camera);
+  }
+
 }
 
-// =====================================================
-// MOBILE CONTROLS
-// =====================================================
-const joystick = document.getElementById('joystick');
-const joystickKnob = document.getElementById('joystick-knob');
-if(joystick) {
-  let joyActive = false;
-  joystick.addEventListener('touchstart', e => { joyActive = true; e.preventDefault(); });
-  joystick.addEventListener('touchmove', e => {
-    if(!joyActive) return;
-    const touch = e.touches[0];
-    const rect = joystick.getBoundingClientRect();
-    const cx = rect.left + rect.width/2;
-    const cy = rect.top + rect.height/2;
-    let dx = touch.clientX - cx;
-    let dy = touch.clientY - cy;
-    const dist = Math.sqrt(dx*dx+dy*dy);
-    const max = 40;
-    if(dist > max) { dx = dx/dist*max; dy = dy/dist*max; }
-    joystickKnob.style.left = (40 + dx) + 'px';
-    joystickKnob.style.top = (40 + dy) + 'px';
-    mobileMove.x = dx / max;
-    mobileMove.z = dy / max;
-    e.preventDefault();
-  });
-  joystick.addEventListener('touchend', e => {
-    joyActive = false;
-    joystickKnob.style.left = '40px';
-    joystickKnob.style.top = '40px';
-    mobileMove.x = 0; mobileMove.z = 0;
+/* =========================================================
+   REMOTE PLAYERS / SILHOUETTES
+========================================================= */
+function createRemotePlayer(data){
+  if(!scene || !data || !data.id || data.id===socket?.id) return;
+
+  // If a stale object exists for this socket, replace it cleanly.
+  if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
+
+  const g=new THREE.Group();
+  g.userData.username=data.username||'PLAYER';
+
+  const mat=new THREE.MeshStandardMaterial({color:0x777777,roughness:1,metalness:0});
+  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:1});
+
+  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.22,.30,.85,8),mat);
+  torso.position.y=.78;
+  g.add(torso);
+
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,12),mat);
+  head.position.y=1.42;
+  g.add(head);
+
+  const armGeo=new THREE.CylinderGeometry(.075,.09,.72,6);
+  const legGeo=new THREE.CylinderGeometry(.09,.11,.82,6);
+  const leftArm=new THREE.Mesh(armGeo,dark); leftArm.position.set(-.34,.80,0); leftArm.rotation.z=-.12; g.add(leftArm);
+  const rightArm=new THREE.Mesh(armGeo,dark); rightArm.position.set(.34,.80,0); rightArm.rotation.z=.12; g.add(rightArm);
+  const leftLeg=new THREE.Mesh(legGeo,dark); leftLeg.position.set(-.13,.30,0); g.add(leftLeg);
+  const rightLeg=new THREE.Mesh(legGeo,dark); rightLeg.position.set(.13,.30,0); g.add(rightLeg);
+
+  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg};
+
+  const labelCanvas=document.createElement('canvas');
+  labelCanvas.width=256; labelCanvas.height=64;
+  const ctx=labelCanvas.getContext('2d');
+  ctx.clearRect(0,0,256,64);
+  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
+  ctx.fillText(g.userData.username,128,32);
+  const tex=new THREE.CanvasTexture(labelCanvas);
+  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  label.scale.set(1.7,.42,1); label.position.y=1.95; g.add(label);
+
+  const x=Number.isFinite(Number(data.x)) ? Number(data.x) : 0;
+  const z=Number.isFinite(Number(data.z)) ? Number(data.z) : 13;
+  const y=Number.isFinite(Number(data.y)) ? Number(data.y) : 0;
+  const ry=Number.isFinite(Number(data.yaw ?? data.ry)) ? Number(data.yaw ?? data.ry) : 0;
+
+  g.position.set(x,y,z);
+  g.rotation.y=ry;
+  g.visible=true;
+  scene.add(g);
+
+  remotePlayers.set(data.id,{
+    group:g,
+    last:{x,z,yaw:ry},
+    moving:!!data.moving,
+    username:data.username||'PLAYER',
+    dance:Number(data.dance)||0,
+    danceStartedAt:Number(data.danceStartedAt)||0,
+    parts,
+    baseY:y
   });
 }
 
-const lookBtn = document.getElementById('look-btn');
-if(lookBtn) {
-  lookBtn.addEventListener('touchstart', e => {
-    lookActive = true;
-    lookStartX = e.touches[0].clientX;
-    lookStartY = e.touches[0].clientY;
-    e.preventDefault();
-  });
-  lookBtn.addEventListener('touchmove', e => {
-    if(!lookActive) return;
-    const dx = e.touches[0].clientX - lookStartX;
-    const dy = e.touches[0].clientY - lookStartY;
-    myYaw -= dx * 0.005;
-    myPitch -= dy * 0.005;
-    myPitch = Math.max(-Math.PI/2+0.1, Math.min(Math.PI/2-0.1, myPitch));
-    updateCameraRotation();
-    lookStartX = e.touches[0].clientX;
-    lookStartY = e.touches[0].clientY;
-    e.preventDefault();
-  });
-  lookBtn.addEventListener('touchend', () => { lookActive = false; });
+function updateRemotePlayer(data){
+  if(!data.id || data.id===socket?.id) return;
+  if(!remotePlayers.has(data.id)) createRemotePlayer(data);
+  const p=remotePlayers.get(data.id);
+
+  const rawX=Number(data.x);
+  const rawZ=Number(data.z);
+  const rawY=Number(data.y);
+  const rawYaw=Number(data.yaw ?? data.ry);
+
+  const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
+  const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
+  const ny=Number.isFinite(rawY) ? rawY : p.group.position.y;
+  const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
+
+  const dx=nx-p.group.position.x;
+  const dz=nz-p.group.position.z;
+
+  p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
+  if(data.dance!==undefined) p.dance=Number(data.dance)||0;
+  if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
+  p.group.position.x=nx;
+  p.group.position.y=ny;
+  p.group.position.z=nz;
+  p.group.rotation.y=nyaw;
+  p.last={x:nx,z:nz,yaw:nyaw};
 }
+
+function removeRemotePlayer(id){
+  const p=remotePlayers.get(id);
+  if(!p) return;
+  scene.remove(p.group);
+  p.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }});
+  remotePlayers.delete(id);
+}
+
+function broadcastPlayerState(now){
+  if(!socket || !socket.connected || !camera) return;
+  if(now-lastPlayerBroadcast<50) return;
+  lastPlayerBroadcast=now;
+  const moving = Math.abs(camera.position.x-(broadcastPlayerState.lastX ?? camera.position.x)) > 0.0005 ||
+                 Math.abs(camera.position.z-(broadcastPlayerState.lastZ ?? camera.position.z)) > 0.0005;
+
+  broadcastPlayerState.lastX=camera.position.x;
+  broadcastPlayerState.lastZ=camera.position.z;
+
+  socket.emit('player-state',{
+    x:camera.position.x,
+    y:Math.max(0, playerY-1.7),
+    z:camera.position.z,
+    yaw:yaw,
+    pitch:pitch,
+    username:currentUser,
+    moving:moving,
+    jumping:!isGrounded,
+    dance:activeDance,
+    danceStartedAt:danceStartedAt
+  });
+}
+
+
+
+/* =========================================================
+   EMOTES / DANCES
+========================================================= */
+function toggleEmotesMenu(){
+  const menu=document.getElementById('emotes-menu');
+  if(menu) menu.classList.toggle('open');
+}
+
+function playDance(id){
+  if(chatMode || !socket) return;
+  activeDance=Math.max(1,Math.min(6,Number(id)||1));
+  danceStartedAt=Date.now();
+  keys={};
+  try{ if(document.pointerLockElement) document.exitPointerLock(); }catch(e){}
+  const menu=document.getElementById('emotes-menu');
+  if(menu) menu.classList.remove('open');
+  broadcastPlayerState(Date.now(),true);
+}
+
+function stopDance(){
+  activeDance=0;
+  danceStartedAt=0;
+  const menu=document.getElementById('emotes-menu');
+  if(menu) menu.classList.remove('open');
+  broadcastPlayerState(Date.now(),true);
+}
+
+function animateRemoteDance(p,time){
+  if(!p || !p.parts) return;
+  const q=p.parts;
+  const t=Math.max(0,(Date.now()-(p.danceStartedAt||Date.now()))/1000);
+  const w=t*Math.PI*2;
+  q.torso.rotation.set(0,0,0);
+  q.head.rotation.set(0,0,0);
+  q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
+  q.leftLeg.rotation.set(0,0,0); q.rightLeg.rotation.set(0,0,0);
+  if(!p.dance) return;
+  if(p.dance===1){
+    q.leftArm.rotation.z=-1.1+Math.sin(w*2)*.35; q.rightArm.rotation.z=1.1-Math.sin(w*2)*.35;
+    q.leftLeg.rotation.z=Math.sin(w)*.35; q.rightLeg.rotation.z=-Math.sin(w)*.35;
+    q.torso.rotation.y=Math.sin(w)*.18;
+  }else if(p.dance===2){
+    q.leftArm.rotation.z=-.55+Math.sin(w*2)*.9; q.rightArm.rotation.z=.55-Math.sin(w*2)*.9;
+    q.leftLeg.rotation.z=Math.sin(w*2)*.28; q.rightLeg.rotation.z=-Math.sin(w*2)*.28;
+    q.torso.rotation.z=Math.sin(w)*.16;
+  }else if(p.dance===3){
+    q.leftArm.rotation.z=-1.25+Math.sin(w*2)*.25; q.rightArm.rotation.z=.25+Math.sin(w*2+.8)*.8;
+    q.leftLeg.rotation.z=Math.sin(w*2)*.55; q.rightLeg.rotation.z=-Math.sin(w*2)*.55;
+    q.torso.rotation.y=Math.sin(w)*.35;
+  }else if(p.dance===4){
+    const step=Math.sin(w*2)>0?1:-1;
+    q.leftArm.rotation.z=-.85*step; q.rightArm.rotation.z=.85*step;
+    q.leftLeg.rotation.z=.35*step; q.rightLeg.rotation.z=-.35*step;
+    q.head.rotation.y=Math.sin(w*2)*.35;
+  }else if(p.dance===5){
+    const bounce=Math.abs(Math.sin(w*2))*0.22;
+    p.group.position.y=(p.baseY||p.group.position.y)+bounce;
+    q.leftArm.rotation.z=-.8-Math.sin(w*2)*.3; q.rightArm.rotation.z=.8+Math.sin(w*2)*.3;
+  }else if(p.dance===6){
+    q.leftArm.rotation.z=-1.35+Math.sin(w*3)*.5; q.rightArm.rotation.z=.15;
+    q.rightArm.rotation.x=Math.sin(w*2)*.5; q.head.rotation.z=Math.sin(w*2)*.15;
+  }
+}
+
+function resetRemoteDancePose(p){
+  if(!p || !p.parts) return;
+  p.group.position.y=p.baseY||0;
+  const q=p.parts;
+  q.torso.rotation.set(0,0,0); q.head.rotation.set(0,0,0);
+  q.leftArm.rotation.set(0,0,-.12); q.rightArm.rotation.set(0,0,.12);
+  q.leftLeg.rotation.set(0,0,0); q.rightLeg.rotation.set(0,0,0);
+}
+
+/* =========================================================
+   CLEANUP
+========================================================= */
+
+window.addEventListener(
+  'beforeunload',
+  function(){
+
+    try{
+
+      if(hls){
+        hls.destroy();
+      }
+
+    }catch(e){}
+
+    try{
+
+      if(audioContext){
+        audioContext.close();
+      }
+
+    }catch(e){}
+
+  }
+);
+
 </script>
+
 </body>
 </html>
