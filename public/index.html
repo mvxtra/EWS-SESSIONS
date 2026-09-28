@@ -1469,6 +1469,12 @@ function startSession(username){
 
   socket=io();
 
+  // Register the shared SCREEN listener immediately, before the first
+  // connection/join can deliver the current club-screen-state.
+  socket.on('club-screen-state', state=>{
+    applyRemoteClubScreen(state);
+  });
+
   socket.on('connect',function(){
 
     socket.emit(
@@ -1487,8 +1493,17 @@ function startSession(username){
       if(socket && socket.connected){
         socket.emit('request-players');
         socket.emit('request-online');
+        socket.emit('request-club-screen');
       }
     },250);
+
+    // A second authoritative SCREEN request closes the small race between
+    // the join event and the first state delivery on slow connections.
+    setTimeout(()=>{
+      if(socket && socket.connected){
+        socket.emit('request-club-screen');
+      }
+    },1000);
 
   });
 
@@ -1597,10 +1612,6 @@ function startSession(username){
     }
   );
 
-  socket.on('club-screen-state', state=>{
-    applyRemoteClubScreen(state);
-  });
-
   // =====================================================
   // MULTIPLAYER — initial snapshot + live updates
   // =====================================================
@@ -1652,6 +1663,10 @@ function startSession(username){
     socket.emit('request-players');
     socket.emit('request-online');
     socket.emit('request-club-screen');
+
+    setTimeout(()=>{
+      if(socket && socket.connected) socket.emit('request-club-screen');
+    },1000);
   });
 
 }
