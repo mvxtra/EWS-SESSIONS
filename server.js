@@ -280,8 +280,6 @@ io.on('connection',socket=>{
     sendPlayersSnapshot(socket);
     socket.broadcast.emit('player-state',publicPlayer(player));
     broadcastOnline();
-    // Send a direct authoritative snapshot to the newly joined socket as well.
-    socket.emit('online-users',getOnlineUsers());
     socket.emit('club-screen-state',clubScreenState);
     socket.emit('online',getOnlineUsers());
 
