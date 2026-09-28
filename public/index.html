@@ -359,7 +359,7 @@ function init3D() {
   scene.fog=new THREE.Fog(0x040404,18,48);
 
   camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.05,120);
-  camera.position.set(playerX,1.65,playerZ);
+  camera.position.set(playerX,2.05,playerZ);
   camera.rotation.order='YXZ';
 
   const ambient=new THREE.AmbientLight(0xffffff,.16);
@@ -770,8 +770,8 @@ function animate() {
     jumpVelocity -= GRAVITY*dt;
     camera.position.y += jumpVelocity*dt;
 
-    if(camera.position.y<=1.65) {
-      camera.position.y=1.65;
+    if(camera.position.y<=2.05) {
+      camera.position.y=2.05;
       jumpVelocity=0;
       grounded=true;
     }
