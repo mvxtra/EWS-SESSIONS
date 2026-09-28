@@ -378,29 +378,6 @@ input:focus{
    CLUB SCREEN / MEDIA
 ========================================================= */
 
-#screen-control{
-  position:fixed;
-  top:108px;
-  left:50%;
-  transform:translateX(-50%);
-  z-index:31;
-  pointer-events:auto;
-  height:34px;
-  padding:0 18px;
-  border:1px solid #444;
-  background:rgba(0,0,0,.78);
-  color:#fff;
-  font-size:10px;
-  font-weight:bold;
-  letter-spacing:3px;
-  cursor:pointer;
-}
-
-#screen-control:hover{
-  background:#fff;
-  color:#000;
-}
-
 #screen-menu{
   position:fixed;
   top:148px;
@@ -570,45 +547,6 @@ input:focus{
   pointer-events:none;
 }
 
-#audio-control{
-  position:absolute;
-
-  top:58px;
-  left:50%;
-
-  transform:translateX(-50%);
-
-  z-index:100;
-
-  pointer-events:auto;
-
-  padding:9px 14px;
-
-  border:1px solid #444;
-
-  background:rgba(0,0,0,.78);
-
-  color:#aaa;
-
-  font-family:monospace;
-
-  font-size:10px;
-
-  letter-spacing:2px;
-
-  cursor:pointer;
-}
-
-#audio-control.live{
-  color:#fff;
-  border-color:#aaa;
-}
-
-#audio-control:disabled{
-  opacity:.7;
-  cursor:wait;
-}
-
 #ews-audio{
   position:absolute;
 
@@ -680,19 +618,6 @@ input:focus{
     padding:5px 8px;
 
     font-size:8px;
-  }
-
-  #audio-control{
-    top:84px;
-    left:12px;
-
-    transform:none;
-
-    padding:8px 10px;
-
-    font-size:8px;
-
-    z-index:150;
   }
 
   #chat{
@@ -865,18 +790,6 @@ input:focus{
   <div id="stream-indicator">
     AUDIO: READY
   </div>
-
-  <button
-    id="audio-control"
-    onclick="startSSHAudio()">
-    ▶ AUDIO: START
-  </button>
-
-  <button
-    id="screen-control"
-    onclick="toggleScreenMenu()">
-    SCREEN
-  </button>
 
   <div id="screen-menu">
     <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
