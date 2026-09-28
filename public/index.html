@@ -1108,178 +1108,145 @@ function startSession(username){
 
   currentUser=username;
 
-  document.getElementById(
-    'login'
-  ).style.display='none';
-
-  document.getElementById(
-    'hud'
-  ).style.display='block';
+  document.getElementById('login').style.display='none';
+  document.getElementById('hud').style.display='block';
 
   clubScreenHost='mvxtra';
 
+  const screenButton=document.getElementById('screen-control');
+  if(screenButton){
+    screenButton.style.display=isClubHost()?'block':'none';
+  }
+
   init3D();
 
-  socket=io();
+  // One socket per page. Reconnect uses the same handlers and rejoins the club.
+  if(socket){
+    try{ socket.disconnect(); }catch(e){}
+  }
 
-  socket.on('connect',function(){
-
-    socket.emit(
-      'join',
-      {
-        username: currentUser,
-        language:
-          document.getElementById('lang').value
-      }
-    );
-
+  socket=io({
+    transports:['websocket','polling'],
+    reconnection:true,
+    reconnectionAttempts:Infinity,
+    reconnectionDelay:500,
+    reconnectionDelayMax:3000
   });
 
-  socket.on(
-    'online-users',
-    list=>{
+  socket.on('connect',()=>{
+    console.log('[EWS MP] CONNECT',socket.id);
 
-      onlineUserList=Array.isArray(list)?list:[];
-      // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
-      clubScreenHost='mvxtra';
-
-      const ul =
-        document.getElementById('online-list');
-
-      ul.innerHTML='';
-
-      if(!Array.isArray(list)) return;
-
-      list.forEach(user=>{
-
-        const li =
-          document.createElement('li');
-
-        const name =
-          typeof user === 'string'
-            ? user
-            : user.username;
-
-        li.textContent =
-          name === currentUser
-            ? name + ' (YOU)'
-            : name;
-
-        ul.appendChild(li);
-
-      });
-
-    }
-  );
-
-  socket.on(
-    'chat-message',
-    message=>{
-
-      const el =
-        document.createElement(
-          'div'
-        );
-
-      el.className='msg';
-
-      const time =
-        new Date(
-          message.ts
-        ).toLocaleTimeString();
-
-      const user =
-        document.createElement(
-          'span'
-        );
-
-      user.className='u';
-
-      user.textContent=
-        message.user;
-
-      const text =
-        document.createElement(
-          'span'
-        );
-
-      text.className='t';
-
-      text.textContent=
-        ' '+time+' '+message.text;
-
-      el.appendChild(user);
-
-      el.appendChild(
-        document.createTextNode(' ')
-      );
-
-      el.appendChild(text);
-
-      const box =
-        document.getElementById(
-          'chat-messages'
-        );
-
-      box.appendChild(el);
-
-      box.scrollTop=
-        box.scrollHeight;
-
-    }
-  );
-
-  socket.on('club-screen-state', state=>{
-    applyRemoteClubScreen(state);
+    socket.emit('join',{
+      username:currentUser,
+      language:document.getElementById('lang').value
+    });
   });
 
-  // =====================================================
-  // MULTIPLAYER — initial snapshot + live updates
-  // =====================================================
+  socket.on('disconnect',reason=>{
+    console.warn('[EWS MP] DISCONNECT',reason);
 
-  socket.on('players-state', list=>{
-    if(!Array.isArray(list)) return;
+    onlineUserList=[];
 
-    // Server sends everyone except the current socket.
-    // Rebuild only the missing players so existing objects keep moving smoothly.
-    const alive = new Set();
+    const ul=document.getElementById('online-list');
+    if(ul) ul.innerHTML='';
 
-    list.forEach(data=>{
+    remotePlayers.forEach(p=>{
+      if(p && p.group && scene) scene.remove(p.group);
+    });
+    remotePlayers.clear();
+  });
+
+  socket.on('world:state',world=>{
+    if(!world || !Array.isArray(world.players)) return;
+
+    const alive=new Set();
+
+    world.players.forEach(data=>{
       if(!data || !data.id || data.id===socket.id) return;
       alive.add(data.id);
       updateRemotePlayer(data);
     });
 
-    // Remove players that are no longer present in the server snapshot.
     Array.from(remotePlayers.keys()).forEach(id=>{
       if(!alive.has(id)) removeRemotePlayer(id);
     });
+
+    if(world.screen){
+      applyRemoteClubScreen(world.screen);
+    }
   });
 
-  socket.on('player-joined', data=>{
+  socket.on('online:state',list=>{
+    const users=Array.isArray(list)?list:[];
+
+    onlineUserList=users;
+
+    const ul=document.getElementById('online-list');
+    if(!ul) return;
+
+    ul.innerHTML='';
+
+    users.forEach(user=>{
+      const li=document.createElement('li');
+
+      const name=
+        typeof user==='string'
+          ? user
+          : String(user?.username||'');
+
+      if(!name) return;
+
+      li.textContent=
+        name.toLowerCase()===String(currentUser||'').toLowerCase()
+          ? name+' (YOU)'
+          : name;
+
+      ul.appendChild(li);
+    });
+  });
+
+  socket.on('player:joined',data=>{
     if(!data || !data.id || data.id===socket.id) return;
     updateRemotePlayer(data);
   });
 
-  socket.on('player-state', data=>{
+  socket.on('player:state',data=>{
     if(!data || !data.id || data.id===socket.id) return;
     updateRemotePlayer(data);
   });
 
-  socket.on('player-left', id=>{
+  socket.on('player:left',id=>{
     removeRemotePlayer(id);
   });
 
-  socket.on('player-removed', id=>{
-    removeRemotePlayer(id);
+  socket.on('screen:state',state=>{
+    applyRemoteClubScreen(state);
   });
 
-  // Ask the server for a fresh snapshot after every connection.
-  socket.on('joined', ()=>{
-    socket.emit('request-players');
-    socket.emit('request-club-screen');
-  });
+  socket.on('chat-message',message=>{
+    const el=document.createElement('div');
+    el.className='msg';
 
+    const time=new Date(message.ts).toLocaleTimeString();
+
+    const user=document.createElement('span');
+    user.className='u';
+    user.textContent=message.user;
+
+    const text=document.createElement('span');
+    text.className='t';
+    text.textContent=' '+time+' '+message.text;
+
+    el.appendChild(user);
+    el.appendChild(document.createTextNode(' '));
+    el.appendChild(text);
+
+    const box=document.getElementById('chat-messages');
+    if(box){
+      box.appendChild(el);
+      box.scrollTop=box.scrollHeight;
+    }
+  });
 }
 
 /* =========================================================
@@ -3073,9 +3040,13 @@ function toggleChat(){
 ========================================================= */
 
 function toggleScreenMenu(){
+  if(!isClubHost()) return;
+
   const menu=document.getElementById('screen-menu');
   if(!menu) return;
+
   menu.classList.toggle('open');
+
   if(menu.classList.contains('open')){
     const input=document.getElementById('screen-url');
     setTimeout(()=>input && input.focus(),40);
@@ -3091,46 +3062,100 @@ function youtubeEmbed(url){
   try{
     const u=new URL(url);
     let id='';
+
     if(u.hostname.includes('youtu.be')){
       id=u.pathname.split('/').filter(Boolean)[0]||'';
     }else if(u.hostname.includes('youtube.com')){
       id=u.searchParams.get('v')||'';
-      if(!id && u.pathname.startsWith('/shorts/')) id=u.pathname.split('/')[2]||'';
-      if(!id && u.pathname.startsWith('/embed/')) id=u.pathname.split('/')[2]||'';
+
+      if(!id && u.pathname.startsWith('/shorts/')){
+        id=u.pathname.split('/')[2]||'';
+      }
+
+      if(!id && u.pathname.startsWith('/embed/')){
+        id=u.pathname.split('/')[2]||'';
+      }
     }
+
     if(!id) return null;
-    return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&rel=0&playsinline=1';
-  }catch(e){ return null; }
+
+    return 'https://www.youtube.com/embed/'+
+      encodeURIComponent(id)+
+      '?autoplay=1&rel=0&playsinline=1';
+  }catch(e){
+    return null;
+  }
 }
 
 function twitchEmbed(url){
   try{
     const u=new URL(url);
-    if(!u.hostname.includes('twitch.tv')) return null;
-    const parts=u.pathname.split('/').filter(Boolean);
-    if(!parts.length) return null;
-    const parent=location.hostname || 'ews-sessions.onrender.com';
-    if(parts[0]==='videos' && parts[1]){
-      return 'https://player.twitch.tv/?video='+encodeURIComponent(parts[1])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
+
+    if(!u.hostname.includes('twitch.tv')){
+      return null;
     }
-    return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+'&parent='+encodeURIComponent(parent)+'&autoplay=true';
-  }catch(e){ return null; }
+
+    const parts=u.pathname.split('/').filter(Boolean);
+
+    if(!parts.length){
+      return null;
+    }
+
+    const parent=
+      location.hostname ||
+      'ews-sessions.onrender.com';
+
+    if(parts[0]==='videos' && parts[1]){
+      return 'https://player.twitch.tv/?video='+
+        encodeURIComponent(parts[1])+
+        '&parent='+encodeURIComponent(parent)+
+        '&autoplay=true';
+    }
+
+    return 'https://player.twitch.tv/?channel='+
+      encodeURIComponent(parts[0])+
+      '&parent='+encodeURIComponent(parent)+
+      '&autoplay=true';
+  }catch(e){
+    return null;
+  }
 }
 
 function normalizeClubScreenUrl(raw){
   const value=String(raw||'').trim();
+
   if(!value) return null;
 
   const yt=youtubeEmbed(value);
-  if(yt) return {src:yt,name:'YOUTUBE'};
+  if(yt){
+    return {
+      src:yt,
+      name:'YOUTUBE'
+    };
+  }
 
   const tw=twitchEmbed(value);
-  if(tw) return {src:tw,name:'TWITCH'};
+  if(tw){
+    return {
+      src:tw,
+      name:'TWITCH'
+    };
+  }
 
   try{
     const u=new URL(value);
-    if(u.protocol!=='http:' && u.protocol!=='https:') return null;
-    return {src:u.href,name:'WEBSITE'};
+
+    if(
+      u.protocol!=='http:' &&
+      u.protocol!=='https:'
+    ){
+      return null;
+    }
+
+    return {
+      src:u.href,
+      name:'WEBSITE'
+    };
   }catch(e){
     return null;
   }
@@ -3141,83 +3166,205 @@ function isClubHost(){
 }
 
 function loadClubScreen(){
-  if(!isClubHost()){ setScreenStatus('Только главный пользователь клуба может включать экран.'); return; }
-  const input=document.getElementById('screen-url'); const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
-  if(!input||!frame||!panel)return; const result=normalizeClubScreenUrl(input.value);
-  if(!result){setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');return;}
-  frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — экран закреплён. Нажми ESC, чтобы выйти из управления камерой и кликать по плееру.');
-  if(socket)socket.emit('club-screen-state',{src:result.src,url:input.value.trim(),name:result.name,active:true,owner:currentUser});
-  const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
-}
-
-function clearClubScreen(){
-  if(!isClubHost())return; const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
-  if(frame)frame.src='about:blank'; if(panel)panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl='';
-  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser}); setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
-}
-
-// When the user wants to click the embedded player, release pointer lock first.
-// The 3D screen remains physically fixed to the wall; only mouse control is released.
-function enableScreenInteraction(){
-  if(document.pointerLockElement){
-    try{ document.exitPointerLock(); }catch(e){}
-  }
-  const panel=document.getElementById('css3d-screen');
-  if(panel){ panel.style.pointerEvents='auto'; }
-}
-
-document.addEventListener('mousedown',function(e){
-  const screen=e.target && e.target.closest ? e.target.closest('#css3d-screen') : null;
-  if(screen) enableScreenInteraction();
-});
-
-/* =========================================================
-   REMOTE CLUB SCREEN
-   The server sends one shared screen state to every guest.
-   This function is intentionally separate from loadClubScreen()
-   because friends must never need to be the host to display it.
-========================================================= */
-function applyRemoteClubScreen(state){
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('css3d-screen');
-  if(!frame || !panel) return;
-
-  state=state || {};
-
-  if(state.active !== true || !state.src){
-    frame.src='about:blank';
-    panel.classList.remove('active');
-    screenMediaActive=false;
-    screenMediaUrl='';
+  if(!isClubHost()){
     return;
   }
 
-  // Prefer the original URL so every guest builds its own embed URL.
-  // This is important for Twitch because the embed parent must match the
-  // hostname used by the guest's browser, not the host's browser.
+  const input=document.getElementById('screen-url');
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('css3d-screen');
+
+  if(!input || !frame || !panel){
+    return;
+  }
+
+  const result=normalizeClubScreenUrl(input.value);
+
+  if(!result){
+    setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или https:// сайт.');
+    return;
+  }
+
+  frame.src=result.src;
+
+  panel.classList.add('active');
+
+  screenMediaActive=true;
+  screenMediaUrl=result.src;
+
+  setScreenStatus(
+    result.name+
+    ' LOADED — общий экран клуба.'
+  );
+
+  if(socket && socket.connected){
+    socket.emit(
+      'screen:set',
+      {
+        active:true,
+        src:result.src,
+        url:input.value.trim(),
+        name:result.name
+      }
+    );
+  }
+
+  const menu=document.getElementById('screen-menu');
+  if(menu) menu.classList.remove('open');
+}
+
+function clearClubScreen(){
+  if(!isClubHost()){
+    return;
+  }
+
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('css3d-screen');
+
+  if(frame) frame.src='about:blank';
+  if(panel) panel.classList.remove('active');
+
+  screenMediaActive=false;
+  screenMediaUrl='';
+
+  if(socket && socket.connected){
+    socket.emit(
+      'screen:set',
+      {
+        active:false
+      }
+    );
+  }
+
+  setScreenStatus('Экран очищен.');
+}
+
+function enableScreenInteraction(){
+  if(document.pointerLockElement){
+    try{
+      document.exitPointerLock();
+    }catch(e){}
+  }
+
+  const panel=document.getElementById('css3d-screen');
+
+  if(panel){
+    panel.style.pointerEvents='auto';
+  }
+}
+
+document.addEventListener('mousedown',function(e){
+  const screen=
+    e.target &&
+    e.target.closest
+      ? e.target.closest('#css3d-screen')
+      : null;
+
+  if(screen){
+    enableScreenInteraction();
+  }
+});
+
+function openMobileScreen(src){
+  const wrap=document.getElementById('mobile-screen-player');
+  const frame=document.getElementById('mobile-screen-frame');
+
+  if(!wrap || !frame || window.innerWidth>700){
+    return;
+  }
+
+  frame.setAttribute(
+    'allow',
+    'autoplay; fullscreen; encrypted-media; picture-in-picture'
+  );
+
+  frame.setAttribute('allowfullscreen','');
+  frame.src=src;
+  wrap.classList.add('open');
+}
+
+function closeMobileScreen(){
+  const wrap=document.getElementById('mobile-screen-player');
+  const frame=document.getElementById('mobile-screen-frame');
+
+  if(frame) frame.src='about:blank';
+  if(wrap) wrap.classList.remove('open');
+}
+
+function applyRemoteClubScreen(state){
+  const frame=document.getElementById('media-screen-frame');
+  const panel=document.getElementById('css3d-screen');
+
+  if(!frame || !panel){
+    return;
+  }
+
+  state=state || {};
+
+  const version=Number(state.version)||0;
+
+  // Ignore an old packet arriving after a newer screen state.
+  if(
+    typeof applyRemoteClubScreen.lastVersion==='number' &&
+    version &&
+    version < applyRemoteClubScreen.lastVersion
+  ){
+    return;
+  }
+
+  if(version){
+    applyRemoteClubScreen.lastVersion=version;
+  }
+
+  if(
+    state.active!==true ||
+    !state.src
+  ){
+    frame.src='about:blank';
+    panel.classList.remove('active');
+
+    screenMediaActive=false;
+    screenMediaUrl='';
+
+    closeMobileScreen();
+    return;
+  }
+
   let src='';
   const originalUrl=String(state.url||'').trim();
+
   if(originalUrl){
-    const normalized=normalizeClubScreenUrl(originalUrl);
-    src=normalized ? normalized.src : originalUrl;
+    const normalized=
+      normalizeClubScreenUrl(originalUrl);
+
+    src=
+      normalized
+        ? normalized.src
+        : String(state.src||'').trim();
   }else{
     src=String(state.src||'').trim();
   }
-  if(!src) return;
 
-  // Do not reload the iframe every time a duplicate Socket.IO event arrives.
-  if(screenMediaUrl !== src){
+  if(!src){
+    return;
+  }
+
+  if(screenMediaUrl!==src){
     frame.src=src;
     screenMediaUrl=src;
   }
 
+  frame.setAttribute(
+    'allow',
+    'autoplay; fullscreen; encrypted-media; picture-in-picture'
+  );
+
+  frame.setAttribute('allowfullscreen','');
+
   screenMediaActive=true;
   panel.classList.add('active');
 
-  // Make sure the iframe can play media on every guest browser.
-  frame.setAttribute('allow','autoplay; fullscreen; encrypted-media; picture-in-picture');
-  frame.setAttribute('allowfullscreen','');
+  openMobileScreen(src);
 }
 
 /* =========================================================
@@ -3714,159 +3861,628 @@ function animate(){
 /* =========================================================
    REMOTE PLAYERS / SILHOUETTES
 ========================================================= */
+/* =========================================================
+   REMOTE PLAYERS / AVATARS
+========================================================= */
+
 function createRemotePlayer(data){
-  if(!scene || !data || !data.id || data.id===socket?.id) return;
-  if(remotePlayers.has(data.id)) removeRemotePlayer(data.id);
+  if(
+    !scene ||
+    !data ||
+    !data.id ||
+    data.id===socket?.id
+  ){
+    return;
+  }
+
+  if(remotePlayers.has(data.id)){
+    removeRemotePlayer(data.id);
+  }
 
   const g=new THREE.Group();
-  g.userData.username=data.username||'PLAYER';
-  g.userData.isRobot=true;
 
-  // Every player is a randomly generated robot. The seed comes from the socket id,
-  // so the same robot stays the same while that player remains in the room.
+  g.userData.username=
+    String(data.username||'PLAYER');
+
+  /*
+    Stable avatar:
+    no external model files, no GLTF dependency, no skin loading.
+    The same socket id always produces the same accent colours.
+  */
   let seed=0;
-  for(let i=0;i<String(data.id).length;i++) seed=(seed*31+String(data.id).charCodeAt(i))>>>0;
-  const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
 
-  const robotColors=[0x9aa0a6,0xb8b8b8,0x6f7780,0xd0d0d0,0x777777,0xa6a6a6];
-  const accentColors=[0xffffff,0x55ccff,0xff5577,0xffc857,0x9cff57,0xc77dff];
-  const bodyColor=robotColors[Math.floor(rnd()*robotColors.length)];
-  const accentColor=accentColors[Math.floor(rnd()*accentColors.length)];
+  for(
+    let i=0;
+    i<String(data.id).length;
+    i++
+  ){
+    seed=
+      (seed*31+
+       String(data.id).charCodeAt(i))
+      >>>0;
+  }
 
-  const bodyMat=new THREE.MeshStandardMaterial({color:bodyColor,metalness:.72,roughness:.28});
-  const darkMat=new THREE.MeshStandardMaterial({color:0x101216,metalness:.65,roughness:.32});
-  const accentMat=new THREE.MeshStandardMaterial({color:accentColor,emissive:accentColor,emissiveIntensity:1.8,metalness:.25,roughness:.25});
+  const rnd=()=>{
+    seed=
+      (seed*1664525+
+       1013904223)
+      >>>0;
 
-  const torso=new THREE.Mesh(new THREE.BoxGeometry(.58,.78,.34),bodyMat);
+    return seed/4294967296;
+  };
+
+  const bodyColors=[
+    0x9aa0a6,
+    0xb8b8b8,
+    0x6f7780,
+    0xd0d0d0,
+    0x777777,
+    0xa6a6a6
+  ];
+
+  const accentColors=[
+    0xffffff,
+    0x55ccff,
+    0xff5577,
+    0xffc857,
+    0x9cff57,
+    0xc77dff
+  ];
+
+  const bodyColor=
+    bodyColors[
+      Math.floor(
+        rnd()*bodyColors.length
+      )
+    ];
+
+  const accentColor=
+    accentColors[
+      Math.floor(
+        rnd()*accentColors.length
+      )
+    ];
+
+  const bodyMat=
+    new THREE.MeshStandardMaterial({
+      color:bodyColor,
+      metalness:.72,
+      roughness:.28
+    });
+
+  const darkMat=
+    new THREE.MeshStandardMaterial({
+      color:0x101216,
+      metalness:.65,
+      roughness:.32
+    });
+
+  const accentMat=
+    new THREE.MeshStandardMaterial({
+      color:accentColor,
+      emissive:accentColor,
+      emissiveIntensity:1.8,
+      metalness:.25,
+      roughness:.25
+    });
+
+  const torso=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(.58,.78,.34),
+      bodyMat
+    );
+
   torso.position.y=.92;
-  torso.castShadow=true; g.add(torso);
+  torso.castShadow=true;
+  g.add(torso);
 
-  const chest=new THREE.Mesh(new THREE.BoxGeometry(.30,.25,.025),accentMat);
-  chest.position.set(0,1.02,-.185); g.add(chest);
+  const chest=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(.30,.25,.025),
+      accentMat
+    );
 
-  const head=new THREE.Mesh(new THREE.BoxGeometry(.46,.42,.40),bodyMat);
-  head.position.y=1.57; head.castShadow=true; g.add(head);
+  chest.position.set(
+    0,
+    1.02,
+    -.185
+  );
 
-  const face=new THREE.Mesh(new THREE.BoxGeometry(.34,.13,.025),darkMat);
-  face.position.set(0,1.57,-.215); g.add(face);
+  g.add(chest);
 
-  const eyeL=new THREE.Mesh(new THREE.BoxGeometry(.075,.045,.018),accentMat);
+  const head=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(.46,.42,.40),
+      bodyMat
+    );
+
+  head.position.y=1.57;
+  head.castShadow=true;
+  g.add(head);
+
+  const face=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(.34,.13,.025),
+      darkMat
+    );
+
+  face.position.set(
+    0,
+    1.57,
+    -.215
+  );
+
+  g.add(face);
+
+  const eyeL=
+    new THREE.Mesh(
+      new THREE.BoxGeometry(.075,.045,.018),
+      accentMat
+    );
+
   const eyeR=eyeL.clone();
-  eyeL.position.set(-.105,1.58,-.23); eyeR.position.set(.105,1.58,-.23);
-  g.add(eyeL,eyeR);
 
-  const antenna=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.22,8),darkMat);
-  antenna.position.set(0,1.89,0); g.add(antenna);
-  const tip=new THREE.Mesh(new THREE.SphereGeometry(.045,10,10),accentMat);
-  tip.position.set(0,2.02,0); g.add(tip);
+  eyeL.position.set(
+    -.105,
+    1.58,
+    -.23
+  );
 
-  const armGeo=new THREE.BoxGeometry(.16,.70,.18);
-  const legGeo=new THREE.BoxGeometry(.19,.78,.22);
-  const leftArm=new THREE.Mesh(armGeo,bodyMat);
-  const rightArm=new THREE.Mesh(armGeo,bodyMat);
-  leftArm.position.set(-.42,.92,0); rightArm.position.set(.42,.92,0);
-  g.add(leftArm,rightArm);
+  eyeR.position.set(
+    .105,
+    1.58,
+    -.23
+  );
 
-  const handGeo=new THREE.SphereGeometry(.105,10,10);
-  const lh=new THREE.Mesh(handGeo,darkMat), rh=lh.clone();
-  lh.position.set(-.42,.53,0); rh.position.set(.42,.53,0); g.add(lh,rh);
+  g.add(
+    eyeL,
+    eyeR
+  );
 
-  const leftLeg=new THREE.Mesh(legGeo,darkMat);
-  const rightLeg=new THREE.Mesh(legGeo,darkMat);
-  leftLeg.position.set(-.16,.30,0); rightLeg.position.set(.16,.30,0);
-  g.add(leftLeg,rightLeg);
+  const antenna=
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(.018,.018,.22,8),
+      darkMat
+    );
 
-  const footGeo=new THREE.BoxGeometry(.24,.12,.38);
-  const lf=new THREE.Mesh(footGeo,darkMat), rf=lf.clone();
-  lf.position.set(-.16,-.10,-.07); rf.position.set(.16,-.10,-.07); g.add(lf,rf);
+  antenna.position.set(
+    0,
+    1.89,
+    0
+  );
 
-  const parts={torso,head,leftArm,rightArm,leftLeg,rightLeg,eyeL,eyeR};
+  g.add(antenna);
 
-  const labelCanvas=document.createElement('canvas');
-  labelCanvas.width=256; labelCanvas.height=64;
-  const ctx=labelCanvas.getContext('2d');
-  ctx.clearRect(0,0,256,64);
-  ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.fillStyle='#ffffff';
-  ctx.fillText(g.userData.username,128,32);
-  const tex=new THREE.CanvasTexture(labelCanvas);
-  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
-  label.scale.set(1.7,.42,1); label.position.y=2.22; g.add(label);
+  const tip=
+    new THREE.Mesh(
+      new THREE.SphereGeometry(.045,10,10),
+      accentMat
+    );
 
-  const x=Number.isFinite(Number(data.x))?Number(data.x):0;
-  const z=Number.isFinite(Number(data.z))?Number(data.z):13;
-  const y=Number.isFinite(Number(data.y))?Number(data.y):0;
-  const ry=Number.isFinite(Number(data.yaw ?? data.ry))?Number(data.yaw ?? data.ry):0;
-  g.position.set(x,y,z);
+  tip.position.set(
+    0,
+    2.02,
+    0
+  );
+
+  g.add(tip);
+
+  const armGeo=
+    new THREE.BoxGeometry(
+      .16,
+      .70,
+      .18
+    );
+
+  const legGeo=
+    new THREE.BoxGeometry(
+      .19,
+      .78,
+      .22
+    );
+
+  const leftArm=
+    new THREE.Mesh(
+      armGeo,
+      bodyMat
+    );
+
+  const rightArm=
+    new THREE.Mesh(
+      armGeo,
+      bodyMat
+    );
+
+  leftArm.position.set(
+    -.42,
+    .92,
+    0
+  );
+
+  rightArm.position.set(
+    .42,
+    .92,
+    0
+  );
+
+  g.add(
+    leftArm,
+    rightArm
+  );
+
+  const handGeo=
+    new THREE.SphereGeometry(
+      .105,
+      10,
+      10
+    );
+
+  const leftHand=
+    new THREE.Mesh(
+      handGeo,
+      darkMat
+    );
+
+  const rightHand=
+    leftHand.clone();
+
+  leftHand.position.set(
+    -.42,
+    .53,
+    0
+  );
+
+  rightHand.position.set(
+    .42,
+    .53,
+    0
+  );
+
+  g.add(
+    leftHand,
+    rightHand
+  );
+
+  const leftLeg=
+    new THREE.Mesh(
+      legGeo,
+      darkMat
+    );
+
+  const rightLeg=
+    new THREE.Mesh(
+      legGeo,
+      darkMat
+    );
+
+  leftLeg.position.set(
+    -.16,
+    .30,
+    0
+  );
+
+  rightLeg.position.set(
+    .16,
+    .30,
+    0
+  );
+
+  g.add(
+    leftLeg,
+    rightLeg
+  );
+
+  const footGeo=
+    new THREE.BoxGeometry(
+      .24,
+      .12,
+      .38
+    );
+
+  const leftFoot=
+    new THREE.Mesh(
+      footGeo,
+      darkMat
+    );
+
+  const rightFoot=
+    leftFoot.clone();
+
+  leftFoot.position.set(
+    -.16,
+    -.10,
+    -.07
+  );
+
+  rightFoot.position.set(
+    .16,
+    -.10,
+    -.07
+  );
+
+  g.add(
+    leftFoot,
+    rightFoot
+  );
+
+  const parts={
+    torso,
+    head,
+    leftArm,
+    rightArm,
+    leftLeg,
+    rightLeg,
+    eyeL,
+    eyeR
+  };
+
+  const labelCanvas=
+    document.createElement('canvas');
+
+  labelCanvas.width=256;
+  labelCanvas.height=64;
+
+  const ctx=
+    labelCanvas.getContext('2d');
+
+  ctx.clearRect(
+    0,
+    0,
+    256,
+    64
+  );
+
+  ctx.font=
+    'bold 24px Arial';
+
+  ctx.textAlign='center';
+  ctx.fillStyle='#ffffff';
+
+  ctx.fillText(
+    g.userData.username,
+    128,
+    32
+  );
+
+  const tex=
+    new THREE.CanvasTexture(
+      labelCanvas
+    );
+
+  const label=
+    new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map:tex,
+        transparent:true,
+        depthTest:false
+      })
+    );
+
+  label.scale.set(
+    1.7,
+    .42,
+    1
+  );
+
+  label.position.y=2.22;
+
+  g.add(label);
+
+  const x=
+    Number.isFinite(Number(data.x))
+      ? Number(data.x)
+      : 0;
+
+  const z=
+    Number.isFinite(Number(data.z))
+      ? Number(data.z)
+      : 13;
+
+  const y=
+    Number.isFinite(Number(data.y))
+      ? Number(data.y)
+      : 0;
+
+  const ry=
+    Number.isFinite(
+      Number(data.yaw ?? data.ry)
+    )
+      ? Number(data.yaw ?? data.ry)
+      : 0;
+
+  g.position.set(
+    x,
+    y,
+    z
+  );
+
   g.rotation.y=ry;
+  g.visible=true;
+
   scene.add(g);
 
-  remotePlayers.set(data.id,{
-    group:g,last:{x,z,yaw:ry},moving:!!data.moving,username:data.username||'PLAYER',
-    dance:Number(data.dance)||0,danceStartedAt:Number(data.danceStartedAt)||0,
-    parts,baseY:y,robotSeed:seed
-  });
+  remotePlayers.set(
+    data.id,
+    {
+      group:g,
+      last:{
+        x,
+        z,
+        yaw:ry
+      },
+      moving:Boolean(data.moving),
+      username:
+        String(data.username||'PLAYER'),
+      dance:
+        Number(data.dance)||0,
+      danceStartedAt:
+        Number(data.danceStartedAt)||0,
+      parts,
+      baseY:y
+    }
+  );
 }
+
 function updateRemotePlayer(data){
-  if(!data.id || data.id===socket?.id) return;
-  if(!remotePlayers.has(data.id)) createRemotePlayer(data);
+  if(
+    !data ||
+    !data.id ||
+    data.id===socket?.id
+  ){
+    return;
+  }
+
+  if(!remotePlayers.has(data.id)){
+    createRemotePlayer(data);
+  }
+
   const p=remotePlayers.get(data.id);
+
+  if(!p || !p.group){
+    return;
+  }
 
   const rawX=Number(data.x);
   const rawZ=Number(data.z);
   const rawY=Number(data.y);
-  const rawYaw=Number(data.yaw ?? data.ry);
+  const rawYaw=
+    Number(data.yaw ?? data.ry);
 
-  const nx=Number.isFinite(rawX) ? rawX : p.group.position.x;
-  const nz=Number.isFinite(rawZ) ? rawZ : p.group.position.z;
-  const ny=Number.isFinite(rawY) ? rawY : p.group.position.y;
-  const nyaw=Number.isFinite(rawYaw) ? rawYaw : p.group.rotation.y;
+  const nx=
+    Number.isFinite(rawX)
+      ? rawX
+      : p.group.position.x;
 
-  const dx=nx-p.group.position.x;
-  const dz=nz-p.group.position.z;
+  const nz=
+    Number.isFinite(rawZ)
+      ? rawZ
+      : p.group.position.z;
 
-  p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
-  if(data.dance!==undefined) p.dance=Number(data.dance)||0;
-  if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
+  const ny=
+    Number.isFinite(rawY)
+      ? rawY
+      : p.group.position.y;
+
+  const nyaw=
+    Number.isFinite(rawYaw)
+      ? rawYaw
+      : p.group.rotation.y;
+
+  const dx=
+    nx-p.group.position.x;
+
+  const dz=
+    nz-p.group.position.z;
+
+  p.moving=
+    Boolean(data.moving) ||
+    Math.hypot(dx,dz)>.002;
+
+  if(data.dance!==undefined){
+    p.dance=
+      Number(data.dance)||0;
+  }
+
+  if(data.danceStartedAt!==undefined){
+    p.danceStartedAt=
+      Number(data.danceStartedAt)||0;
+  }
+
   p.group.position.x=nx;
   p.group.position.y=ny;
   p.group.position.z=nz;
   p.group.rotation.y=nyaw;
-  p.last={x:nx,z:nz,yaw:nyaw};
+
+  p.last={
+    x:nx,
+    z:nz,
+    yaw:nyaw
+  };
 }
 
 function removeRemotePlayer(id){
   const p=remotePlayers.get(id);
-  if(!p) return;
-  scene.remove(p.group);
-  p.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); }});
+
+  if(!p){
+    return;
+  }
+
+  if(scene && p.group){
+    scene.remove(p.group);
+
+    p.group.traverse(obj=>{
+      if(obj.geometry){
+        obj.geometry.dispose();
+      }
+
+      if(obj.material){
+        if(obj.material.map){
+          obj.material.map.dispose();
+        }
+
+        obj.material.dispose();
+      }
+    });
+  }
+
   remotePlayers.delete(id);
 }
 
 function broadcastPlayerState(now){
-  if(!socket || !socket.connected || !camera) return;
-  if(now-lastPlayerBroadcast<50) return;
+  if(
+    !socket ||
+    !socket.connected ||
+    !camera
+  ){
+    return;
+  }
+
+  if(now-lastPlayerBroadcast<50){
+    return;
+  }
+
   lastPlayerBroadcast=now;
-  const moving = Math.abs(camera.position.x-(broadcastPlayerState.lastX ?? camera.position.x)) > 0.0005 ||
-                 Math.abs(camera.position.z-(broadcastPlayerState.lastZ ?? camera.position.z)) > 0.0005;
 
-  broadcastPlayerState.lastX=camera.position.x;
-  broadcastPlayerState.lastZ=camera.position.z;
+  const lastX=
+    broadcastPlayerState.lastX ??
+    camera.position.x;
 
-  socket.emit('player-state',{
-    x:camera.position.x,
-    y:Math.max(0, playerY-1.7),
-    z:camera.position.z,
-    yaw:yaw,
-    pitch:pitch,
-    username:currentUser,
-    moving:moving,
-    jumping:!isGrounded,
-    dance:activeDance,
-    danceStartedAt:danceStartedAt
-  });
+  const lastZ=
+    broadcastPlayerState.lastZ ??
+    camera.position.z;
+
+  const moving=
+    Math.abs(
+      camera.position.x-lastX
+    )>.0005 ||
+    Math.abs(
+      camera.position.z-lastZ
+    )>.0005;
+
+  broadcastPlayerState.lastX=
+    camera.position.x;
+
+  broadcastPlayerState.lastZ=
+    camera.position.z;
+
+  socket.emit(
+    'player-state',
+    {
+      x:camera.position.x,
+      y:Math.max(
+        0,
+        playerY-GROUND_Y
+      ),
+      z:camera.position.z,
+      yaw,
+      pitch,
+      moving,
+      jumping:!isGrounded,
+      dance:activeDance,
+      danceStartedAt
+    }
+  );
 }
-
-
 
 /* =========================================================
    EMOTES / DANCES
