@@ -10,16 +10,7 @@ const NodeMediaServer = require('node-media-server');
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors:{origin:'*',methods:['GET','POST']},
-  pingInterval:10000,
-  pingTimeout:45000,
-  upgradeTimeout:10000,
-  connectionStateRecovery:{
-    maxDisconnectionDuration:120000,
-    skipMiddlewares:true
-  }
-});
+const io = new Server(server, { cors: { origin:'*', methods:['GET','POST'] } });
 
 const PORT = Number(process.env.PORT || 3000);
 const RTMP_PORT = Number(process.env.RTMP_PORT || 1935);
@@ -219,10 +210,7 @@ app.post('/api/translate',async(req,res)=>{
 
 const onlineUsers=new Map();
 const players=new Map();
-const disconnectTimers=new Map();
-
-const clubScreenState={active:false,src:'',url:'',name:'',owner:SCREEN_HOST,version:0};
-let clubScreenVersion=0;
+const clubScreenState={active:false,src:'',url:'',name:'',owner:SCREEN_HOST};
 const SPAWN_POINTS=[
   {x:0,z:13},{x:3,z:10},{x:-3,z:10},{x:6,z:7},
   {x:-6,z:7},{x:8,z:3},{x:-8,z:3}
@@ -256,32 +244,6 @@ function sendPlayersSnapshot(socket){
   socket.emit('players-state',getPlayers().filter(p=>p.id!==socket.id));
 }
 
-function broadcastPlayersSnapshot(){
-  const snapshot=getPlayers();
-  for(const socket of io.sockets.sockets.values()){
-    socket.emit('players-state',snapshot.filter(p=>p.id!==socket.id));
-  }
-}
-
-function broadcastPresence(){
-  const online=getOnlineUsers();
-  const players=getPlayers();
-  for(const socket of io.sockets.sockets.values()){
-    socket.emit('presence-state',{
-      online,
-      players:players.filter(p=>p.id!==socket.id),
-    });
-  }
-}
-
-// Keep every browser synchronized even if an individual realtime movement
-// packet is missed during reconnects or a slow connection.
-setInterval(()=>{
-  if(players.size>0) broadcastPlayersSnapshot();
-  if(onlineUsers.size>0) broadcastOnline();
-  if(onlineUsers.size>0) broadcastPresence();
-},1000);
-
 io.on('connection',socket=>{
   console.log('SOCKET CONNECT:',socket.id);
 
@@ -292,24 +254,6 @@ io.on('connection',socket=>{
     const language=normalizeLanguage(data.language);
     socket.username=username;
     socket.language=language;
-    socket.data.joined=true;
-
-    const userKey=username.toLowerCase();
-    const pending=disconnectTimers.get(userKey);
-    if(pending) {
-      clearTimeout(pending.timer);
-      disconnectTimers.delete(userKey);
-    }
-
-    // One active session per username keeps reconnects from creating ghost users.
-    for(const [id,user] of onlineUsers){
-      if(id===socket.id) continue;
-      if(String(user.username||'').toLowerCase()!==userKey) continue;
-      onlineUsers.delete(id);
-      players.delete(id);
-      io.emit('player-left',id);
-      io.emit('player-removed',id);
-    }
 
     onlineUsers.set(socket.id,{id:socket.id,username,language});
 
@@ -335,33 +279,18 @@ io.on('connection',socket=>{
     socket.emit('player-spawn',publicPlayer(player));
     sendPlayersSnapshot(socket);
     socket.broadcast.emit('player-state',publicPlayer(player));
-    socket.broadcast.emit('player-joined',publicPlayer(player));
     broadcastOnline();
-    broadcastPresence();
-    // Send direct authoritative snapshots to the newly joined socket.
-    socket.emit('players-state',getPlayers().filter(p=>p.id!==socket.id));
+    // Send a direct authoritative snapshot to the newly joined socket as well.
     socket.emit('online-users',getOnlineUsers());
     socket.emit('club-screen-state',clubScreenState);
     socket.emit('online',getOnlineUsers());
 
-    console.log('JOIN:',username,'|',language,'| socket:',socket.id,'| online:',onlineUsers.size,'| players:',players.size);
+    console.log('JOIN:',username,'|',language);
   });
 
-  socket.on('request-online',()=>{
-    socket.emit('online-users',getOnlineUsers());
-    socket.emit('presence-state',{
-      online:getOnlineUsers(),
-      players:getPlayers().filter(p=>p.id!==socket.id),
-    });
-  });
+  socket.on('request-online',()=>socket.emit('online-users',getOnlineUsers()));
   socket.on('request-players',()=>sendPlayersSnapshot(socket));
-  socket.on('request-presence',()=>socket.emit('presence-state',{
-    online:getOnlineUsers(),
-    players:getPlayers().filter(p=>p.id!==socket.id)
-  }));
-    socket.on('request-club-screen',()=>{
-    socket.emit('club-screen-state',{...clubScreenState});
-  });
+  socket.on('request-club-screen',()=>socket.emit('club-screen-state',clubScreenState));
 
   // One movement channel only. Server owns ground height and rejects impossible horizontal jumps.
   socket.on('player-state',data=>{
@@ -444,15 +373,11 @@ io.on('connection',socket=>{
       (typeof state.url==='string'&&state.url.trim()) ||
       (typeof state.src==='string'&&state.src.trim())
     )){
-      clubScreenVersion=Math.max(clubScreenVersion+1,Date.now());
-      clubScreenState.version=clubScreenVersion;
       clubScreenState.active=true;
       clubScreenState.src=typeof state.src==='string'?state.src.trim().slice(0,2000):'';
       clubScreenState.url=typeof state.url==='string'?state.url.trim().slice(0,2000):'';
       clubScreenState.name=String(state.name||'MEDIA').slice(0,100);
     }else{
-      clubScreenVersion=Math.max(clubScreenVersion+1,Date.now());
-      clubScreenState.version=clubScreenVersion;
       clubScreenState.active=false;
       clubScreenState.src='';
       clubScreenState.url='';
@@ -519,23 +444,13 @@ io.on('connection',socket=>{
   });
 
   socket.on('disconnect',reason=>{
-    const username=cleanUsername(socket.username||'unknown');
-    const userKey=username.toLowerCase();
-    const timer=setTimeout(()=>{
-      disconnectTimers.delete(userKey);
-      const current=onlineUsers.get(socket.id);
-      if(current && String(current.username||'').toLowerCase()===userKey){
-        onlineUsers.delete(socket.id);
-        players.delete(socket.id);
-        io.emit('player-left',socket.id);
-        io.emit('player-removed',socket.id);
-        broadcastOnline();
-        broadcastPresence();
-      }
-    },5000);
-    disconnectTimers.set(userKey,{socketId:socket.id,timer});
-    broadcastPresence();
-    console.log('DISCONNECT:',username,'|',reason,'| grace=5s | online:',onlineUsers.size,'| players:',players.size);
+    const username=socket.username||'unknown';
+    onlineUsers.delete(socket.id);
+    players.delete(socket.id);
+    io.emit('player-left',socket.id);
+    io.emit('player-removed',socket.id);
+    broadcastOnline();
+    console.log('DISCONNECT:',username,'|',reason);
   });
 });
 
