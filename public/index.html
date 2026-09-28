@@ -1038,7 +1038,8 @@ let screenCtx;
 let screenMesh;
 let screenMediaActive=false;
 let screenMediaUrl='';
-let lastLocalClubScreenState={active:false,src:'',url:'',name:'',owner:'mvxtra'};
+let lastLocalClubScreenState={active:false,src:'',url:'',name:'',owner:'mvxtra',version:0};
+let clubScreenVersion=0;
 let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
@@ -3748,7 +3749,8 @@ function loadClubScreen(){
   playScreenMedia(result.src);
   panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
   setScreenStatus(result.name+' LOADED — экран закреплён.');
-  lastLocalClubScreenState={src:result.src,url:rawUrl,name:result.name,active:true,owner:'mvxtra'};
+  clubScreenVersion=Math.max(clubScreenVersion+1,Date.now());
+  lastLocalClubScreenState={src:result.src,url:rawUrl,name:result.name,active:true,owner:'mvxtra',version:clubScreenVersion};
   if(socket && socket.connected) socket.emit('club-screen-state',lastLocalClubScreenState);
   const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
 }
@@ -3761,7 +3763,8 @@ function clearClubScreen(){
   if(frame)frame.src='about:blank';
   if(panel)panel.classList.remove('active');
   screenMediaActive=false; screenMediaUrl='';
-  lastLocalClubScreenState={active:false,src:'',url:'',name:'',owner:'mvxtra'};
+  clubScreenVersion=Math.max(clubScreenVersion+1,Date.now());
+  lastLocalClubScreenState={active:false,src:'',url:'',name:'',owner:'mvxtra',version:clubScreenVersion};
   if(socket && socket.connected) socket.emit('club-screen-state',lastLocalClubScreenState);
   setScreenStatus('Экран очищен.');
 }
@@ -3794,6 +3797,10 @@ function applyRemoteClubScreen(state){
   if(!frame || !video || !panel) return;
 
   state=state || {};
+
+  const incomingVersion=Number(state.version)||0;
+  if(incomingVersion && incomingVersion < clubScreenVersion) return;
+  if(incomingVersion) clubScreenVersion=incomingVersion;
 
   if(state.active !== true || !state.src){
     stopScreenHls();
