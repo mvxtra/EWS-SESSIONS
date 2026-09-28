@@ -1659,6 +1659,14 @@ function startSession(username){
     },1000);
   });
 
+  // Recovery heartbeat: refresh multiplayer + online state even if a
+  // realtime packet was lost or a browser resumed from background.
+  setInterval(()=>{
+    if(!socket || !socket.connected) return;
+    socket.emit('request-players');
+    socket.emit('request-online');
+  },2000);
+
 }
 
 /* =========================================================
