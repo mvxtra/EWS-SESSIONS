@@ -25,14 +25,8 @@ const EMOTES = new Set([1,2,3,4,5,6]);
 const PLAYER_RADIUS = 0.38;
 const COLLISION_BOXES = [
   {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9},
-  {minX:-8.8,maxX:-7.2,minZ:-11.6,maxZ:-10.3},
-  {minX:7.2,maxX:8.8,minZ:-11.6,maxZ:-10.3},
-  {minX:-11.8,maxX:-10.2,minZ:-11.6,maxZ:-9.7},
-  {minX:10.2,maxX:11.8,minZ:-11.6,maxZ:-9.7},
-  {minX:-15.7,maxX:-14.3,minZ:4.3,maxZ:5.7},
-  {minX:14.3,maxX:15.7,minZ:4.3,maxZ:5.7},
-  {minX:-15.7,maxX:-14.3,minZ:-5.7,maxZ:-4.3},
-  {minX:14.3,maxX:15.7,minZ:-5.7,maxZ:-4.3},
+  {minX:-8.9,maxX:-6.1,minZ:-11.45,maxZ:-9.65},
+  {minX:6.1,maxX:8.9,minZ:-11.45,maxZ:-9.65},
   {minX:-3.6,maxX:3.6,minZ:15.7,maxZ:16.7}
 ];
 function blockedPosition(x,z){
