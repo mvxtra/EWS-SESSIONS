@@ -266,7 +266,8 @@ function broadcastPresence(){
   for(const socket of io.sockets.sockets.values()){
     socket.emit('presence-state',{
       online,
-      players:players.filter(p=>p.id!==socket.id)
+      players:players.filter(p=>p.id!==socket.id),
+      screen:{...clubScreenState}
     });
   }
 }
@@ -346,12 +347,17 @@ io.on('connection',socket=>{
 
   socket.on('request-online',()=>{
     socket.emit('online-users',getOnlineUsers());
-    socket.emit('presence-state',{online:getOnlineUsers(),players:getPlayers().filter(p=>p.id!==socket.id)});
+    socket.emit('presence-state',{
+      online:getOnlineUsers(),
+      players:getPlayers().filter(p=>p.id!==socket.id),
+      screen:{...clubScreenState}
+    });
   });
   socket.on('request-players',()=>sendPlayersSnapshot(socket));
   socket.on('request-presence',()=>socket.emit('presence-state',{
     online:getOnlineUsers(),
-    players:getPlayers().filter(p=>p.id!==socket.id)
+    players:getPlayers().filter(p=>p.id!==socket.id),
+    screen:{...clubScreenState}
   }));
   socket.on('request-club-screen',()=>socket.emit('club-screen-state',clubScreenState));
 
