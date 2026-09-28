@@ -960,9 +960,6 @@ let socket=null;
 let currentUser=null;
 let sessionStarted=false;
 let presenceHeartbeat=null;
-let httpPresenceTimer=null;
-let httpPresenceBusy=false;
-const httpPresenceAuthoritative=true;
 
 let scene;
 let camera;
@@ -1699,72 +1696,6 @@ document
 
 
 /* =========================================================
-   HTTP MULTIPLAYER PRESENCE
-   This is the authoritative guest-sync path. It does not depend on WebSocket.
-========================================================= */
-function clearHttpRemotePlayers(){
-  for(const [id] of remotePlayers){
-    if(String(id).startsWith('presence:')) removeRemotePlayer(id);
-  }
-}
-
-async function syncHttpPresence(){
-  if(!currentUser || !camera || httpPresenceBusy) return;
-  httpPresenceBusy=true;
-  try{
-    const response=await fetch('/api/presence',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      cache:'no-store',
-      body:JSON.stringify({
-        username:currentUser,
-        language:document.getElementById('lang')?.value||'en',
-        x:camera.position.x,
-        y:Math.max(0,playerY-GROUND_Y),
-        z:camera.position.z,
-        yaw,
-        pitch,
-        moving:Math.abs(camera.position.x-(syncHttpPresence.lastX??camera.position.x))>.0005||
-                Math.abs(camera.position.z-(syncHttpPresence.lastZ??camera.position.z))>.0005,
-        jumping:!isGrounded,
-        avatar:avatarChoice,
-        dance:activeDance,
-        danceStartedAt:danceStartedAt
-      })
-    });
-    if(!response.ok) throw new Error('HTTP '+response.status);
-    const state=await response.json();
-    if(!state || !Array.isArray(state.online) || !Array.isArray(state.players)) return;
-
-    renderOnlineUsers(state.online);
-    const seen=new Set();
-    state.players.forEach(data=>{
-      if(!data || !data.id || String(data.username||'').trim().toLowerCase()===String(currentUser).trim().toLowerCase()) return;
-      seen.add(data.id);
-      updateRemotePlayer(data);
-    });
-    for(const [id] of remotePlayers){
-      if(String(id).startsWith('presence:') && !seen.has(id)) removeRemotePlayer(id);
-    }
-
-    syncHttpPresence.lastX=camera.position.x;
-    syncHttpPresence.lastZ=camera.position.z;
-    syncHttpPresence.failures=0;
-  }catch(err){
-    syncHttpPresence.failures=(syncHttpPresence.failures||0)+1;
-    if(syncHttpPresence.failures%10===0) console.warn('[EWS HTTP PRESENCE]',err);
-  }finally{
-    httpPresenceBusy=false;
-  }
-}
-
-function startHttpPresence(){
-  if(httpPresenceTimer) clearInterval(httpPresenceTimer);
-  syncHttpPresence();
-  httpPresenceTimer=setInterval(syncHttpPresence,300);
-}
-
-/* =========================================================
    THREE.JS
 ========================================================= */
 
@@ -1928,8 +1859,6 @@ function init3D(){
   setupAudio();
 
   setupControls();
-
-  startHttpPresence();
 
   animate();
 
