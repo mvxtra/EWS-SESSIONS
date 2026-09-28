@@ -1036,6 +1036,7 @@ let screenCtx;
 let screenMesh;
 let screenMediaActive=false;
 let screenMediaUrl='';
+let lastLocalClubScreenState={active:false,src:'',url:'',name:'',owner:'mvxtra'};
 let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
@@ -1467,6 +1468,7 @@ function startSession(username){
   // Register the shared SCREEN listener immediately, before the first
   // connection/join can deliver the current club-screen-state.
   socket.on('club-screen-state', state=>{
+    console.log('[EWS SCREEN] received', state);
     applyRemoteClubScreen(state);
   });
 
@@ -1508,6 +1510,14 @@ function startSession(username){
         avatar: avatarChoice
       }
     );
+
+    // If the host pressed LOAD before Socket.IO finished connecting, resend the
+    // selected screen immediately after JOIN so guests always receive it.
+    setTimeout(()=>{
+      if(socket && socket.connected && isClubHost() && lastLocalClubScreenState.active){
+        socket.emit('club-screen-state',lastLocalClubScreenState);
+      }
+    },120);
 
     // Explicit multiplayer handshake: ask for the authoritative player list
     // after the server has registered this socket.
@@ -3777,7 +3787,8 @@ function loadClubScreen(){
   playScreenMedia(result.src);
   panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
   setScreenStatus(result.name+' LOADED — экран закреплён.');
-  if(socket)socket.emit('club-screen-state',{src:result.src,url:rawUrl,name:result.name,active:true,owner:currentUser});
+  lastLocalClubScreenState={src:result.src,url:rawUrl,name:result.name,active:true,owner:'mvxtra'};
+  if(socket && socket.connected) socket.emit('club-screen-state',lastLocalClubScreenState);
   const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
 }
 
@@ -3789,7 +3800,8 @@ function clearClubScreen(){
   if(frame)frame.src='about:blank';
   if(panel)panel.classList.remove('active');
   screenMediaActive=false; screenMediaUrl='';
-  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser});
+  lastLocalClubScreenState={active:false,src:'',url:'',name:'',owner:'mvxtra'};
+  if(socket && socket.connected) socket.emit('club-screen-state',lastLocalClubScreenState);
   setScreenStatus('Экран очищен.');
 }
 
