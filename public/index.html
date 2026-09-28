@@ -783,6 +783,9 @@ input:focus{
   }
 }
 
+
+#sofa-prompt{position:fixed;left:50%;bottom:86px;transform:translateX(-50%) translateY(8px);padding:10px 16px;border:1px solid rgba(255,255,255,.35);background:rgba(5,5,5,.82);color:#fff;font:600 13px Arial,sans-serif;letter-spacing:1.4px;opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease;z-index:80}
+#sofa-prompt.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 
@@ -940,8 +943,9 @@ input:focus{
 
 
   <div id="hint">
-    WASD MOVE · MOUSE LOOK · C CHAT
+    WASD MOVE · MOUSE LOOK · ENTER CHAT · E SIT / STAND
   </div>
+  <div id="sofa-prompt">E — SIT DOWN</div>
 
 </div>
 
@@ -1011,6 +1015,12 @@ let strobeWheelLevel=.0;
 let strobeWheelSpeed=32;
 let strobeWheelTimer=0;
 
+// Cozy lounge sofas / seating interaction.
+let seated=false;
+let seatedSeat=null;
+let sofaPromptVisible=false;
+const sofaSeats=[];
+
 let audioContext=null;
 let audioSource=null;
 
@@ -1040,9 +1050,12 @@ const AVATAR_MODELS={
 };
 
 // SOLID CLUB OBJECTS — the local player cannot walk through these.
+const STAGE_TOP_Y=.525;
+const EYE_HEIGHT=1.7;
+
 const collisionBoxes = [
-  // Main stage
-  {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9},
+  // Main stage — solid wall at floor level, but jumpable as a raised platform.
+  {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9,type:'platform',maxY:STAGE_TOP_Y},
   // Floor PA / subwoofer footprints
   {minX:-8.9,maxX:-6.1,minZ:-11.45,maxZ:-9.65},
   {minX:6.1,maxX:8.9,minZ:-11.45,maxZ:-9.65},
@@ -1052,14 +1065,43 @@ const collisionBoxes = [
 const PLAYER_RADIUS=.38;
 
 function blockedPosition(x,z){
+  const feetY=playerY-EYE_HEIGHT;
   for(const b of collisionBoxes){
     const cx=Math.max(b.minX,Math.min(x,b.maxX));
     const cz=Math.max(b.minZ,Math.min(z,b.maxZ));
     const dx=x-cx;
     const dz=z-cz;
-    if(dx*dx+dz*dz < PLAYER_RADIUS*PLAYER_RADIUS) return true;
+    if(dx*dx+dz*dz >= PLAYER_RADIUS*PLAYER_RADIUS) continue;
+
+    // A raised platform is only a horizontal obstacle while the player's feet
+    // are below its top. Once airborne above it, the player can cross the edge.
+    if(b.type==='platform' && feetY >= (b.maxY-.03)) continue;
+
+    return true;
   }
   return false;
+}
+
+function insideStage(x,z){
+  return x > -8.7+PLAYER_RADIUS &&
+         x <  8.7-PLAYER_RADIUS &&
+         z > -14.2+PLAYER_RADIUS &&
+         z < -10.9-PLAYER_RADIUS;
+}
+
+function addSofaColliders(x,z,rotationY){
+  // Match the visible L-shaped sofa footprint so the player cannot walk through it.
+  if(Math.abs(Math.sin(rotationY)) < .5){
+    collisionBoxes.push(
+      {minX:x-.10,maxX:x+5.50,minZ:z-.82,maxZ:z+.82,type:'sofa'},
+      {minX:x-.82,maxX:x+.82,minZ:z-3.95,maxZ:z+.78,type:'sofa'}
+    );
+  }else{
+    collisionBoxes.push(
+      {minX:x-5.50,maxX:x+.10,minZ:z-.82,maxZ:z+.82,type:'sofa'},
+      {minX:x-.82,maxX:x+.82,minZ:z-.78,maxZ:z+3.95,type:'sofa'}
+    );
+  }
 }
 
 function tryMovePlayer(dx,dz){
@@ -1068,6 +1110,147 @@ function tryMovePlayer(dx,dz){
   // Resolve X and Z separately so the avatar slides along objects instead of freezing.
   if(!blockedPosition(nx,camera.position.z)) camera.position.x=nx;
   if(!blockedPosition(camera.position.x,nz)) camera.position.z=nz;
+}
+
+function createCornerSofa(x,z,rotationY,label){
+  const group=new THREE.Group();
+  group.position.set(x,0,z);
+  group.rotation.y=rotationY;
+
+  const frameMat=new THREE.MeshStandardMaterial({color:0x070707,roughness:.76,metalness:.10});
+  const leatherMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:.46,metalness:.08});
+  const cushionMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.60,metalness:.03});
+
+  // Large real L-shaped sectional, with both arms/backrests pushed into the corner.
+  const baseA=new THREE.Mesh(new THREE.BoxGeometry(6.8,.58,1.55),frameMat);
+  baseA.position.set(2.35,.43,0);
+  const baseB=new THREE.Mesh(new THREE.BoxGeometry(1.55,.58,5.8),frameMat);
+  baseB.position.set(0,-.0,-2.13);
+
+  const seatA=new THREE.Mesh(new THREE.BoxGeometry(6.35,.34,1.25),cushionMat);
+  seatA.position.set(2.35,.84,0);
+  const seatB=new THREE.Mesh(new THREE.BoxGeometry(1.25,.34,5.35),cushionMat);
+  seatB.position.set(0,.84,-2.13);
+
+  [baseA,baseB,seatA,seatB].forEach(m=>{
+    m.castShadow=true;m.receiveShadow=true;group.add(m);
+  });
+
+  const backA=new THREE.Mesh(new THREE.BoxGeometry(6.8,1.62,.42),leatherMat);
+  backA.position.set(2.35,1.43,.57);
+  const backB=new THREE.Mesh(new THREE.BoxGeometry(.42,1.62,5.8),leatherMat);
+  backB.position.set(-.57,1.43,-2.13);
+  [backA,backB].forEach(m=>{
+    m.castShadow=true;m.receiveShadow=true;group.add(m);
+  });
+
+  // Individual cushions create many believable sitting places.
+  for(let i=0;i<5;i++){
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(1.12,.30,1.0),leatherMat);
+    pillow.position.set(.55+i*1.45,.99,-.03);
+    pillow.castShadow=true;pillow.receiveShadow=true;group.add(pillow);
+  }
+  for(let i=0;i<4;i++){
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(.98,.30,1.12),leatherMat);
+    pillow.position.set(.02,.99,-.65-i*1.38);
+    pillow.castShadow=true;pillow.receiveShadow=true;group.add(pillow);
+  }
+
+  const armMat=new THREE.MeshStandardMaterial({color:0x0c0c0c,roughness:.50,metalness:.06});
+  const armA=new THREE.Mesh(new THREE.BoxGeometry(.42,1.0,1.55),armMat);
+  armA.position.set(5.54,1.0,0);
+  const armB=new THREE.Mesh(new THREE.BoxGeometry(1.55,1.0,.42),armMat);
+  armB.position.set(0,1.0,-5.03);
+  [armA,armB].forEach(m=>{m.castShadow=true;m.receiveShadow=true;group.add(m);});
+
+  const glow=new THREE.PointLight(0xffe7d0,.12,4.2);
+  glow.position.set(1.2,1.2,-1);
+  group.add(glow);
+
+  scene.add(group);
+  addSofaColliders(x,z,rotationY);
+
+  // Multiple usable seats along BOTH arms of the sectional.
+  const fx=-Math.sin(rotationY), fz=-Math.cos(rotationY);
+  const rx=Math.cos(rotationY), rz=-Math.sin(rotationY);
+  const addSeat=(sx,sz,seatYaw)=>{
+    sofaSeats.push({
+      group,
+      x:x+sx*rx+sz*fx,
+      y:1.62,
+      z:z+sx*rz+sz*fz,
+      yaw:seatYaw,
+      label:label||'CORNER SOFA'
+    });
+  };
+
+  // Five seats on the long section + four on the return section.
+  [-2.45,-1.22,0,1.22,2.45].forEach(v=>addSeat(v,-.92,rotationY));
+  [-1.35,-.05,1.25,2.55].forEach(v=>addSeat(-.92,v,rotationY+Math.PI/2));
+}
+
+function createLoungeSofas(){
+  // Every sectional is anchored into a real room corner.
+  createCornerSofa(-15.55,13.55,0,'LEFT FRONT CORNER');
+  createCornerSofa(15.55,13.55,Math.PI,'RIGHT FRONT CORNER');
+  createCornerSofa(-15.55,-13.55,0,'LEFT REAR CORNER');
+  createCornerSofa(15.55,-13.55,Math.PI,'RIGHT REAR CORNER');
+}
+
+function nearestSofaSeat(){
+  if(!camera || !sofaSeats.length) return null;
+  let best=null,bestDist=Infinity;
+  for(const s of sofaSeats){
+    const d=Math.hypot(camera.position.x-s.x,camera.position.z-s.z);
+    if(d<bestDist){best=s;bestDist=d;}
+  }
+  return bestDist<1.35 ? best : null;
+}
+
+function updateSofaPrompt(){
+  const el=document.getElementById('sofa-prompt');
+  if(!el||!camera) return;
+  const near=!!nearestSofaSeat();
+  const show=near&&!seated&&!chatMode;
+  if(show!==sofaPromptVisible){
+    sofaPromptVisible=show;
+    el.classList.toggle('show',show);
+  }
+}
+
+function toggleSofaSeat(){
+  if(chatMode) return;
+
+  if(seated){
+    // Stand up one clean frame at a time: clear the seated state first,
+    // then place the player safely outside the sofa footprint.
+    const oldSeat=seatedSeat;
+    seated=false;
+    seatedSeat=null;
+    keys={};
+    jumpVelocity=0;
+    isGrounded=true;
+
+    const escapeX=camera.position.x + Math.sin(oldSeat.yaw)*1.05;
+    const escapeZ=camera.position.z + Math.cos(oldSeat.yaw)*1.05;
+    camera.position.x=escapeX;
+    camera.position.z=escapeZ;
+    playerY=GROUND_Y;
+    camera.position.y=GROUND_Y;
+    return;
+  }
+
+  const seat=nearestSofaSeat();
+  if(!seat) return;
+
+  seated=true;
+  seatedSeat=seat;
+  keys={};
+  jumpVelocity=0;
+  isGrounded=true;
+  camera.position.set(seat.x,seat.y,seat.z);
+  yaw=seat.yaw;
+  pitch=0;
 }
 
 function createEWSLogo(){
@@ -1233,6 +1416,17 @@ function startSession(username){
 
   clubScreenHost='mvxtra';
 
+  // SCREEN is a host-only control. Guests can receive and watch the
+  // shared screen, but they must not see or operate the selection UI.
+  const host=String(currentUser||'').trim().toLowerCase()==='mvxtra';
+  const screenControl=document.getElementById('screen-control');
+  const screenMenu=document.getElementById('screen-menu');
+  if(screenControl) screenControl.style.display=host?'':'none';
+  if(screenMenu){
+    screenMenu.classList.remove('open');
+    screenMenu.style.display=host?'':'none';
+  }
+
   init3D();
 
   socket=io();
@@ -1255,31 +1449,42 @@ function startSession(username){
     'online-users',
     list=>{
 
-      onlineUserList=Array.isArray(list)?list:[];
+      // The server is authoritative. If the first broadcast races with the
+      // join event, keep the connected user visible until the next snapshot.
+      let users=Array.isArray(list)?list.slice():[];
+
+      if(socket && socket.connected && currentUser){
+        const alreadyThere=users.some(user=>{
+          const name=typeof user==='string' ? user : user && user.username;
+          return String(name||'').toLowerCase()===String(currentUser).toLowerCase();
+        });
+        if(!alreadyThere){
+          users.unshift({username:currentUser,language:document.getElementById('lang')?.value||'en'});
+        }
+      }
+
+      onlineUserList=users;
+
       // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
       clubScreenHost='mvxtra';
 
-      const ul =
-        document.getElementById('online-list');
-
+      const ul=document.getElementById('online-list');
+      if(!ul) return;
       ul.innerHTML='';
 
-      if(!Array.isArray(list)) return;
+      users.forEach(user=>{
 
-      list.forEach(user=>{
+        const li=document.createElement('li');
 
-        const li =
-          document.createElement('li');
+        const name=typeof user==='string'
+          ? user
+          : (user && user.username) || '';
 
-        const name =
-          typeof user === 'string'
-            ? user
-            : user.username;
+        if(!name) return;
 
-        li.textContent =
-          name === currentUser
-            ? name + ' (YOU)'
-            : name;
+        li.textContent=name===currentUser
+          ? name + ' (YOU)'
+          : name;
 
         ul.appendChild(li);
 
@@ -1625,6 +1830,7 @@ function init3D(){
   createNeonArchitecture();
   createCeilingBeams();
   createSpeakers();
+  createLoungeSofas();
   createParticles();
   createFog();
   createClubLighting();
@@ -1906,11 +2112,50 @@ function createMainScreen(){
   screenMesh.position.set(0,3.65,-16.58);
   scene.add(screenMesh);
 
-  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
-  [[14.2,.035,.035,0,6.68,-16.57],[14.2,.035,.035,0,.62,-16.57],[.035,6.1,.035,-7.08,3.65,-16.57],[.035,6.1,.035,7.08,3.65,-16.57]].forEach(a=>{
-    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
-    m.position.set(a[3],a[4],a[5]);
-    scene.add(m);
+  // WHITE NEON SCREEN FRAME — bright core + soft atmospheric glow.
+  const borderSegments=[
+    [14.2,.045,.045,0,6.68,-16.57],
+    [14.2,.045,.045,0,.62,-16.57],
+    [.045,6.1,.045,-7.08,3.65,-16.57],
+    [.045,6.1,.045,7.08,3.65,-16.57]
+  ];
+
+  const neonCoreMat=new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:1,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+
+  const neonGlowMat=new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.22,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+
+  borderSegments.forEach(a=>{
+    const glowScale=3.2;
+    const glow=new THREE.Mesh(
+      new THREE.BoxGeometry(
+        a[0]===14.2 ? a[0] : a[0]*glowScale,
+        a[1]===.045 ? a[1]*glowScale : a[1],
+        .09
+      ),
+      neonGlowMat
+    );
+    glow.position.set(a[3],a[4],a[5]-.01);
+    scene.add(glow);
+
+    const core=new THREE.Mesh(
+      new THREE.BoxGeometry(a[0],a[1],a[2]),
+      neonCoreMat
+    );
+    core.position.set(a[3],a[4],a[5]);
+    scene.add(core);
+    neonObjects.push(core,glow);
   });
 }
 
@@ -3151,6 +3396,7 @@ function setupControls(){
       }
 
       if(!chatMode){
+        if(e.code==='KeyE'){ toggleSofaSeat(); e.preventDefault(); return; }
         if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
         if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
         if(e.code==='Digit3'){ playDance(3); e.preventDefault(); return; }
@@ -3307,8 +3553,10 @@ function toggleChat(){
 ========================================================= */
 
 function toggleScreenMenu(){
+  if(!isClubHost()) return;
   const menu=document.getElementById('screen-menu');
   if(!menu) return;
+  menu.style.display='';
   menu.classList.toggle('open');
   if(menu.classList.contains('open')){
     const input=document.getElementById('screen-url');
@@ -3464,8 +3712,11 @@ document.addEventListener('wheel',e=>{
   e.preventDefault();
   const direction=e.deltaY<0 ? 1 : -1;
   strobeWheelLevel=THREE.MathUtils.clamp(strobeWheelLevel+direction*.08,0,1);
-  strobeWheelSpeed=THREE.MathUtils.lerp(10,42,strobeWheelLevel);
-  strobeWheelTimer=performance.now()+180;
+  strobeWheelSpeed=THREE.MathUtils.lerp(0,42,strobeWheelLevel);
+  if(strobeWheelLevel<=0){
+    strobeWheelLevel=0;
+    strobeWheelSpeed=0;
+  }
 },{passive:false});
 
 function animate(){
@@ -3598,25 +3849,44 @@ function animate(){
 
   if(!chatMode){
 
+    const previousFeetY=playerY-EYE_HEIGHT;
+
     jumpVelocity-=
       GRAVITY*dt;
 
     playerY+=
       jumpVelocity*dt;
 
-    if(playerY<=GROUND_Y){
+    const currentFeetY=playerY-EYE_HEIGHT;
+
+    // Land on the stage only while descending through its top surface.
+    // This makes SPACE a real jump-up action instead of letting the avatar
+    // clip through the stage or get stuck against its front face.
+    if(
+      jumpVelocity<=0 &&
+      previousFeetY>=STAGE_TOP_Y &&
+      currentFeetY<=STAGE_TOP_Y &&
+      insideStage(camera.position.x,camera.position.z)
+    ){
+      playerY=STAGE_TOP_Y+EYE_HEIGHT;
+      jumpVelocity=0;
+      isGrounded=true;
+    }else if(playerY<=GROUND_Y){
 
       playerY=GROUND_Y;
       jumpVelocity=0;
       isGrounded=true;
 
+    }else{
+      isGrounded=false;
     }
 
   }
 
   if(
     pointerLocked &&
-    !chatMode
+    !chatMode &&
+    !seated
   ){
 
     const fx=
@@ -3652,7 +3922,11 @@ function animate(){
       15.5
     );
 
-  camera.position.y=playerY;
+  if(seated && seatedSeat){
+    camera.position.set(seatedSeat.x,seatedSeat.y,seatedSeat.z);
+  }else{
+    camera.position.y=playerY;
+  }
 
   camera.rotation.order=
     'YXZ';
@@ -3674,6 +3948,8 @@ function animate(){
     playerBody.visible=false;
 
   }
+
+  updateSofaPrompt();
 
   broadcastPlayerState(performance.now());
 
