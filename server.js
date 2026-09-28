@@ -220,6 +220,74 @@ app.post('/api/translate',async(req,res)=>{
 const onlineUsers=new Map();
 const players=new Map();
 const disconnectTimers=new Map();
+
+// Authoritative HTTP presence channel. It is independent from Socket.IO so
+// Render/proxy websocket interruptions cannot make guests disappear.
+const httpPresence=new Map();
+const HTTP_PRESENCE_TTL=4000;
+function cleanHttpPresence(){
+  const now=Date.now();
+  for(const [key,item] of httpPresence){
+    if(now-item.lastSeen>HTTP_PRESENCE_TTL) httpPresence.delete(key);
+  }
+}
+setInterval(cleanHttpPresence,1000).unref();
+function getHttpPresenceSnapshot(excludeUsername){
+  cleanHttpPresence();
+  const excluded=String(excludeUsername||'').trim().toLowerCase();
+  const online=[];
+  const remote=[];
+  for(const [key,item] of httpPresence){
+    online.push({username:item.username,language:item.language});
+    if(key===excluded) continue;
+    remote.push({
+      id:'presence:'+key,
+      username:item.username,
+      x:item.x,
+      y:item.y,
+      z:item.z,
+      yaw:item.yaw,
+      pitch:item.pitch,
+      moving:item.moving,
+      jumping:item.jumping,
+      dance:item.dance,
+      danceStartedAt:item.danceStartedAt,
+      avatar:item.avatar
+    });
+  }
+  return {online,players:remote};
+}
+
+app.post('/api/presence',(req,res)=>{
+  const body=req.body||{};
+  const username=cleanUsername(body.username);
+  if(!username) return res.status(400).json({ok:false,error:'Username required'});
+  const language=normalizeLanguage(body.language);
+  const key=username.toLowerCase();
+  httpPresence.set(key,{
+    username,
+    language,
+    x:Number.isFinite(Number(body.x))?clamp(Number(body.x),-16,16):0,
+    y:Number.isFinite(Number(body.y))?clamp(Number(body.y),-2,8):GROUND_Y,
+    z:Number.isFinite(Number(body.z))?clamp(Number(body.z),-15.5,15.5):13,
+    yaw:Number.isFinite(Number(body.yaw))?Number(body.yaw):0,
+    pitch:Number.isFinite(Number(body.pitch))?clamp(Number(body.pitch),-Math.PI/2,Math.PI/2):0,
+    moving:Boolean(body.moving),
+    jumping:Boolean(body.jumping),
+    dance:EMOTES.has(Number(body.dance))?Number(body.dance):0,
+    danceStartedAt:Number.isFinite(Number(body.danceStartedAt))?Number(body.danceStartedAt):0,
+    avatar:['male','female'].includes(String(body.avatar))?String(body.avatar):'male',
+    lastSeen:Date.now()
+  });
+  const snapshot=getHttpPresenceSnapshot(username);
+  const self=httpPresence.get(key);
+  res.json({ok:true,online:[...snapshot.online,{username:self.username,language:self.language}],players:snapshot.players});
+});
+
+app.get('/api/presence',(req,res)=>{
+  const username=cleanUsername(req.query.username||'');
+  res.json({ok:true,...getHttpPresenceSnapshot(username)});
+});
 const clubScreenState={active:false,src:'',url:'',name:'',owner:SCREEN_HOST,version:0};
 let clubScreenVersion=0;
 const SPAWN_POINTS=[
