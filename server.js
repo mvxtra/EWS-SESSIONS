@@ -269,7 +269,6 @@ function broadcastPresence(){
     socket.emit('presence-state',{
       online,
       players:players.filter(p=>p.id!==socket.id),
-      screen:{...clubScreenState}
     });
   }
 }
@@ -352,16 +351,16 @@ io.on('connection',socket=>{
     socket.emit('presence-state',{
       online:getOnlineUsers(),
       players:getPlayers().filter(p=>p.id!==socket.id),
-      screen:{...clubScreenState}
     });
   });
   socket.on('request-players',()=>sendPlayersSnapshot(socket));
   socket.on('request-presence',()=>socket.emit('presence-state',{
     online:getOnlineUsers(),
-    players:getPlayers().filter(p=>p.id!==socket.id),
-    screen:{...clubScreenState}
+    players:getPlayers().filter(p=>p.id!==socket.id)
   }));
-  socket.on('request-club-screen',()=>socket.emit('club-screen-state',clubScreenState));
+    socket.on('request-club-screen',()=>{
+    socket.emit('club-screen-state',{...clubScreenState});
+  });
 
   // One movement channel only. Server owns ground height and rejects impossible horizontal jumps.
   socket.on('player-state',data=>{
