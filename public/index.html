@@ -1891,86 +1891,99 @@ function createCeilingBeams(){
 
 function createSpeakers(){
 
-  // EWS PA — stage-mounted main system + wall-mounted side fills.
-  const cabinetMat=new THREE.MeshStandardMaterial({color:0x050505,metalness:.72,roughness:.28});
-  const grilleMat=new THREE.MeshStandardMaterial({color:0x111111,metalness:.12,roughness:.86});
-  const trimMat=new THREE.MeshBasicMaterial({color:0x22ccff,transparent:true,opacity:.75});
+  // PRO PA SYSTEM — grounded on the stage/walls, with real speaker proportions.
+  const cabinet=new THREE.MeshStandardMaterial({color:0x080808,metalness:.58,roughness:.38});
+  const grille=new THREE.MeshStandardMaterial({color:0x181818,metalness:.05,roughness:.92});
+  const rubber=new THREE.MeshStandardMaterial({color:0x020202,roughness:.8});
+  const logoMat=new THREE.MeshBasicMaterial({color:0xdddddd});
+  const led=new THREE.MeshBasicMaterial({color:0x22ccff,transparent:true,opacity:.8});
 
-  function arrayCabinet(parent,y,tilt){
-    const box=new THREE.Group();
-    box.position.y=y;
-    box.rotation.x=tilt;
+  function speakerBox(w,h,d){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),cabinet);
+    body.castShadow=true; body.receiveShadow=true; g.add(body);
 
-    const body=new THREE.Mesh(new THREE.BoxGeometry(1.65,.48,.62),cabinetMat);
-    body.castShadow=true; body.receiveShadow=true;
-    box.add(body);
+    // Recessed front grille.
+    const face=new THREE.Mesh(new THREE.BoxGeometry(w*.88,h*.84,.035),grille);
+    face.position.z=-d/2-.02; g.add(face);
 
-    const grille=new THREE.Mesh(new THREE.PlaneGeometry(1.42,.36),grilleMat);
-    grille.position.z=-.316;
-    box.add(grille);
+    // Two visible woofers and a horn: unmistakably a PA cabinet.
+    [-h*.22,h*.22].forEach((yy,idx)=>{
+      const r=Math.min(w,h)*(idx===0?.22:.17);
+      const cone=new THREE.Mesh(
+        new THREE.CylinderGeometry(r,r*.82,.055,32),
+        rubber
+      );
+      cone.rotation.x=Math.PI/2;
+      cone.position.set(0,yy,-d/2-.055);
+      g.add(cone);
 
-    const trim=new THREE.Mesh(new THREE.BoxGeometry(1.45,.025,.025),trimMat);
-    trim.position.set(0,.18,-.335);
-    box.add(trim);
-    parent.add(box);
+      const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(r,.035,8,32),
+        new THREE.MeshBasicMaterial({color:0x555555})
+      );
+      ring.rotation.x=Math.PI/2;
+      ring.position.set(0,yy,-d/2-.09);
+      g.add(ring);
+    });
+
+    const horn=new THREE.Mesh(
+      new THREE.BoxGeometry(w*.32,h*.12,.07),
+      rubber
+    );
+    horn.position.set(0,h*.34,-d/2-.06); g.add(horn);
+
+    const bottomLed=new THREE.Mesh(new THREE.BoxGeometry(w*.72,.025,.025),led);
+    bottomLed.position.set(0,-h*.46,-d/2-.07); g.add(bottomLed);
+
+    return g;
   }
 
-  function mainArray(x,side){
+  // Main PA sits ON THE STAGE DECK. No floating hardware.
+  function stageStack(x,side){
     const g=new THREE.Group();
-    // ON THE STAGE: no floating speaker arrays.
-    g.position.set(x,3.15,-11.0);
-    g.rotation.y=side<0 ? -0.34 : 0.34;
+    g.position.set(x,0,-11.0);
+    g.rotation.y=side<0?-0.28:0.28;
 
-    // Four compact line-array modules stacked as one real PA hang.
-    [-0.78,-0.25,0.28,0.81].forEach((y,i)=>arrayCabinet(g,y,(i-1.5)*.055));
-    scene.add(g);
+    const sub=new THREE.Mesh(new THREE.BoxGeometry(2.45,1.15,1.25),cabinet);
+    sub.position.y=.58; sub.castShadow=true; sub.receiveShadow=true; g.add(sub);
 
-    // Large subwoofer sitting directly on the stage floor.
-    const sub=new THREE.Group();
-    sub.position.set(x,1.15,-11.0);
-    sub.rotation.y=side<0 ? -0.25 : 0.25;
+    const subGrille=new THREE.Mesh(new THREE.BoxGeometry(2.18,.88,.035),grille);
+    subGrille.position.set(0,.58,-.65); g.add(subGrille);
 
-    const body=new THREE.Mesh(new THREE.BoxGeometry(2.5,1.05,1.15),cabinetMat);
-    body.castShadow=true; body.receiveShadow=true;
-    sub.add(body);
+    const top=speakerBox(1.75,2.45,.82);
+    top.position.y=2.35;
+    g.add(top);
 
-    const grille=new THREE.Mesh(new THREE.PlaneGeometry(2.18,.82),grilleMat);
-    grille.position.z=-.586;
-    sub.add(grille);
-
-    const trim=new THREE.Mesh(new THREE.BoxGeometry(2.18,.025,.025),trimMat);
-    trim.position.set(0,.41,-.605);
-    sub.add(trim);
-    scene.add(sub);
-  }
-
-  mainArray(-7.7,-1);
-  mainArray(7.7,1);
-
-  // SIDE FILLS — physically attached to the side walls, not floating in space.
-  function wallFill(x,z,side){
-    const g=new THREE.Group();
-    g.position.set(x,3.35,z);
-    // Front faces the dance floor; body is pushed against the wall.
-    g.rotation.y=side<0 ? -1.03 : 1.03;
-
-    const body=new THREE.Mesh(new THREE.BoxGeometry(1.15,1.55,.72),cabinetMat);
-    body.castShadow=true; body.receiveShadow=true;
-    g.add(body);
-
-    const grille=new THREE.Mesh(new THREE.PlaneGeometry(.98,1.30),grilleMat);
-    grille.position.z=-.366;
-    g.add(grille);
-
-    const trim=new THREE.Mesh(new THREE.BoxGeometry(.98,.025,.025),trimMat);
-    trim.position.set(0,.58,-.385);
-    g.add(trim);
+    // Short metal riser + rubber feet make the stack visibly rest on the stage.
+    const riser=new THREE.Mesh(new THREE.BoxGeometry(1.35,.18,.72),rubber);
+    riser.position.y=1.28; g.add(riser);
 
     scene.add(g);
   }
 
-  wallFill(-15.15,-5.6,-1);
-  wallFill(15.15,-5.6,1);
+  stageStack(-7.7,-1);
+  stageStack(7.7,1);
+
+  // SIDE-FILLS are physically attached to the side walls with a small mounting bracket.
+  function wallSpeaker(x,z,side){
+    const g=new THREE.Group();
+    g.position.set(x,3.0,z);
+    g.rotation.y=side<0?-Math.PI/2:Math.PI/2;
+
+    const bracket=new THREE.Mesh(new THREE.BoxGeometry(.32,.65,.5),rubber);
+    bracket.position.x=side<0?.22:-.22;
+    g.add(bracket);
+
+    const box=speakerBox(1.15,1.65,.78);
+    box.position.x=side<0?.55:-.55;
+    g.add(box);
+
+    scene.add(g);
+  }
+
+  wallSpeaker(-15.45,-5.6,-1);
+  wallSpeaker(15.45,-5.6,1);
 }
 function createFog(){
   const count=420;
