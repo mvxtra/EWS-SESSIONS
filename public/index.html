@@ -1075,66 +1075,83 @@ function tryMovePlayer(dx,dz){
   if(!blockedPosition(camera.position.x,nz)) camera.position.z=nz;
 }
 
-function createSofa(x,z,rotationY,label){
+function createCornerSofa(x,z,rotationY,label){
   const group=new THREE.Group();
   group.position.set(x,0,z);
   group.rotation.y=rotationY;
 
-  const frameMat=new THREE.MeshStandardMaterial({color:0x090909,roughness:.72,metalness:.12});
-  const leatherMat=new THREE.MeshStandardMaterial({color:0x151515,roughness:.48,metalness:.08});
-  const cushionMat=new THREE.MeshStandardMaterial({color:0x1d1d1d,roughness:.62,metalness:.04});
+  const frameMat=new THREE.MeshStandardMaterial({color:0x070707,roughness:.76,metalness:.10});
+  const leatherMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:.46,metalness:.08});
+  const cushionMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.60,metalness:.03});
 
-  const base=new THREE.Mesh(new THREE.BoxGeometry(5.2,.62,1.35),frameMat);
-  base.position.set(0,.45,0);
-  base.castShadow=true; base.receiveShadow=true; group.add(base);
+  // True L-shaped corner sofa: one long section + one perpendicular return.
+  const baseA=new THREE.Mesh(new THREE.BoxGeometry(5.4,.58,1.38),frameMat);
+  baseA.position.set(2.15,.43,0);
+  baseA.castShadow=true; baseA.receiveShadow=true; group.add(baseA);
 
-  const seat=new THREE.Mesh(new THREE.BoxGeometry(4.85,.34,1.12),cushionMat);
-  seat.position.set(0,.86,-.08);
-  seat.castShadow=true; seat.receiveShadow=true; group.add(seat);
+  const baseB=new THREE.Mesh(new THREE.BoxGeometry(1.38,.58,4.55),frameMat);
+  baseB.position.set(0,.43,-1.58);
+  baseB.castShadow=true; baseB.receiveShadow=true; group.add(baseB);
 
-  const back=new THREE.Mesh(new THREE.BoxGeometry(5.2,1.65,.42),leatherMat);
-  back.position.set(0,1.45,.52);
-  back.castShadow=true; back.receiveShadow=true; group.add(back);
+  const seatA=new THREE.Mesh(new THREE.BoxGeometry(5.05,.34,1.12),cushionMat);
+  seatA.position.set(2.15,.84,0);
+  seatA.castShadow=true; seatA.receiveShadow=true; group.add(seatA);
 
-  [-2.15,0,2.15].forEach(px=>{
-    const pillow=new THREE.Mesh(new THREE.BoxGeometry(1.48,.32,.9),leatherMat);
-    pillow.position.set(px,.99,-.08);
-    pillow.rotation.x=-.05;
+  const seatB=new THREE.Mesh(new THREE.BoxGeometry(1.12,.34,4.15),cushionMat);
+  seatB.position.set(0,.84,-1.58);
+  seatB.castShadow=true; seatB.receiveShadow=true; group.add(seatB);
+
+  // Two perpendicular upholstered backrests make the corner shape unmistakable.
+  const backA=new THREE.Mesh(new THREE.BoxGeometry(5.4,1.62,.42),leatherMat);
+  backA.position.set(2.15,1.43,.50);
+  backA.castShadow=true; backA.receiveShadow=true; group.add(backA);
+
+  const backB=new THREE.Mesh(new THREE.BoxGeometry(.42,1.62,4.55),leatherMat);
+  backB.position.set(-.50,1.43,-1.58);
+  backB.castShadow=true; backB.receiveShadow=true; group.add(backB);
+
+  // Soft cushions.
+  [0.45,2.15,3.85].forEach(px=>{
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(1.35,.30,.88),leatherMat);
+    pillow.position.set(px,.99,-.04);
+    pillow.castShadow=true; pillow.receiveShadow=true; group.add(pillow);
+  });
+  [-.15,-1.55,-2.95].forEach(pz=>{
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(.88,.30,1.15),leatherMat);
+    pillow.position.set(.03,.99,pz);
     pillow.castShadow=true; pillow.receiveShadow=true; group.add(pillow);
   });
 
-  const armMat=new THREE.MeshStandardMaterial({color:0x101010,roughness:.52,metalness:.08});
-  [-2.5,2.5].forEach(px=>{
-    const arm=new THREE.Mesh(new THREE.BoxGeometry(.42,1.02,1.35),armMat);
-    arm.position.set(px,1.0,0);
-    arm.castShadow=true; arm.receiveShadow=true; group.add(arm);
-  });
+  const armMat=new THREE.MeshStandardMaterial({color:0x0c0c0c,roughness:.50,metalness:.06});
+  const armA=new THREE.Mesh(new THREE.BoxGeometry(.42,1.0,1.38),armMat);
+  armA.position.set(4.85,1.0,0); armA.castShadow=true; armA.receiveShadow=true; group.add(armA);
+  const armB=new THREE.Mesh(new THREE.BoxGeometry(1.38,1.0,.42),armMat);
+  armB.position.set(0,1.0,-3.85); armB.castShadow=true; armB.receiveShadow=true; group.add(armB);
 
-  // Low warm lounge light keeps the sofa area readable without breaking the dark club mood.
-  const glow=new THREE.PointLight(0xffe7d0,.16,4.5);
-  glow.position.set(0,1.25,-.15);
+  const glow=new THREE.PointLight(0xffe7d0,.12,4.2);
+  glow.position.set(1.2,1.2,-.8);
   group.add(glow);
 
   scene.add(group);
 
-  // Sitting point is just in front of the cushion, facing the club.
+  // Main sitting point on the long section, facing toward the dancefloor.
   const fx=-Math.sin(rotationY), fz=-Math.cos(rotationY);
   sofaSeats.push({
     group,
-    x:x+fx*.72,
+    x:x+fx*1.55,
     y:1.16,
-    z:z+fz*.72,
+    z:z+fz*1.55,
     yaw:rotationY,
-    label:label||'SOFA'
+    label:label||'CORNER SOFA'
   });
 }
 
 function createLoungeSofas(){
-  // Four matching black sofas in the club corners / lounge pockets.
-  createSofa(-11.7,11.2,-Math.PI/2,'LEFT REAR');
-  createSofa(11.7,11.2,Math.PI/2,'RIGHT REAR');
-  createSofa(-11.7,-3.6,-Math.PI/2,'LEFT FRONT');
-  createSofa(11.7,-3.6,Math.PI/2,'RIGHT FRONT');
+  // Sofas are pushed into the four side-corners, leaving the dancefloor open.
+  createCornerSofa(-15.9,12.9,0,'LEFT FRONT CORNER');
+  createCornerSofa(15.9,12.9,Math.PI,'RIGHT FRONT CORNER');
+  createCornerSofa(-15.9,-7.7,0,'LEFT REAR CORNER');
+  createCornerSofa(15.9,-7.7,Math.PI,'RIGHT REAR CORNER');
 }
 
 function nearestSofaSeat(){
