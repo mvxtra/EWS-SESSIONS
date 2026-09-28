@@ -251,11 +251,23 @@ function broadcastPlayersSnapshot(){
   }
 }
 
+function broadcastPresence(){
+  const online=getOnlineUsers();
+  const players=getPlayers();
+  for(const socket of io.sockets.sockets.values()){
+    socket.emit('presence-state',{
+      online,
+      players:players.filter(p=>p.id!==socket.id)
+    });
+  }
+}
+
 // Keep every browser synchronized even if an individual realtime movement
 // packet is missed during reconnects or a slow connection.
 setInterval(()=>{
   if(players.size>0) broadcastPlayersSnapshot();
   if(onlineUsers.size>0) broadcastOnline();
+  if(onlineUsers.size>0) broadcastPresence();
 },1000);
 
 io.on('connection',socket=>{
@@ -295,6 +307,7 @@ io.on('connection',socket=>{
     socket.broadcast.emit('player-state',publicPlayer(player));
     socket.broadcast.emit('player-joined',publicPlayer(player));
     broadcastOnline();
+    broadcastPresence();
     // Send direct authoritative snapshots to the newly joined socket.
     socket.emit('players-state',getPlayers().filter(p=>p.id!==socket.id));
     socket.emit('online-users',getOnlineUsers());
@@ -304,8 +317,15 @@ io.on('connection',socket=>{
     console.log('JOIN:',username,'|',language);
   });
 
-  socket.on('request-online',()=>socket.emit('online-users',getOnlineUsers()));
+  socket.on('request-online',()=>{
+    socket.emit('online-users',getOnlineUsers());
+    socket.emit('presence-state',{online:getOnlineUsers(),players:getPlayers().filter(p=>p.id!==socket.id)});
+  });
   socket.on('request-players',()=>sendPlayersSnapshot(socket));
+  socket.on('request-presence',()=>socket.emit('presence-state',{
+    online:getOnlineUsers(),
+    players:getPlayers().filter(p=>p.id!==socket.id)
+  }));
   socket.on('request-club-screen',()=>socket.emit('club-screen-state',clubScreenState));
 
   // One movement channel only. Server owns ground height and rejects impossible horizontal jumps.
