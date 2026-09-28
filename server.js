@@ -314,7 +314,7 @@ io.on('connection',socket=>{
     socket.emit('club-screen-state',clubScreenState);
     socket.emit('online',getOnlineUsers());
 
-    console.log('JOIN:',username,'|',language);
+    console.log('JOIN:',username,'|',language,'| socket:',socket.id,'| online:',onlineUsers.size,'| players:',players.size);
   });
 
   socket.on('request-online',()=>{
@@ -486,7 +486,8 @@ io.on('connection',socket=>{
     io.emit('player-left',socket.id);
     io.emit('player-removed',socket.id);
     broadcastOnline();
-    console.log('DISCONNECT:',username,'|',reason);
+    broadcastPresence();
+    console.log('DISCONNECT:',username,'|',reason,'| online:',onlineUsers.size,'| players:',players.size);
   });
 });
 
