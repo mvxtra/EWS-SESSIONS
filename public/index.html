@@ -409,10 +409,6 @@ input:focus{
 /* =========================================================
    EMOTES / DANCES
 ========================================================= */
-#emotes-control{position:fixed;left:50%;bottom:58px;transform:translateX(-50%);z-index:32;pointer-events:auto;height:34px;padding:0 18px;border:1px solid #444;background:rgba(0,0,0,.82);color:#fff;font-size:10px;font-weight:bold;letter-spacing:3px;cursor:pointer;}
-#emotes-control:hover{background:#fff;color:#000;}
-#emotes-menu{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:41;width:250px;padding:10px;background:rgba(4,4,4,.97);border:1px solid #444;box-shadow:0 20px 70px rgba(0,0,0,.7);display:none;pointer-events:auto;}
-#emotes-menu.open{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .emote-btn{height:36px;border:1px solid #333;background:#111;color:#fff;cursor:pointer;font-size:10px;letter-spacing:1px;}
 .emote-btn:hover{background:#fff;color:#000;}
 #emote-stop{grid-column:1/-1;}
@@ -761,54 +757,7 @@ input:focus{
   <!-- Hidden compatibility control: audio UI is intentionally not shown. -->
   <button id="audio-control" type="button" aria-hidden="true" tabindex="-1" style="display:none"></button>
 
-  <button id="screen-control" type="button" onclick="return false">SCREEN</button>
-
-  <button id="emotes-control" onclick="toggleEmotesMenu()">EMOTES</button>
-
-  <div id="emotes-menu">
-    <button class="emote-btn" onclick="playDance(1)">DANCE 01</button>
-    <button class="emote-btn" onclick="playDance(2)">DANCE 02</button>
-    <button class="emote-btn" onclick="playDance(3)">SHUFFLE</button>
-    <button class="emote-btn" onclick="playDance(4)">ROBOT</button>
-    <button class="emote-btn" onclick="playDance(5)">BOUNCE</button>
-    <button class="emote-btn" onclick="playDance(6)">WAVE</button>
-    <button id="emote-stop" class="emote-btn" onclick="stopDance()">STOP DANCE</button>
-  </div>
-
-  <div id="lang-bar">
-
-    <select id="lang">
-
-      <option value="ru">RU</option>
-      <option value="en">EN</option>
-      <option value="es">ES</option>
-      <option value="de">DE</option>
-      <option value="fr">FR</option>
-      <option value="zh">中文</option>
-      <option value="ja">日本語</option>
-      <option value="ko">한국어</option>
-      <option value="ar">AR</option>
-      <option value="hi">HI</option>
-      <option value="pt">PT</option>
-      <option value="it">IT</option>
-      <option value="tr">TR</option>
-      <option value="uk">UA</option>
-
-    </select>
-
-  </div>
-
-  <div id="online-box">
-
-    <h3>
-      ONLINE
-    </h3>
-
-    <ul id="online-list"></ul>
-
-  </div>
-
-  <div id="chat">
+  <button id="screen-control" type="button" onclick="return false">SCREEN</button><div id="chat">
 
     <div id="chat-title">
       EWS SESSIONS / CHAT
@@ -2879,7 +2828,6 @@ function setupControls(){
       }
 
       if(!chatMode){
-        if(e.code==='KeyB'){ toggleEmotesMenu(); e.preventDefault(); return; }
         if(e.code==='Digit1'){ playDance(1); e.preventDefault(); return; }
         if(e.code==='Digit2'){ playDance(2); e.preventDefault(); return; }
         if(e.code==='Digit3'){ playDance(3); e.preventDefault(); return; }
@@ -3805,10 +3753,7 @@ function broadcastPlayerState(now){
 /* =========================================================
    EMOTES / DANCES
 ========================================================= */
-function toggleEmotesMenu(){
-  const menu=document.getElementById('emotes-menu');
-  if(menu) menu.classList.toggle('open');
-}
+
 
 function playDance(id){
   if(chatMode || !socket) return;
