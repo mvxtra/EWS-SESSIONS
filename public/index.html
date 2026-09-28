@@ -1782,40 +1782,39 @@ function createDanceFloor(){
 
   scene.add(floor);
 
+  // Precise white architectural floor grid — locked to the club axes.
   const frameMat =
     new THREE.MeshBasicMaterial({
-      color:0x171717
+      color:0xffffff,
+      transparent:true,
+      opacity:.72
     });
 
-  const lines=[
-    [-7,.16,-1,14,.04,.04],
-    [7,.16,-1,14,.04,.04],
-    [0,.16,-8,.04,.04,14],
-    [0,.16,6,.04,.04,14]
-  ];
+  const lines=[];
+  const gridY=.16;
+  const minX=-7, maxX=7, minZ=-8, maxZ=6;
 
-  lines.forEach(
-    l=>{
+  for(let x=minX;x<=maxX;x+=1){
+    lines.push([x,gridY,(minZ+maxZ)/2,.018,.018,maxZ-minZ]);
+  }
 
-      const mesh =
-        createBox(
-          l[3],
-          l[4],
-          l[5],
-          l[0],
-          l[1],
-          l[2],
-          frameMat,
-          false,
-          false
-        );
+  for(let z=minZ;z<=maxZ;z+=1){
+    lines.push([(minX+maxX)/2,gridY,z,maxX-minX,.018,.018]);
+  }
 
-      neonObjects.push(
-        mesh
-      );
+  lines.push([(minX+maxX)/2,gridY,minZ,maxX-minX,.035,.035]);
+  lines.push([(minX+maxX)/2,gridY,maxZ,maxX-minX,.035,.035]);
+  lines.push([minX,gridY,(minZ+maxZ)/2,.035,.035,maxZ-minZ]);
+  lines.push([maxX,gridY,(minZ+maxZ)/2,.035,.035,maxZ-minZ]);
 
-    }
-  );
+  lines.forEach(l=>{
+    const mesh=createBox(
+      l[3],l[4],l[5],
+      l[0],l[1],l[2],
+      frameMat,false,false
+    );
+    neonObjects.push(mesh);
+  });
 
 }
 
@@ -2046,13 +2045,13 @@ function createNeonArchitecture(){
     const left=createBox(.085,4.2,.085,-17.42,3,z,neonMat,false,false);
     const right=createBox(.085,4.2,.085,17.42,3,z,neonMat,false,false);
     left.userData.neonColor=0x22ccff;
-    right.userData.neonColor=0xff2bd6;
+    right.userData.neonColor=0xffffff;
     neonObjects.push(left,right);
   }
 
   for(let z=-15;z<=15;z+=5){
     const beam=createBox(34,.075,.075,0,5.35,z,neonMat,false,false);
-    beam.userData.neonColor=(Math.abs(z)%10===0)?0x22ccff:0xff2bd6;
+    beam.userData.neonColor=0xffffff;
     neonObjects.push(beam);
   }
 
@@ -2067,9 +2066,9 @@ function createNeonArchitecture(){
 
   [
     [14,.10,.12,0,.19,-8,0x22ccff],
-    [14,.10,.12,0,.19,6,0xff2bd6],
+    [14,.10,.12,0,.19,6,0xffffff],
     [.12,.10,14,-7,.19,-1,0x22ccff],
-    [.12,.10,14,7,.19,-1,0xff2bd6]
+    [.12,.10,14,7,.19,-1,0xffffff]
   ].forEach(a=>{
     const m=createBox(a[0],a[1],a[2],a[3],a[4],a[5],floorMat,false,false);
     m.userData.neonColor=a[6];
@@ -2079,11 +2078,11 @@ function createNeonArchitecture(){
   // Extra wall accents so the club has depth at the sides.
   [-12,-6,0,6,12].forEach((z,i)=>{
     const l=createBox(.10,4.4,.10,-16.9,3,z,floorMat,false,false);
-    l.userData.neonColor=i%2?0xff2bd6:0x22ccff;
+    l.userData.neonColor=0xffffff;
     neonObjects.push(l);
 
     const rr=createBox(.10,4.4,.10,16.9,3,z,floorMat,false,false);
-    rr.userData.neonColor=i%2?0x22ccff:0xff2bd6;
+    rr.userData.neonColor=0xffffff;
     neonObjects.push(rr);
   });
 
