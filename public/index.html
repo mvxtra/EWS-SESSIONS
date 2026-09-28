@@ -1470,6 +1470,33 @@ function startSession(username){
     applyRemoteClubScreen(state);
   });
 
+  // Authoritative presence channel: one packet carries both ONLINE and
+  // the remote players, so neither view can get out of sync.
+  socket.on('presence-state', state=>{
+    if(!state) return;
+
+    const users=Array.isArray(state.online)?state.online:[];
+    const ul=document.getElementById('online-list');
+    if(ul){
+      ul.innerHTML='';
+      users.forEach(user=>{
+        const name=typeof user==='string' ? user : (user && user.username)||'';
+        if(!name) return;
+        const li=document.createElement('li');
+        li.textContent=name===currentUser ? name+' (YOU)' : name;
+        ul.appendChild(li);
+      });
+    }
+
+    const remoteIds=new Set();
+    const players=Array.isArray(state.players)?state.players:[];
+    players.forEach(data=>{
+      if(!data || !data.id || data.id===socket.id) return;
+      remoteIds.add(data.id);
+      updateRemotePlayer(data);
+    });
+  });
+
   socket.on('connect',function(){
 
     socket.emit(
@@ -1488,6 +1515,7 @@ function startSession(username){
       if(socket && socket.connected){
         socket.emit('request-players');
         socket.emit('request-online');
+        socket.emit('request-presence');
         socket.emit('request-club-screen');
       }
     },250);
@@ -1652,6 +1680,8 @@ function startSession(username){
   socket.on('connect',()=>{
     socket.emit('request-players');
     socket.emit('request-online');
+    socket.emit('request-presence');
+    socket.emit('request-presence');
     socket.emit('request-club-screen');
 
     setTimeout(()=>{
