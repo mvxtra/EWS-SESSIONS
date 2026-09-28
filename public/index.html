@@ -958,6 +958,8 @@ let mode='login';
 
 let socket=null;
 let currentUser=null;
+let sessionStarted=false;
+let presenceHeartbeat=null;
 
 let scene;
 let camera;
@@ -1438,6 +1440,8 @@ async function doLogin(){
 
 function startSession(username){
 
+  if(sessionStarted) return;
+  sessionStarted=true;
   currentUser=username;
 
   document.getElementById(
@@ -1463,7 +1467,15 @@ function startSession(username){
 
   init3D();
 
-  socket=io({reconnection:true,reconnectionAttempts:Infinity,reconnectionDelay:500,reconnectionDelayMax:4000});
+  socket=io({
+    transports:['websocket'],
+    upgrade:false,
+    reconnection:true,
+    reconnectionAttempts:Infinity,
+    reconnectionDelay:500,
+    reconnectionDelayMax:4000,
+    timeout:10000
+  });
 
   socket.on('disconnect',reason=>{
     console.warn('[EWS SOCKET] disconnected:',reason);
@@ -1481,120 +1493,67 @@ function startSession(username){
 
   // Authoritative presence channel: one packet carries both ONLINE and
   // the remote players, so neither view can get out of sync.
+  function renderOnlineUsers(list){
+    let users=Array.isArray(list)?list.slice():[];
+    if(socket && socket.connected && currentUser){
+      const exists=users.some(user=>{
+        const name=typeof user==='string' ? user : user && user.username;
+        return String(name||'').trim().toLowerCase()===String(currentUser).trim().toLowerCase();
+      });
+      if(!exists) users.unshift({username:currentUser});
+    }
+    onlineUserList=users;
+    const ul=document.getElementById('online-list');
+    if(!ul) return;
+    ul.innerHTML='';
+    users.forEach(user=>{
+      const name=typeof user==='string' ? user : (user && user.username)||'';
+      if(!name) return;
+      const li=document.createElement('li');
+      li.textContent=String(name).toLowerCase()===String(currentUser||'').toLowerCase()
+        ? name+' (YOU)'
+        : name;
+      ul.appendChild(li);
+    });
+  }
+
   socket.on('presence-state', state=>{
     if(!state) return;
-
-    const users=Array.isArray(state.online)?state.online:[];
-    const ul=document.getElementById('online-list');
-    if(ul){
-      ul.innerHTML='';
-      users.forEach(user=>{
-        const name=typeof user==='string' ? user : (user && user.username)||'';
-        if(!name) return;
-        const li=document.createElement('li');
-        li.textContent=name===currentUser ? name+' (YOU)' : name;
-        ul.appendChild(li);
-      });
-    }
-
-    const remoteIds=new Set();
+    renderOnlineUsers(Array.isArray(state.online)?state.online:[]);
     const players=Array.isArray(state.players)?state.players:[];
     players.forEach(data=>{
       if(!data || !data.id || data.id===socket.id) return;
-      remoteIds.add(data.id);
       updateRemotePlayer(data);
     });
   });
 
   socket.on('connect',function(){
+    console.log('[EWS SOCKET] connected:',socket.id);
 
-    socket.emit(
-      'join',
-      {
-        username: currentUser,
-        language:
-          document.getElementById('lang').value,
-        avatar: avatarChoice
-      }
-    );
-    console.log('[EWS SOCKET] JOIN sent:', currentUser, 'socket:', socket.id);
+    socket.emit('join',{
+      username:currentUser,
+      language:document.getElementById('lang').value,
+      avatar:avatarChoice
+    });
 
-    // If the host pressed LOAD before Socket.IO finished connecting, resend the
-    // selected screen immediately after JOIN so guests always receive it.
+    // One authoritative handshake after every initial connection or reconnect.
     setTimeout(()=>{
-      if(socket && socket.connected && isClubHost() && lastLocalClubScreenState.active){
-        socket.emit('club-screen-state',lastLocalClubScreenState);
-      }
-    },120);
+      if(!socket || !socket.connected) return;
+      socket.emit('request-presence');
+      socket.emit('request-club-screen');
+    },150);
 
-    // Explicit multiplayer handshake: ask for the authoritative player list
-    // after the server has registered this socket.
     setTimeout(()=>{
-      if(socket && socket.connected){
-        socket.emit('request-players');
-        socket.emit('request-online');
-        socket.emit('request-presence');
-        socket.emit('request-club-screen');
-      }
-    },250);
-
-    // A second authoritative SCREEN request closes the small race between
-    // the join event and the first state delivery on slow connections.
-    setTimeout(()=>{
-      if(socket && socket.connected){
-        socket.emit('request-club-screen');
-      }
+      if(!socket || !socket.connected) return;
+      socket.emit('request-presence');
+      socket.emit('request-club-screen');
     },1000);
-
   });
 
-  socket.on(
-    'online-users',
-    list=>{
-
-      // The server is authoritative. If the first broadcast races with the
-      // join event, keep the connected user visible until the next snapshot.
-      let users=Array.isArray(list)?list.slice():[];
-
-      if(socket && socket.connected && currentUser){
-        const alreadyThere=users.some(user=>{
-          const name=typeof user==='string' ? user : user && user.username;
-          return String(name||'').toLowerCase()===String(currentUser).toLowerCase();
-        });
-        if(!alreadyThere){
-          users.unshift({username:currentUser,language:document.getElementById('lang')?.value||'en'});
-        }
-      }
-
-      onlineUserList=users;
-
-      // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
-      clubScreenHost='mvxtra';
-
-      const ul=document.getElementById('online-list');
-      if(!ul) return;
-      ul.innerHTML='';
-
-      users.forEach(user=>{
-
-        const li=document.createElement('li');
-
-        const name=typeof user==='string'
-          ? user
-          : (user && user.username) || '';
-
-        if(!name) return;
-
-        li.textContent=name===currentUser
-          ? name + ' (YOU)'
-          : name;
-
-        ul.appendChild(li);
-
-      });
-
-    }
-  );
+  socket.on('online-users',list=>{
+    renderOnlineUsers(list);
+    clubScreenHost='mvxtra';
+  });
 
   socket.on(
     'chat-message',
@@ -1695,24 +1654,14 @@ function startSession(username){
   });
 
   // Refresh shared state whenever the transport reconnects.
-  socket.on('connect',()=>{
-    socket.emit('request-players');
-    socket.emit('request-online');
-    socket.emit('request-presence');
-    socket.emit('request-presence');
-    socket.emit('request-club-screen');
 
-    setTimeout(()=>{
-      if(socket && socket.connected) socket.emit('request-club-screen');
-    },1000);
-  });
 
-  // Recovery heartbeat: refresh multiplayer + online state even if a
-  // realtime packet was lost or a browser resumed from background.
-  setInterval(()=>{
+  // Recovery heartbeat: one presence request keeps ONLINE and remote players
+  // synchronized without several competing snapshots overwriting each other.
+  if(presenceHeartbeat) clearInterval(presenceHeartbeat);
+  presenceHeartbeat=setInterval(()=>{
     if(!socket || !socket.connected) return;
-    socket.emit('request-players');
-    socket.emit('request-online');
+    socket.emit('request-presence');
   },2000);
 
 }
