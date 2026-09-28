@@ -1174,11 +1174,12 @@ function createCornerSofa(x,z,rotationY,label){
 
   // Main sitting point on the long section, facing toward the dancefloor.
   const fx=-Math.sin(rotationY), fz=-Math.cos(rotationY);
+  // Seated camera is placed above the cushion so the viewpoint is not buried inside the sofa.
   sofaSeats.push({
     group,
-    x:x+fx*1.55,
-    y:1.16,
-    z:z+fz*1.55,
+    x:x+fx*1.72,
+    y:1.62,
+    z:z+fz*1.72,
     yaw:rotationY,
     label:label||'CORNER SOFA'
   });
@@ -1232,6 +1233,7 @@ function toggleSofaSeat(){
   jumpVelocity=0;
   isGrounded=true;
   camera.position.set(seat.x,seat.y,seat.z);
+  // Keep the seated viewpoint at head level, clearly above the cushion.
   yaw=seat.yaw;
   pitch=0;
 }
