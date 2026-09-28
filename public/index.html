@@ -1468,17 +1468,20 @@ function startSession(username){
   init3D();
 
   socket=io({
-    transports:['websocket'],
-    upgrade:false,
+    transports:['polling','websocket'],
+    upgrade:true,
     reconnection:true,
     reconnectionAttempts:Infinity,
     reconnectionDelay:500,
     reconnectionDelayMax:4000,
-    timeout:10000
+    timeout:20000
   });
 
   socket.on('disconnect',reason=>{
     console.warn('[EWS SOCKET] disconnected:',reason);
+  });
+  socket.io.on('upgrade',transport=>{
+    console.log('[EWS SOCKET] transport upgraded:',transport.name);
   });
   socket.on('connect_error',err=>{
     console.warn('[EWS SOCKET] connect_error:',err && err.message ? err.message : err);
@@ -1529,7 +1532,7 @@ function startSession(username){
   });
 
   socket.on('connect',function(){
-    console.log('[EWS SOCKET] connected:',socket.id);
+    console.log('[EWS SOCKET] connected:',socket.id,'transport:',socket.io.engine.transport.name);
 
     socket.emit('join',{
       username:currentUser,
