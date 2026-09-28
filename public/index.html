@@ -982,6 +982,55 @@ let danceStartedAt=0;
 
 let playerBody;
 
+// SOLID CLUB OBJECTS — the local player cannot walk through these.
+const collisionBoxes = [
+  // Main stage
+  {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9},
+  // Stage speakers
+  {minX:-8.8,maxX:-7.2,minZ:-11.6,maxZ:-10.3},
+  {minX:7.2,maxX:8.8,minZ:-11.6,maxZ:-10.3},
+  {minX:-11.8,maxX:-10.2,minZ:-11.6,maxZ:-9.7},
+  {minX:10.2,maxX:11.8,minZ:-11.6,maxZ:-9.7},
+  // Four structural columns
+  {minX:-15.7,maxX:-14.3,minZ:4.3,maxZ:5.7},
+  {minX:14.3,maxX:15.7,minZ:4.3,maxZ:5.7},
+  {minX:-15.7,maxX:-14.3,minZ:-5.7,maxZ:-4.3},
+  {minX:14.3,maxX:15.7,minZ:-5.7,maxZ:-4.3},
+  // Entrance frame at the rear
+  {minX:-3.6,maxX:3.6,minZ:15.7,maxZ:16.7}
+];
+const PLAYER_RADIUS=.38;
+
+function blockedPosition(x,z){
+  for(const b of collisionBoxes){
+    const cx=Math.max(b.minX,Math.min(x,b.maxX));
+    const cz=Math.max(b.minZ,Math.min(z,b.maxZ));
+    const dx=x-cx;
+    const dz=z-cz;
+    if(dx*dx+dz*dz < PLAYER_RADIUS*PLAYER_RADIUS) return true;
+  }
+  return false;
+}
+
+function tryMovePlayer(dx,dz){
+  const nx=THREE.MathUtils.clamp(camera.position.x+dx,-16,16);
+  const nz=THREE.MathUtils.clamp(camera.position.z+dz,-15.5,15.5);
+  // Resolve X and Z separately so the avatar slides along objects instead of freezing.
+  if(!blockedPosition(nx,camera.position.z)) camera.position.x=nx;
+  if(!blockedPosition(camera.position.x,nz)) camera.position.z=nz;
+}
+
+function createEWSLogo(){
+  const loader=new THREE.TextureLoader();
+  loader.load('/assets/logo.png',texture=>{
+    texture.encoding=THREE.sRGBEncoding;
+    const mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide});
+    const logo=new THREE.Mesh(new THREE.PlaneGeometry(4.6,4.6),mat);
+    logo.position.set(0,3.65,-16.25);
+    scene.add(logo);
+  },undefined,err=>console.warn('[EWS LOGO]',err));
+}
+
 /* =========================================================
    EWS TEXTURES
    CC0 seamless textures from ShareTextures
@@ -1517,9 +1566,8 @@ function init3D(){
   createWalls();
   createDanceFloor();
   createMainScreen();
+  createEWSLogo();
   createStage();
-  createBar();
-  createLounge();
   createColumns();
   createEntrance();
   createNeonArchitecture();
@@ -1785,276 +1833,9 @@ function createStage(){
 
 }
 
-function createBar(){
 
-  // REALISTIC CLUB BAR
-  // The visitor side is the front (towards the dance floor).
-  // The bartender stands BEHIND the counter in a separate low-fenced work zone.
 
-  const darkMat = new THREE.MeshStandardMaterial({
-    color:0x101010,
-    metalness:.45,
-    roughness:.5
-  });
 
-  const counterMat = new THREE.MeshStandardMaterial({
-    color:0x191919,
-    metalness:.55,
-    roughness:.3
-  });
-
-  const topMat = new THREE.MeshStandardMaterial({
-    color:0x262626,
-    metalness:.7,
-    roughness:.22
-  });
-
-  const railMat = new THREE.MeshStandardMaterial({
-    color:0x252525,
-    metalness:.75,
-    roughness:.2
-  });
-
-  // Main bar body — solid front, not a hollow box.
-  createBox(
-    9.2,1.05,1.15,
-    -12,.72,7,
-    counterMat
-  );
-
-  // Heavy countertop.
-  createBox(
-    9.45,.16,1.45,
-    -12,1.32,7,
-    topMat
-  );
-
-  // Dark recessed front panel for depth.
-  createBox(
-    8.55,.68,.08,
-    -12,.78,6.40,
-    darkMat,
-    false,
-    false
-  );
-
-  // Subtle illuminated strip under the countertop.
-  const barGlow = createBox(
-    8.7,.035,.035,
-    -12,1.235,6.34,
-    new THREE.MeshBasicMaterial({color:0x9d7cff}),
-    false,
-    false
-  );
-  neonObjects.push(barGlow);
-
-  // Separate bartender work area behind the counter.
-  // Low railings visually define the service zone without making it look fenced-in.
-  const workBackZ = 9.35;
-  const workSideZ = 8.15;
-  const railY = 1.05;
-  const railH = .72;
-
-  // Back rail.
-  createBox(
-    9.0,.10,.10,
-    -12,railY,workBackZ,
-    railMat,
-    false,
-    false
-  );
-
-  // Side rails.
-  createBox(
-    .10,.10,2.55,
-    -16.48,railY,workSideZ,
-    railMat,
-    false,
-    false
-  );
-
-  createBox(
-    .10,.10,2.55,
-    -7.52,railY,workSideZ,
-    railMat,
-    false,
-    false
-  );
-
-  // Upright posts for the low barrier.
-  [-16.48,-12,-7.52].forEach(x=>{
-    createBox(
-      .12,railH,.12,
-      x,railH/2,workBackZ,
-      railMat,
-      false,
-      false
-    );
-  });
-
-  [-16.48,-7.52].forEach(x=>{
-    createBox(
-      .12,railH,.12,
-      x,railH/2,workSideZ,
-      railMat,
-      false,
-      false
-    );
-  });
-
-  // Back bar / bottle shelf.
-  createBox(
-    8.2,.12,.65,
-    -12,1.75,9.0,
-    darkMat
-  );
-
-  createBox(
-    8.2,.10,.10,
-    -12,2.08,8.72,
-    railMat,
-    false,
-    false
-  );
-
-  // Bottles and glasses on the back shelf.
-  for(let i=0;i<9;i++){
-    const bottle = new THREE.Mesh(
-      new THREE.CylinderGeometry(.07,.09,.58,12),
-      new THREE.MeshStandardMaterial({
-        color: i%3===0 ? 0x555555 : 0x888888,
-        metalness:.55,
-        roughness:.25
-      })
-    );
-    bottle.position.set(-15.4+i*.85,2.10,8.88);
-    scene.add(bottle);
-
-    const neck = new THREE.Mesh(
-      new THREE.CylinderGeometry(.035,.045,.18,10),
-      bottle.material
-    );
-    neck.position.set(-15.4+i*.85,2.48,8.88);
-    scene.add(neck);
-  }
-
-  // Three simple bar stools on the visitor side.
-  const stoolMat = new THREE.MeshStandardMaterial({
-    color:0x151515,
-    metalness:.6,
-    roughness:.35
-  });
-
-  [-14.5,-12,-9.5].forEach(x=>{
-    const seat = new THREE.Mesh(
-      new THREE.CylinderGeometry(.34,.34,.12,20),
-      stoolMat
-    );
-    seat.position.set(x,.95,5.15);
-    scene.add(seat);
-
-    createBox(.07,.9,.07,x,.48,5.15,stoolMat,false,false);
-
-    const foot = new THREE.Mesh(
-      new THREE.TorusGeometry(.25,.025,8,20),
-      stoolMat
-    );
-    foot.rotation.x=Math.PI/2;
-    foot.position.set(x,.30,5.15);
-    scene.add(foot);
-  });
-
-  // BARTENDER — behind the counter, inside the work zone.
-  const skinMat = new THREE.MeshStandardMaterial({color:0x8a6b5a,roughness:.8});
-  const shirtMat = new THREE.MeshStandardMaterial({color:0x161616,metalness:.1,roughness:.8});
-  const apronMat = new THREE.MeshStandardMaterial({color:0x303030,roughness:.75});
-
-  // Legs.
-  createBox(.24,.85,.24,-12.30,.55,8.25,shirtMat);
-  createBox(.24,.85,.24,-11.70,.55,8.25,shirtMat);
-
-  // Torso + apron.
-  createBox(.72,.9,.38,-12,1.28,8.25,shirtMat);
-  createBox(.48,.55,.40,-12,1.22,8.04,apronMat,false,false);
-
-  // Head + hair.
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(.23,16,12),
-    skinMat
-  );
-  head.position.set(-12,1.98,8.25);
-  scene.add(head);
-
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(.235,16,12,0,Math.PI*2,0,Math.PI*.48),
-    new THREE.MeshStandardMaterial({color:0x080808,roughness:.9})
-  );
-  hair.position.set(-12,2.04,8.25);
-  scene.add(hair);
-
-  // Arms angled forward toward the bar.
-  const armL = createBox(.16,.62,.16,-12.40,1.40,7.78,shirtMat);
-  armL.rotation.z=-.25;
-  const armR = createBox(.16,.62,.16,-11.60,1.40,7.78,shirtMat);
-  armR.rotation.z=.25;
-
-  // Small service light above the working area.
-  const barLight = new THREE.PointLight(0x9d7cff,1.15,8);
-  barLight.position.set(-12,3.0,8.2);
-  scene.add(barLight);
-}
-
-function createLounge(){
-
-  const sofaMat =
-    new THREE.MeshStandardMaterial({
-      color:0x181818,
-      roughness:.9
-    });
-
-  createBox(
-    6,.8,1.6,
-    11,.7,8,
-    sofaMat
-  );
-
-  createBox(
-    1.6,1.4,5.5,
-    14,1.2,8,
-    sofaMat
-  );
-
-  for(
-    let i=0;
-    i<3;
-    i++
-  ){
-
-    const table =
-      new THREE.Mesh(
-        new THREE.CylinderGeometry(
-          .65,
-          .65,
-          .08,
-          32
-        ),
-        new THREE.MeshStandardMaterial({
-          color:0x101010,
-          metalness:.7
-        })
-      );
-
-    table.position.set(
-      8+i*3,
-      .75,
-      4
-    );
-
-    scene.add(table);
-
-  }
-
-}
 
 function createColumns(){
 
@@ -3469,17 +3250,10 @@ function animate(){
     const rz=
       -Math.sin(yaw);
 
-    camera.position.x+=
-      (
-        fx*forward+
-        rx*side
-      )*speed;
-
-    camera.position.z+=
-      (
-        fz*forward+
-        rz*side
-      )*speed;
+    tryMovePlayer(
+      (fx*forward+rx*side)*speed,
+      (fz*forward+rz*side)*speed
+    );
 
   }
 
