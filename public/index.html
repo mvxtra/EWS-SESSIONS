@@ -401,65 +401,6 @@ input:focus{
   color:#000;
 }
 
-#screen-menu{
-  position:fixed;
-  top:148px;
-  left:50%;
-  transform:translateX(-50%);
-  z-index:40;
-  width:min(560px,calc(100vw - 30px));
-  padding:16px;
-  background:rgba(4,4,4,.96);
-  border:1px solid #444;
-  box-shadow:0 20px 70px rgba(0,0,0,.7);
-  display:none;
-  pointer-events:auto;
-}
-
-#screen-menu.open{display:block;}
-
-#screen-menu-title{
-  font-size:10px;
-  letter-spacing:3px;
-  color:#fff;
-  margin-bottom:10px;
-}
-
-#screen-menu-row{
-  display:flex;
-  gap:7px;
-}
-
-#screen-url{
-  flex:1;
-  margin:0;
-  height:38px;
-}
-
-.screen-btn{
-  height:38px;
-  padding:0 13px;
-  border:1px solid #444;
-  background:#111;
-  color:#fff;
-  cursor:pointer;
-  font-size:10px;
-  letter-spacing:1px;
-}
-
-.screen-btn:hover{
-  background:#fff;
-  color:#000;
-}
-
-#screen-status{
-  margin-top:9px;
-  color:#777;
-  font-size:10px;
-  line-height:1.4;
-}
-
-
 @media(max-width:700px){
   #screen-menu-row{flex-wrap:wrap;}
   #screen-url{flex-basis:100%;}
@@ -820,21 +761,8 @@ input:focus{
   <!-- Hidden compatibility control: audio UI is intentionally not shown. -->
   <button id="audio-control" type="button" aria-hidden="true" tabindex="-1" style="display:none"></button>
 
-  <button id="screen-control" type="button" onclick="toggleScreenMenu()">SCREEN</button>
+  <button id="screen-control" type="button" onclick="return false">SCREEN</button>
 
-  <div id="screen-menu">
-    <div id="screen-menu-title">EWS SESSIONS / CLUB SCREEN</div>
-    <div id="screen-menu-row">
-      <input
-        id="screen-url"
-        type="url"
-        placeholder="YouTube / Twitch / website URL"
-        autocomplete="off"
-      >
-      <button class="screen-btn" onclick="loadClubScreen()">LOAD</button>
-      <button class="screen-btn" onclick="clearClubScreen()">CLEAR</button>
-    </div>
-    <div id="screen-status">YouTube и Twitch открываются со звуком через официальный embed. Для звука браузер может потребовать первый клик.</div>
   </div>
 
   <button id="emotes-control" onclick="toggleEmotesMenu()">EMOTES</button>
