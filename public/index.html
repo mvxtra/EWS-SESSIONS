@@ -440,6 +440,65 @@ function buildClubDetails() {
   screenFrame.position.set(0,5.35,-15.1);
   scene.add(screenFrame);
 
+  // Symmetric speaker stacks beside the screen.
+  const speakerMaterial=new THREE.MeshStandardMaterial({
+    color:0x101010,
+    roughness:.52,
+    metalness:.25
+  });
+
+  const grilleMaterial=new THREE.MeshStandardMaterial({
+    color:0x252525,
+    roughness:.72,
+    metalness:.1
+  });
+
+  function addSpeakerStack(x){
+    const stack=new THREE.Group();
+
+    const cabinet=new THREE.Mesh(
+      new THREE.BoxGeometry(1.25,3.9,.75),
+      speakerMaterial
+    );
+    cabinet.position.y=3.0;
+    cabinet.castShadow=true;
+    cabinet.receiveShadow=true;
+    stack.add(cabinet);
+
+    for(let i=0;i<3;i++){
+      const cone=new THREE.Mesh(
+        new THREE.CylinderGeometry(.26,.26,.10,24),
+        grilleMaterial
+      );
+      cone.rotation.x=Math.PI/2;
+      cone.position.set(0,1.85+i*.95,.39);
+      stack.add(cone);
+    }
+
+    const sub=new THREE.Mesh(
+      new THREE.BoxGeometry(1.65,1.55,1.0),
+      speakerMaterial
+    );
+    sub.position.set(0,.78,.02);
+    sub.castShadow=true;
+    sub.receiveShadow=true;
+    stack.add(sub);
+
+    const subGrille=new THREE.Mesh(
+      new THREE.CircleGeometry(.46,32),
+      grilleMaterial
+    );
+    subGrille.rotation.y=Math.PI;
+    subGrille.position.set(0,.78,.52);
+    stack.add(subGrille);
+
+    stack.position.set(x,0,-14.45);
+    scene.add(stack);
+  }
+
+  addSpeakerStack(-8.55);
+  addSpeakerStack(8.55);
+
 }
 
 function resize() {
