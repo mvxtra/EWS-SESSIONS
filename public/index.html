@@ -401,6 +401,54 @@ input:focus{
   color:#000;
 }
 
+#screen-menu{
+  position:fixed;
+  top:58px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:40;
+  width:min(520px,calc(100vw - 30px));
+  padding:10px;
+  background:rgba(5,5,5,.96);
+  border:1px solid #444;
+  box-shadow:0 18px 60px rgba(0,0,0,.75);
+  display:none;
+  pointer-events:auto;
+}
+#screen-menu.open{display:block;}
+#screen-menu-row{display:flex;gap:6px;align-items:center;}
+#screen-url{
+  flex:1;
+  min-width:0;
+  height:32px;
+  box-sizing:border-box;
+  padding:0 10px;
+  background:#090909;
+  border:1px solid #333;
+  color:#fff;
+  outline:none;
+  font:11px monospace;
+}
+#screen-menu button{
+  height:32px;
+  padding:0 12px;
+  border:1px solid #444;
+  background:#111;
+  color:#fff;
+  cursor:pointer;
+  font-size:10px;
+  font-weight:bold;
+  letter-spacing:1px;
+}
+#screen-menu button:hover{background:#fff;color:#000;}
+#screen-status{
+  min-height:14px;
+  margin-top:7px;
+  color:#777;
+  font:9px monospace;
+  letter-spacing:1px;
+}
+
 @media(max-width:700px){
   #screen-menu-row{flex-wrap:wrap;}
   #screen-url{flex-basis:100%;}
@@ -757,7 +805,18 @@ input:focus{
   <!-- Hidden compatibility control: audio UI is intentionally not shown. -->
   <button id="audio-control" type="button" aria-hidden="true" tabindex="-1" style="display:none"></button>
 
-  <button id="screen-control" type="button" onclick="return false">SCREEN</button><div id="chat">
+  <button id="screen-control" type="button" onclick="toggleScreenMenu()">SCREEN</button>
+
+  <div id="screen-menu">
+    <div id="screen-menu-row">
+      <input id="screen-url" type="text" placeholder="YouTube / Twitch / https:// site">
+      <button type="button" onclick="loadClubScreen()">LOAD</button>
+      <button type="button" onclick="clearClubScreen()">CLEAR</button>
+    </div>
+    <div id="screen-status"></div>
+  </div>
+
+  <div id="chat">
 
     <div id="chat-title">
       EWS SESSIONS / CHAT
