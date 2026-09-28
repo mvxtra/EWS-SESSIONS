@@ -798,7 +798,6 @@ input:focus{
 <div id="css3d-container">
   <div id="css3d-screen">
     <iframe id="media-screen-frame" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-    <video id="media-screen-video" playsinline autoplay muted controls style="display:none;width:100%;height:100%;object-fit:cover;background:#000;"></video>
   </div>
 </div>
 
@@ -958,8 +957,6 @@ let mode='login';
 
 let socket=null;
 let currentUser=null;
-let sessionStarted=false;
-let presenceHeartbeat=null;
 
 let scene;
 let camera;
@@ -1030,7 +1027,6 @@ let audioSource=null;
 let audioStarted=false;
 
 let hls=null;
-let screenHls=null;
 
 let screenTexture;
 let screenCanvas;
@@ -1038,8 +1034,6 @@ let screenCtx;
 let screenMesh;
 let screenMediaActive=false;
 let screenMediaUrl='';
-let lastLocalClubScreenState={active:false,src:'',url:'',name:'',owner:'mvxtra',version:0};
-let clubScreenVersion=0;
 let onlineUserList=[];
 let remotePlayers=new Map();
 let lastPlayerBroadcast=0;
@@ -1095,17 +1089,19 @@ function insideStage(x,z){
          z < -10.9-PLAYER_RADIUS;
 }
 
-function addSofaColliders(x,z,mirrorX=false,mirrorZ=false){
-  // Collision follows the actual mirrored L-shaped footprint.
-  const minX=x+(mirrorX ? -5.54 : -.82);
-  const maxX=x+(mirrorX ? .82 : 5.54);
-  const minZ=z+(mirrorZ ? -.78 : -5.03);
-  const maxZ=z+(mirrorZ ? 5.03 : .82);
-
-  collisionBoxes.push(
-    {minX,maxX,minZ:z+(mirrorZ ? -.78 : -.82),maxZ:z+(mirrorZ ? .82 : .82),type:'sofa'},
-    {minX:x+(mirrorX ? -.82 : -.82),maxX:x+(mirrorX ? .82 : .82),minZ,maxZ,type:'sofa'}
-  );
+function addSofaColliders(x,z,rotationY){
+  // Match the visible L-shaped sofa footprint so the player cannot walk through it.
+  if(Math.abs(Math.sin(rotationY)) < .5){
+    collisionBoxes.push(
+      {minX:x-.10,maxX:x+5.50,minZ:z-.82,maxZ:z+.82,type:'sofa'},
+      {minX:x-.82,maxX:x+.82,minZ:z-3.95,maxZ:z+.78,type:'sofa'}
+    );
+  }else{
+    collisionBoxes.push(
+      {minX:x-5.50,maxX:x+.10,minZ:z-.82,maxZ:z+.82,type:'sofa'},
+      {minX:x-.82,maxX:x+.82,minZ:z-.78,maxZ:z+3.95,type:'sofa'}
+    );
+  }
 }
 
 function tryMovePlayer(dx,dz){
@@ -1116,127 +1112,102 @@ function tryMovePlayer(dx,dz){
   if(!blockedPosition(camera.position.x,nz)) camera.position.z=nz;
 }
 
-function createCornerSofa(x,z,label,mirrorX=false,mirrorZ=false){
+function createCornerSofa(x,z,rotationY,label){
   const group=new THREE.Group();
   group.position.set(x,0,z);
-  group.scale.set(mirrorX?-1:1,1,mirrorZ?-1:1);
+  group.rotation.y=rotationY;
 
   const frameMat=new THREE.MeshStandardMaterial({color:0x070707,roughness:.76,metalness:.10});
   const leatherMat=new THREE.MeshStandardMaterial({color:0x111111,roughness:.46,metalness:.08});
   const cushionMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:.60,metalness:.03});
 
-  const baseA=new THREE.Mesh(new THREE.BoxGeometry(6.8,.58,1.55),frameMat);
-  baseA.position.set(2.35,.43,0);
-  const baseB=new THREE.Mesh(new THREE.BoxGeometry(1.55,.58,5.8),frameMat);
-  baseB.position.set(0,0,-2.13);
+  // True L-shaped corner sofa: one long section + one perpendicular return.
+  const baseA=new THREE.Mesh(new THREE.BoxGeometry(5.4,.58,1.38),frameMat);
+  baseA.position.set(2.15,.43,0);
+  baseA.castShadow=true; baseA.receiveShadow=true; group.add(baseA);
 
-  const seatA=new THREE.Mesh(new THREE.BoxGeometry(6.35,.34,1.25),cushionMat);
-  seatA.position.set(2.35,.84,0);
-  const seatB=new THREE.Mesh(new THREE.BoxGeometry(1.25,.34,5.35),cushionMat);
-  seatB.position.set(0,.84,-2.13);
+  const baseB=new THREE.Mesh(new THREE.BoxGeometry(1.38,.58,4.55),frameMat);
+  baseB.position.set(0,.43,-1.58);
+  baseB.castShadow=true; baseB.receiveShadow=true; group.add(baseB);
 
-  [baseA,baseB,seatA,seatB].forEach(m=>{
-    m.castShadow=true;
-    m.receiveShadow=true;
-    group.add(m);
+  const seatA=new THREE.Mesh(new THREE.BoxGeometry(5.05,.34,1.12),cushionMat);
+  seatA.position.set(2.15,.84,0);
+  seatA.castShadow=true; seatA.receiveShadow=true; group.add(seatA);
+
+  const seatB=new THREE.Mesh(new THREE.BoxGeometry(1.12,.34,4.15),cushionMat);
+  seatB.position.set(0,.84,-1.58);
+  seatB.castShadow=true; seatB.receiveShadow=true; group.add(seatB);
+
+  // Two perpendicular upholstered backrests make the corner shape unmistakable.
+  const backA=new THREE.Mesh(new THREE.BoxGeometry(5.4,1.62,.42),leatherMat);
+  backA.position.set(2.15,1.43,.50);
+  backA.castShadow=true; backA.receiveShadow=true; group.add(backA);
+
+  const backB=new THREE.Mesh(new THREE.BoxGeometry(.42,1.62,4.55),leatherMat);
+  backB.position.set(-.50,1.43,-1.58);
+  backB.castShadow=true; backB.receiveShadow=true; group.add(backB);
+
+  // Soft cushions.
+  [0.45,2.15,3.85].forEach(px=>{
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(1.35,.30,.88),leatherMat);
+    pillow.position.set(px,.99,-.04);
+    pillow.castShadow=true; pillow.receiveShadow=true; group.add(pillow);
   });
-
-  const backA=new THREE.Mesh(new THREE.BoxGeometry(6.8,1.62,.42),leatherMat);
-  backA.position.set(2.35,1.43,.57);
-  const backB=new THREE.Mesh(new THREE.BoxGeometry(.42,1.62,5.8),leatherMat);
-  backB.position.set(-.57,1.43,-2.13);
-  [backA,backB].forEach(m=>{
-    m.castShadow=true;
-    m.receiveShadow=true;
-    group.add(m);
+  [-.15,-1.55,-2.95].forEach(pz=>{
+    const pillow=new THREE.Mesh(new THREE.BoxGeometry(.88,.30,1.15),leatherMat);
+    pillow.position.set(.03,.99,pz);
+    pillow.castShadow=true; pillow.receiveShadow=true; group.add(pillow);
   });
-
-  // More individual cushions = more believable usable seats.
-  for(let i=0;i<8;i++){
-    const pillow=new THREE.Mesh(new THREE.BoxGeometry(.82,.30,1.0),leatherMat);
-    pillow.position.set(-.35+i*.78,.99,-.03);
-    pillow.castShadow=true;
-    pillow.receiveShadow=true;
-    group.add(pillow);
-  }
-
-  for(let i=0;i<6;i++){
-    const pillow=new THREE.Mesh(new THREE.BoxGeometry(.98,.30,.82),leatherMat);
-    pillow.position.set(.02,.99,-4.15+i*.88);
-    pillow.castShadow=true;
-    pillow.receiveShadow=true;
-    group.add(pillow);
-  }
 
   const armMat=new THREE.MeshStandardMaterial({color:0x0c0c0c,roughness:.50,metalness:.06});
-  const armA=new THREE.Mesh(new THREE.BoxGeometry(.42,1.0,1.55),armMat);
-  armA.position.set(5.54,1.0,0);
-  const armB=new THREE.Mesh(new THREE.BoxGeometry(1.55,1.0,.42),armMat);
-  armB.position.set(0,1.0,-5.03);
-  [armA,armB].forEach(m=>{
-    m.castShadow=true;
-    m.receiveShadow=true;
-    group.add(m);
-  });
+  const armA=new THREE.Mesh(new THREE.BoxGeometry(.42,1.0,1.38),armMat);
+  armA.position.set(4.85,1.0,0); armA.castShadow=true; armA.receiveShadow=true; group.add(armA);
+  const armB=new THREE.Mesh(new THREE.BoxGeometry(1.38,1.0,.42),armMat);
+  armB.position.set(0,1.0,-3.85); armB.castShadow=true; armB.receiveShadow=true; group.add(armB);
 
   const glow=new THREE.PointLight(0xffe7d0,.12,4.2);
-  glow.position.set(1.2,1.2,-1);
+  glow.position.set(1.2,1.2,-.8);
   group.add(glow);
 
   scene.add(group);
-  addSofaColliders(x,z,mirrorX,mirrorZ);
+  addSofaColliders(x,z,rotationY);
 
-  // Seat positions are transformed with the same mirror as the visible sofa.
-  const addSeat=(sx,sz)=>{
-    const tx=sx*(mirrorX?-1:1);
-    const tz=sz*(mirrorZ?-1:1);
-    const sxWorld=x+tx;
-    const szWorld=z+tz;
-
-    // Every seat looks toward the centre of the club for a full-room view.
-    const seatYaw=Math.atan2(sxWorld,szWorld);
-
-    sofaSeats.push({
-      group,
-      x:sxWorld,
-      y:2.12,
-      z:szWorld,
-      yaw:seatYaw,
-      label:label||'CORNER SOFA'
-    });
-  };
-
-  [-2.80,-2.00,-1.20,-.40,.40,1.20,2.00,2.80].forEach(v=>addSeat(v,-.92));
-  [-4.15,-3.27,-2.39,-1.51,-.63,.25].forEach(v=>addSeat(-.92,v));
+  // Main sitting point on the long section, facing toward the dancefloor.
+  const fx=-Math.sin(rotationY), fz=-Math.cos(rotationY);
+  sofaSeats.push({
+    group,
+    x:x+fx*1.55,
+    y:1.16,
+    z:z+fz*1.55,
+    yaw:rotationY,
+    label:label||'CORNER SOFA'
+  });
 }
 
 function createLoungeSofas(){
-  // Each sectional is mirrored into its actual room corner.
-  createCornerSofa(-15.55,13.55,'LEFT FRONT CORNER',false,false);
-  createCornerSofa(15.55,13.55,'RIGHT FRONT CORNER',true,false);
-  createCornerSofa(-15.55,-13.55,'LEFT REAR CORNER',false,true);
-  createCornerSofa(15.55,-13.55,'RIGHT REAR CORNER',true,true);
+  // Four proper L-shaped sofas, each tight into a real room corner.
+  // They stay outside the dancefloor and leave a clear route around the room.
+  createCornerSofa(-16.9,13.6,0,'LEFT FRONT CORNER');
+  createCornerSofa(16.9,13.6,Math.PI,'RIGHT FRONT CORNER');
+  createCornerSofa(-16.9,-13.6,0,'LEFT REAR CORNER');
+  createCornerSofa(16.9,-13.6,Math.PI,'RIGHT REAR CORNER');
 }
 
 function nearestSofaSeat(){
   if(!camera || !sofaSeats.length) return null;
-  let best=null;
-  let bestDist=Infinity;
+  let best=null, bestDist=Infinity;
   for(const s of sofaSeats){
     const d=Math.hypot(camera.position.x-s.x,camera.position.z-s.z);
-    if(d<bestDist){
-      best=s;
-      bestDist=d;
-    }
+    if(d<bestDist){best=s;bestDist=d;}
   }
-  return bestDist<1.55 ? best : null;
+  return bestDist<1.65 ? best : null;
 }
 
 function updateSofaPrompt(){
   const el=document.getElementById('sofa-prompt');
-  if(!el||!camera) return;
+  if(!el || !camera) return;
   const near=!!nearestSofaSeat();
-  const show=near&&!seated&&!chatMode;
+  const show=near && !seated && !chatMode;
   if(show!==sofaPromptVisible){
     sofaPromptVisible=show;
     el.classList.toggle('show',show);
@@ -1245,60 +1216,35 @@ function updateSofaPrompt(){
 
 function toggleSofaSeat(){
   if(chatMode) return;
-
   if(seated){
-    const oldSeat=seatedSeat;
     seated=false;
     seatedSeat=null;
-    keys={};
-    jumpVelocity=0;
     isGrounded=true;
-
-    // Exit toward the club centre, not backwards into the backrest.
-    const forwardX=-Math.sin(oldSeat.yaw);
-    const forwardZ=-Math.cos(oldSeat.yaw);
-    const distances=[1.35,1.65,1.95,2.25];
-    let placed=false;
-
-    for(const d of distances){
-      const tx=oldSeat.x+forwardX*d;
-      const tz=oldSeat.z+forwardZ*d;
-      if(!blockedPosition(tx,tz)){
-        camera.position.x=tx;
-        camera.position.z=tz;
-        placed=true;
-        break;
-      }
-    }
-
-    if(!placed){
-      camera.position.x=oldSeat.x;
-      camera.position.z=oldSeat.z;
-    }
-
     playerY=GROUND_Y;
-    camera.position.y=GROUND_Y;
+    keys={};
     return;
   }
-
   const seat=nearestSofaSeat();
   if(!seat) return;
-
   seated=true;
   seatedSeat=seat;
   keys={};
   jumpVelocity=0;
   isGrounded=true;
-
-  // Seat height is above the cushion, so the camera/head never sinks into the sofa.
   camera.position.set(seat.x,seat.y,seat.z);
   yaw=seat.yaw;
-  // Slight downward angle gives a wider view of the club without looking into the floor.
-  pitch=.10;
+  pitch=0;
 }
 
 function createEWSLogo(){
-  // Disabled: keep the far wall clear for the shared SCREEN.
+  const loader=new THREE.TextureLoader();
+  loader.load('/assets/logo.png',texture=>{
+    texture.encoding=THREE.sRGBEncoding;
+    const mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide});
+    const logo=new THREE.Mesh(new THREE.PlaneGeometry(4.6,4.6),mat);
+    logo.position.set(0,3.65,-16.25);
+    scene.add(logo);
+  },undefined,err=>console.warn('[EWS LOGO]',err));
 }
 
 /* =========================================================
@@ -1441,8 +1387,6 @@ async function doLogin(){
 
 function startSession(username){
 
-  if(sessionStarted) return;
-  sessionStarted=true;
   currentUser=username;
 
   document.getElementById(
@@ -1455,106 +1399,71 @@ function startSession(username){
 
   clubScreenHost='mvxtra';
 
-  // SCREEN is a host-only control. Guests can receive and watch the
-  // shared screen, but they must not see or operate the selection UI.
-  const host=String(currentUser||'').trim().toLowerCase()==='mvxtra';
-  const screenControl=document.getElementById('screen-control');
-  const screenMenu=document.getElementById('screen-menu');
-  if(screenControl) screenControl.style.display=host?'':'none';
-  if(screenMenu){
-    screenMenu.classList.remove('open');
-    screenMenu.style.display=host?'':'none';
-  }
-
   init3D();
 
-  socket=io({
-    transports:['polling','websocket'],
-    upgrade:true,
-    reconnection:true,
-    reconnectionAttempts:Infinity,
-    reconnectionDelay:500,
-    reconnectionDelayMax:4000,
-    timeout:20000
-  });
-
-  socket.on('disconnect',reason=>{
-    console.warn('[EWS SOCKET] disconnected:',reason);
-  });
-  socket.io.on('upgrade',transport=>{
-    console.log('[EWS SOCKET] transport upgraded:',transport.name);
-  });
-  socket.on('connect_error',err=>{
-    console.warn('[EWS SOCKET] connect_error:',err && err.message ? err.message : err);
-  });
-
-  // Register the shared SCREEN listener immediately, before the first
-  // connection/join can deliver the current club-screen-state.
-  socket.on('club-screen-state', state=>{
-    console.log('[EWS SCREEN] received', state);
-    applyRemoteClubScreen(state);
-  });
-
-  // Authoritative presence channel: one packet carries both ONLINE and
-  // the remote players, so neither view can get out of sync.
-  function renderOnlineUsers(list){
-    let users=Array.isArray(list)?list.slice():[];
-    if(currentUser){
-      const exists=users.some(user=>{
-        const name=typeof user==='string' ? user : user && user.username;
-        return String(name||'').trim().toLowerCase()===String(currentUser).trim().toLowerCase();
-      });
-      if(!exists) users.unshift({username:currentUser});
-    }
-    onlineUserList=users;
-    const ul=document.getElementById('online-list');
-    if(!ul) return;
-    ul.innerHTML='';
-    users.forEach(user=>{
-      const name=typeof user==='string' ? user : (user && user.username)||'';
-      if(!name) return;
-      const li=document.createElement('li');
-      li.textContent=String(name).toLowerCase()===String(currentUser||'').toLowerCase()
-        ? name+' (YOU)'
-        : name;
-      ul.appendChild(li);
-    });
-  }
-
-  socket.on('presence-state', state=>{
-    // ONLINE may still arrive through Socket.IO, but HTTP heartbeat is the
-    // sole authority for remote player objects to prevent duplicate avatars.
-    if(!state) return;
-    renderOnlineUsers(Array.isArray(state.online)?state.online:[]);
-  });
+  socket=io();
 
   socket.on('connect',function(){
-    console.log('[EWS SOCKET] connected:',socket.id,'transport:',socket.io.engine.transport.name);
 
-    socket.emit('join',{
-      username:currentUser,
-      language:document.getElementById('lang').value,
-      avatar:avatarChoice
-    });
+    socket.emit(
+      'join',
+      {
+        username: currentUser,
+        language:
+          document.getElementById('lang').value,
+        avatar: avatarChoice
+      }
+    );
 
-    // One authoritative handshake after every initial connection or reconnect.
-    setTimeout(()=>{
-      if(!socket || !socket.connected) return;
-      socket.emit('request-presence');
-      socket.emit('request-club-screen');
-    },150);
-
-    setTimeout(()=>{
-      if(!socket || !socket.connected) return;
-      socket.emit('request-presence');
-      socket.emit('request-club-screen');
-    },1000);
   });
 
-  socket.on('online-users',list=>{
-    renderOnlineUsers(list);
-    clubScreenHost='mvxtra';
-  });
+  socket.on(
+    'online-users',
+    list=>{
+
+      // The server is authoritative. If the first broadcast races with the
+      // join event, keep the connected user visible until the next snapshot.
+      let users=Array.isArray(list)?list.slice():[];
+
+      if(socket && socket.connected && currentUser){
+        const alreadyThere=users.some(user=>{
+          const name=typeof user==='string' ? user : user && user.username;
+          return String(name||'').toLowerCase()===String(currentUser).toLowerCase();
+        });
+        if(!alreadyThere){
+          users.unshift({username:currentUser,language:document.getElementById('lang')?.value||'en'});
+        }
+      }
+
+      onlineUserList=users;
+
+      // Screen control belongs ONLY to mvxtra. Never use the first online user as host.
+      clubScreenHost='mvxtra';
+
+      const ul=document.getElementById('online-list');
+      if(!ul) return;
+      ul.innerHTML='';
+
+      users.forEach(user=>{
+
+        const li=document.createElement('li');
+
+        const name=typeof user==='string'
+          ? user
+          : (user && user.username) || '';
+
+        if(!name) return;
+
+        li.textContent=name===currentUser
+          ? name + ' (YOU)'
+          : name;
+
+        ul.appendChild(li);
+
+      });
+
+    }
+  );
 
   socket.on(
     'chat-message',
@@ -1613,13 +1522,58 @@ function startSession(username){
     }
   );
 
-  // =====================================================
-  // MULTIPLAYER — HTTP heartbeat is authoritative
-  // =====================================================
-  // Socket.IO remains responsible for chat and SCREEN, but player presence
-  // comes only from /api/presence so reconnects and proxy upgrades cannot
-  // create duplicate/stale remote players.
+  socket.on('club-screen-state', state=>{
+    applyRemoteClubScreen(state);
+  });
 
+  // =====================================================
+  // MULTIPLAYER — initial snapshot + live updates
+  // =====================================================
+
+  socket.on('players-state', list=>{
+    if(!Array.isArray(list)) return;
+
+    // Server sends everyone except the current socket.
+    // Rebuild only the missing players so existing objects keep moving smoothly.
+    const alive = new Set();
+
+    list.forEach(data=>{
+      if(!data || !data.id || data.id===socket.id) return;
+      alive.add(data.id);
+      updateRemotePlayer(data);
+    });
+
+    // Remove players that are no longer present in the server snapshot.
+    Array.from(remotePlayers.keys()).forEach(id=>{
+      if(!alive.has(id)) removeRemotePlayer(id);
+    });
+  });
+
+  socket.on('player-joined', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
+  socket.on('player-state', data=>{
+    if(!data || !data.id || data.id===socket.id) return;
+    updateRemotePlayer(data);
+  });
+
+  socket.on('player-left', id=>{
+    removeRemotePlayer(id);
+  });
+
+  socket.on('player-removed', id=>{
+    removeRemotePlayer(id);
+  });
+
+  // Ask the server for a fresh snapshot after every connection.
+  socket.on('joined', ()=>{
+    socket.emit('request-players');
+    socket.emit('request-club-screen');
+  });
+
+}
 
 /* =========================================================
    CHAT
@@ -1693,7 +1647,6 @@ document
 
     }
   );
-
 
 /* =========================================================
    THREE.JS
@@ -1842,7 +1795,7 @@ function init3D(){
   createWalls();
   createDanceFloor();
   createMainScreen();
-  // Logo disabled.
+  createEWSLogo();
   createStage();
   // Old architectural columns removed.
   createEntrance();
@@ -2131,50 +2084,11 @@ function createMainScreen(){
   screenMesh.position.set(0,3.65,-16.58);
   scene.add(screenMesh);
 
-  // WHITE NEON SCREEN FRAME — bright core + soft atmospheric glow.
-  const borderSegments=[
-    [14.2,.045,.045,0,6.68,-16.57],
-    [14.2,.045,.045,0,.62,-16.57],
-    [.045,6.1,.045,-7.08,3.65,-16.57],
-    [.045,6.1,.045,7.08,3.65,-16.57]
-  ];
-
-  const neonCoreMat=new THREE.MeshBasicMaterial({
-    color:0xffffff,
-    transparent:true,
-    opacity:1,
-    blending:THREE.AdditiveBlending,
-    depthWrite:false
-  });
-
-  const neonGlowMat=new THREE.MeshBasicMaterial({
-    color:0xffffff,
-    transparent:true,
-    opacity:.22,
-    blending:THREE.AdditiveBlending,
-    depthWrite:false
-  });
-
-  borderSegments.forEach(a=>{
-    const glowScale=3.2;
-    const glow=new THREE.Mesh(
-      new THREE.BoxGeometry(
-        a[0]===14.2 ? a[0] : a[0]*glowScale,
-        a[1]===.045 ? a[1]*glowScale : a[1],
-        .09
-      ),
-      neonGlowMat
-    );
-    glow.position.set(a[3],a[4],a[5]-.01);
-    scene.add(glow);
-
-    const core=new THREE.Mesh(
-      new THREE.BoxGeometry(a[0],a[1],a[2]),
-      neonCoreMat
-    );
-    core.position.set(a[3],a[4],a[5]);
-    scene.add(core);
-    neonObjects.push(core,glow);
+  const borderMat=new THREE.MeshBasicMaterial({color:0xffffff});
+  [[14.2,.035,.035,0,6.68,-16.57],[14.2,.035,.035,0,.62,-16.57],[.035,6.1,.035,-7.08,3.65,-16.57],[.035,6.1,.035,7.08,3.65,-16.57]].forEach(a=>{
+    const m=new THREE.Mesh(new THREE.BoxGeometry(a[0],a[1],a[2]),borderMat);
+    m.position.set(a[3],a[4],a[5]);
+    scene.add(m);
   });
 }
 
@@ -3572,10 +3486,8 @@ function toggleChat(){
 ========================================================= */
 
 function toggleScreenMenu(){
-  if(!isClubHost()) return;
   const menu=document.getElementById('screen-menu');
   if(!menu) return;
-  menu.style.display='';
   menu.classList.toggle('open');
   if(menu.classList.contains('open')){
     const input=document.getElementById('screen-url');
@@ -3641,83 +3553,21 @@ function isClubHost(){
   return String(currentUser||'').trim().toLowerCase()==='mvxtra';
 }
 
-function isHlsUrl(url){
-  const value=String(url||'').toLowerCase();
-  return value.includes('.m3u8') || value.includes('/hls/');
-}
-
-function stopScreenHls(){
-  try{ if(screenHls){ screenHls.destroy(); } }catch(e){}
-  screenHls=null;
-  const video=document.getElementById('media-screen-video');
-  if(video){
-    try{ video.pause(); }catch(e){}
-    video.removeAttribute('src');
-    video.load();
-  }
-}
-
-function playScreenMedia(src){
-  const frame=document.getElementById('media-screen-frame');
-  const video=document.getElementById('media-screen-video');
-  if(!frame || !video) return;
-
-  stopScreenHls();
-
-  if(isHlsUrl(src)){
-    frame.style.display='none';
-    video.style.display='block';
-    video.muted=true;
-
-    if(window.Hls && Hls.isSupported()){
-      screenHls=new Hls({lowLatencyMode:true});
-      screenHls.loadSource(src);
-      screenHls.attachMedia(video);
-      screenHls.on(Hls.Events.MANIFEST_PARSED,()=>{
-        video.play().catch(()=>{});
-      });
-    }else if(video.canPlayType('application/vnd.apple.mpegurl')){
-      video.src=src;
-      video.play().catch(()=>{});
-    }else{
-      video.style.display='none';
-      frame.style.display='block';
-      frame.src=src;
-    }
-  }else{
-    video.style.display='none';
-    frame.style.display='block';
-    frame.src=src;
-  }
-}
-
 function loadClubScreen(){
   if(!isClubHost()){ setScreenStatus('Только главный пользователь клуба может включать экран.'); return; }
-  const input=document.getElementById('screen-url'); const panel=document.getElementById('css3d-screen');
-  if(!input||!panel)return; const result=normalizeClubScreenUrl(input.value);
+  const input=document.getElementById('screen-url'); const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
+  if(!input||!frame||!panel)return; const result=normalizeClubScreenUrl(input.value);
   if(!result){setScreenStatus('Неверная ссылка. Вставь YouTube, Twitch или обычный https:// сайт.');return;}
-  const rawUrl=input.value.trim();
-  playScreenMedia(result.src);
-  panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
-  setScreenStatus(result.name+' LOADED — экран закреплён.');
-  clubScreenVersion=Math.max(clubScreenVersion+1,Date.now());
-  lastLocalClubScreenState={src:result.src,url:rawUrl,name:result.name,active:true,owner:'mvxtra',version:clubScreenVersion};
-  if(socket && socket.connected) socket.emit('club-screen-state',lastLocalClubScreenState);
+  frame.src=result.src; panel.classList.add('active'); screenMediaActive=true; screenMediaUrl=result.src;
+  setScreenStatus(result.name+' LOADED — экран закреплён. Нажми ESC, чтобы выйти из управления камерой и кликать по плееру.');
+  if(socket)socket.emit('club-screen-state',{src:result.src,url:input.value.trim(),name:result.name,active:true,owner:currentUser});
   const menu=document.getElementById('screen-menu'); if(menu)menu.classList.remove('open');
 }
 
 function clearClubScreen(){
-  if(!isClubHost())return;
-  const frame=document.getElementById('media-screen-frame');
-  const panel=document.getElementById('css3d-screen');
-  stopScreenHls();
-  if(frame)frame.src='about:blank';
-  if(panel)panel.classList.remove('active');
-  screenMediaActive=false; screenMediaUrl='';
-  clubScreenVersion=Math.max(clubScreenVersion+1,Date.now());
-  lastLocalClubScreenState={active:false,src:'',url:'',name:'',owner:'mvxtra',version:clubScreenVersion};
-  if(socket && socket.connected) socket.emit('club-screen-state',lastLocalClubScreenState);
-  setScreenStatus('Экран очищен.');
+  if(!isClubHost())return; const frame=document.getElementById('media-screen-frame'); const panel=document.getElementById('css3d-screen');
+  if(frame)frame.src='about:blank'; if(panel)panel.classList.remove('active'); screenMediaActive=false; screenMediaUrl='';
+  if(socket)socket.emit('club-screen-state',{active:false,owner:currentUser}); setScreenStatus('Экран очищен. Можно загрузить YouTube, Twitch или сайт.');
 }
 
 // When the user wants to click the embedded player, release pointer lock first.
@@ -3743,22 +3593,13 @@ document.addEventListener('mousedown',function(e){
 ========================================================= */
 function applyRemoteClubScreen(state){
   const frame=document.getElementById('media-screen-frame');
-  const video=document.getElementById('media-screen-video');
   const panel=document.getElementById('css3d-screen');
-  if(!frame || !video || !panel) return;
+  if(!frame || !panel) return;
 
   state=state || {};
 
-  const incomingVersion=Number(state.version)||0;
-  if(incomingVersion && incomingVersion < clubScreenVersion) return;
-  if(incomingVersion) clubScreenVersion=incomingVersion;
-
   if(state.active !== true || !state.src){
-    if(screenMediaActive && !incomingVersion) return;
-    stopScreenHls();
     frame.src='about:blank';
-    frame.style.display='block';
-    video.style.display='none';
     panel.classList.remove('active');
     screenMediaActive=false;
     screenMediaUrl='';
@@ -3780,7 +3621,7 @@ function applyRemoteClubScreen(state){
 
   // Do not reload the iframe every time a duplicate Socket.IO event arrives.
   if(screenMediaUrl !== src){
-    playScreenMedia(src);
+    frame.src=src;
     screenMediaUrl=src;
   }
 
@@ -4485,8 +4326,7 @@ function createRemotePlayer(data){
     baseY:y
   };
   remotePlayers.set(data.id,p);
-  // TEST MODE: keep remote players on the guaranteed-visible placeholder.
-  // This isolates multiplayer visibility from GLTF/avatar loading.
+  loadRemoteAvatar(p,p.avatar);
 }
 function updateRemotePlayer(data){
   if(!data.id || data.id===socket?.id) return;
@@ -4509,9 +4349,7 @@ function updateRemotePlayer(data){
   p.moving=Boolean(data.moving) || Math.hypot(dx,dz)>.002;
   if(data.dance!==undefined) p.dance=Number(data.dance)||0;
   if(data.danceStartedAt!==undefined) p.danceStartedAt=Number(data.danceStartedAt)||0;
-  // Remote avatars stay on the guaranteed-visible placeholder while presence
-  // synchronization is being stabilized. Do not start GLTF network loads here.
-  if(data.avatar) p.avatar=data.avatar;
+  if(data.avatar && data.avatar!==p.avatar) loadRemoteAvatar(p,data.avatar);
   p.group.position.x=nx;
   p.group.position.y=ny;
   p.group.position.z=nz;
