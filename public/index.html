@@ -994,17 +994,10 @@ let playerBody;
 const collisionBoxes = [
   // Main stage
   {minX:-8.7,maxX:8.7,minZ:-14.2,maxZ:-10.9},
-  // Stage speakers
-  {minX:-8.8,maxX:-7.2,minZ:-11.6,maxZ:-10.3},
-  {minX:7.2,maxX:8.8,minZ:-11.6,maxZ:-10.3},
-  {minX:-11.8,maxX:-10.2,minZ:-11.6,maxZ:-9.7},
-  {minX:10.2,maxX:11.8,minZ:-11.6,maxZ:-9.7},
-  // Four structural columns
-  {minX:-15.7,maxX:-14.3,minZ:4.3,maxZ:5.7},
-  {minX:14.3,maxX:15.7,minZ:4.3,maxZ:5.7},
-  {minX:-15.7,maxX:-14.3,minZ:-5.7,maxZ:-4.3},
-  {minX:14.3,maxX:15.7,minZ:-5.7,maxZ:-4.3},
-  // Entrance frame at the rear
+  // Floor PA / subwoofer footprints
+  {minX:-8.9,maxX:-6.1,minZ:-11.45,maxZ:-9.65},
+  {minX:6.1,maxX:8.9,minZ:-11.45,maxZ:-9.65},
+  // Rear entrance frame
   {minX:-3.6,maxX:3.6,minZ:15.7,maxZ:16.7}
 ];
 const PLAYER_RADIUS=.38;
@@ -2023,8 +2016,7 @@ function createCeilingBeams(){
 
 function createSpeakers(){
 
-  // Professional club PA: realistic stacked speaker cabinets,
-  // angled toward the dance floor instead of simple rectangular boxes.
+  // PROFESSIONAL PA — all cabinets are physically aimed into the dance floor.
   const cabinetMat=new THREE.MeshStandardMaterial({
     color:0x090909,
     metalness:.55,
@@ -2045,57 +2037,41 @@ function createSpeakers(){
     depthWrite:false
   });
 
-  function makeCabinet(x,y,z,w,h,d,scale=1){
+  function makeCabinet(x,y,z,w,h,d,rotationY=0,scale=1){
     const group=new THREE.Group();
     group.position.set(x,y,z);
+    group.rotation.y=rotationY;
     group.scale.setScalar(scale);
 
-    const cabinet=new THREE.Mesh(
-      new THREE.BoxGeometry(w,h,d),
-      cabinetMat
-    );
+    const cabinet=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),cabinetMat);
     cabinet.castShadow=true;
     cabinet.receiveShadow=true;
     group.add(cabinet);
 
-    // Front grille.
-    const grille=new THREE.Mesh(
-      new THREE.PlaneGeometry(w*.88,h*.84),
-      grilleMat
-    );
+    // Front grille. Local front is -Z.
+    const grille=new THREE.Mesh(new THREE.PlaneGeometry(w*.88,h*.84),grilleMat);
     grille.position.z=-d/2-.006;
     group.add(grille);
 
-    // Woofer rings.
-    const wooferR= Math.min(w,h)*.22;
+    const wooferR=Math.min(w,h)*.22;
     [h*.25,-h*.23].forEach(yy=>{
       const ring=new THREE.Mesh(
         new THREE.TorusGeometry(wooferR,.035,10,32),
-        new THREE.MeshBasicMaterial({
-          color:0x555555,
-          transparent:true,
-          opacity:.8
-        })
+        new THREE.MeshBasicMaterial({color:0x555555,transparent:true,opacity:.8})
       );
       ring.position.set(0,yy,-d/2-.025);
       ring.rotation.x=Math.PI/2;
       group.add(ring);
     });
 
-    // Small horn / tweeter.
     const horn=new THREE.Mesh(
       new THREE.CylinderGeometry(.12,.18,.12,16),
-      new THREE.MeshStandardMaterial({
-        color:0x2a2a2a,
-        metalness:.3,
-        roughness:.7
-      })
+      new THREE.MeshStandardMaterial({color:0x2a2a2a,metalness:.3,roughness:.7})
     );
     horn.rotation.x=Math.PI/2;
     horn.position.set(0,h*.25,-d/2-.035);
     group.add(horn);
 
-    // Subtle cabinet edge light.
     const edge=new THREE.Mesh(
       new THREE.BoxGeometry(w*.94,.035,.035),
       rimMat
@@ -2107,30 +2083,29 @@ function createSpeakers(){
     return group;
   }
 
-  // Main PA stacks at the front corners.
-  const leftTop=makeCabinet(-7.5,3.9,-10.55,1.9,2.15,.95,1);
-  const rightTop=makeCabinet(7.5,3.9,-10.55,1.9,2.15,.95,1);
+  // Main PA: front faces point inward + toward the dance floor.
+  const leftRot=-Math.atan2(7.5,9.55);
+  const rightRot=Math.atan2(7.5,9.55);
 
-  // Subs on the floor — wider and heavier.
-  makeCabinet(-7.5,1.0,-10.55,2.35,1.7,1.15,1);
-  makeCabinet(7.5,1.0,-10.55,2.35,1.7,1.15,1);
+  makeCabinet(-7.5,3.9,-10.55,1.9,2.15,.95,leftRot,1);
+  makeCabinet(7.5,3.9,-10.55,1.9,2.15,.95,rightRot,1);
 
-  // Side-fill speakers, mounted higher and aimed inward.
-  const leftFill=makeCabinet(-13.8,3.55,-5.8,1.25,1.7,.75,.9);
-  const rightFill=makeCabinet(13.8,3.55,-5.8,1.25,1.7,.75,.9);
+  // Subs: low, wide and also aimed at the floor.
+  makeCabinet(-7.5,1.0,-10.55,2.35,1.7,1.15,leftRot,1);
+  makeCabinet(7.5,1.0,-10.55,2.35,1.7,1.15,rightRot,1);
 
-  leftFill.rotation.y=-.42;
-  rightFill.rotation.y=.42;
+  // Side-fills: diagonally aimed at the center of the dance floor.
+  const leftFillRot=-Math.atan2(13.8,6.8);
+  const rightFillRot=Math.atan2(13.8,6.8);
 
-  // Ceiling-hung compact fills.
-  const leftHang=makeCabinet(-11.8,5.0,-1.8,1.05,1.45,.65,.72);
-  const rightHang=makeCabinet(11.8,5.0,-1.8,1.05,1.45,.65,.72);
+  makeCabinet(-13.8,3.55,-5.8,1.25,1.7,.75,leftFillRot,.9);
+  makeCabinet(13.8,3.55,-5.8,1.25,1.7,.75,rightFillRot,.9);
 
-  leftHang.rotation.y=-.35;
-  rightHang.rotation.y=.35;
+  // Ceiling fills point inward toward dancers.
+  makeCabinet(-11.8,5.0,-1.8,1.05,1.45,.65,-.95,.72);
+  makeCabinet(11.8,5.0,-1.8,1.05,1.45,.65,.95,.72);
 
 }
-
 function createFog(){
   const count=220;
   const geo=new THREE.BufferGeometry();
