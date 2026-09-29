@@ -484,31 +484,27 @@ button{cursor:pointer}
 
 <script>
 (function(){
-  function callAuth(path){
-    let tries=0;
-    const run=()=>{
-      if(typeof window.auth==='function'){
-        window.auth(path);
-        return;
-      }
-      tries++;
-      if(tries<100){
-        setTimeout(run,100);
-      }else{
-        const m=document.getElementById('auth-message');
-        if(m)m.textContent='AUTH SYSTEM ERROR — PLEASE REFRESH';
-      }
-    };
-    run();
+  function bindAuth(){
+    const form=document.getElementById('auth-form');
+    const register=document.getElementById('register-button');
+    if(form){
+      form.onsubmit=function(event){
+        event.preventDefault();
+        if(typeof window.auth==='function') window.auth('/api/login');
+      };
+    }
+    if(register){
+      register.onclick=function(event){
+        event.preventDefault();
+        if(typeof window.auth==='function') window.auth('/api/register');
+      };
+    }
   }
-  window.__ewsLogin=()=>callAuth('/api/login');
-  window.__ewsRegister=()=>callAuth('/api/register');
-  function bind(){
-    const f=document.getElementById('auth-form'),r=document.getElementById('register-button');
-    if(f)f.addEventListener('submit',e=>{e.preventDefault();window.__ewsLogin();});
-    if(r)r.addEventListener('click',e=>{e.preventDefault();window.__ewsRegister();});
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',bindAuth,{once:true});
+  }else{
+    bindAuth();
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();
 </script>
 
