@@ -484,29 +484,29 @@ button{cursor:pointer}
 
 <script>
 (function(){
-  function login(){
-    if(typeof window.auth==='function'){
-      window.auth('/api/login');
-      return;
-    }
-    const m=document.getElementById('auth-message');
-    if(m)m.textContent='LOGIN SYSTEM NOT READY — RELOAD PAGE';
+  function callAuth(path){
+    let tries=0;
+    const run=()=>{
+      if(typeof window.auth==='function'){
+        window.auth(path);
+        return;
+      }
+      tries++;
+      if(tries<100){
+        setTimeout(run,100);
+      }else{
+        const m=document.getElementById('auth-message');
+        if(m)m.textContent='AUTH SYSTEM ERROR — PLEASE REFRESH';
+      }
+    };
+    run();
   }
-  function register(){
-    if(typeof window.auth==='function'){
-      window.auth('/api/register');
-      return;
-    }
-    const m=document.getElementById('auth-message');
-    if(m)m.textContent='REGISTER SYSTEM NOT READY — RELOAD PAGE';
-  }
-  window.__ewsLogin=login;
-  window.__ewsRegister=register;
+  window.__ewsLogin=()=>callAuth('/api/login');
+  window.__ewsRegister=()=>callAuth('/api/register');
   function bind(){
-    const f=document.getElementById('auth-form'),b=document.getElementById('enter-button'),r=document.getElementById('register-button');
-    if(f)f.addEventListener('submit',e=>{e.preventDefault();login();});
-    if(b)b.addEventListener('click',e=>{e.preventDefault();login();});
-    if(r)r.addEventListener('click',e=>{e.preventDefault();register();});
+    const f=document.getElementById('auth-form'),r=document.getElementById('register-button');
+    if(f)f.addEventListener('submit',e=>{e.preventDefault();window.__ewsLogin();});
+    if(r)r.addEventListener('click',e=>{e.preventDefault();window.__ewsRegister();});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
 })();
