@@ -349,6 +349,9 @@ io.on('connection', socket => {
     p.yaw = Number.isFinite(Number(data.yaw)) ? Number(data.yaw) : p.yaw;
     p.moving = !!data.moving;
 
+    // Moving cancels the synchronized dance for everyone.
+    if (p.moving) p.emote = 0;
+
     socket.to(ROOM).emit('player:state', normalizePlayer(p));
   });
 
