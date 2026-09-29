@@ -1,2252 +1,812 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>EWS SESSIONS — Underground Club</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
-<script src="/socket.io/socket.io.js"></script>
-
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>EWS SESSIONS</title>
 <style>
-:root{
-  --ui-bg:rgba(5,5,6,.82);
-  --ui-border:rgba(255,255,255,.14);
-  --ui-text:#fff;
-  --ui-muted:rgba(255,255,255,.55);
-}
-
 *{box-sizing:border-box}
-
-html,body{
-  width:100%;
-  height:100%;
-  margin:0;
-  overflow:hidden;
-  background:#050505;
-  color:var(--ui-text);
-  font-family:Arial,Helvetica,sans-serif;
-}
-
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030303;color:#fff;font-family:Arial,Helvetica,sans-serif}
 button,input,select{font:inherit}
-
 button{cursor:pointer}
-
-#app{
-  position:relative;
-  width:100vw;
-  height:100vh;
-  background:#040404;
-}
-
-#canvas3d{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  display:block;
-}
-
-#css3d-layer{
-  position:absolute;
-  inset:0;
-  z-index:30;
-  pointer-events:none;
-  overflow:hidden;
-}
-
-#club-screen{
-  position:absolute;
-  width:1400px;
-  height:600px;
-  left:0;
-  top:0;
-  display:block;
-  visibility:hidden;
-  opacity:0;
-  overflow:hidden;
-  background:#000;
-  border:5px solid #111;
-  box-shadow:0 0 55px rgba(0,0,0,.95);
-  pointer-events:auto;
-  transition:opacity .12s ease;
-}
-
-#club-screen.active{
-  visibility:visible;
-  opacity:1;
-}
-
-#club-screen iframe{
-  width:100%;
-  height:100%;
-  border:0;
-  display:block;
-  background:#000;
-}
-
-#screen-sound-hint{
-  position:absolute;
-  left:50%;
-  bottom:14px;
-  transform:translateX(-50%);
-  padding:8px 12px;
-  color:#fff;
-  background:rgba(0,0,0,.74);
-  border:1px solid rgba(255,255,255,.34);
-  font:10px/1 monospace;
-  letter-spacing:2px;
-  pointer-events:none;
-  white-space:nowrap;
-}
-
-#screen-sound-hint.hidden{display:none}
-
-#brand{
-  position:absolute;
-  left:24px;
-  top:20px;
-  z-index:60;
-  font-weight:900;
-  font-size:26px;
-  letter-spacing:8px;
-  text-shadow:0 0 18px rgba(255,255,255,.12);
-  pointer-events:none;
-}
-
-#connection{
-  position:absolute;
-  left:26px;
-  top:56px;
-  z-index:60;
-  font-size:10px;
-  letter-spacing:2px;
-  color:var(--ui-muted);
-  pointer-events:none;
-}
-
-.ui-panel{
-  position:absolute;
-  z-index:70;
-  background:var(--ui-bg);
-  border:1px solid var(--ui-border);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  box-shadow:0 14px 40px rgba(0,0,0,.24);
-}
-
-#online-panel{
-  top:20px;
-  right:20px;
-  width:205px;
-  padding:12px;
-}
-
-.panel-kicker{
-  margin-bottom:8px;
-  font-size:9px;
-  letter-spacing:2.4px;
-  color:var(--ui-muted);
-}
-
-#online-list{
-  margin:0;
-  padding:0;
-  list-style:none;
-  max-height:190px;
-  overflow:auto;
-}
-
-#online-list li{
-  padding:5px 0;
-  border-bottom:1px solid rgba(255,255,255,.07);
-  font-size:12px;
-}
-
-#chat-panel{
-  left:20px;
-  bottom:20px;
-  width:390px;
-  padding:10px;
-}
-
-#chat-top{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  margin-bottom:8px;
-}
-
-#chat-title{
-  font-size:9px;
-  letter-spacing:2.4px;
-  color:var(--ui-muted);
-}
-
-#chat-language{
-  width:128px;
-  padding:5px 7px;
-  color:#fff;
-  background:#080808;
-  border:1px solid #444;
-  outline:none;
-  font-size:10px;
-}
-
-#chat-log{
-  height:160px;
-  overflow:auto;
-  padding-right:3px;
-  scrollbar-width:thin;
-}
-
-.chat-line{
-  margin:0 0 8px;
-  font-size:12px;
-  line-height:1.45;
-}
-
-.chat-user{
-  margin-right:5px;
-  font-weight:800;
-}
-
-.chat-body{opacity:.92}
-
-.chat-compose{
-  display:flex;
-  gap:6px;
-  margin-top:8px;
-}
-
-#chat-input{
-  flex:1;
-  min-width:0;
-  padding:9px;
-  color:#fff;
-  background:#070707;
-  border:1px solid #444;
-  outline:none;
-}
-
-#chat-send{
-  width:66px;
-  border:0;
-  background:#fff;
-  color:#000;
-  font-weight:700;
-  font-size:11px;
-}
-
-#screen-panel{
-  top:20px;
-  left:50%;
-  transform:translateX(-50%);
-  width:370px;
-  padding:12px;
-  display:none;
-}
-
-#screen-panel.active{display:block}
-
-#screen-url{
-  width:100%;
-  padding:9px;
-  color:#fff;
-  background:#070707;
-  border:1px solid #444;
-  outline:none;
-}
-
-.screen-actions{
-  display:flex;
-  gap:6px;
-  margin-top:7px;
-}
-
-.screen-actions button{
-  flex:1;
-  padding:8px;
-  border:0;
-  font-size:10px;
-  letter-spacing:1px;
-}
-
-#screen-load{
-  color:#000;
-  background:#fff;
-}
-
-#screen-clear{
-  color:#fff;
-  background:#222;
-  border:1px solid #555!important;
-}
-
-#help{
-  position:absolute;
-  left:50%;
-  bottom:20px;
-  transform:translateX(-50%);
-  z-index:55;
-  color:rgba(255,255,255,.42);
-  font:10px monospace;
-  letter-spacing:1.6px;
-  pointer-events:none;
-}
-
-#auth{
-  position:absolute;
-  inset:0;
-  pointer-events:auto;
-  z-index:200;
-  display:grid;
-  place-items:center;
-  background:
-    radial-gradient(circle at 50% 38%,#1b1b1b 0,#090909 42%,#000 100%);
-}
-
-#auth.hidden{display:none}
-
-.auth-card{
-  position:relative;
-  z-index:1;
-  pointer-events:auto;
-  width:min(410px,calc(100vw - 36px));
-  padding:34px;
-  background:rgba(0,0,0,.8);
-  border:1px solid rgba(255,255,255,.2);
-  box-shadow:0 28px 90px rgba(0,0,0,.6);
-}
-
-.auth-brand{
-  text-align:center;
-  font-size:36px;
-  font-weight:900;
-  letter-spacing:10px;
-}
-
-.auth-sub{
-  margin-top:5px;
-  margin-bottom:24px;
-  text-align:center;
-  font-size:9px;
-  letter-spacing:3px;
-  color:rgba(255,255,255,.46);
-}
-
-.auth-card input,
-#auth-language{
-  width:100%;
-  margin-bottom:9px;
-  padding:11px;
-  color:#fff;
-  background:#080808;
-  border:1px solid #444;
-  outline:none;
-}
-
-.auth-actions{
-  display:flex;
-  gap:8px;
-}
-
-.auth-actions button{
-  flex:1;
-  padding:10px;
-  border:0;
-}
-
-#enter-button{
-  background:#fff;
-  color:#000;
-}
-
-#register-button{
-  background:#242424;
-  color:#fff;
-  border:1px solid #555!important;
-}
-
-#auth-message{
-  min-height:18px;
-  margin-top:10px;
-  text-align:center;
-  font-size:11px;
-  color:rgba(255,255,255,.65);
-}
-
+#app{position:fixed;inset:0;background:#030303}
+#game{position:absolute;inset:0}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+#ui{position:absolute;inset:0;pointer-events:none}
+.panel{pointer-events:auto;background:rgba(4,4,4,.88);border:1px solid rgba(255,255,255,.18);box-shadow:0 18px 60px rgba(0,0,0,.65);backdrop-filter:blur(10px)}
+#auth{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#171717 0,#050505 45%,#000 100%);z-index:20}
+.authbox{width:min(420px,calc(100vw - 32px));padding:30px}
+.logo{font-weight:900;letter-spacing:.28em;font-size:30px;text-align:center;margin-bottom:8px}
+.sub{text-align:center;color:#888;font-size:12px;letter-spacing:.16em;margin-bottom:26px}
+.field{width:100%;margin:8px 0;padding:13px 14px;border:1px solid #333;background:#090909;color:#fff;outline:none}
+.field:focus{border-color:#aaa}
+.row{display:flex;gap:8px}
+.action{flex:1;padding:12px;border:1px solid #666;background:#fff;color:#000;font-weight:800}
+.action.alt{background:#111;color:#fff;border-color:#444}
+#authMsg{min-height:20px;margin-top:12px;text-align:center;color:#bbb;font-size:12px}
+#hud{display:none;position:absolute;inset:0}
+#topbar{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.badge{padding:8px 11px;background:rgba(0,0,0,.62);border:1px solid #292929;font-size:12px;letter-spacing:.08em}
+#online{position:absolute;top:58px;right:14px;width:210px;padding:12px;max-height:260px;overflow:auto}
+.title{font-size:10px;color:#888;letter-spacing:.2em;margin-bottom:8px}
+.user{font-size:12px;padding:5px 0;border-bottom:1px solid #171717}
+.user:last-child{border-bottom:0}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin-right:7px}
+#chat{position:absolute;left:14px;bottom:14px;width:min(390px,calc(100vw - 28px))}
+#messages{height:180px;overflow:auto;padding:10px;margin-bottom:7px;background:linear-gradient(transparent,rgba(0,0,0,.7));mask-image:linear-gradient(transparent 0,#000 18%)}
+.msg{font-size:12px;line-height:1.45;margin:4px 0;text-shadow:0 2px 5px #000}
+.msg b{font-weight:800}
+#chatInput{width:100%;padding:11px;background:rgba(0,0,0,.8);border:1px solid #333;color:#fff;outline:0}
+#controls{position:absolute;bottom:14px;right:14px;width:240px}
+#screenControl{display:none;padding:12px}
+#screenControl input,#screenControl select{width:100%;margin:4px 0;padding:9px;background:#090909;color:#fff;border:1px solid #333}
+.smallbtn{width:100%;padding:9px;margin-top:5px;border:1px solid #555;background:#111;color:#fff}
+#help{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:10px;color:#aaa;letter-spacing:.12em;background:rgba(0,0,0,.5);padding:7px 10px}
+#screenStatus{font-size:10px;color:#888;margin-top:7px}
+#crosshair{position:absolute;left:50%;top:50%;width:12px;height:12px;transform:translate(-50%,-50%);opacity:.55}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff}
+#crosshair:before{width:12px;height:1px;top:5px}
+#crosshair:after{height:12px;width:1px;left:5px}
+#screenOverlay{position:absolute;left:50%;top:50%;width:min(760px,70vw);aspect-ratio:16/9;transform:translate(-50%,-50%);pointer-events:none;display:none}
+#screenOverlay iframe,#screenOverlay video{width:100%;height:100%;border:0;background:#000;object-fit:contain}
+#toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:9px 13px;background:#111;border:1px solid #444;font-size:12px;opacity:0;transition:.2s}
+#toast.show{opacity:1}
 @media(max-width:700px){
-  #brand{left:16px;top:14px}
-  #connection{left:18px;top:49px}
-  #online-panel{right:12px;top:12px;width:155px}
-  #chat-panel{left:12px;bottom:12px;width:calc(100vw - 24px)}
-  #screen-panel{top:12px;width:min(370px,calc(100vw - 24px))}
-  #help{display:none}
-  #club-screen{width:1000px;height:430px}
+ #online{width:170px}
+ #help{display:none}
+ #controls{width:190px}
+ #screenOverlay{width:88vw}
 }
 </style>
 </head>
-
 <body>
 <div id="app">
-
-<canvas id="canvas3d"></canvas>
-
-<div id="css3d-layer">
-  <div id="club-screen">
-    <iframe
-      id="screen-frame"
-      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-      allowfullscreen
-    ></iframe>
-    <div id="screen-sound-hint">CLICK SCREEN FOR SOUND</div>
+  <div id="auth">
+    <div class="authbox panel">
+      <div class="logo">EWS SESSIONS</div>
+      <div class="sub">UNDERGROUND CLUB / LIVE</div>
+      <input id="username" class="field" autocomplete="username" placeholder="Username">
+      <input id="password" class="field" autocomplete="current-password" type="password" placeholder="Password">
+      <div class="row">
+        <button id="loginBtn" class="action">ВХОД</button>
+        <button id="registerBtn" class="action alt">РЕГИСТРАЦИЯ</button>
+      </div>
+      <div id="authMsg"></div>
+    </div>
   </div>
+
+  <div id="game">
+    <canvas id="scene"></canvas>
+    <div id="screenOverlay"></div>
+  </div>
+
+  <div id="ui">
+    <div id="hud">
+      <div id="topbar">
+        <div class="badge">EWS SESSIONS <span id="me"></span></div>
+        <div class="badge"><span id="langLabel">EN</span> · ENTER = CHAT</div>
+      </div>
+
+      <div id="help">CLICK TO LOCK MOUSE · WASD MOVE · SPACE JUMP · 1–4 EMOTES · ENTER CHAT</div>
+      <div id="crosshair"></div>
+
+      <div id="online" class="panel">
+        <div class="title">ONLINE</div>
+        <div id="onlineList"></div>
+      </div>
+
+      <div id="chat">
+        <div id="messages"></div>
+        <input id="chatInput" maxlength="240" autocomplete="off" placeholder="Нажми ENTER и напиши сообщение...">
+      </div>
+
+      <div id="controls">
+        <div id="screenControl" class="panel">
+          <div class="title">SCREEN — HOST ONLY</div>
+          <select id="screenType">
+            <option value="video">HLS / VIDEO</option>
+            <option value="iframe">WEB / TWITCH EMBED</option>
+          </select>
+          <input id="screenSrc" placeholder="/hls/ews/index.m3u8">
+          <input id="screenTitle" placeholder="EWS SESSIONS">
+          <button id="screenOn" class="smallbtn">SHOW ON SCREEN</button>
+          <button id="screenOff" class="smallbtn">HIDE SCREEN</button>
+          <div id="screenStatus"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
 </div>
 
-<div id="brand">EWS</div>
-<div id="connection">SESSIONS / OFFLINE</div>
-
-<section id="online-panel" class="ui-panel">
-  <div class="panel-kicker">ONLINE</div>
-  <ul id="online-list"></ul>
-</section>
-
-<section id="screen-panel" class="ui-panel">
-  <div class="panel-kicker">CLUB SCREEN / MVXTRA ONLY</div>
-  <input id="screen-url" placeholder="YouTube / Twitch / https://">
-  <div class="screen-actions">
-    <button id="screen-load" type="button">LOAD</button>
-    <button id="screen-clear" type="button">CLEAR</button>
-  </div>
-</section>
-
-<section id="chat-panel" class="ui-panel">
-  <div id="chat-top">
-    <div id="chat-title">CHAT</div>
-    <select id="chat-language" aria-label="Chat language">
-      <option value="en">EN</option>
-      <option value="ru">RU</option>
-      <option value="nl">NL</option>
-      <option value="de">DE</option>
-      <option value="es">ES</option>
-      <option value="fr">FR</option>
-      <option value="it">IT</option>
-      <option value="pt">PT</option>
-      <option value="pl">PL</option>
-      <option value="uk">UK</option>
-      <option value="tr">TR</option>
-      <option value="zh">ZH</option>
-      <option value="ja">JA</option>
-      <option value="ko">KO</option>
-      <option value="ar">AR</option>
-      <option value="hi">HI</option>
-    </select>
-  </div>
-
-  <div id="chat-log"></div>
-
-  <form id="chat-form" class="chat-compose">
-    <input id="chat-input" maxlength="240" autocomplete="off" placeholder="say something...">
-    <button id="chat-send" type="submit">SEND</button>
-  </form>
-</section>
-
-<div id="help">CLICK TO ENTER · WASD MOVE · MOUSE LOOK · SPACE JUMP · 1–6 DANCE · ESC RELEASE</div>
-
-<div id="auth">
-  <div class="auth-card">
-    <div class="auth-brand">EWS</div>
-    <div class="auth-sub">SESSIONS / UNDERGROUND CLUB</div>
-
-    <input id="auth-username" autocomplete="username" maxlength="24" placeholder="username">
-    <input id="auth-password" type="password" autocomplete="current-password" maxlength="128" placeholder="password">
-
-    <select id="auth-language">
-      <option value="en">ENGLISH</option>
-      <option value="ru">РУССКИЙ</option>
-      <option value="nl">NEDERLANDS</option>
-      <option value="de">DEUTSCH</option>
-      <option value="es">ESPAÑOL</option>
-      <option value="fr">FRANÇAIS</option>
-    </select>
-
-    <form id="auth-form" class="auth-actions">
-      <button id="enter-button" type="submit">ENTER</button>
-      <button id="register-button" type="button">REGISTER</button>
-    </form>
-
-    <div id="auth-message"></div>
-  </div>
-</div>
-
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
-</script>\n\n<script>
+(() => {
 'use strict';
 
 const $ = id => document.getElementById(id);
+const HOST = 'mvxtra';
+const LANGS = ['ru','en','es','de','fr','zh','ja','ko','ar','hi','pt','it','tr','uk','nl','pl'];
+const LANG_NAMES = {ru:'RU',en:'EN',es:'ES',de:'DE',fr:'FR',zh:'ZH',ja:'JA',ko:'KO',ar:'AR',hi:'HI',pt:'PT',it:'IT',tr:'TR',uk:'UK',nl:'NL',pl:'PL'};
 
-let currentUser = '';
-
-window.auth = auth;
 let socket = null;
+let username = '';
+let language = localStorage.getItem('ews-language') || 'en';
+let host = false;
+let joined = false;
+let hls = null;
+let screenVideo = null;
+let screenTexture = null;
+let screenMesh = null;
+let screenModel = null;
 
-let scene = null;
-let camera = null;
-let renderer = null;
-
-let cssScene = null;
-let cssRenderer = null;
-let cssScreenObject = null;
-
-let screenAnchor = null;
-let screenFrameMesh = null;
-
+let renderer, scene, camera;
 let clock = new THREE.Clock();
-let remotePlayers = new Map();
+let yaw = 0, pitch = 0;
+let px = 0, py = 0, pz = 8;
+let vy = 0, grounded = true;
+const keys = {};
+const remotes = new Map();
+let lastState = 0;
 
-let playerX = 0;
-let playerY = 0;
-let playerZ = 10;
+const authMsg = $('authMsg');
 
-let yaw = 0;
-let pitch = 0;
+function toast(text) {
+  const el = $('toast');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => el.classList.remove('show'), 2200);
+}
 
-let verticalVelocity = 0;
-let grounded = true;
+function setAuthMessage(text) {
+  authMsg.textContent = text || '';
+}
 
-let lastStateSent = 0;
-let lastScreenVersion = 0;
-let lastScreenSrc = '';
+function setLoggedIn(name, token) {
+  username = name;
+  if(token) localStorage.setItem('ews-session-token', token);
+  localStorage.setItem('ews-username', name);
+  $('auth').style.display = 'none';
+  $('hud').style.display = 'block';
+  $('me').textContent = '· ' + name;
+}
 
-let screenSyncTimer = null;
+async function api(path, body) {
+  const r = await fetch(path, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  const data = await r.json().catch(() => ({ok:false,error:'Server response error'}));
+  if (!r.ok || !data.ok) throw new Error(data.error || 'Ошибка сервера');
+  return data;
+}
 
-let chatLanguage = localStorage.getItem('ews-chat-language') || 'en';
-let chatMessages = [];
-let chatTranslationCache = new Map();
-let chatRenderToken = 0;
-
-let dustField = null;
-let smokePuffs = [];
-let floorMist = null;
-
-let moverLights = [];
-let floorLights = [];
-let strobes = [];
-let lasers = [];
-
-const keys = Object.create(null);
-
-const WORLD = {
-  minX:-16,
-  maxX:16,
-  minZ:-14,
-  maxZ:14,
-  floorY:0,
-  eyeY:2.05
+$('loginBtn').onclick = async () => {
+  setAuthMessage('Вход...');
+  try {
+    const data = await api('/api/login', {
+      username: $('username').value,
+      password: $('password').value
+    });
+    setLoggedIn(data.username, data.token);
+    startClub();
+  } catch(e) {
+    setAuthMessage(e.message);
+  }
 };
 
-const EMOTE_KEYS = {
-  Digit1:1,
-  Digit2:2,
-  Digit3:3,
-  Digit4:4,
-  Digit5:5,
-  Digit6:6
+$('registerBtn').onclick = async () => {
+  setAuthMessage('Регистрация...');
+  try {
+    const data = await api('/api/register', {
+      username: $('username').value,
+      password: $('password').value
+    });
+    setLoggedIn(data.username);
+    startClub();
+  } catch(e) {
+    setAuthMessage(e.message);
+  }
 };
 
-function isHost(){
-  return currentUser.trim().toLowerCase() === 'mvxtra';
+$('password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('loginBtn').click();
+});
+
+function buildWorld() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x030303);
+  scene.fog = new THREE.FogExp2(0x030303, 0.022);
+
+  camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, .05, 100);
+  camera.rotation.order = 'YXZ';
+
+  renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+
+  scene.add(new THREE.AmbientLight(0xffffff, .16));
+
+  const floorMat = new THREE.MeshStandardMaterial({color:0x080808,roughness:.86,metalness:.18});
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(32,.25,28), floorMat);
+  floor.position.y=-.13;
+  floor.receiveShadow=true;
+  scene.add(floor);
+
+  const grid = new THREE.GridHelper(30,30,0xaaaaaa,0x555555);
+  grid.position.y=.01;
+  grid.material.transparent=true;
+  grid.material.opacity=.17;
+  scene.add(grid);
+
+  // Back wall and side walls
+  const wallMat = new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:.78,metalness:.3});
+  addBox(32,7,.3,0,3.5,-14,wallMat);
+  addBox(.3,7,28,-16,3.5,0,wallMat);
+  addBox(.3,7,28,16,3.5,0,wallMat);
+
+  // Stage
+  addBox(18,.7,4,0,.35,-11.5,new THREE.MeshStandardMaterial({color:0x111111,roughness:.55,metalness:.35}));
+  addBox(17,5,.18,0,3.0,-13.85,new THREE.MeshStandardMaterial({color:0x151515,roughness:.5,metalness:.5}));
+
+  // Screen frame
+  const frameMat = new THREE.MeshBasicMaterial({color:0xffffff});
+  addBox(12,.16,.16,0,6.0,-13.55,frameMat);
+  addBox(12,.16,.16,0,.35,-13.55,frameMat);
+  addBox(.16,5.8,.16,-6,3.15,-13.55,frameMat);
+  addBox(.16,5.8,.16,6,3.15,-13.55,frameMat);
+
+  // Physical club screen: this is a real Three.js object fixed to the back wall.
+  createPhysicalScreen();
+
+  // Speaker stacks / imported model slots.
+  addSpeaker(-8.1,-12.9);
+  addSpeaker(8.1,-12.9);
+  loadSpeakerModel();
+
+  // Ceiling rig
+  const rigMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:.4,metalness:.8});
+  addBox(17,.14,.14,0,6.4,-10.5,rigMat);
+  addBox(17,.14,.14,0,6.4,-3,rigMat);
+  addBox(17,.14,.14,0,6.4,5,rigMat);
+
+  // Moving heads
+  for (const x of [-6,-2,2,6]) {
+    const lamp = new THREE.Mesh(
+      new THREE.BoxGeometry(.55,.35,.55),
+      new THREE.MeshStandardMaterial({color:0x050505,roughness:.35,metalness:.9})
+    );
+    lamp.position.set(x,6.05,-10.5);
+    scene.add(lamp);
+  }
+
+  // Logo-like EWS wall sign
+  const sign = makeTextSprite('EWS', 2.8);
+  sign.position.set(0,4.2,-13.7);
+  scene.add(sign);
+
+  // Fog/dust
+  const count = 500;
+  const pos = new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    pos[i*3] = Math.random()*30-15;
+    pos[i*3+1] = Math.random()*6+.2;
+    pos[i*3+2] = Math.random()*26-13;
+  }
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(pg,new THREE.PointsMaterial({
+    color:0x999999,size:.025,transparent:true,opacity:.3,depthWrite:false
+  })));
+
+  for(let i=0;i<5;i++){
+    const light = new THREE.PointLight(0xffffff,.35,12);
+    light.position.set(-10+i*5,4,-4);
+    scene.add(light);
+  }
+
+  window.addEventListener('resize', resize);
+  document.addEventListener('mousemove', mouseLook);
+  document.addEventListener('pointerlockchange', () => {
+    $('help').style.opacity = document.pointerLockElement ? '.18' : '.7';
+  });
+
+  $('scene').addEventListener('click', () => {
+    if (document.activeElement === $('chatInput')) return;
+    if(screenVideo) screenVideo.play().catch(()=>{});
+    $('scene').requestPointerLock?.();
+  });
 }
 
-function setConnection(text){
-  $('connection').textContent='SESSIONS / '+text;
+function addBox(w,h,d,x,y,z,mat) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z);
+  scene.add(m);
+  return m;
 }
 
-function showAuthMessage(text){
-  $('auth-message').textContent=String(text||'');
+function createPhysicalScreen() {
+  const backing = new THREE.Mesh(
+    new THREE.PlaneGeometry(11.6, 5.45),
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  );
+  backing.position.set(0, 3.175, -13.43);
+  scene.add(backing);
+  screenMesh = backing;
 }
 
-async function auth(path){
-  const username=$('auth-username').value.trim();
-  console.log('[EWS AUTH] request',path,username);
-  const password=$('auth-password').value;
+function loadSpeakerModel() {
+  if (!THREE.GLTFLoader) return;
 
-  if(!username || !password){
-    showAuthMessage('ENTER USERNAME AND PASSWORD');
+  const candidates = [
+    '/models/speakers.glb',
+    '/models/speaker.glb',
+    '/models/columns.glb',
+    '/models/column.glb',
+    '/assets/speakers.glb',
+    '/assets/speaker.glb',
+    '/media/speakers.glb',
+    '/media/speaker.glb'
+  ];
+
+  const loader = new THREE.GLTFLoader();
+  let index = 0;
+
+  const tryNext = () => {
+    if (index >= candidates.length) return;
+    const url = candidates[index++];
+    loader.load(url, gltf => {
+      screenModel = gltf.scene;
+      screenModel.traverse(o => {
+        if (o.isMesh) {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+      screenModel.scale.setScalar(1.35);
+      screenModel.position.set(0, 0, -12.75);
+      scene.add(screenModel);
+
+      // The imported model replaces the simple speaker blocks visually.
+      const fallback = scene.userData.fallbackSpeakers;
+      if (fallback) fallback.forEach(o => o.visible = false);
+      toast('Модель колонок загружена');
+    }, undefined, () => tryNext());
+  };
+
+  tryNext();
+}
+
+function addSpeaker(x,z) {
+  const group=new THREE.Group();
+  const cabinetMaterial=new THREE.MeshStandardMaterial({
+    color:0x080808,roughness:.43,metalness:.38
+  });
+  const edgeMaterial=new THREE.MeshStandardMaterial({
+    color:0x202020,roughness:.62,metalness:.14
+  });
+
+  const sub=new THREE.Mesh(new THREE.BoxGeometry(1.85,1.55,1.18),cabinetMaterial);
+  sub.position.y=.78;
+  group.add(sub);
+
+  const top=new THREE.Mesh(new THREE.BoxGeometry(1.45,2.85,.98),cabinetMaterial);
+  top.position.y=2.98;
+  group.add(top);
+
+  const subRing=new THREE.Mesh(new THREE.TorusGeometry(.42,.055,12,36),edgeMaterial);
+  subRing.position.set(0,.78,.61);
+  group.add(subRing);
+
+  const subCone=new THREE.Mesh(
+    new THREE.CircleGeometry(.37,36),
+    new THREE.MeshStandardMaterial({color:0x141414,roughness:.72,metalness:.04})
+  );
+  subCone.position.set(0,.78,.615);
+  group.add(subCone);
+
+  for(let i=0;i<3;i++){
+    const y=2.16+i*.72;
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.245,.036,10,28),edgeMaterial);
+    ring.position.set(0,y,.505);
+    group.add(ring);
+
+    const driver=new THREE.Mesh(
+      new THREE.CircleGeometry(.21,30),
+      new THREE.MeshStandardMaterial({color:0x161616,roughness:.76,metalness:.03})
+    );
+    driver.position.set(0,y,.51);
+    group.add(driver);
+  }
+
+  group.position.set(x,0,z);
+  group.rotation.y=Math.PI;
+  group.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+  scene.add(group);
+
+  scene.userData.fallbackSpeakers=scene.userData.fallbackSpeakers||[];
+  scene.userData.fallbackSpeakers.push(group);
+  return group;
+}
+
+function makeTextSprite(text,size) {
+  const c=document.createElement('canvas');
+  c.width=512;c.height=180;
+  const ctx=c.getContext('2d');
+  ctx.clearRect(0,0,512,180);
+  ctx.fillStyle='#fff';
+  ctx.font='900 110px Arial';
+  ctx.textAlign='center';
+  ctx.fillText(text,256,120);
+  const tex=new THREE.CanvasTexture(c);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true}));
+  s.scale.set(size,size*.35,1);
+  return s;
+}
+
+function resize() {
+  if(!camera || !renderer) return;
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+}
+
+function mouseLook(e) {
+  if(document.pointerLockElement !== $('scene')) return;
+  yaw -= e.movementX*.0022;
+  pitch -= e.movementY*.0022;
+  pitch = THREE.MathUtils.clamp(pitch,-1.3,1.3);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.05);
+
+  const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+  const side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+
+  if(document.pointerLockElement === $('scene') && (forward||side)) {
+    const len=Math.hypot(forward,side)||1;
+    const f=forward/len, s=side/len;
+    const fx=-Math.sin(yaw), fz=-Math.cos(yaw);
+    const rx=Math.cos(yaw), rz=-Math.sin(yaw);
+    px+=(fx*f+rx*s)*4.5*dt;
+    pz+=(fz*f+rz*s)*4.5*dt;
+    px=THREE.MathUtils.clamp(px,-15,15);
+    pz=THREE.MathUtils.clamp(pz,-13,13);
+  }
+
+  if(document.pointerLockElement === $('scene')) {
+    vy -= 18*dt;
+    py += vy*dt;
+    if(py<=0){py=0;vy=0;grounded=true}
+  }
+
+  camera.position.set(px,1.65+py,pz);
+  camera.rotation.set(pitch,yaw,0);
+
+  const now=performance.now();
+  if(socket?.connected && now-lastState>70){
+    lastState=now;
+    socket.emit('player:state',{
+      x:px,z:pz,yaw,moving:Boolean(forward||side)
+    });
+  }
+
+  updateRemotes(now/1000);
+  renderer.render(scene,camera);
+}
+
+document.addEventListener('keydown', e => {
+  if(e.target?.tagName==='INPUT' || e.target?.tagName==='SELECT') return;
+
+  if(e.code==='Space' && grounded){
+    vy=7;
+    grounded=false;
+    e.preventDefault();
+  }
+
+  if(e.code==='Enter'){
+    e.preventDefault();
+    $('chatInput').focus();
     return;
   }
 
-  const button=$('enter-button');
-  const registerButton=$('register-button');
+  keys[e.code]=true;
+  if(socket?.connected && /^[1-4]$/.test(e.key)) socket.emit('player:emote',Number(e.key));
+});
 
-  button.disabled=true;
-  registerButton.disabled=true;
-  showAuthMessage('CONNECTING...');
+document.addEventListener('keyup',e => keys[e.code]=false);
 
-  try{
-    const response=await fetch(path,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username,password}),
-      cache:'no-store'
-    });
+$('chatInput').addEventListener('keydown', async e => {
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  const text=$('chatInput').value.trim();
+  $('chatInput').value='';
+  $('chatInput').blur();
+  if(text && socket?.connected) socket.emit('chat:send',text);
+});
 
-    const raw=await response.text();
-    let data=null;
+function createAvatar(data) {
+  const g=new THREE.Group();
+  const seed=hash(data.id||data.username);
+  const bodyColor=[0x454545,0x666666,0x303030,0x777777][seed%4];
+  const bodyMat=new THREE.MeshStandardMaterial({color:bodyColor,roughness:.75});
+  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:.85});
+  const headMat=new THREE.MeshStandardMaterial({color:0xbcbcbc,roughness:.7});
 
-    try{
-      data=JSON.parse(raw);
-    }catch(error){
-      data=null;
-    }
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.8,1.25,.45),bodyMat);
+  body.position.y=1.3;g.add(body);
 
-    if(!response.ok || !data || data.ok!==true){
-      showAuthMessage(
-        data && data.error
-          ? data.error
-          : 'LOGIN SERVER ERROR ('+response.status+')'
-      );
-      return;
-    }
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.38,16,12),headMat);
+  head.position.y=2.22;g.add(head);
 
-    currentUser=String(data.username||username).trim();
-
-    if(data.token){
-      localStorage.setItem('ews-session-token',data.token);
-    }
-
-    if(!currentUser){
-      showAuthMessage('LOGIN ERROR: EMPTY USERNAME');
-      return;
-    }
-
-    localStorage.setItem('ews-username',currentUser);
-
-    $('auth').classList.add('hidden');
-
-    chatLanguage=
-      localStorage.getItem('ews-chat-language') ||
-      $('auth-language').value ||
-      'en';
-
-    if(!Array.from($('chat-language').options).some(o=>o.value===chatLanguage)){
-      chatLanguage='en';
-    }
-
-    $('chat-language').value=chatLanguage;
-    $('screen-panel').classList.toggle('active',isHost());
-
-    try{
-      init3D();
-      connectSocket();
-    }catch(error){
-      console.error('[EWS] club init error',error);
-      setConnection('ONLINE');
-    }
-  }catch(error){
-    console.error('[EWS] auth request error',error);
-    showAuthMessage('SERVER CONNECTION ERROR — '+String(error.message||error));
-  }finally{
-    button.disabled=false;
-    registerButton.disabled=false;
+  const eyeMat=new THREE.MeshBasicMaterial({color:0x111111});
+  for(const sx of [-.12,.12]){
+    const eye=new THREE.Mesh(new THREE.BoxGeometry(.08,.07,.03),eyeMat);
+    eye.position.set(sx,2.25,.35);g.add(eye);
   }
+
+  const l1=new THREE.Mesh(new THREE.BoxGeometry(.22,.9,.23),dark);
+  l1.position.set(-.2,.45,0);g.add(l1);
+  const l2=l1.clone();l2.position.x=.2;g.add(l2);
+
+  const a1=new THREE.Mesh(new THREE.BoxGeometry(.2,1,.22),bodyMat);
+  a1.position.set(-.54,1.3,0);g.add(a1);
+  const a2=a1.clone();a2.position.x=.54;g.add(a2);
+
+  const label=makeTextSprite(data.username,1.65);
+  label.position.y=3.0;
+  g.add(label);
+
+  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
+  g.rotation.y=Number(data.yaw)||0;
+  scene.add(g);
+
+  return {g,targetX:g.position.x,targetZ:g.position.z,targetYaw:g.rotation.y,data};
 }
 
-$('auth-form').addEventListener('submit',event=>{
-  event.preventDefault();
-  auth('/api/login');
-});
+function hash(s){
+  let n=0;
+  for(let i=0;i<String(s).length;i++) n=((n<<5)-n+String(s).charCodeAt(i))|0;
+  return Math.abs(n);
+}
 
-$('register-button').addEventListener('click',event=>{
-  event.preventDefault();
-  window.auth('/api/register');
-});
+function upsertRemote(data){
+  if(data.id===socket?.id) return;
+  let r=remotes.get(data.id);
+  if(!r){r=createAvatar(data);remotes.set(data.id,r)}
+  r.data=data;
+  r.targetX=Number(data.x)||0;
+  r.targetZ=Number(data.z)||0;
+  r.targetYaw=Number(data.yaw)||0;
+}
 
-$('auth-password').addEventListener('keydown',event=>{
-  if(event.key==='Enter'){
-    auth('/api/login');
-  }
-});
+function removeRemote(id){
+  const r=remotes.get(id);
+  if(!r) return;
+  scene.remove(r.g);
+  remotes.delete(id);
+}
 
-function connectSocket(){
-  if(socket){
-    try{socket.disconnect();}catch(error){}
-  }
+function updateRemotes(t){
+  remotes.forEach(r=>{
+    r.g.position.x += (r.targetX-r.g.position.x)*.22;
+    r.g.position.z += (r.targetZ-r.g.position.z)*.22;
+    let d=r.targetYaw-r.g.rotation.y;
+    while(d>Math.PI)d-=Math.PI*2;
+    while(d<-Math.PI)d+=Math.PI*2;
+    r.g.rotation.y += d*.22;
 
+    const moving=!!r.data?.moving;
+    const swing=moving?Math.sin(t*9)*.28:0;
+    if(r.g.children[4])r.g.children[4].rotation.x=swing;
+    if(r.g.children[5])r.g.children[5].rotation.x=-swing;
+    if(r.data?.emote){
+      r.g.rotation.z=Math.sin(t*7+(r.data.emoteAt||0)/300)*.16;
+    } else {
+      r.g.rotation.z*=.9;
+    }
+  });
+}
+
+function connect() {
   socket=io({
     transports:['websocket','polling'],
     reconnection:true,
     reconnectionAttempts:Infinity,
-    reconnectionDelay:500,
-    reconnectionDelayMax:3000
+    timeout:10000
   });
 
   socket.on('connect',()=>{
-    setConnection('ONLINE');
-
-    socket.emit('join',{
-      username:currentUser,
-      language:$('auth-language').value
-    });
-
-    setTimeout(requestWorldAndScreen,250);
-    setTimeout(requestWorldAndScreen,1200);
-
-    if(screenSyncTimer){
-      clearInterval(screenSyncTimer);
-    }
-
-    screenSyncTimer=setInterval(requestWorldAndScreen,3000);
+    socket.emit('join',{username,language});
   });
 
-  socket.on('disconnect',()=>{
-    setConnection('RECONNECTING');
-
-    if(screenSyncTimer){
-      clearInterval(screenSyncTimer);
-      screenSyncTimer=null;
-    }
-
-    $('online-list').innerHTML='';
-
-    remotePlayers.forEach(player=>{
-      if(player.group) scene.remove(player.group);
-    });
-
-    remotePlayers.clear();
-  });
+  socket.on('connect_error',()=>toast('Соединение с клубом...'));
 
   socket.on('club:ready',data=>{
-    if(data && data.screen){
-      applyScreen(data.screen);
-    }
+    joined=true;
+    host=!!data.host;
+    $('screenControl').style.display=host?'block':'none';
+    if(data.screen) applyScreen(data.screen);
   });
 
-  socket.on('world:state',world=>{
-    if(!world) return;
+  socket.on('world:state',data=>{
+    for(const r of remotes.values()) scene.remove(r.g);
+    remotes.clear();
+    (data.players||[]).forEach(upsertRemote);
+    if(data.screen) applyScreen(data.screen);
+  });
 
-    const alive=new Set();
+  socket.on('player:joined',upsertRemote);
+  socket.on('player:state',upsertRemote);
+  socket.on('player:left',removeRemote);
+  socket.on('online:state',renderOnline);
+  socket.on('screen:state',applyScreen);
 
-    if(Array.isArray(world.players)){
-      world.players.forEach(data=>{
-        if(!data || data.id===socket.id) return;
-        alive.add(data.id);
-        updateRemotePlayer(data);
+  socket.on('language:state',lang=>{
+    language=lang;
+    localStorage.setItem('ews-language',lang);
+    $('langLabel').textContent=LANG_NAMES[lang]||lang.toUpperCase();
+  });
+
+  socket.on('chat:message',msg=>renderMessage(msg));
+}
+
+function renderOnline(users) {
+  $('onlineList').innerHTML='';
+  (users||[]).forEach(u=>{
+    const div=document.createElement('div');
+    div.className='user';
+    const dot=document.createElement('span');
+    dot.className='dot';
+    div.append(dot,document.createTextNode(u.username + (u.username.toLowerCase()===HOST?' ★':'')));
+    $('onlineList').appendChild(div);
+  });
+}
+
+async function renderMessage(msg) {
+  const div=document.createElement('div');
+  div.className='msg';
+  const b=document.createElement('b');
+  b.textContent=msg.user+': ';
+  div.appendChild(b);
+
+  const span=document.createElement('span');
+  span.textContent=msg.text;
+  div.appendChild(span);
+  $('messages').appendChild(div);
+  $('messages').scrollTop=$('messages').scrollHeight;
+
+  if(language==='en' || language==='ru' || language) {
+    try {
+      const r=await fetch('/api/translate',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({text:msg.text,target:language})
       });
-    }
-
-    remotePlayers.forEach((player,id)=>{
-      if(!alive.has(id)){
-        removeRemotePlayer(id);
-      }
-    });
-
-    if(world.screen){
-      applyScreen(world.screen);
-    }
-  });
-
-  socket.on('online:state',list=>{
-    const users=Array.isArray(list)?list:[];
-
-    $('online-list').innerHTML='';
-
-    users.forEach(item=>{
-      const name=String(item && item.username || '');
-      if(!name) return;
-
-      const li=document.createElement('li');
-      li.textContent=
-        name+
-        (name.toLowerCase()===currentUser.toLowerCase()?' (YOU)':'');
-
-      $('online-list').appendChild(li);
-    });
-  });
-
-  socket.on('player:joined',data=>{
-    if(data && data.id && data.id!==socket.id){
-      updateRemotePlayer(data);
-    }
-  });
-
-  socket.on('player:state',data=>{
-    if(data && data.id && data.id!==socket.id){
-      updateRemotePlayer(data);
-    }
-  });
-
-  socket.on('player:left',id=>{
-    removeRemotePlayer(id);
-  });
-
-  socket.on('screen:state',state=>{
-    applyScreen(state);
-  });
-
-  socket.on('chat:message',message=>{
-    addChatMessage(
-      message.user,
-      message.text,
-      Number(message.ts)||Date.now()
-    );
-  });
-}
-
-function requestWorldAndScreen(){
-  if(!socket || !socket.connected) return;
-
-  socket.emit('world:request');
-  socket.emit('screen:request');
-}
-
-function normalizeScreenUrl(value){
-  const raw=String(value||'').trim();
-  if(!raw) return null;
-
-  try{
-    const url=new URL(raw);
-
-    const host=url.hostname.toLowerCase();
-
-    if(host==='youtu.be'){
-      const id=url.pathname.split('/').filter(Boolean)[0];
-
-      if(!id) return null;
-
-      return {
-        src:
-          'https://www.youtube.com/embed/'+
-          encodeURIComponent(id)+
-          '?autoplay=1&rel=0&playsinline=1',
-        name:'YOUTUBE'
-      };
-    }
-
-    if(host==='youtube.com' || host==='www.youtube.com'){
-      let id=url.searchParams.get('v');
-
-      if(!id && url.pathname.startsWith('/shorts/')){
-        id=url.pathname.split('/')[2];
-      }
-
-      if(!id && url.pathname.startsWith('/embed/')){
-        id=url.pathname.split('/')[2];
-      }
-
-      if(!id && url.pathname.startsWith('/live/')){
-        id=url.pathname.split('/')[2];
-      }
-
-      if(!id) return null;
-
-      return {
-        src:
-          'https://www.youtube.com/embed/'+
-          encodeURIComponent(id)+
-          '?autoplay=1&rel=0&playsinline=1',
-        name:'YOUTUBE'
-      };
-    }
-
-    if(
-      host==='twitch.tv' ||
-      host==='www.twitch.tv' ||
-      host.endsWith('.twitch.tv')
-    ){
-      const parts=url.pathname.split('/').filter(Boolean);
-
-      if(!parts.length) return null;
-
-      const parent=encodeURIComponent(location.hostname);
-
-      if(parts[0]==='videos' && parts[1]){
-        return {
-          src:
-            'https://player.twitch.tv/?video='+
-            encodeURIComponent(parts[1])+
-            '&parent='+parent+
-            '&autoplay=true',
-          name:'TWITCH'
-        };
-      }
-
-      return {
-        src:
-          'https://player.twitch.tv/?channel='+
-          encodeURIComponent(parts[0])+
-          '&parent='+parent+
-          '&autoplay=true',
-        name:'TWITCH'
-      };
-    }
-
-    if(url.protocol!=='https:') return null;
-
-    return {
-      src:url.href,
-      name:'HTTPS'
-    };
-  }catch(error){
-    return null;
+      const data=await r.json();
+      if(data.ok && data.text && data.text!==msg.text) span.textContent=msg.text+' → '+data.text;
+    } catch {}
   }
 }
 
-function applyScreen(state){
-  state=state||{};
+function applyScreen(state) {
+  const wrap=$('screenOverlay');
+  wrap.innerHTML='';
+  wrap.style.display='none';
 
-  const version=Number(state.version)||0;
+  if(hls){ hls.destroy(); hls=null; }
+  if(screenTexture){ screenTexture.dispose(); screenTexture=null; }
+  if(screenVideo){
+    screenVideo.pause();
+    screenVideo.removeAttribute('src');
+    screenVideo.load();
+    screenVideo=null;
+  }
 
-  if(
-    version &&
-    version<lastScreenVersion
-  ){
+  if(!state?.active || !state.src){
+    if(screenMesh) screenMesh.material.map=null;
+    if(host) $('screenStatus').textContent='SCREEN OFF';
     return;
   }
 
-  if(version){
-    lastScreenVersion=version;
-  }
-
-  const panel=$('club-screen');
-  const frame=$('screen-frame');
-  const hint=$('screen-sound-hint');
-
-  if(
-    state.active!==true ||
-    !state.src
-  ){
-    panel.classList.remove('active');
-    hint.classList.add('hidden');
-
-    frame.src='about:blank';
-    lastScreenSrc='';
-    return;
-  }
-
-  const original=String(state.url||'').trim();
-
-  const normalized=
-    original
-      ? normalizeScreenUrl(original)
-      : null;
-
-  const src=
-    normalized
-      ? normalized.src
-      : String(state.src||'').trim();
-
-  if(!src) return;
-
-  if(src!==lastScreenSrc){
-    frame.src=src;
-    lastScreenSrc=src;
-  }
-
-  panel.classList.add('active');
-  hint.classList.toggle('hidden',isHost());
-
-  if(cssScreenObject){
-    cssScreenObject.element.style.display='block';
-  }
-}
-
-$('screen-load').addEventListener('click',()=>{
-  if(!isHost() || !socket || !socket.connected) return;
-
-  const normalized=normalizeScreenUrl($('screen-url').value);
-
-  if(!normalized) return;
-
-  socket.emit('screen:set',{
-    active:true,
-    src:normalized.src,
-    url:$('screen-url').value.trim(),
-    name:normalized.name
-  });
-});
-
-$('screen-clear').addEventListener('click',()=>{
-  if(!isHost() || !socket || !socket.connected) return;
-
-  socket.emit('screen:set',{
-    active:false
-  });
-});
-
-function createProceduralTexture(type){
-  const canvas=document.createElement('canvas');
-  canvas.width=512;
-  canvas.height=512;
-
-  const ctx=canvas.getContext('2d');
-
-  ctx.fillStyle=
-    type==='floor'
-      ? '#0b0b0b'
-      : '#151515';
-
-  ctx.fillRect(0,0,512,512);
-
-  for(let i=0;i<7000;i++){
-    const v=Math.random()*255;
-    const alpha=.015+Math.random()*.055;
-
-    ctx.fillStyle=
-      'rgba('+v+','+v+','+v+','+alpha+')';
-
-    ctx.fillRect(
-      Math.random()*512,
-      Math.random()*512,
-      type==='floor'?2+Math.random()*8:1+Math.random()*5,
-      type==='floor'?2+Math.random()*8:1+Math.random()*4
-    );
-  }
-
-  if(type==='wall'){
-    for(let i=0;i<36;i++){
-      const x=Math.random()*512;
-      const y=Math.random()*512;
-      const w=25+Math.random()*90;
-
-      ctx.strokeStyle='rgba(0,0,0,.16)';
-      ctx.lineWidth=3+Math.random()*9;
-
-      ctx.beginPath();
-      ctx.moveTo(x,y);
-      ctx.lineTo(x+w,y+Math.random()*15-7);
-      ctx.stroke();
-    }
-  }
-
-  const texture=new THREE.CanvasTexture(canvas);
-  texture.wrapS=THREE.RepeatWrapping;
-  texture.wrapT=THREE.RepeatWrapping;
-
-  return texture;
-}
-
-function box(w,h,d,x,y,z,material){
-  const mesh=new THREE.Mesh(
-    new THREE.BoxGeometry(w,h,d),
-    material
-  );
-
-  mesh.position.set(x,y,z);
-  mesh.castShadow=true;
-  mesh.receiveShadow=true;
-
-  scene.add(mesh);
-  return mesh;
-}
-
-function buildArchitecture(){
-  const wallTexture=createProceduralTexture('wall');
-  wallTexture.repeat.set(4,2);
-
-  const floorTexture=createProceduralTexture('floor');
-  floorTexture.repeat.set(6,6);
-
-  const wallMaterial=new THREE.MeshStandardMaterial({
-    map:wallTexture,
-    color:0x262626,
-    roughness:.91,
-    metalness:.08
-  });
-
-  const floorMaterial=new THREE.MeshStandardMaterial({
-    map:floorTexture,
-    color:0x111111,
-    roughness:.52,
-    metalness:.38
-  });
-
-  const floor=new THREE.Mesh(
-    new THREE.PlaneGeometry(36,32),
-    floorMaterial
-  );
-
-  floor.rotation.x=-Math.PI/2;
-  floor.receiveShadow=true;
-  scene.add(floor);
-
-  // Heavy industrial shell.
-  box(36,8,.6,0,4,-15.7,wallMaterial);
-  box(.6,8,31,-18,4,0,wallMaterial);
-  box(.6,8,31,18,4,0,wallMaterial);
-  box(36,8,.6,0,4,15.7,wallMaterial);
-
-  // Large wall panels / acoustic sections.
-  const panelMaterial=new THREE.MeshStandardMaterial({
-    color:0x0f0f10,
-    roughness:.72,
-    metalness:.22
-  });
-
-  const seamMaterial=new THREE.MeshBasicMaterial({
-    color:0x4b4b4b,
-    transparent:true,
-    opacity:.30
-  });
-
-  for(let x=-15;x<=15;x+=5){
-    box(
-      4.55,5.7,.10,
-      x,3.25,-15.37,
-      panelMaterial,
-      false,
-      false
-    );
-
-    box(
-      .035,5.7,.018,
-      x+2.3,3.25,-15.30,
-      seamMaterial,
-      false,
-      false
-    );
-  }
-
-  for(let z=-12;z<=12;z+=6){
-    box(
-      .10,5.7,5.55,
-      -17.66,3.25,z,
-      panelMaterial,
-      false,
-      false
-    );
-
-    box(
-      .018,5.7,.035,
-      -17.56,3.25,z+2.8,
-      seamMaterial,
-      false,
-      false
-    );
-
-    box(
-      .10,5.7,5.55,
-      17.66,3.25,z,
-      panelMaterial,
-      false,
-      false
-    );
-
-    box(
-      .018,5.7,.035,
-      17.56,3.25,z+2.8,
-      seamMaterial,
-      false,
-      false
-    );
-  }
-
-  // Industrial ceiling and dark service grid.
-  const ceiling=new THREE.Mesh(
-    new THREE.PlaneGeometry(36,32),
-    new THREE.MeshStandardMaterial({
-      color:0x060607,
-      roughness:1,
-      metalness:.03
-    })
-  );
-
-  ceiling.rotation.x=Math.PI/2;
-  ceiling.position.y=7;
-  scene.add(ceiling);
-
-  const ceilingMetal=new THREE.MeshStandardMaterial({
-    color:0x0c0c0d,
-    roughness:.48,
-    metalness:.78
-  });
-
-  for(let x=-15;x<=15;x+=5){
-    box(.12,.16,29,x,6.62,0,ceilingMetal);
-  }
-
-  for(let z=-12;z<=12;z+=4){
-    box(31,.16,.12,0,6.62,z,ceilingMetal);
-  }
-
-  buildDanceFloor(floorMaterial);
-  buildScreenWall();
-  buildLounges();
-  buildEntrance();
-  buildCeilingRig();
-  buildSpeakerStacks();
-}
-
-function buildDanceFloor(floorMaterial){
-  const danceMaterial=new THREE.MeshStandardMaterial({
-    map:floorMaterial.map,
-    color:0x171717,
-    roughness:.42,
-    metalness:.46
-  });
-
-  const danceFloor=new THREE.Mesh(
-    new THREE.BoxGeometry(15.6,.14,15.4),
-    danceMaterial
-  );
-
-  danceFloor.position.set(0,.07,-1);
-  danceFloor.receiveShadow=true;
-  scene.add(danceFloor);
-
-  // Clean white floor grid. No labels, no raised stage.
-  const whiteLine=new THREE.MeshStandardMaterial({
-    color:0xffffff,
-    emissive:0xffffff,
-    emissiveIntensity:.35,
-    roughness:.28,
-    metalness:.2
-  });
-
-  const insetX=7.55;
-  const insetZ=7.45;
-
-  const perimeter=[
-    [0,.165,-1-insetZ,15.2,.035],
-    [0,.165,-1+insetZ,15.2,.035],
-    [-insetX,.165,-1,.035,14.9],
-    [insetX,.165,-1,.035,14.9]
-  ];
-
-  perimeter.forEach(item=>{
-    const vertical=item[4]>item[3];
-
-    const line=new THREE.Mesh(
-      new THREE.BoxGeometry(
-        vertical?.035:item[3],
-        .028,
-        vertical?item[4]:.035
-      ),
-      whiteLine
-    );
-
-    line.position.set(item[0],item[1],item[2]);
-    scene.add(line);
-  });
-
-  // Subtle interior grid, thin enough to feel like embedded LED lines.
-  for(let i=-3;i<=3;i++){
-    const x=i*2.15;
-
-    const line=new THREE.Mesh(
-      new THREE.BoxGeometry(.018,.022,14.7),
-      whiteLine
-    );
-
-    line.position.set(x,.178,-1);
-    scene.add(line);
-  }
-
-  for(let i=-3;i<=3;i++){
-    const z=-1+i*2.15;
-
-    const line=new THREE.Mesh(
-      new THREE.BoxGeometry(15.2,.022,.018),
-      whiteLine
-    );
-
-    line.position.set(0,.178,z);
-    scene.add(line);
-  }
-
-  // Slightly darker center panel breaks up the floor without blocking movement.
-  const center=new THREE.Mesh(
-    new THREE.PlaneGeometry(9.2,9.0),
-    new THREE.MeshStandardMaterial({
-      color:0x0f0f10,
-      roughness:.36,
-      metalness:.5
-    })
-  );
-
-  center.rotation.x=-Math.PI/2;
-  center.position.set(0,.155,-1);
-  scene.add(center);
-}
-
-
-function buildScreenWall(){
-  screenFrameMesh=box(
-    15.1,6.8,.42,
-    0,5.15,-15.08,
-    new THREE.MeshStandardMaterial({
-      color:0x030303,
-      roughness:.38,
-      metalness:.75
-    })
-  );
-
-  screenAnchor=new THREE.Object3D();
-  screenAnchor.position.set(0,5.15,-15.34);
-  scene.add(screenAnchor);
-}
-
-function buildBar(){
-  const barWood=new THREE.MeshStandardMaterial({
-    color:0x171717,roughness:.48,metalness:.18
-  });
-
-  const metal=new THREE.MeshStandardMaterial({
-    color:0x222222,roughness:.35,metalness:.82
-  });
-
-  box(7.4,1.15,1.0,10.1,.78,-2.5,barWood);
-  box(7.6,.24,1.12,10.1,1.41,-2.5,metal);
-  box(7.6,2.2,.28,10.1,2.7,-3.0,metal);
-
-  for(let i=0;i<5;i++){
-    const bottle=new THREE.Mesh(
-      new THREE.CylinderGeometry(.09,.12,.42,12),
-      new THREE.MeshStandardMaterial({
-        color:i%2?0x8c8c8c:0x555555,
-        roughness:.34,metalness:.55
-      })
-    );
-
-    bottle.position.set(7.2+i*.72,2.25,-2.72);
-    scene.add(bottle);
-
-    const neck=bottle.clone();
-    neck.scale.set(.5,.36,.5);
-    neck.position.set(7.2+i*.72,2.53,-2.72);
-    scene.add(neck);
-  }
-}
-
-
-function buildLounges(){
-}
-
-function buildEntrance(){
-  const entryMat=new THREE.MeshStandardMaterial({
-    color:0x080808,
-    roughness:.7,
-    metalness:.5
-  });
-
-  box(5.6,.18,2.0,0,.09,14.4,entryMat);
-
-  const beamMat=new THREE.MeshBasicMaterial({
-    color:0x777777,
-    transparent:true,
-    opacity:.55
-  });
-
-  box(5.6,.09,.12,0,3.1,13.8,beamMat);
-}
-
-function buildCeilingRig(){
-  const rigMaterial=new THREE.MeshStandardMaterial({
-    color:0x121212,
-    roughness:.48,
-    metalness:.72
-  });
-
-  for(let z=-11;z<=9;z+=4){
-    box(17,.14,.14,0,6.45,z,rigMaterial);
-  }
-
-  for(let x=-7.5;x<=7.5;x+=5){
-    box(.12,.12,24,x,6.55,-1,rigMaterial);
-  }
-}
-
-function buildSpeakerStacks(){
-  const cabinetMaterial=new THREE.MeshStandardMaterial({
-    color:0x0b0b0b,roughness:.43,metalness:.38
-  });
-
-  const edgeMaterial=new THREE.MeshStandardMaterial({
-    color:0x1d1d1d,roughness:.62,metalness:.14
-  });
-
-  function createStack(x){
-    const group=new THREE.Group();
-
-    const sub=new THREE.Mesh(
-      new THREE.BoxGeometry(1.85,1.55,1.18),
-      cabinetMaterial
-    );
-    sub.position.y=.78;
-    sub.castShadow=true;
-    group.add(sub);
-
-    const top=new THREE.Mesh(
-      new THREE.BoxGeometry(1.45,2.85,.98),
-      cabinetMaterial
-    );
-    top.position.y=2.98;
-    top.castShadow=true;
-    group.add(top);
-
-    const subRing=new THREE.Mesh(
-      new THREE.TorusGeometry(.42,.055,12,36),
-      edgeMaterial
-    );
-    subRing.position.set(0,.78,.61);
-    group.add(subRing);
-
-    const subCone=new THREE.Mesh(
-      new THREE.CircleGeometry(.37,36),
-      new THREE.MeshStandardMaterial({
-        color:0x141414,roughness:.72,metalness:.04
-      })
-    );
-    subCone.position.set(0,.78,.615);
-    group.add(subCone);
-
-    for(let i=0;i<3;i++){
-      const ring=new THREE.Mesh(
-        new THREE.TorusGeometry(.245,.036,10,28),
-        edgeMaterial
-      );
-      ring.position.set(0,2.16+i*.72,.505);
-      group.add(ring);
-
-      const driver=new THREE.Mesh(
-        new THREE.CircleGeometry(.21,30),
-        new THREE.MeshStandardMaterial({
-          color:0x161616,roughness:.76,metalness:.03
-        })
-      );
-      driver.position.set(0,2.16+i*.72,.51);
-      group.add(driver);
+  // VIDEO/HLS is rendered directly onto the physical Three.js screen.
+  if(state.type!=='iframe'){
+    const video=document.createElement('video');
+    screenVideo=video;
+    video.autoplay=true;
+    video.muted=false;
+    video.controls=false;
+    video.loop=false;
+    video.playsInline=true;
+    video.setAttribute('playsinline','');
+    video.crossOrigin='anonymous';
+
+    screenTexture=new THREE.VideoTexture(video);
+    screenTexture.minFilter=THREE.LinearFilter;
+    screenTexture.magFilter=THREE.LinearFilter;
+    screenTexture.format=THREE.RGBAFormat;
+    screenTexture.encoding=THREE.sRGBEncoding;
+
+    if(screenMesh){
+      screenMesh.material.map=screenTexture;
+      screenMesh.material.needsUpdate=true;
     }
 
-    group.position.set(x,0,-13.95);
-    scene.add(group);
+    if(window.Hls && Hls.isSupported() && /\.m3u8($|\?)/i.test(state.src)){
+      hls=new Hls({enableWorker:true, lowLatencyMode:true});
+      hls.loadSource(state.src);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+        video.play().catch(()=>toast('Нажми один раз по экрану для звука'));
+      });
+    } else {
+      video.src=state.src;
+      video.play().catch(()=>{});
+    }
+  } else {
+    // Non-video embeds stay supported, but the normal EWS screen is physical video.
+    const iframe=document.createElement('iframe');
+    iframe.src=state.src;
+    iframe.allow='autoplay; fullscreen; picture-in-picture';
+    iframe.allowFullscreen=true;
+    wrap.style.display='block';
+    wrap.appendChild(iframe);
   }
 
-  createStack(-8.7);
-  createStack(8.7);
+  if(host) $('screenStatus').textContent='SCREEN ON · '+(state.title||'');
 }
 
-
-function buildAtmosphere(){
-  const dustCount=950;
-  const positions=new Float32Array(dustCount*3);
-
-  for(let i=0;i<dustCount;i++){
-    const j=i*3;
-
-    positions[j]=(Math.random()-.5)*34;
-    positions[j+1]=.28+Math.random()*6.0;
-    positions[j+2]=-14+Math.random()*28;
-  }
-
-  const geometry=new THREE.BufferGeometry();
-
-  geometry.setAttribute(
-    'position',
-    new THREE.BufferAttribute(positions,3)
-  );
-
-  dustField=new THREE.Points(
-    geometry,
-    new THREE.PointsMaterial({
-      color:0xbdbdbd,
-      size:.028,
-      transparent:true,
-      opacity:.28,
-      depthWrite:false,
-      sizeAttenuation:true
-    })
-  );
-
-  scene.add(dustField);
-
-  const smokeTexture=createSmokeTexture();
-
-  smokePuffs=[];
-
-  for(let i=0;i<38;i++){
-    const sprite=new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        map:smokeTexture,
-        color:0xc7c7c7,
-        transparent:true,
-        opacity:.024+Math.random()*.045,
-        depthWrite:false,
-        depthTest:true
-      })
-    );
-
-    sprite.position.set(
-      (Math.random()-.5)*29,
-      .4+Math.random()*5.5,
-      -13+Math.random()*25
-    );
-
-    sprite.scale.set(
-      2.0+Math.random()*4.2,
-      1.7+Math.random()*3.4,
-      1
-    );
-
-    sprite.material.rotation=
-      (Math.random()-.5)*.8;
-
-    scene.add(sprite);
-
-    smokePuffs.push({
-      sprite,
-      x:sprite.position.x,
-      y:sprite.position.y,
-      z:sprite.position.z,
-      phase:Math.random()*Math.PI*2,
-      rise:.018+Math.random()*.045,
-      drift:.15+Math.random()*.38,
-      pulse:.5+Math.random()*1.2
-    });
-  }
-
-  const mistGeometry=new THREE.BufferGeometry();
-  const mistPositions=new Float32Array(100*3);
-
-  for(let i=0;i<100;i++){
-    const j=i*3;
-
-    mistPositions[j]=(Math.random()-.5)*32;
-    mistPositions[j+1]=.10+Math.random()*.9;
-    mistPositions[j+2]=-13+Math.random()*25;
-  }
-
-  mistGeometry.setAttribute(
-    'position',
-    new THREE.BufferAttribute(mistPositions,3)
-  );
-
-  floorMist=new THREE.Points(
-    mistGeometry,
-    new THREE.PointsMaterial({
-      color:0xaaaaaa,
-      size:2.3,
-      transparent:true,
-      opacity:.012,
-      depthWrite:false,
-      sizeAttenuation:true
-    })
-  );
-
-  scene.add(floorMist);
-
-  scene.fog=new THREE.FogExp2(0x040404,.017);
-}
-
-function createSmokeTexture(){
-  const canvas=document.createElement('canvas');
-  canvas.width=256;
-  canvas.height=256;
-
-  const ctx=canvas.getContext('2d');
-
-  for(let i=0;i<18;i++){
-    const x=35+Math.random()*185;
-    const y=45+Math.random()*165;
-    const r=20+Math.random()*55;
-
-    const gradient=ctx.createRadialGradient(
-      x,y,0,
-      x,y,r
-    );
-
-    gradient.addColorStop(0,'rgba(235,235,235,.30)');
-    gradient.addColorStop(.32,'rgba(205,205,205,.17)');
-    gradient.addColorStop(.72,'rgba(165,165,165,.055)');
-    gradient.addColorStop(1,'rgba(100,100,100,0)');
-
-    ctx.fillStyle=gradient;
-    ctx.beginPath();
-    ctx.arc(x,y,r,0,Math.PI*2);
-    ctx.fill();
-  }
-
-  return new THREE.CanvasTexture(canvas);
-}
-
-function buildLighting(){
-  const ambient=new THREE.AmbientLight(0xffffff,.055);
-  scene.add(ambient);
-
-  const roomFill=new THREE.PointLight(0xffffff,.28,28);
-  roomFill.position.set(0,6.2,1);
-  scene.add(roomFill);
-
-  addMoverHead(-6.8,6.25,-9.2,0);
-  addMoverHead(6.8,6.25,-9.2,Math.PI);
-  addMoverHead(-5.8,6.25,2.8,.7);
-  addMoverHead(5.8,6.25,2.8,Math.PI+.7);
-
-  addFloorWash(-6.7,.45,-3,0xffffff);
-  addFloorWash(6.7,.45,-3,0xffffff);
-  addFloorWash(-5.0,.4,4.8,0xffffff);
-  addFloorWash(5.0,.4,4.8,0xffffff);
-
-  const strobePositions=[
-    [-5.4,6.36,-10.0],
-    [-1.8,6.36,-10.0],
-    [1.8,6.36,-10.0],
-    [5.4,6.36,-10.0]
-  ];
-
-  strobePositions.forEach((p,index)=>{
-    const fixture=new THREE.Mesh(
-      new THREE.BoxGeometry(.58,.20,.34),
-      new THREE.MeshStandardMaterial({
-        color:0x080808,
-        roughness:.32,
-        metalness:.85,
-        emissive:0x050505,
-        emissiveIntensity:.1
-      })
-    );
-    fixture.position.set(p[0],p[1],p[2]);
-    scene.add(fixture);
-
-    const lens=new THREE.Mesh(
-      new THREE.PlaneGeometry(.40,.08),
-      new THREE.MeshBasicMaterial({
-        color:0xffffff,
-        transparent:true,
-        opacity:0
-      })
-    );
-    lens.position.set(p[0],p[1]-.105,p[2]-.18);
-    lens.rotation.x=-Math.PI/2;
-    scene.add(lens);
-
-    const light=new THREE.PointLight(0xffffff,0,24);
-    light.position.set(p[0],p[1]-.18,p[2]+.35);
-    scene.add(light);
-
-    strobes.push({
-      light,
-      fixture,
-      lens,
-      phase:index*.5
-    });
+$('screenOn').onclick=()=>{
+  if(!host || !socket?.connected) return;
+  socket.emit('screen:set',{
+    src:$('screenSrc').value.trim(),
+    type:$('screenType').value,
+    title:$('screenTitle').value.trim() || 'EWS SESSIONS'
   });
+};
 
-  addLaserFixture(-7.05,5.8,-10.0,0);
-  addLaserFixture(7.05,5.8,-10.0,Math.PI);
-}
+$('screenOff').onclick=()=>{
+  if(host && socket?.connected) socket.emit('screen:set',{src:''});
+};
 
-function addMoverHead(x,y,z,phase){
-  const rig=new THREE.Group();
-  rig.position.set(x,y,z);
-  rig.rotation.y=phase;
-  scene.add(rig);
-
-  const housingMaterial=new THREE.MeshStandardMaterial({
-    color:0x090909,
-    roughness:.34,
-    metalness:.86
-  });
-
-  const housing=new THREE.Mesh(
-    new THREE.BoxGeometry(.62,.42,.78),
-    housingMaterial
-  );
-  rig.add(housing);
-
-  const yokeL=new THREE.Mesh(
-    new THREE.BoxGeometry(.08,.72,.16),
-    housingMaterial
-  );
-  yokeL.position.x=-.37;
-  rig.add(yokeL);
-
-  const yokeR=yokeL.clone();
-  yokeR.position.x=.37;
-  rig.add(yokeR);
-
-  const lens=new THREE.Mesh(
-    new THREE.CircleGeometry(.15,24),
-    new THREE.MeshBasicMaterial({
-      color:0xffffff,
-      transparent:true,
-      opacity:.48
-    })
-  );
-  lens.position.z=-.40;
-  lens.rotation.y=Math.PI;
-  rig.add(lens);
-
-  const target=new THREE.Object3D();
-  target.position.set(0,1,-2);
-  scene.add(target);
-
-  const light=new THREE.SpotLight(
-    0xffffff,
-    1.05,
-    31,
-    Math.PI/13,
-    .42,
-    1.15
-  );
-
-  light.position.set(x,y-.13,z);
-  light.target=target;
-  scene.add(light);
-
-  moverLights.push({
-    rig,
-    light,
-    target,
-    lens,
-    phase
-  });
-}
-
-
-function addFloorWash(x,y,z,color){
-  const light=new THREE.PointLight(
-    color,
-    .45,
-    11
-  );
-
-  light.position.set(x,y,z);
-  scene.add(light);
-  floorLights.push({
-    light,
-    phase:Math.random()*Math.PI*2
-  });
-}
-
-function addLaserFixture(x,y,z,phase){
-  const rig=new THREE.Group();
-  rig.position.set(x,y,z);
-  rig.rotation.y=phase;
-  scene.add(rig);
-
-  const housing=new THREE.Mesh(
-    new THREE.CylinderGeometry(.18,.22,.46,14),
-    new THREE.MeshStandardMaterial({
-      color:0x080808,
-      roughness:.32,
-      metalness:.86
-    })
-  );
-  housing.rotation.x=Math.PI/2;
-  rig.add(housing);
-
-  const aperture=new THREE.Mesh(
-    new THREE.CircleGeometry(.09,24),
-    new THREE.MeshBasicMaterial({
-      color:0xffffff,
-      transparent:true,
-      opacity:.92
-    })
-  );
-  aperture.position.z=-.24;
-  aperture.rotation.y=Math.PI;
-  rig.add(aperture);
-
-  const beam=new THREE.Mesh(
-    new THREE.CylinderGeometry(.018,.065,1,12,1,true),
-    new THREE.MeshBasicMaterial({
-      color:0xffffff,
-      transparent:true,
-      opacity:.055,
-      depthWrite:false,
-      blending:THREE.AdditiveBlending,
-      side:THREE.DoubleSide
-    })
-  );
-  rig.add(beam);
-
-  const core=new THREE.Mesh(
-    new THREE.CylinderGeometry(.004,.008,1,8,1,true),
-    new THREE.MeshBasicMaterial({
-      color:0xffffff,
-      transparent:true,
-      opacity:.82,
-      depthWrite:false,
-      blending:THREE.AdditiveBlending
-    })
-  );
-  rig.add(core);
-
-  lasers.push({
-    rig,
-    beam,
-    core,
-    aperture,
-    phase
-  });
-}
-
-
-function init3D(){
-  if(renderer) return;
-
-  renderer=new THREE.WebGLRenderer({
-    canvas:$('canvas3d'),
-    antialias:true,
-    powerPreference:'high-performance'
-  });
-
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-  renderer.setSize(innerWidth,innerHeight);
-  renderer.shadowMap.enabled=true;
-  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-
-  scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x040404);
-
-  camera=new THREE.PerspectiveCamera(
-    72,
-    innerWidth/innerHeight,
-    .05,
-    120
-  );
-
-  camera.position.set(
-    playerX,
-    WORLD.eyeY,
-    playerZ
-  );
-
-  camera.rotation.order='YXZ';
-
-  buildArchitecture();
-  buildAtmosphere();
-  buildLighting();
-
-  cssScene=new THREE.Scene();
-
-  cssRenderer=new THREE.CSS3DRenderer();
-  cssRenderer.setSize(innerWidth,innerHeight);
-  cssRenderer.domElement.style.position='absolute';
-  cssRenderer.domElement.style.left='0';
-  cssRenderer.domElement.style.top='0';
-  cssRenderer.domElement.style.width='100%';
-  cssRenderer.domElement.style.height='100%';
-  cssRenderer.domElement.style.pointerEvents='none';
-
-  $('css3d-layer').appendChild(cssRenderer.domElement);
-
-  cssScreenObject=new THREE.CSS3DObject(
-    $('club-screen')
-  );
-
-  cssScreenObject.position.copy(screenAnchor.position);
-  cssScreenObject.rotation.copy(screenAnchor.rotation);
-  cssScreenObject.scale.set(.01,.01,.01);
-
-  cssScene.add(cssScreenObject);
-
-  bindPointerControls();
-
-  window.addEventListener('resize',onResize);
-
+function startClub() {
+  buildWorld();
+  connect();
   animate();
+  $('langLabel').textContent=LANG_NAMES[language]||language.toUpperCase();
+  $('chatInput').placeholder='ENTER → чат';
+  // The screen URL is intentionally editable only for the host.
+  $('screenSrc').value='/hls/ews/index.m3u8';
+  $('screenTitle').value='EWS SESSIONS';
 }
 
-function bindPointerControls(){
-  $('canvas3d').addEventListener('click',()=>{
-    if(document.pointerLockElement) return;
+// Keep the user signed in on this browser after the first successful login.
+const saved=localStorage.getItem('ews-username');
+if(saved) $('username').value=saved;
 
-    try{
-      $('canvas3d').requestPointerLock();
-    }catch(error){}
-  });
+async function restoreSession() {
+  const token=localStorage.getItem('ews-session-token');
+  if(!token) return;
 
-  document.addEventListener('mousemove',event=>{
-    if(!document.pointerLockElement) return;
-
-    yaw-=event.movementX*.0022;
-    pitch-=event.movementY*.0022;
-
-    pitch=THREE.MathUtils.clamp(
-      pitch,
-      -1.30,
-      1.30
-    );
-  });
-
-  document.addEventListener('pointerlockchange',()=>{
-    $('help').style.opacity=
-      document.pointerLockElement ? '.13' : '.52';
-  });
-}
-
-function onResize(){
-  if(!renderer || !camera) return;
-
-  camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize(innerWidth,innerHeight);
-
-  if(cssRenderer){
-    cssRenderer.setSize(
-      innerWidth,
-      innerHeight
-    );
+  try {
+    const data=await api('/api/session',{token});
+    setLoggedIn(data.username,data.token);
+    startClub();
+  } catch {
+    localStorage.removeItem('ews-session-token');
   }
 }
 
-function movePlayer(dt){
-  if(!document.pointerLockElement) return;
-
-  const forward=
-    (keys.KeyW?1:0)-
-    (keys.KeyS?1:0);
-
-  const side=
-    (keys.KeyD?1:0)-
-    (keys.KeyA?1:0);
-
-  if(!forward && !side) return;
-
-  const len=Math.hypot(forward,side)||1;
-
-  const f=forward/len;
-  const s=side/len;
-
-  const fx=-Math.sin(yaw);
-  const fz=-Math.cos(yaw);
-
-  const rx=Math.cos(yaw);
-  const rz=-Math.sin(yaw);
-
-  playerX+=
-    (fx*f+rx*s)*
-    4.6*
-    dt;
-
-  playerZ+=
-    (fz*f+rz*s)*
-    4.6*
-    dt;
-
-  playerX=THREE.MathUtils.clamp(
-    playerX,
-    WORLD.minX,
-    WORLD.maxX
-  );
-
-  playerZ=THREE.MathUtils.clamp(
-    playerZ,
-    WORLD.minZ,
-    WORLD.maxZ
-  );
-}
-
-function handleJump(dt){
-  if(!document.pointerLockElement) return;
-
-  verticalVelocity-=18*dt;
-  playerY+=verticalVelocity*dt;
-
-  if(playerY<=0){
-    playerY=0;
-    verticalVelocity=0;
-    grounded=true;
-  }
-}
-
-document.addEventListener('keydown',event=>{
-  if(
-    event.target &&
-    /input|select|textarea/i.test(event.target.tagName)
-  ){
-    return;
-  }
-
-  keys[event.code]=true;
-
-  if(event.code==='Space' && grounded){
-    verticalVelocity=7;
-    grounded=false;
-    event.preventDefault();
-  }
-
-  if(
-    EMOTE_KEYS[event.code] &&
-    socket &&
-    socket.connected
-  ){
-    socket.emit(
-      'player:emote',
-      EMOTE_KEYS[event.code]
-    );
-  }
-});
-
-document.addEventListener('keyup',event=>{
-  keys[event.code]=false;
-});
-
-function sendPlayerState(now){
-  if(!socket || !socket.connected) return;
-
-  if(now-lastStateSent<60) return;
-
-  lastStateSent=now;
-
-  const moving=
-    Boolean(
-      keys.KeyW||
-      keys.KeyA||
-      keys.KeyS||
-      keys.KeyD
-    );
-
-  socket.emit('player:state',{
-    x:playerX,
-    y:0,
-    z:playerZ,
-    yaw:yaw,
-    moving
-  });
-}
-
-function createLabel(name){
-  const canvas=document.createElement('canvas');
-  canvas.width=512;
-  canvas.height=96;
-
-  const ctx=canvas.getContext('2d');
-
-  ctx.clearRect(0,0,512,96);
-  ctx.fillStyle='#fff';
-  ctx.font='700 34px Arial';
-  ctx.textAlign='center';
-  ctx.fillText(
-    String(name||'PLAYER'),
-    256,
-    58
-  );
-
-  const texture=new THREE.CanvasTexture(canvas);
-
-  const sprite=new THREE.Sprite(
-    new THREE.SpriteMaterial({
-      map:texture,
-      transparent:true,
-      depthTest:false
-    })
-  );
-
-  sprite.scale.set(2.3,.43,1);
-  sprite.position.y=2.95;
-
-  return sprite;
-}
-
-function hashId(id){
-  let value=0;
-
-  const s=String(id||'');
-
-  for(let i=0;i<s.length;i++){
-    value=
-      (value*31+s.charCodeAt(i))>>>
-      0;
-  }
-
-  return value;
-}
-
-function makeRemoteAvatar(data){
-  const group=new THREE.Group();
-
-  group.userData.id=data.id;
-
-  const seed=hashId(data.id);
-
-  const bodyTone=
-    0x3a3a3a+
-    (seed%4)*0x0b0b0b;
-
-  const suitMaterial=new THREE.MeshStandardMaterial({
-    color:bodyTone,
-    roughness:.72,
-    metalness:.18
-  });
-
-  const accentMaterial=new THREE.MeshStandardMaterial({
-    color:seed%2?0xbdbdbd:0x8d8d8d,
-    roughness:.55,
-    metalness:.25
-  });
-
-  const darkMaterial=new THREE.MeshStandardMaterial({
-    color:0x202020,
-    roughness:.78,
-    metalness:.1
-  });
-
-  const body=new THREE.Mesh(
-    new THREE.BoxGeometry(.82,1.28,.46),
-    suitMaterial
-  );
-
-  body.position.y=1.35;
-  body.castShadow=true;
-  group.add(body);
-
-  const chest=new THREE.Mesh(
-    new THREE.BoxGeometry(.54,.45,.06),
-    accentMaterial
-  );
-
-  chest.position.set(0,1.55,.26);
-  group.add(chest);
-
-  const head=new THREE.Mesh(
-    new THREE.SphereGeometry(.39,16,16),
-    accentMaterial
-  );
-
-  head.position.y=2.28;
-  head.castShadow=true;
-  group.add(head);
-
-  const eyeMaterial=new THREE.MeshBasicMaterial({
-    color:0x101010
-  });
-
-  for(let side=-1;side<=1;side+=2){
-    const eye=new THREE.Mesh(
-      new THREE.BoxGeometry(.07,.07,.025),
-      eyeMaterial
-    );
-
-    eye.position.set(
-      side*.12,
-      2.31,
-      .36
-    );
-
-    group.add(eye);
-  }
-
-  const legL=new THREE.Mesh(
-    new THREE.BoxGeometry(.22,.94,.24),
-    darkMaterial
-  );
-
-  legL.position.set(-.2,.48,0);
-  legL.castShadow=true;
-  group.add(legL);
-
-  const legR=legL.clone();
-  legR.position.x=.2;
-  group.add(legR);
-
-  const armL=new THREE.Mesh(
-    new THREE.BoxGeometry(.20,1.02,.23),
-    suitMaterial
-  );
-
-  armL.position.set(-.57,1.37,0);
-  armL.rotation.z=.05;
-  group.add(armL);
-
-  const armR=armL.clone();
-  armR.position.x=.57;
-  armR.rotation.z=-.05;
-  group.add(armR);
-
-  group.add(createLabel(data.username));
-
-  group.position.set(
-    Number(data.x)||0,
-    WORLD.floorY,
-    Number(data.z)||0
-  );
-
-  group.rotation.y=
-    Number(data.yaw)||0;
-
-  scene.add(group);
-
-  return {
-    group,
-    data,
-    targetX:group.position.x,
-    targetZ:group.position.z,
-    targetYaw:group.rotation.y
-  };
-}
-
-function updateRemotePlayer(data){
-  if(!data || !data.id) return;
-
-  let remote=remotePlayers.get(data.id);
-
-  if(!remote){
-    remote=makeRemoteAvatar(data);
-    remotePlayers.set(data.id,remote);
-  }
-
-  remote.data=data;
-  remote.targetX=Number(data.x)||0;
-  remote.targetZ=Number(data.z)||0;
-  remote.targetYaw=Number(data.yaw)||0;
-}
-
-function removeRemotePlayer(id){
-  const remote=remotePlayers.get(id);
-
-  if(!remote) return;
-
-  scene.remove(remote.group);
-  remotePlayers.delete(id);
-}
-
-function animateRemotePlayers(time){
-  remotePlayers.forEach(remote=>{
-    const group=remote.group;
-
-    group.position.x +=
-      (remote.targetX-group.position.x)*.24;
-
-    group.position.z +=
-      (remote.targetZ-group.position.z)*.24;
-
-    let deltaYaw=
-      remote.targetYaw-group.rotation.y;
-
-    while(deltaYaw>Math.PI) deltaYaw-=Math.PI*2;
-    while(deltaYaw<-Math.PI) deltaYaw+=Math.PI*2;
-
-    group.rotation.y += deltaYaw*.24;
-
-    const moving=Boolean(remote.data && remote.data.moving);
-
-    const dance=
-      Number(remote.data && remote.data.dance)||0;
-
-    const swing=
-      moving
-        ? Math.sin(time*9)*.35
-        : 0;
-
-    if(group.children[6]){
-      group.children[6].rotation.x=swing;
-    }
-
-    if(group.children[7]){
-      group.children[7].rotation.x=-swing;
-    }
-
-    if(dance){
-      const pulse=Math.sin(
-        time*7+
-        Number(remote.data.danceStartedAt||0)*.001
-      )*.24;
-
-      group.rotation.z=pulse;
+restoreSession();
+
+})();
+</script>
+</body>
+</html>
