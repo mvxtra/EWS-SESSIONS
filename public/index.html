@@ -300,6 +300,7 @@ button{cursor:pointer}
 #auth{
   position:absolute;
   inset:0;
+  pointer-events:auto;
   z-index:200;
   display:grid;
   place-items:center;
@@ -310,6 +311,9 @@ button{cursor:pointer}
 #auth.hidden{display:none}
 
 .auth-card{
+  position:relative;
+  z-index:1;
+  pointer-events:auto;
   width:min(410px,calc(100vw - 36px));
   padding:34px;
   background:rgba(0,0,0,.8);
@@ -470,8 +474,8 @@ button{cursor:pointer}
     </select>
 
     <div class="auth-actions">
-      <button id="enter-button" type="button">ENTER</button>
-      <button id="register-button" type="button">REGISTER</button>
+      <button id="enter-button" type="button" onclick="auth('/api/login'); return false;">ENTER</button>
+      <button id="register-button" type="button" onclick="auth('/api/register'); return false;">REGISTER</button>
     </div>
 
     <div id="auth-message"></div>
