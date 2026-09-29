@@ -86,10 +86,8 @@ button{cursor:pointer}
     <div id="hud">
       <div id="topbar">
         <div class="badge">EWS SESSIONS <span id="me"></span></div>
-        <div class="badge"><span id="langLabel">EN</span> · ENTER = CHAT</div>
       </div>
 
-      <div id="help">CLICK TO LOCK MOUSE · WASD MOVE · SPACE JUMP · ENTER CHAT</div>
       <div id="crosshair"></div>
 
       <div id="online" class="panel">
@@ -122,6 +120,7 @@ button{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fflate@0.6.10/umd/index.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
@@ -771,8 +770,11 @@ function createAvatar(data) {
     const h=finalBox.max.y-finalBox.min.y;
     label.position.y=Math.max(3.45,h+.65);
 
-  }).catch(()=>{
-    // If the FBX is not deployed yet or fails to load, keep the fallback avatar.
+  }).catch(err=>{
+    console.error('[EWS AVATAR] X Bot.fbx failed to load:', err);
+    console.error('[EWS AVATAR] URL:', location.origin + '/models/avatars/X%20Bot.fbx');
+    console.error('[EWS AVATAR] Check Network tab for the FBX request and its HTTP status.');
+    // Keep the fallback avatar so the club remains usable.
   });
 
   return {
