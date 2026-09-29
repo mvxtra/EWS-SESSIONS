@@ -122,6 +122,7 @@ button{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 (() => {
@@ -734,22 +735,83 @@ function createAvatar(data) {
       alien.rotation.y=Math.PI;
       g.add(alien);
 
-      // Use an animation clip from the GLB when one is available.
-      // Movement is driven by the same "moving" state used by multiplayer.
+      // Animation setup:
+      // 1) Prefer an animation already embedded in the GLB.
+      // 2) Also load the supplied FBX run animation and retarget its tracks
+      //    onto the GLB skeleton by matching normalized bone names.
+      const mixer=new THREE.AnimationMixer(alien);
+      g.userData.alienMixer=mixer;
+      g.userData.alienClock=new THREE.Clock();
+      g.userData.alienWalk=null;
+      g.userData.alienDance=null;
+      g.userData.alienAnimationReady=false;
+
+      function boneKey(name){
+        return String(name||'')
+          .replace(/^.*[:|]/,'')
+          .replace(/[^a-z0-9]/gi,'')
+          .toLowerCase()
+          .replace(/mixamorig/g,'');
+      }
+
+      function retargetClip(clip, targetRoot){
+        const bones={};
+        targetRoot.traverse(o=>{
+          if(o.isBone) bones[boneKey(o.name)]=o.name;
+        });
+
+        const tracks=clip.tracks.map(track=>{
+          const dot=track.name.indexOf('.');
+          if(dot<0) return track;
+          const path=track.name.slice(0,dot);
+          const prop=track.name.slice(dot+1);
+          const raw=path.split('/').pop();
+          const key=boneKey(raw);
+          const target=bones[key];
+          if(!target) return null;
+          const clone=track.clone();
+          clone.name=target+'.'+prop;
+          return clone;
+        }).filter(Boolean);
+
+        return new THREE.AnimationClip(
+          clip.name,
+          clip.duration,
+          tracks
+        );
+      }
+
       if(gltf.animations && gltf.animations.length){
-        const mixer=new THREE.AnimationMixer(alien);
         const clips=gltf.animations;
-        const walkClip=THREE.AnimationClip.findByName(alien, 'Walk')
+        const walkClip=THREE.AnimationClip.findByName(alien,'Walk')
           || clips.find(c=>/walk|run|locomotion/i.test(c.name))
           || clips[0];
-        const action=mixer.clipAction(walkClip);
-        action.loop=THREE.LoopRepeat;
-        action.enabled=true;
-        action.paused=true;
-        g.userData.alienMixer=mixer;
-        g.userData.alienWalk=action;
-        g.userData.alienClock=new THREE.Clock();
+        g.userData.alienWalk=mixer.clipAction(walkClip);
+        g.userData.alienWalk.loop=THREE.LoopRepeat;
+        g.userData.alienWalk.enabled=true;
+        g.userData.alienWalk.paused=true;
+        g.userData.alienAnimationReady=true;
       }
+
+      // Load the uploaded FBX only for the dedicated mvxtra character.
+      if(THREE.FBXLoader){
+        const fbxLoader=new THREE.FBXLoader();
+        fbxLoader.load('/animations/Mutant%20Run.fbx', fbx=>{
+          const sourceClip=fbx.animations && fbx.animations[0];
+          if(!sourceClip) return;
+          const clip=retargetClip(sourceClip,alien);
+          if(!clip.tracks.length) return;
+          if(g.userData.alienWalk) g.userData.alienWalk.stop();
+          const action=mixer.clipAction(clip);
+          action.loop=THREE.LoopRepeat;
+          action.enabled=true;
+          action.paused=true;
+          g.userData.alienWalk=action;
+          g.userData.alienAnimationReady=true;
+          g.userData.alienRunSource='Mutant Run.fbx';
+        },undefined,()=>{});
+      }
+
       g.userData.alien=alien;
     },undefined,()=>{
       // If the alien asset fails, the normal avatar remains.
@@ -793,7 +855,7 @@ function updateRemotes(t){
 
     const moving=!!r.data?.moving;
 
-    // Alien GLB walk animation.
+    // Alien walk animation (GLB first, then retargeted Mutant Run FBX).
     if(r.g.userData.alienMixer){
       const clock=r.g.userData.alienClock;
       const dt=Math.min(clock.getDelta(),.05);
