@@ -558,6 +558,180 @@ io.on('connection', socket => {
   });
 });
 
+/* Twitch OAuth */
+const TWITCH_CLIENT_ID =
+  process.env.TWITCH_CLIENT_ID ||
+  'jyay7d0zpwy8i02kbng9bgizwnynsa';
+
+const TWITCH_CLIENT_SECRET =
+  process.env.TWITCH_CLIENT_SECRET || '';
+
+const TWITCH_REDIRECT_URI =
+  process.env.TWITCH_REDIRECT_URI ||
+  'https://ews-sessions.onrender.com/auth/twitch/callback';
+
+const twitchStates = new Map();
+const twitchTickets = new Map();
+
+function randomToken(bytes=24){
+  return crypto.randomBytes(bytes).toString('hex');
+}
+
+function cleanupTwitchAuth(){
+  const now=Date.now();
+
+  for(const [key,value] of twitchStates){
+    if(value.expiresAt<=now) twitchStates.delete(key);
+  }
+
+  for(const [key,value] of twitchTickets){
+    if(value.expiresAt<=now) twitchTickets.delete(key);
+  }
+}
+
+app.get('/auth/twitch', (_req,res)=>{
+  cleanupTwitchAuth();
+
+  if(!TWITCH_CLIENT_SECRET){
+    return res.status(503).send('Twitch login is not configured on the server.');
+  }
+
+  const state=randomToken(24);
+  twitchStates.set(state,{expiresAt:Date.now()+10*60*1000});
+
+  const params=new URLSearchParams({
+    client_id:TWITCH_CLIENT_ID,
+    redirect_uri:TWITCH_REDIRECT_URI,
+    response_type:'code',
+    scope:'openid',
+    state
+  });
+
+  res.redirect('https://id.twitch.tv/oauth2/authorize?'+params.toString());
+});
+
+app.get('/auth/twitch/callback',async(req,res)=>{
+  cleanupTwitchAuth();
+
+  const code=String(req.query.code||'');
+  const state=String(req.query.state||'');
+
+  if(!code || !state || !twitchStates.has(state)){
+    return res.status(400).send('Invalid Twitch login request.');
+  }
+
+  twitchStates.delete(state);
+
+  try{
+    const tokenResponse=await fetch('https://id.twitch.tv/oauth2/token',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({
+        client_id:TWITCH_CLIENT_ID,
+        client_secret:TWITCH_CLIENT_SECRET,
+        code,
+        grant_type:'authorization_code',
+        redirect_uri:TWITCH_REDIRECT_URI
+      })
+    });
+
+    const tokenData=await tokenResponse.json();
+
+    if(!tokenResponse.ok || !tokenData.access_token){
+      console.error('[TWITCH] token exchange failed',tokenData);
+      return res.status(502).send('Twitch authorization failed.');
+    }
+
+    const userResponse=await fetch('https://api.twitch.tv/helix/users',{
+      headers:{
+        'Authorization':'Bearer '+tokenData.access_token,
+        'Client-Id':TWITCH_CLIENT_ID
+      }
+    });
+
+    const userData=await userResponse.json();
+    const twitchUser=userData && Array.isArray(userData.data)
+      ? userData.data[0]
+      : null;
+
+    if(!userResponse.ok || !twitchUser || !twitchUser.id){
+      console.error('[TWITCH] user lookup failed',userData);
+      return res.status(502).send('Could not read Twitch account.');
+    }
+
+    const users=readUsers();
+    let username=String(twitchUser.login||'').trim();
+
+    if(!username){
+      return res.status(400).send('Twitch account has no username.');
+    }
+
+    const existing=Object.entries(users).find(([,user])=>
+      user &&
+      String(user.twitchId||'')===String(twitchUser.id)
+    );
+
+    if(existing){
+      username=existing[0];
+      users[username].displayName=String(twitchUser.display_name||username).slice(0,80);
+      users[username].twitchId=String(twitchUser.id);
+    }else{
+      const base=username.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,24) || 'twitch';
+      username=base;
+
+      let candidate=username;
+      let n=2;
+
+      while(users[candidate]){
+        candidate=(base.slice(0,Math.max(1,24-String(n).length-1))+'_'+n).slice(0,24);
+        n++;
+      }
+
+      username=candidate;
+      users[username]={
+        password:'',
+        twitchId:String(twitchUser.id),
+        displayName:String(twitchUser.display_name||username).slice(0,80),
+        language:'en'
+      };
+    }
+
+    writeUsers(users);
+
+    const ticket=randomToken(24);
+    twitchTickets.set(ticket,{
+      username,
+      expiresAt:Date.now()+60*1000
+    });
+
+    res.redirect('/?twitch_ticket='+encodeURIComponent(ticket));
+  }catch(error){
+    console.error('[TWITCH] callback error',error);
+    res.status(500).send('Twitch login failed.');
+  }
+});
+
+app.post('/api/twitch/exchange',(req,res)=>{
+  cleanupTwitchAuth();
+
+  const ticket=String(req.body && req.body.ticket || '');
+  const record=twitchTickets.get(ticket);
+
+  if(!record){
+    return res.status(401).json({
+      ok:false,
+      error:'Twitch login ticket expired.'
+    });
+  }
+
+  twitchTickets.delete(ticket);
+
+  res.json({
+    ok:true,
+    username:record.username
+  });
+});
+
 app.get('*', (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
