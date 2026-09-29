@@ -993,23 +993,23 @@ function box(w,h,d,x,y,z,material){
 
 function buildArchitecture(){
   const wallTexture=createProceduralTexture('wall');
-  wallTexture.repeat.set(3,2);
+  wallTexture.repeat.set(4,2);
 
   const floorTexture=createProceduralTexture('floor');
-  floorTexture.repeat.set(5,5);
+  floorTexture.repeat.set(6,6);
 
   const wallMaterial=new THREE.MeshStandardMaterial({
     map:wallTexture,
-    color:0x3a3a3a,
-    roughness:.94,
-    metalness:.05
+    color:0x262626,
+    roughness:.91,
+    metalness:.08
   });
 
   const floorMaterial=new THREE.MeshStandardMaterial({
     map:floorTexture,
-    color:0x161616,
-    roughness:.72,
-    metalness:.24
+    color:0x111111,
+    roughness:.52,
+    metalness:.38
   });
 
   const floor=new THREE.Mesh(
@@ -1021,46 +1021,104 @@ function buildArchitecture(){
   floor.receiveShadow=true;
   scene.add(floor);
 
-  const back=box(36,8,.5,0,4,-15.7,wallMaterial);
-  const left=box(.5,8,32,-18,4,0,wallMaterial);
-  const right=box(.5,8,32,18,4,0,wallMaterial);
+  // Heavy industrial shell.
+  box(36,8,.6,0,4,-15.7,wallMaterial);
+  box(.6,8,31,-18,4,0,wallMaterial);
+  box(.6,8,31,18,4,0,wallMaterial);
+  box(36,8,.6,0,4,15.7,wallMaterial);
 
-  const front=box(36,8,.5,0,4,15.7,wallMaterial);
-
-  const trimMaterial=new THREE.MeshStandardMaterial({
-    color:0x090909,
-    roughness:.45,
-    metalness:.65
+  // Large wall panels / acoustic sections.
+  const panelMaterial=new THREE.MeshStandardMaterial({
+    color:0x0f0f10,
+    roughness:.72,
+    metalness:.22
   });
 
-  for(let z=-12;z<=10;z+=5.5){
+  const seamMaterial=new THREE.MeshBasicMaterial({
+    color:0x4b4b4b,
+    transparent:true,
+    opacity:.30
+  });
+
+  for(let x=-15;x<=15;x+=5){
     box(
-      34,.16,.18,
-      0,6.85,z,
-      trimMaterial
+      4.55,5.7,.10,
+      x,3.25,-15.37,
+      panelMaterial,
+      false,
+      false
+    );
+
+    box(
+      .035,5.7,.018,
+      x+2.3,3.25,-15.30,
+      seamMaterial,
+      false,
+      false
     );
   }
 
-  for(let x=-14;x<=14;x+=7){
+  for(let z=-12;z<=12;z+=6){
     box(
-      .18,.16,30,
-      x,6.85,0,
-      trimMaterial
+      .10,5.7,5.55,
+      -17.66,3.25,z,
+      panelMaterial,
+      false,
+      false
+    );
+
+    box(
+      .018,5.7,.035,
+      -17.56,3.25,z+2.8,
+      seamMaterial,
+      false,
+      false
+    );
+
+    box(
+      .10,5.7,5.55,
+      17.66,3.25,z,
+      panelMaterial,
+      false,
+      false
+    );
+
+    box(
+      .018,5.7,.035,
+      17.56,3.25,z+2.8,
+      seamMaterial,
+      false,
+      false
     );
   }
 
+  // Industrial ceiling and dark service grid.
   const ceiling=new THREE.Mesh(
     new THREE.PlaneGeometry(36,32),
     new THREE.MeshStandardMaterial({
-      color:0x070707,
+      color:0x060607,
       roughness:1,
-      metalness:.02
+      metalness:.03
     })
   );
 
   ceiling.rotation.x=Math.PI/2;
   ceiling.position.y=7;
   scene.add(ceiling);
+
+  const ceilingMetal=new THREE.MeshStandardMaterial({
+    color:0x0c0c0d,
+    roughness:.48,
+    metalness:.78
+  });
+
+  for(let x=-15;x<=15;x+=5){
+    box(.12,.16,29,x,6.62,0,ceilingMetal);
+  }
+
+  for(let z=-12;z<=12;z+=4){
+    box(31,.16,.12,0,6.62,z,ceilingMetal);
+  }
 
   buildDanceFloor(floorMaterial);
   buildScreenWall();
@@ -1072,69 +1130,97 @@ function buildArchitecture(){
 }
 
 function buildDanceFloor(floorMaterial){
-  const floor=new THREE.Mesh(
-    new THREE.BoxGeometry(15,.16,15),
+  const danceMaterial=new THREE.MeshStandardMaterial({
+    map:floorMaterial.map,
+    color:0x171717,
+    roughness:.42,
+    metalness:.46
+  });
+
+  const danceFloor=new THREE.Mesh(
+    new THREE.BoxGeometry(15.6,.14,15.4),
+    danceMaterial
+  );
+
+  danceFloor.position.set(0,.07,-1);
+  danceFloor.receiveShadow=true;
+  scene.add(danceFloor);
+
+  // Clean white floor grid. No labels, no raised stage.
+  const whiteLine=new THREE.MeshStandardMaterial({
+    color:0xffffff,
+    emissive:0xffffff,
+    emissiveIntensity:.35,
+    roughness:.28,
+    metalness:.2
+  });
+
+  const insetX=7.55;
+  const insetZ=7.45;
+
+  const perimeter=[
+    [0,.165,-1-insetZ,15.2,.035],
+    [0,.165,-1+insetZ,15.2,.035],
+    [-insetX,.165,-1,.035,14.9],
+    [insetX,.165,-1,.035,14.9]
+  ];
+
+  perimeter.forEach(item=>{
+    const vertical=item[4]>item[3];
+
+    const line=new THREE.Mesh(
+      new THREE.BoxGeometry(
+        vertical?.035:item[3],
+        .028,
+        vertical?item[4]:.035
+      ),
+      whiteLine
+    );
+
+    line.position.set(item[0],item[1],item[2]);
+    scene.add(line);
+  });
+
+  // Subtle interior grid, thin enough to feel like embedded LED lines.
+  for(let i=-3;i<=3;i++){
+    const x=i*2.15;
+
+    const line=new THREE.Mesh(
+      new THREE.BoxGeometry(.018,.022,14.7),
+      whiteLine
+    );
+
+    line.position.set(x,.178,-1);
+    scene.add(line);
+  }
+
+  for(let i=-3;i<=3;i++){
+    const z=-1+i*2.15;
+
+    const line=new THREE.Mesh(
+      new THREE.BoxGeometry(15.2,.022,.018),
+      whiteLine
+    );
+
+    line.position.set(0,.178,z);
+    scene.add(line);
+  }
+
+  // Slightly darker center panel breaks up the floor without blocking movement.
+  const center=new THREE.Mesh(
+    new THREE.PlaneGeometry(9.2,9.0),
     new THREE.MeshStandardMaterial({
-      map:floorMaterial.map,
-      color:0x202020,
-      roughness:.58,
-      metalness:.34
+      color:0x0f0f10,
+      roughness:.36,
+      metalness:.5
     })
   );
 
-  floor.position.set(0,.08,-1.0);
-  floor.receiveShadow=true;
-  scene.add(floor);
-
-  const border=new THREE.MeshBasicMaterial({
-    color:0x6d6d6d,
-    transparent:true,
-    opacity:.72
-  });
-
-  const lines=[
-    {x:0,z:-8.5,w:15,d:.035},
-    {x:0,z:6.5,w:15,d:.035},
-    {x:-7.5,z:-1,w:.035,d:15},
-    {x:7.5,z:-1,w:.035,d:15}
-  ];
-
-  lines.forEach(item=>{
-    const m=new THREE.Mesh(
-      new THREE.BoxGeometry(item.w,.035,item.d),
-      border
-    );
-
-    m.position.set(item.x,.19,item.z);
-    scene.add(m);
-  });
-
-  const tileMaterial=new THREE.MeshBasicMaterial({
-    color:0x242424,
-    transparent:true,
-    opacity:.7
-  });
-
-  for(let i=-3;i<=3;i++){
-    const tile=new THREE.Mesh(
-      new THREE.BoxGeometry(1.5,.025,15),
-      tileMaterial
-    );
-
-    tile.position.set(i*2.1,.205,-1);
-    scene.add(tile);
-  }
-
-  for(let i=-3;i<=3;i++){
-    const tile=new THREE.Mesh(
-      new THREE.BoxGeometry(15,.026,1.5),
-      tileMaterial
-    );
-
-    tile.position.set(0,.207,-1+i*2.1);
-    scene.add(tile);
-  }
+  center.rotation.x=-Math.PI/2;
+  center.position.set(0,.155,-1);
+  scene.add(center);
 }
+
 
 function buildScreenWall(){
   screenFrameMesh=box(
