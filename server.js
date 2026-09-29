@@ -53,6 +53,27 @@ if (!fs.existsSync(USERS_FILE)) {
   fs.writeFileSync(USERS_FILE, '[]\n', 'utf8');
 }
 
+function ensureDefaultHostAccount() {
+  try {
+    const users = readUsers();
+    const exists = users.some(user =>
+      String(user.username || '').toLowerCase() === 'mvxtra'
+    );
+
+    if (!exists) {
+      users.push({
+        username: 'mvxtra',
+        password: '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92',
+        createdAt: new Date().toISOString()
+      });
+      saveUsers(users);
+      console.log('[AUTH] default host account restored');
+    }
+  } catch (error) {
+    console.error('[AUTH] unable to restore host account:', error.message);
+  }
+}
+
 app.use(express.json({ limit: '64kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(PUBLIC_DIR));
@@ -79,6 +100,8 @@ function validUsername(name) {
     name.length <= 24 &&
     /^[a-zA-Z0-9_\-а-яА-ЯёЁ ]+$/.test(name);
 }
+
+ensureDefaultHostAccount();
 
 function normalizeLanguage(value) {
   const lang = String(value || 'en').trim().toLowerCase();
