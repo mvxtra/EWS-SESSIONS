@@ -350,12 +350,12 @@ function createPhysicalScreen() {
     new THREE.PlaneGeometry(11.6, 5.45),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  backing.position.set(0, 3.175, -11.80);
+  backing.position.set(0, 3.175, -13.48);
   scene.add(backing);
   screenMesh = backing;
 }
 
-function loadSpeakerModel() {\n  return;
+function loadSpeakerModel() {
   if (!THREE.GLTFLoader) return;
 
   const candidates = [
@@ -386,18 +386,26 @@ function loadSpeakerModel() {\n  return;
         }
       });
 
-      // One enormous speaker wall: the imported model fills the back wall.
-      // The video screen is placed physically in front of it.
-      const wallSpeaker = source.clone(true);
+      const left = source.clone(true);
+      const right = source.clone(true);
 
-      wallSpeaker.scale.setScalar(1.0);
-      wallSpeaker.position.set(0, -1.5, -13.05);
-      wallSpeaker.rotation.y = Math.PI;
+      // Place the imported large speakers directly beside the screen.
+      // They replace the old fallback speaker stacks.
+      left.scale.setScalar(0.62);
+      right.scale.setScalar(0.62);
+      // Large speakers stand directly on the dance-floor, symmetrically beside the screen.
+      left.position.set(-6.55, 0, -13.25);
+      right.position.set(6.55, 0, -13.25);
 
-      scene.add(wallSpeaker);
-      screenModel = {wallSpeaker};
+      // Face the dance floor / center of the club.
+      left.rotation.y = 0;
+      right.rotation.y = Math.PI;
 
-      // Hide fallback speaker stacks; the imported model is now one full-width wall speaker.
+      scene.add(left);
+      scene.add(right);
+      screenModel = {left,right};
+
+      // Hide the old center speaker model/fallbacks so nothing sits in front of the screen.
       const fallback = scene.userData.fallbackSpeakers;
       if (fallback) fallback.forEach(o => o.visible = false);
 
@@ -968,7 +976,7 @@ function createTwitchWallScreen(src) {
 
   screenCssFrame=frame;
   screenCssObject=new THREE.CSS3DObject(frame);
-  screenCssObject.position.set(0,3.175,-11.77);
+  screenCssObject.position.set(0,3.175,-13.42);
   screenCssObject.scale.set(0.01,0.01,0.01);
   screenCssObject.rotation.set(0,0,0);
   scene.add(screenCssObject);
