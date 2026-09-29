@@ -483,32 +483,7 @@ button{cursor:pointer}
 </div>
 
 <script>
-(function(){
-  function bindAuth(){
-    const form=document.getElementById('auth-form');
-    const register=document.getElementById('register-button');
-    if(form){
-      form.onsubmit=function(event){
-        event.preventDefault();
-        if(typeof window.auth==='function') window.auth('/api/login');
-      };
-    }
-    if(register){
-      register.onclick=function(event){
-        event.preventDefault();
-        if(typeof window.auth==='function') window.auth('/api/register');
-      };
-    }
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',bindAuth,{once:true});
-  }else{
-    bindAuth();
-  }
-})();
-</script>
-
-<script>
+</script>\n\n<script>
 'use strict';
 
 const $ = id => document.getElementById(id);
