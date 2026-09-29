@@ -775,23 +775,11 @@ app.get('*', (_req, res) => {
         throw new Error('Auth UI is not ready');
       }
 
-      usernameInput.value='';
+      usernameInput.value='twitch';
       passwordInput.value='twitch';
 
-      const response=await fetch(
-        '/api/twitch/login?ticket='+encodeURIComponent(ticket),
-        {method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store'}
-      );
-
-      const data=await response.json();
-
-      if(!response.ok || !data.ok){
-        throw new Error(data.error||'Twitch login failed');
-      }
-
-      usernameInput.value=String(data.username||'');
       window.history.replaceState({},document.title,'/');
-      await window.auth('/api/twitch/login?ticket=consumed');
+      await window.auth('/api/twitch/login?ticket='+encodeURIComponent(ticket));
     }catch(error){
       console.error('[EWS TWITCH]',error);
       const message=document.getElementById('auth-message');
