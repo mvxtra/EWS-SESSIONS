@@ -573,21 +573,46 @@ async function auth(path){
     return;
   }
 
+  const button=$('enter-button');
+  const registerButton=$('register-button');
+
+  button.disabled=true;
+  registerButton.disabled=true;
+  showAuthMessage('CONNECTING...');
+
   try{
     const response=await fetch(path,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({username,password})
+      body:JSON.stringify({username,password}),
+      cache:'no-store'
     });
 
-    const data=await response.json();
+    const raw=await response.text();
+    let data=null;
 
-    if(!response.ok || !data.ok){
-      showAuthMessage(data.error||'AUTH ERROR');
+    try{
+      data=JSON.parse(raw);
+    }catch(error){
+      data=null;
+    }
+
+    if(!response.ok || !data || data.ok!==true){
+      showAuthMessage(
+        data && data.error
+          ? data.error
+          : 'LOGIN SERVER ERROR ('+response.status+')'
+      );
       return;
     }
 
-    currentUser=data.username;
+    currentUser=String(data.username||username).trim();
+
+    if(!currentUser){
+      showAuthMessage('LOGIN ERROR: EMPTY USERNAME');
+      return;
+    }
+
     localStorage.setItem('ews-username',currentUser);
 
     $('auth').classList.add('hidden');
@@ -604,10 +629,19 @@ async function auth(path){
     $('chat-language').value=chatLanguage;
     $('screen-panel').classList.toggle('active',isHost());
 
-    init3D();
-    connectSocket();
+    try{
+      init3D();
+      connectSocket();
+    }catch(error){
+      console.error('[EWS] club init error',error);
+      setConnection('ONLINE');
+    }
   }catch(error){
-    showAuthMessage('SERVER CONNECTION ERROR');
+    console.error('[EWS] auth request error',error);
+    showAuthMessage('SERVER CONNECTION ERROR — '+String(error.message||error));
+  }finally{
+    button.disabled=false;
+    registerButton.disabled=false;
   }
 }
 
