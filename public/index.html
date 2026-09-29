@@ -1037,10 +1037,14 @@ function applyScreen(state) {
 }
 
 $('screenButton').onclick=()=>{
+  // SCREEN control is available only to the host.
   if(!host) return;
+
   const panel=$('screenControl');
-  panel.style.display=panel.style.display==='block'?'none':'block';
-  if(panel.style.display==='block'){
+  const opening=panel.style.display!=='block';
+  panel.style.display=opening?'block':'none';
+
+  if(opening){
     $('screenSrc').focus();
   }
 };
