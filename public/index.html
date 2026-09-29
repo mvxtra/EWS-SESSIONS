@@ -771,8 +771,11 @@ function createAvatar(data) {
     const h=finalBox.max.y-finalBox.min.y;
     label.position.y=Math.max(3.45,h+.65);
 
-  }).catch(()=>{
-    // If the FBX is not deployed yet or fails to load, keep the fallback avatar.
+  }).catch(err=>{
+    console.error('[EWS AVATAR] X Bot.fbx failed to load:', err);
+    console.error('[EWS AVATAR] URL:', location.origin + '/models/avatars/X%20Bot.fbx');
+    console.error('[EWS AVATAR] Check Network tab for the FBX request and its HTTP status.');
+    // Keep the fallback avatar so the club remains usable.
   });
 
   return {
