@@ -485,19 +485,12 @@ button{cursor:pointer}
 <script>
 (function(){
   function login(){
-    const u=document.getElementById('auth-username');
-    const p=document.getElementById('auth-password');
+    if(typeof window.auth==='function'){
+      window.auth('/api/login');
+      return;
+    }
     const m=document.getElementById('auth-message');
-    const b=document.getElementById('enter-button');
-    const r=document.getElementById('register-button');
-    if(!u||!p)return;
-    if(!u.value.trim()||!p.value){ if(m)m.textContent='ENTER USERNAME AND PASSWORD'; return; }
-    if(b)b.disabled=true; if(r)r.disabled=true; if(m)m.textContent='CONNECTING...';
-    fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u.value.trim(),password:p.value}),cache:'no-store'})
-      .then(x=>x.text().then(t=>({ok:x.ok,status:x.status,data:(()=>{try{return JSON.parse(t)}catch(e){return null}})()})))
-      .then(x=>{ if(!x.ok||!x.data||x.data.ok!==true){if(m)m.textContent=x.data&&x.data.error?x.data.error:'LOGIN SERVER ERROR ('+x.status+')';return;} localStorage.setItem('ews-username',String(x.data.username||u.value.trim())); window.location.reload(); })
-      .catch(e=>{if(m)m.textContent='SERVER CONNECTION ERROR';})
-      .finally(()=>{if(b)b.disabled=false;if(r)r.disabled=false;});
+    if(m)m.textContent='LOGIN SYSTEM NOT READY — RELOAD PAGE';
   }
   function register(){ window.location.href='/auth/twitch'; }
   window.__ewsLogin=login;
