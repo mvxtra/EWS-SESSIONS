@@ -483,6 +483,36 @@ button{cursor:pointer}
 </div>
 
 <script>
+(function(){
+  function login(){
+    const u=document.getElementById('auth-username');
+    const p=document.getElementById('auth-password');
+    const m=document.getElementById('auth-message');
+    const b=document.getElementById('enter-button');
+    const r=document.getElementById('register-button');
+    if(!u||!p)return;
+    if(!u.value.trim()||!p.value){ if(m)m.textContent='ENTER USERNAME AND PASSWORD'; return; }
+    if(b)b.disabled=true; if(r)r.disabled=true; if(m)m.textContent='CONNECTING...';
+    fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u.value.trim(),password:p.value}),cache:'no-store'})
+      .then(x=>x.text().then(t=>({ok:x.ok,status:x.status,data:(()=>{try{return JSON.parse(t)}catch(e){return null}})()})))
+      .then(x=>{ if(!x.ok||!x.data||x.data.ok!==true){if(m)m.textContent=x.data&&x.data.error?x.data.error:'LOGIN SERVER ERROR ('+x.status+')';return;} localStorage.setItem('ews-username',String(x.data.username||u.value.trim())); window.location.reload(); })
+      .catch(e=>{if(m)m.textContent='SERVER CONNECTION ERROR';})
+      .finally(()=>{if(b)b.disabled=false;if(r)r.disabled=false;});
+  }
+  function register(){ window.location.href='/auth/twitch'; }
+  window.__ewsLogin=login;
+  window.__ewsRegister=register;
+  function bind(){
+    const f=document.getElementById('auth-form'),b=document.getElementById('enter-button'),r=document.getElementById('register-button');
+    if(f)f.addEventListener('submit',e=>{e.preventDefault();login();});
+    if(b)b.addEventListener('click',e=>{e.preventDefault();login();});
+    if(r)r.addEventListener('click',e=>{e.preventDefault();register();});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});else bind();
+})();
+</script>
+
+<script>
 'use strict';
 
 const $ = id => document.getElementById(id);
