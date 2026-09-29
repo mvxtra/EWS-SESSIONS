@@ -145,6 +145,7 @@ let screenMesh = null;
 let screenModel = null;
 
 let renderer, cssRenderer, scene, camera, screenCssObject, screenCssFrame;
+let player = null;
 let clock = new THREE.Clock();
 let yaw = 0, pitch = 0;
 let px = 0, py = 0, pz = 8;
@@ -226,6 +227,14 @@ function buildWorld() {
 
   camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, .05, 100);
   camera.rotation.order = 'YXZ';
+
+  // The player is a fixed pivot point. Mouse look rotates this pivot in place;
+  // it never orbits the player. WASD is the only thing that changes its X/Z.
+  player = new THREE.Group();
+  player.position.set(px, py, pz);
+  scene.add(player);
+  player.add(camera);
+  camera.position.set(0, 1.65, 0);
 
   renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -586,11 +595,17 @@ function resize() {
 function mouseLook(e) {
   if(document.pointerLockElement !== $('scene')) return;
 
-  // Horizontal mouse movement rotates the PLAYER in place.
-  // It must never change X/Z, so there is no orbiting around the player.
+  // FPS-style look: rotate the player pivot itself.
+  // There is deliberately NO position/orbit calculation here.
   yaw -= e.movementX * 0.0022;
   pitch -= e.movementY * 0.0022;
   pitch = THREE.MathUtils.clamp(pitch,-1.3,1.3);
+
+  if(player){
+    player.rotation.y = yaw;
+    camera.rotation.x = pitch;
+    camera.rotation.y = 0;
+  }
 }
 
 function animate() {
@@ -617,8 +632,12 @@ function animate() {
     if(py<=0){py=0;vy=0;grounded=true}
   }
 
-  camera.position.set(px,1.65+py,pz);
-  camera.rotation.set(pitch,yaw,0);
+  if(player){
+    player.position.set(px,py,pz);
+    player.rotation.y = yaw;
+    camera.position.set(0,1.65,0);
+    camera.rotation.set(pitch,0,0);
+  }
 
   const now=performance.now();
   if(socket?.connected && now-lastState>70){
