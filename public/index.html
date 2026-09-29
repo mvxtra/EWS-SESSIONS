@@ -233,14 +233,13 @@ function buildWorld() {
   cssRenderer = new THREE.CSS3DRenderer();
   cssRenderer.setSize(innerWidth, innerHeight);
 
-  // CSS3D is the Twitch layer. Keep it behind the WebGL canvas so
-  // 3D characters and physical objects can correctly occlude the screen.
+  // Twitch is a real iframe/CSS3D surface. It must be above the WebGL
+  // canvas or the physical black backing plane will hide it completely.
   cssRenderer.domElement.style.position = 'absolute';
   cssRenderer.domElement.style.inset = '0';
   cssRenderer.domElement.style.pointerEvents = 'none';
-  cssRenderer.domElement.style.zIndex = '1';
+  cssRenderer.domElement.style.zIndex = '3';
 
-  // WebGL must be above CSS3D for normal 3D depth/occlusion.
   renderer.domElement.style.position = 'absolute';
   renderer.domElement.style.inset = '0';
   renderer.domElement.style.zIndex = '2';
@@ -296,11 +295,8 @@ function buildWorld() {
   // PROFESSIONAL CLUB LIGHTING RIG
   setupClubLighting();
 
-  // Logo-like EWS wall sign
-  const sign = makeTextSprite('EWS', 2.8);
-  sign.position.set(0,4.2,-13.7);
-  scene.add(sign);
-
+  // No text/logo is placed over the screen surface.
+  // The screen must remain a clean video texture / Twitch surface.
   // Fog/dust
   const count = 500;
   const pos = new Float32Array(count*3);
@@ -951,11 +947,12 @@ function createTwitchWallScreen(src) {
   frame.style.background='#000';
   frame.style.border='0';
   frame.style.overflow='hidden';
-  frame.style.pointerEvents='auto';
+  frame.style.pointerEvents='none';
 
   const iframe=document.createElement('iframe');
   iframe.src=src;
   iframe.allow='autoplay; fullscreen; picture-in-picture';
+  iframe.setAttribute('allowtransparency','true');
   iframe.allowFullscreen=true;
   iframe.style.width='1160px';
   iframe.style.height='545px';
