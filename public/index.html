@@ -564,9 +564,19 @@ function resize() {
 
 function mouseLook(e) {
   if(document.pointerLockElement !== $('scene')) return;
-  yaw -= e.movementX*.0022;
-  pitch -= e.movementY*.0022;
+
+  // Mouse look is rotation ONLY. Never change the player's world position here.
+  // Movement of X/Z is handled exclusively by WASD in animate().
+  const keepX = px;
+  const keepZ = pz;
+
+  yaw -= e.movementX * 0.0022;
+  pitch -= e.movementY * 0.0022;
   pitch = THREE.MathUtils.clamp(pitch,-1.3,1.3);
+
+  // Hard guard: rotating the mouse can never make the player orbit/drift.
+  px = keepX;
+  pz = keepZ;
 }
 
 function animate() {
