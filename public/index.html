@@ -283,8 +283,8 @@ function buildWorld() {
 
   // Speaker stacks / imported model slots.
   // Fallbacks are kept only if the imported large speaker model cannot load.
-  addSpeaker(-7.0,-12.9);
-  addSpeaker(7.0,-12.9);
+  addSpeaker(-7.15,-10.9);
+  addSpeaker(7.15,-10.9);
   loadSpeakerModel();
 
   // Ceiling rig
@@ -352,6 +352,7 @@ function loadSpeakerModel() {
   if (!THREE.GLTFLoader) return;
 
   const candidates = [
+    '/models/speacers big.glb',
     '/models/колонки.glb',
     '/models/speakers.glb',
     '/models/speaker.glb',
@@ -385,8 +386,9 @@ function loadSpeakerModel() {
       // They replace the old fallback speaker stacks.
       left.scale.setScalar(1.85);
       right.scale.setScalar(1.85);
-      left.position.set(-7.0, 0, -12.9);
-      right.position.set(7.0, 0, -12.9);
+      // Large speakers stand directly on the dance-floor, symmetrically beside the screen.
+      left.position.set(-7.15, 0, -10.9);
+      right.position.set(7.15, 0, -10.9);
 
       // Face the dance floor / center of the club.
       left.rotation.y = 0;
