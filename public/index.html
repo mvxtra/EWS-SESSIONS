@@ -788,35 +788,78 @@ function createAvatar(data) {
     avatarHolder.add(model);
     fallback.visible=false;
 
-    // Running.fbx supplies the movement animation. Retarget it to X Bot
-    // when SkeletonUtils supports retargetClip; otherwise use the original
-    // Mixamo clip directly (both files use the same skeleton family).
+    // Running.fbx is a Mixamo animation. Bind it to the actual SkinnedMesh
+    // of X Bot instead of the outer Group.
     let mixer=null;
     let runAction=null;
     const runSource=runData?.source || null;
     const rawRunClip=runData?.clip || null;
-    let runClip=rawRunClip;
 
-    if(runSource && rawRunClip && THREE.SkeletonUtils?.retargetClip){
+    const findSkinnedMesh = root => {
+      let found=null;
+      root?.traverse?.(o => {
+        if(!found && o.isSkinnedMesh) found=o;
+      });
+      return found;
+    };
+
+    const targetSkin=findSkinnedMesh(model);
+    const sourceSkin=findSkinnedMesh(runSource);
+
+    console.log('[EWS AVATAR] target skin:', targetSkin?.name || 'NONE');
+    console.log('[EWS AVATAR] source skin:', sourceSkin?.name || 'NONE');
+    console.log('[EWS AVATAR] running clip:', rawRunClip?.name || 'NONE',
+      'tracks:', rawRunClip?.tracks?.length || 0);
+
+    let runClip=null;
+
+    if(targetSkin && sourceSkin && rawRunClip && THREE.SkeletonUtils?.retargetClip){
       try{
-        runClip=THREE.SkeletonUtils.retargetClip(model,runSource,rawRunClip);
-        console.log('[EWS AVATAR] Running.fbx retargeted to X Bot');
+        const targetBones=targetSkin.skeleton?.bones || [];
+        const sourceBones=sourceSkin.skeleton?.bones || [];
+        const sourceNames=new Set(sourceBones.map(b=>b.name));
+        const sourceByShortName=new Map(
+          sourceBones.map(b=>[String(b.name).split(':').pop(),b.name])
+        );
+
+        const names={};
+        targetBones.forEach(b=>{
+          const exact=b.name;
+          const short=String(b.name).split(':').pop();
+          if(sourceNames.has(exact)) names[exact]=exact;
+          else if(sourceByShortName.has(short)) names[exact]=sourceByShortName.get(short);
+        });
+
+        runClip=THREE.SkeletonUtils.retargetClip(
+          targetSkin,
+          sourceSkin,
+          rawRunClip,
+          {hip:'mixamorigHips',names}
+        );
+
+        console.log('[EWS AVATAR] Running.fbx RETARGET OK. mapped bones:',Object.keys(names).length);
       }catch(err){
-        console.warn('[EWS AVATAR] Retarget failed, using original clip:',err);
-        runClip=rawRunClip;
+        console.error('[EWS AVATAR] Running retarget FAILED:',err);
       }
+    } else {
+      console.error('[EWS AVATAR] Animation setup missing:',{
+        targetSkin:!!targetSkin,
+        sourceSkin:!!sourceSkin,
+        clip:!!rawRunClip,
+        retargetClip:!!THREE.SkeletonUtils?.retargetClip
+      });
     }
 
-    if(runClip){
-      mixer=new THREE.AnimationMixer(model);
+    if(runClip && targetSkin){
+      mixer=new THREE.AnimationMixer(targetSkin);
       runAction=mixer.clipAction(runClip);
       runAction.setLoop(THREE.LoopRepeat,Infinity);
       runAction.enabled=true;
       runAction.clampWhenFinished=false;
-      runAction.setEffectiveWeight(0);
+      runAction.setEffectiveWeight(1);
       runAction.stop();
     } else {
-      console.warn('[EWS AVATAR] Running.fbx contains no animation clip.');
+      console.warn('[EWS AVATAR] Running.fbx could not be bound to X Bot.');
     }
 
     // Store animation state on this avatar instance.
