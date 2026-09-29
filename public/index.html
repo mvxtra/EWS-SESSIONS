@@ -700,9 +700,10 @@ function createAvatar(data) {
   const a2=a1.clone();a2.position.x=.54;g.add(a2);
 
   const label=makeTextSprite(data.username,1.65);
-  // Nickname is attached to the avatar, directly above its head.
-  label.position.set(0,3.15,0);
+  // Nickname: clearly above the character and always visible.
+  label.position.set(0,3.8,0);
   label.scale.set(1.8,.45,1);
+  if(label.material){ label.material.depthTest=false; label.material.depthWrite=false; label.renderOrder=1000; }
   g.add(label);
 
   g.position.set(Number(data.x)||0,0,Number(data.z)||0);
@@ -732,6 +733,7 @@ function createAvatar(data) {
 
       alien.scale.setScalar(1.45);
       alien.position.set(0,0,0);
+      label.position.set(0,3.8,0);
       alien.rotation.y=Math.PI;
       g.add(alien);
 
