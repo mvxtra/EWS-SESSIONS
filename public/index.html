@@ -153,6 +153,7 @@ let vy = 0, grounded = true;
 const keys = {};
 const remotes = new Map();
 let avatarModelPromise = null;
+let runningAnimationPromise = null;
 let lastState = 0;
 
 const authMsg = $('authMsg');
@@ -648,7 +649,7 @@ function animate() {
     });
   }
 
-  updateRemotes(now/1000);
+  updateRemotes(now/1000,dt);
   updateClubLighting(now/1000);
   renderer.render(scene,camera);
   if(cssRenderer) cssRenderer.render(scene,camera);
@@ -740,7 +741,20 @@ function createAvatar(data) {
     });
   }
 
-  avatarModelPromise.then(source=>{
+  if(!runningAnimationPromise){
+    runningAnimationPromise=new Promise((resolve,reject)=>{
+      if(!THREE.FBXLoader) return reject(new Error('FBXLoader unavailable'));
+      const loader=new THREE.FBXLoader();
+      loader.load(
+        '/models/avatars/Running.fbx',
+        model=>resolve(model.animations && model.animations[0] ? model.animations[0] : null),
+        undefined,
+        err=>reject(err)
+      );
+    });
+  }
+
+  Promise.all([avatarModelPromise,runningAnimationPromise]).then(([source,runClip])=>{
     const model=THREE.SkeletonUtils && THREE.SkeletonUtils.clone
       ? THREE.SkeletonUtils.clone(source)
       : source.clone(true);
@@ -766,6 +780,27 @@ function createAvatar(data) {
     avatarHolder.add(model);
     fallback.visible=false;
 
+    // Running.fbx supplies the movement animation for the X Bot skeleton.
+    let mixer=null;
+    let runAction=null;
+    if(runClip){
+      mixer=new THREE.AnimationMixer(model);
+      runAction=mixer.clipAction(runClip);
+      runAction.setLoop(THREE.LoopRepeat,Infinity);
+      runAction.enabled=true;
+      runAction.setEffectiveWeight(0);
+      runAction.play();
+    } else {
+      console.warn('[EWS AVATAR] Running.fbx contains no animation clip.');
+    }
+
+    r._mixer=mixer;
+    r._runAction=runAction;
+    r._running=!!r.data?.moving;
+    if(runAction && r._running){
+      runAction.setEffectiveWeight(1);
+    }
+
     const finalBox=new THREE.Box3().setFromObject(model);
     const h=finalBox.max.y-finalBox.min.y;
     label.position.y=Math.max(3.45,h+.65);
@@ -782,7 +817,10 @@ function createAvatar(data) {
     targetX:g.position.x,
     targetZ:g.position.z,
     targetYaw:g.rotation.y,
-    data
+    data,
+    _mixer:null,
+    _runAction:null,
+    _running:false
   };
 }
 
@@ -809,7 +847,7 @@ function removeRemote(id){
   remotes.delete(id);
 }
 
-function updateRemotes(t){
+function updateRemotes(t,dt){
   remotes.forEach(r=>{
     r.g.position.x += (r.targetX-r.g.position.x)*.22;
     r.g.position.z += (r.targetZ-r.g.position.z)*.22;
@@ -818,8 +856,17 @@ function updateRemotes(t){
     while(d<-Math.PI)d+=Math.PI*2;
     r.g.rotation.y += d*.22;
 
-    // Movement remains synchronized, but character walk/dance animations are disabled.
+    const moving=!!r.data?.moving;
+    if(r._runAction && moving!==r._running){
+      r._running=moving;
+      if(moving){
+        r._runAction.reset().fadeIn(.18).play();
+      }else{
+        r._runAction.fadeOut(.18);
+      }
+    }
 
+    if(r._mixer) r._mixer.update(dt);
   });
 }
 
