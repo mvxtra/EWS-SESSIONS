@@ -676,6 +676,37 @@ function createAvatar(data) {
   g.rotation.y=Number(data.yaw)||0;
   scene.add(g);
 
+  // mvxtra uses the dedicated alien model from /public/models.
+  // The procedural avatar stays visible until the GLB finishes loading.
+  if(String(data.username||'').toLowerCase()==='mvxtra' && THREE.GLTFLoader){
+    const loader=new THREE.GLTFLoader();
+    loader.load('/models/аватар%20mvxtra.glb', gltf=>{
+      const alien=gltf.scene;
+      alien.traverse(o=>{
+        if(o.isMesh){
+          o.castShadow=true;
+          o.receiveShadow=true;
+        }
+      });
+
+      // Keep only the nickname sprite; replace the temporary body.
+      const keep=[];
+      g.children.forEach(child=>{
+        if(child===label) keep.push(child);
+      });
+      g.clear();
+      keep.forEach(child=>g.add(child));
+
+      alien.scale.setScalar(1.45);
+      alien.position.set(0,0,0);
+      alien.rotation.y=Math.PI;
+      g.add(alien);
+      g.userData.alien=alien;
+    },undefined,()=>{
+      // If the alien asset fails, the normal avatar remains.
+    });
+  }
+
   return {g,targetX:g.position.x,targetZ:g.position.z,targetYaw:g.rotation.y,data};
 }
 
