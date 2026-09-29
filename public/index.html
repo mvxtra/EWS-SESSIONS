@@ -865,6 +865,9 @@ function createAvatar(data) {
     // Store animation state on this avatar instance.
     avatar._mixer=mixer;
     avatar._runAction=runAction;
+    avatar._visualModel=model;
+    avatar._idleTime=0;
+    avatar._idleBaseY=model.position.y;
     avatar._running=false;
     if(runAction && avatar.data?.moving){
       avatar._running=true;
@@ -892,6 +895,9 @@ function createAvatar(data) {
     data,
     _mixer:null,
     _runAction:null,
+    _visualModel:null,
+    _idleTime:0,
+    _idleBaseY:0,
     _running:false
   };
 
@@ -931,6 +937,7 @@ function updateRemotes(t,dt){
     r.g.rotation.y += d*.22;
 
     const moving=!!r.data?.moving;
+
     if(r._runAction && moving!==r._running){
       r._running=moving;
       if(moving){
@@ -940,7 +947,23 @@ function updateRemotes(t,dt){
       }else{
         r._runAction.stop();
         r._runAction.setEffectiveWeight(0);
+        r._runAction.setEffectiveWeight(0);
+        r._idleTime=0;
+        if(r._visualModel){
+          r._visualModel.position.y=r._idleBaseY;
+          r._visualModel.rotation.z=0;
+        }
       }
+    }
+
+    // Idle animation: subtle breathing/weight shift while standing still.
+    // This works even when no separate Idle.fbx is available.
+    if(!moving && r._visualModel){
+      r._idleTime += dt;
+      const t=r._idleTime;
+      r._visualModel.position.y=r._idleBaseY + Math.sin(t*1.8)*0.018;
+      r._visualModel.rotation.z=Math.sin(t*0.9)*0.012;
+      r._visualModel.rotation.x=Math.sin(t*1.25)*0.006;
     }
 
     if(r._mixer) r._mixer.update(dt);
