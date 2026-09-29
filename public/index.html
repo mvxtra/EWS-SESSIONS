@@ -2121,7 +2121,7 @@ function createLocalAlien(){
     metalness:.35
   });
 
-  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.36,1.0,8,16),suit);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.36,.30,1.0,16),suit);
   body.position.y=1.12;
   body.castShadow=true;
   group.add(body);
@@ -2139,7 +2139,7 @@ function createLocalAlien(){
     group.add(eye);
   }
 
-  const armL=new THREE.Mesh(new THREE.CapsuleGeometry(.10,.72,6,10),suit);
+  const armL=new THREE.Mesh(new THREE.CylinderGeometry(.10,.10,.72,10),suit);
   armL.position.set(-.48,1.22,0);
   armL.rotation.z=.08;
   group.add(armL);
@@ -2148,7 +2148,7 @@ function createLocalAlien(){
   armR.rotation.z=-.08;
   group.add(armR);
 
-  const legL=new THREE.Mesh(new THREE.CapsuleGeometry(.12,.72,6,10),suit);
+  const legL=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.72,10),suit);
   legL.position.set(-.18,.28,0);
   group.add(legL);
   const legR=legL.clone();
