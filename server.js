@@ -18,6 +18,7 @@ const io = new Server(server, {
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const USERS_FILE = path.join(__dirname, 'users.json');
+const SCREEN_FILE = path.join(__dirname, 'screen-state.json');
 const HOST_NAME = 'mvxtra';
 const ROOM = 'ews-club';
 
@@ -30,13 +31,30 @@ const world = {
   groundY: 0
 };
 
-const screen = {
+const defaultScreen = {
   active: true,
   src: process.env.SCREEN_URL || '/hls/ews/index.m3u8',
   type: 'video',
   title: 'EWS SESSIONS',
   version: 1
 };
+
+function readScreen() {
+  try {
+    const data = JSON.parse(fs.readFileSync(SCREEN_FILE, 'utf8'));
+    return {
+      active: data.active !== false,
+      src: String(data.src || defaultScreen.src),
+      type: data.type === 'iframe' ? 'iframe' : 'video',
+      title: String(data.title || defaultScreen.title),
+      version: Number(data.version) || 1
+    };
+  } catch {
+    return { ...defaultScreen };
+  }
+}
+
+const screen = readScreen();
 
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]\n', 'utf8');
@@ -52,6 +70,18 @@ function readUsers() {
 
 function writeUsers(users) {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+}
+
+function writeScreen() {
+  fs.writeFileSync(SCREEN_FILE, JSON.stringify(screen, null, 2), 'utf8');
+}
+
+function newSessionToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function safeUserResponse(user) {
+  return { ok: true, username: user.username, token: user.token };
 }
 
 function cleanName(value) {
@@ -89,12 +119,17 @@ function verifyPassword(password, stored) {
 function ensureHost() {
   const users = readUsers();
   const found = users.some(u => String(u.username || '').toLowerCase() === HOST_NAME);
-  if (!found) {
+  const host = users.find(u => String(u.username || '').toLowerCase() === HOST_NAME);
+  if (!host) {
     users.push({
       username: HOST_NAME,
       password: hashLegacy('123456'),
+      token: newSessionToken(),
       createdAt: new Date().toISOString()
     });
+    writeUsers(users);
+  } else if (!host.token) {
+    host.token = newSessionToken();
     writeUsers(users);
   }
 }
@@ -120,9 +155,10 @@ app.post('/api/register', (req, res) => {
     return res.status(409).json({ ok:false, error:'Это имя уже занято.' });
   }
 
-  users.push({ username, password: hashPassword(password), createdAt: new Date().toISOString() });
+  const user = { username, password: hashPassword(password), token: newSessionToken(), createdAt: new Date().toISOString() };
+  users.push(user);
   writeUsers(users);
-  res.json({ ok:true, username });
+  res.json(safeUserResponse(user));
 });
 
 app.post('/api/login', (req, res) => {
@@ -134,7 +170,22 @@ app.post('/api/login', (req, res) => {
     return res.status(401).json({ ok:false, error:'Неверное имя или пароль.' });
   }
 
-  res.json({ ok:true, username:user.username });
+  if (!user.token) {
+    user.token = newSessionToken();
+    const users = readUsers();
+    const idx = users.findIndex(u => String(u.username || '').toLowerCase() === String(user.username).toLowerCase());
+    if (idx >= 0) { users[idx].token = user.token; writeUsers(users); }
+  }
+
+  res.json(safeUserResponse(user));
+});
+
+app.post('/api/session', (req, res) => {
+  const token = String(req.body?.token || '').trim();
+  if (!token) return res.status(401).json({ ok:false, error:'Сессия отсутствует.' });
+  const user = readUsers().find(u => u.token && u.token === token);
+  if (!user) return res.status(401).json({ ok:false, error:'Сессия истекла.' });
+  res.json(safeUserResponse(user));
 });
 
 const translationCache = new Map();
@@ -357,6 +408,7 @@ io.on('connection', socket => {
     }
 
     screen.version++;
+    writeScreen();
     io.to(ROOM).emit('screen:state', screenState());
   });
 
@@ -384,5 +436,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(' AUTH: ON');
   console.log(' TRANSLATION: ON');
   console.log(' SCREEN HOST:', HOST_NAME);
+  console.log(' SCREEN SRC:', screen.src);
   console.log('======================================');
 });
