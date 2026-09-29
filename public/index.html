@@ -121,6 +121,7 @@ button{cursor:pointer}
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 (() => {
@@ -137,6 +138,10 @@ let language = localStorage.getItem('ews-language') || 'en';
 let host = false;
 let joined = false;
 let hls = null;
+let screenVideo = null;
+let screenTexture = null;
+let screenMesh = null;
+let screenModel = null;
 
 let renderer, scene, camera;
 let clock = new THREE.Clock();
@@ -161,8 +166,9 @@ function setAuthMessage(text) {
   authMsg.textContent = text || '';
 }
 
-function setLoggedIn(name) {
+function setLoggedIn(name, token) {
   username = name;
+  if(token) localStorage.setItem('ews-session-token', token);
   localStorage.setItem('ews-username', name);
   $('auth').style.display = 'none';
   $('hud').style.display = 'block';
@@ -187,7 +193,7 @@ $('loginBtn').onclick = async () => {
       username: $('username').value,
       password: $('password').value
     });
-    setLoggedIn(data.username);
+    setLoggedIn(data.username, data.token);
     startClub();
   } catch(e) {
     setAuthMessage(e.message);
@@ -255,9 +261,13 @@ function buildWorld() {
   addBox(.16,5.8,.16,-6,3.15,-13.55,frameMat);
   addBox(.16,5.8,.16,6,3.15,-13.55,frameMat);
 
-  // Speaker stacks
+  // Physical club screen: this is a real Three.js object fixed to the back wall.
+  createPhysicalScreen();
+
+  // Speaker stacks / imported model slots.
   addSpeaker(-8.1,-12.9);
   addSpeaker(8.1,-12.9);
+  loadSpeakerModel();
 
   // Ceiling rig
   const rigMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:.4,metalness:.8});
@@ -308,6 +318,7 @@ function buildWorld() {
 
   $('scene').addEventListener('click', () => {
     if (document.activeElement === $('chatInput')) return;
+    if(screenVideo) screenVideo.play().catch(()=>{});
     $('scene').requestPointerLock?.();
   });
 }
@@ -319,14 +330,69 @@ function addBox(w,h,d,x,y,z,mat) {
   return m;
 }
 
+function createPhysicalScreen() {
+  const backing = new THREE.Mesh(
+    new THREE.PlaneGeometry(11.6, 5.45),
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  );
+  backing.position.set(0, 3.175, -13.43);
+  scene.add(backing);
+  screenMesh = backing;
+}
+
+function loadSpeakerModel() {
+  if (!THREE.GLTFLoader) return;
+
+  const candidates = [
+    '/models/speakers.glb',
+    '/models/speaker.glb',
+    '/models/columns.glb',
+    '/models/column.glb',
+    '/assets/speakers.glb',
+    '/assets/speaker.glb',
+    '/media/speakers.glb',
+    '/media/speaker.glb'
+  ];
+
+  const loader = new THREE.GLTFLoader();
+  let index = 0;
+
+  const tryNext = () => {
+    if (index >= candidates.length) return;
+    const url = candidates[index++];
+    loader.load(url, gltf => {
+      screenModel = gltf.scene;
+      screenModel.traverse(o => {
+        if (o.isMesh) {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+      screenModel.scale.setScalar(1.35);
+      screenModel.position.set(0, 0, -12.75);
+      scene.add(screenModel);
+
+      // The imported model replaces the simple speaker blocks visually.
+      const fallback = scene.userData.fallbackSpeakers;
+      if (fallback) fallback.forEach(o => o.visible = false);
+      toast('Модель колонок загружена');
+    }, undefined, () => tryNext());
+  };
+
+  tryNext();
+}
+
 function addSpeaker(x,z) {
   const mat = new THREE.MeshStandardMaterial({color:0x080808,roughness:.5,metalness:.3});
   const sub = new THREE.Mesh(new THREE.BoxGeometry(1.9,1.5,1.1),mat);
   sub.position.set(x,.75,z);
   scene.add(sub);
+  scene.userData.fallbackSpeakers = scene.userData.fallbackSpeakers || [];
+  scene.userData.fallbackSpeakers.push(sub);
   const top = new THREE.Mesh(new THREE.BoxGeometry(1.35,2.8,.9),mat);
   top.position.set(x,2.85,z);
   scene.add(top);
+  scene.userData.fallbackSpeakers.push(top);
   for(let i=0;i<3;i++){
     const ring = new THREE.Mesh(new THREE.TorusGeometry(.22,.035,8,24),new THREE.MeshBasicMaterial({color:0x777777}));
     ring.position.set(x,2.1+i*.7,z-.47);
@@ -600,41 +666,65 @@ async function renderMessage(msg) {
 function applyScreen(state) {
   const wrap=$('screenOverlay');
   wrap.innerHTML='';
+  wrap.style.display='none';
+
+  if(hls){ hls.destroy(); hls=null; }
+  if(screenTexture){ screenTexture.dispose(); screenTexture=null; }
+  if(screenVideo){
+    screenVideo.pause();
+    screenVideo.removeAttribute('src');
+    screenVideo.load();
+    screenVideo=null;
+  }
+
   if(!state?.active || !state.src){
-    wrap.style.display='none';
+    if(screenMesh) screenMesh.material.map=null;
     if(host) $('screenStatus').textContent='SCREEN OFF';
     return;
   }
 
-  wrap.style.display='block';
-
-  if(state.type==='iframe'){
-    const iframe=document.createElement('iframe');
-    iframe.src=state.src;
-    iframe.allow='autoplay; fullscreen; picture-in-picture';
-    iframe.allowFullscreen=true;
-    wrap.appendChild(iframe);
-  } else {
+  // VIDEO/HLS is rendered directly onto the physical Three.js screen.
+  if(state.type!=='iframe'){
     const video=document.createElement('video');
+    screenVideo=video;
     video.autoplay=true;
     video.muted=false;
     video.controls=false;
+    video.loop=false;
     video.playsInline=true;
     video.setAttribute('playsinline','');
-    wrap.appendChild(video);
+    video.crossOrigin='anonymous';
+
+    screenTexture=new THREE.VideoTexture(video);
+    screenTexture.minFilter=THREE.LinearFilter;
+    screenTexture.magFilter=THREE.LinearFilter;
+    screenTexture.format=THREE.RGBAFormat;
+    screenTexture.encoding=THREE.sRGBEncoding;
+
+    if(screenMesh){
+      screenMesh.material.map=screenTexture;
+      screenMesh.material.needsUpdate=true;
+    }
 
     if(window.Hls && Hls.isSupported() && /\.m3u8($|\?)/i.test(state.src)){
-      hls?.destroy();
-      hls=new Hls({enableWorker:true});
+      hls=new Hls({enableWorker:true, lowLatencyMode:true});
       hls.loadSource(state.src);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>toast('Нажми один раз по экрану для звука')));
+      hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+        video.play().catch(()=>toast('Нажми один раз по экрану для звука'));
+      });
     } else {
       video.src=state.src;
       video.play().catch(()=>{});
     }
-
-    wrap.onclick=()=>video.play().catch(()=>{});
+  } else {
+    // Non-video embeds stay supported, but the normal EWS screen is physical video.
+    const iframe=document.createElement('iframe');
+    iframe.src=state.src;
+    iframe.allow='autoplay; fullscreen; picture-in-picture';
+    iframe.allowFullscreen=true;
+    wrap.style.display='block';
+    wrap.appendChild(iframe);
   }
 
   if(host) $('screenStatus').textContent='SCREEN ON · '+(state.title||'');
