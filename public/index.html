@@ -146,10 +146,6 @@ let screenModel = null;
 
 let renderer, cssRenderer, scene, camera, screenCssObject, screenCssFrame;
 let player = null;
-let localAvatar = null;
-let cameraDistance = 7;
-const CAMERA_MIN = 2.5;
-const CAMERA_MAX = 12;
 let clock = new THREE.Clock();
 let yaw = 0, pitch = 0;
 let px = 0, py = 0, pz = 8;
@@ -240,9 +236,9 @@ function buildWorld() {
   player.position.set(px, py, pz);
   scene.add(player);
   player.add(camera);
-  // Third-person camera: the player remains visible in front of us.
-  camera.position.set(0, 2.8, cameraDistance);
-  camera.lookAt(0, 1.35, 0);
+  // First-person camera: no visible local avatar.
+  camera.position.set(0, 1.65, 0);
+  camera.rotation.set(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -339,11 +335,6 @@ function buildWorld() {
 
   window.addEventListener('resize', resize);
   document.addEventListener('mousemove', mouseLook);
-  $('scene').addEventListener('wheel', e => {
-    e.preventDefault();
-    cameraDistance += e.deltaY > 0 ? 0.7 : -0.7;
-    cameraDistance = THREE.MathUtils.clamp(cameraDistance, CAMERA_MIN, CAMERA_MAX);
-  }, {passive:false});
   document.addEventListener('pointerlockchange', () => {
     $('help').style.opacity = document.pointerLockElement ? '.18' : '.7';
   });
@@ -649,19 +640,10 @@ function animate() {
     player.position.set(px,py,pz);
     player.rotation.y = yaw;
 
-    // Third-person camera follows behind the player.
-    // The player itself stays visible between the camera and the club.
-    const camBackX = Math.sin(yaw) * cameraDistance;
-    const camBackZ = Math.cos(yaw) * cameraDistance;
-    camera.position.set(camBackX, 2.8 + Math.sin(pitch)*2.2, camBackZ);
-    camera.lookAt(0, 1.35, 0);
-
-    // Keep the local X Bot in sync with the actual player position.
-    if(localAvatar){
-      localAvatar.g.position.set(px,py,pz);
-      localAvatar.g.rotation.y = yaw;
-      localAvatar.data.moving = Boolean(forward||side);
-    }
+    // First-person camera stays at the player's head position.
+    camera.position.set(0, 1.65, 0);
+    camera.rotation.x = pitch;
+    camera.rotation.y = 0;
   }
 
   const now=performance.now();
@@ -1032,17 +1014,6 @@ function connect() {
   });
 
   socket.on('connect',()=>{
-    // Create our own visible third-person avatar.
-    if(!localAvatar){
-      localAvatar=createAvatar({
-        id:'local-'+socket.id,
-        username,
-        x:px,
-        z:pz,
-        yaw,
-        moving:false
-      });
-    }
     socket.emit('join',{username,language});
   });
 
