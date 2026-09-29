@@ -526,7 +526,6 @@ let smokePuffs = [];
 let floorMist = null;
 
 let moverLights = [];
-let moverBeams = [];
 let floorLights = [];
 let strobes = [];
 let lasers = [];
@@ -1272,7 +1271,6 @@ function buildBar(){
 
 
 function buildLounges(){
-  // Furniture removed: keep the club open for guests.
 }
 
 function buildEntrance(){
@@ -1523,91 +1521,137 @@ function createSmokeTexture(){
 }
 
 function buildLighting(){
-  const ambient=new THREE.AmbientLight(0xffffff,.085);
+  const ambient=new THREE.AmbientLight(0xffffff,.055);
   scene.add(ambient);
 
-  const ceiling=new THREE.PointLight(0xffffff,.72,32);
-  ceiling.position.set(0,5.8,-1);
-  scene.add(ceiling);
+  const roomFill=new THREE.PointLight(0xffffff,.28,28);
+  roomFill.position.set(0,6.2,1);
+  scene.add(roomFill);
 
-  addMover(-6.6,6.35,-8.6,0xffffff);
-  addMover(6.6,6.35,-8.6,0xffffff);
-  addMover(-6.0,6.1,3.2,0xffffff);
-  addMover(6.0,6.1,3.2,0xffffff);
+  addMoverHead(-6.8,6.25,-9.2,0);
+  addMoverHead(6.8,6.25,-9.2,Math.PI);
+  addMoverHead(-5.8,6.25,2.8,.7);
+  addMoverHead(5.8,6.25,2.8,Math.PI+.7);
 
-  addFloorWash(-6.5,.6,-3,0xffffff);
-  addFloorWash(6.5,.6,-3,0xffffff);
-  addFloorWash(-5.2,.5,4.5,0xffffff);
-  addFloorWash(5.2,.5,4.5,0xffffff);
+  addFloorWash(-6.7,.45,-3,0xffffff);
+  addFloorWash(6.7,.45,-3,0xffffff);
+  addFloorWash(-5.0,.4,4.8,0xffffff);
+  addFloorWash(5.0,.4,4.8,0xffffff);
 
-  for(let i=0;i<4;i++){
-    const light=new THREE.PointLight(0xffffff,0,23);
+  const strobePositions=[
+    [-5.4,6.36,-10.0],
+    [-1.8,6.36,-10.0],
+    [1.8,6.36,-10.0],
+    [5.4,6.36,-10.0]
+  ];
 
-    light.position.set(
-      i%2===0?-5.5:5.5,
-      5.85,
-      i<2?-5.6:3.5
-    );
-
-    scene.add(light);
-
+  strobePositions.forEach((p,index)=>{
     const fixture=new THREE.Mesh(
-      new THREE.BoxGeometry(.42,.13,.82),
+      new THREE.BoxGeometry(.58,.20,.34),
       new THREE.MeshStandardMaterial({
         color:0x080808,
-        emissive:0x171717,
-        emissiveIntensity:.18,
-        roughness:.45,
-        metalness:.65
+        roughness:.32,
+        metalness:.85,
+        emissive:0x050505,
+        emissiveIntensity:.1
       })
     );
-
-    fixture.position.copy(light.position);
+    fixture.position.set(p[0],p[1],p[2]);
     scene.add(fixture);
+
+    const lens=new THREE.Mesh(
+      new THREE.PlaneGeometry(.40,.08),
+      new THREE.MeshBasicMaterial({
+        color:0xffffff,
+        transparent:true,
+        opacity:0
+      })
+    );
+    lens.position.set(p[0],p[1]-.105,p[2]-.18);
+    lens.rotation.x=-Math.PI/2;
+    scene.add(lens);
+
+    const light=new THREE.PointLight(0xffffff,0,24);
+    light.position.set(p[0],p[1]-.18,p[2]+.35);
+    scene.add(light);
 
     strobes.push({
       light,
       fixture,
-      phase:i*.9
+      lens,
+      phase:index*.5
     });
-  }
+  });
 
-  addLaser(-6.7,5.7,-9.2,0);
-  addLaser(6.7,5.7,-9.2,Math.PI);
+  addLaserFixture(-7.05,5.8,-10.0,0);
+  addLaserFixture(7.05,5.8,-10.0,Math.PI);
 }
 
+function addMoverHead(x,y,z,phase){
+  const rig=new THREE.Group();
+  rig.position.set(x,y,z);
+  rig.rotation.y=phase;
+  scene.add(rig);
 
-function addMover(x,y,z,color){
-  const light=new THREE.SpotLight(
-    color,1.55,31,Math.PI/12,.42,1.15
+  const housingMaterial=new THREE.MeshStandardMaterial({
+    color:0x090909,
+    roughness:.34,
+    metalness:.86
+  });
+
+  const housing=new THREE.Mesh(
+    new THREE.BoxGeometry(.62,.42,.78),
+    housingMaterial
   );
+  rig.add(housing);
 
-  light.position.set(x,y,z);
-  light.castShadow=false;
+  const yokeL=new THREE.Mesh(
+    new THREE.BoxGeometry(.08,.72,.16),
+    housingMaterial
+  );
+  yokeL.position.x=-.37;
+  rig.add(yokeL);
+
+  const yokeR=yokeL.clone();
+  yokeR.position.x=.37;
+  rig.add(yokeR);
+
+  const lens=new THREE.Mesh(
+    new THREE.CircleGeometry(.15,24),
+    new THREE.MeshBasicMaterial({
+      color:0xffffff,
+      transparent:true,
+      opacity:.48
+    })
+  );
+  lens.position.z=-.40;
+  lens.rotation.y=Math.PI;
+  rig.add(lens);
 
   const target=new THREE.Object3D();
-  target.position.set(0,1.2,-2);
+  target.position.set(0,1,-2);
   scene.add(target);
 
+  const light=new THREE.SpotLight(
+    0xffffff,
+    1.05,
+    31,
+    Math.PI/13,
+    .42,
+    1.15
+  );
+
+  light.position.set(x,y-.13,z);
   light.target=target;
   scene.add(light);
 
   moverLights.push({
+    rig,
     light,
     target,
-    phase:Math.random()*Math.PI*2
+    lens,
+    phase
   });
-
-  const fixture=new THREE.Mesh(
-    new THREE.CylinderGeometry(.16,.23,.65,12),
-    new THREE.MeshStandardMaterial({
-      color:0x111111,roughness:.42,metalness:.72
-    })
-  );
-
-  fixture.position.set(x,y,z);
-  fixture.rotation.z=Math.PI/2;
-  scene.add(fixture);
 }
 
 
@@ -1626,48 +1670,67 @@ function addFloorWash(x,y,z,color){
   });
 }
 
-function addLaser(x,y,z,phase){
-  const group=new THREE.Group();
-  group.position.set(x,y,z);
-  scene.add(group);
+function addLaserFixture(x,y,z,phase){
+  const rig=new THREE.Group();
+  rig.position.set(x,y,z);
+  rig.rotation.y=phase;
+  scene.add(rig);
 
-  const core=new THREE.Mesh(
-    new THREE.CylinderGeometry(.012,.012,1,8,1,true),
+  const housing=new THREE.Mesh(
+    new THREE.CylinderGeometry(.18,.22,.46,14),
+    new THREE.MeshStandardMaterial({
+      color:0x080808,
+      roughness:.32,
+      metalness:.86
+    })
+  );
+  housing.rotation.x=Math.PI/2;
+  rig.add(housing);
+
+  const aperture=new THREE.Mesh(
+    new THREE.CircleGeometry(.09,24),
     new THREE.MeshBasicMaterial({
       color:0xffffff,
       transparent:true,
-      opacity:.9,
+      opacity:.92
+    })
+  );
+  aperture.position.z=-.24;
+  aperture.rotation.y=Math.PI;
+  rig.add(aperture);
+
+  const beam=new THREE.Mesh(
+    new THREE.CylinderGeometry(.018,.065,1,12,1,true),
+    new THREE.MeshBasicMaterial({
+      color:0xffffff,
+      transparent:true,
+      opacity:.055,
+      depthWrite:false,
+      blending:THREE.AdditiveBlending,
+      side:THREE.DoubleSide
+    })
+  );
+  rig.add(beam);
+
+  const core=new THREE.Mesh(
+    new THREE.CylinderGeometry(.004,.008,1,8,1,true),
+    new THREE.MeshBasicMaterial({
+      color:0xffffff,
+      transparent:true,
+      opacity:.82,
       depthWrite:false,
       blending:THREE.AdditiveBlending
     })
   );
+  rig.add(core);
 
-  const beam=new THREE.Mesh(
-    new THREE.CylinderGeometry(.075,.075,1,12,1,true),
-    new THREE.MeshBasicMaterial({
-      color:0xffffff,
-      transparent:true,
-      opacity:.075,
-      depthWrite:false,
-      blending:THREE.AdditiveBlending,
-      side:THREE.DoubleSide
-    })
-  );
-
-  const halo=new THREE.Mesh(
-    new THREE.CylinderGeometry(.18,.12,1,12,1,true),
-    new THREE.MeshBasicMaterial({
-      color:0xffffff,
-      transparent:true,
-      opacity:.018,
-      depthWrite:false,
-      blending:THREE.AdditiveBlending,
-      side:THREE.DoubleSide
-    })
-  );
-
-  group.add(core,beam,halo);
-  lasers.push({group,core,beam,halo,phase});
+  lasers.push({
+    rig,
+    beam,
+    core,
+    aperture,
+    phase
+  });
 }
 
 
@@ -2189,67 +2252,144 @@ function animateAtmosphere(time,dt){
 
 function animateLighting(time){
   moverLights.forEach((item,index)=>{
-    const x=
-      Math.sin(time*(.30+index*.035)+item.phase)*
-      (index<2?8.8:7.4);
+    const yawSweep=
+      Math.sin(
+        time*(.31+index*.025)+item.phase
+      )*.95;
 
-    const z=
-      -1+
-      Math.cos(time*(.24+index*.025)+item.phase)*
-      8.2;
+    const pitchSweep=
+      -.26+
+      Math.sin(
+        time*(.22+index*.02)+item.phase*.7
+      )*.38;
+
+    item.rig.rotation.y=
+      (index%2?-.34:.34)+
+      yawSweep*.32;
+
+    item.rig.rotation.x=pitchSweep;
 
     item.target.position.set(
-      x,
-      1.0+Math.sin(time*.55+item.phase)*1.25,
-      z
+      Math.sin(
+        time*(.33+index*.03)+item.phase
+      )*(index<2?8.6:7.1),
+      1.1+
+      Math.sin(time*.5+item.phase)*1.2,
+      -1.8+
+      Math.cos(
+        time*(.27+index*.024)+item.phase
+      )*8.5
     );
 
     item.light.intensity=
-      1.0+
-      .38*(.5+.5*Math.sin(time*1.5+item.phase));
+      .72+
+      .40*
+      (.5+
+      .5*
+      Math.sin(time*1.2+item.phase));
+
+    item.lens.material.opacity=
+      .34+
+      .18*
+      (.5+
+      .5*
+      Math.sin(time*1.7+item.phase));
   });
 
-  const beat=
-    Math.sin(time*5.4);
+  floorLights.forEach(item=>{
+    item.light.intensity=
+      .16+
+      .20*
+      (.5+
+      .5*
+      Math.sin(time*1.85+item.phase));
+  });
 
-  const sharpBeat=
-    Math.pow(Math.max(0,beat),28);
+  const beat=Math.sin(time*4.7);
+  const flash=Math.pow(
+    Math.max(0,beat),
+    34
+  );
 
   strobes.forEach((item,index)=>{
-    const flash=
-      sharpBeat*(index%2?.78:1);
+    const hit=flash*(index%2?.82:1);
 
-    item.light.intensity=flash*20;
+    item.light.intensity=hit*19;
+    item.lens.material.opacity=hit*.98;
 
     item.fixture.material.emissiveIntensity=
-      .18+flash*10;
+      .10+
+      hit*8;
   });
 
   lasers.forEach((laser,index)=>{
     const target=new THREE.Vector3(
-      Math.sin(time*(.48+index*.065)+laser.phase)*11.8,
-      1.15+Math.sin(time*(.65+index*.06)+laser.phase*.7)*2.05,
-      -1.7+Math.cos(time*(.38+index*.045)+laser.phase)*11.2
+      Math.sin(
+        time*(.43+index*.055)+laser.phase
+      )*12.2,
+      1.0+
+      Math.sin(
+        time*(.62+index*.04)+laser.phase
+      )*2.0,
+      -1.6+
+      Math.cos(
+        time*(.36+index*.04)+laser.phase
+      )*10.8
     );
 
-    const direction=target.clone().normalize();
-    const length=Math.max(4,target.length());
-    const q=new THREE.Quaternion();
+    const direction=target.clone().sub(
+      laser.rig.position
+    );
 
-    q.setFromUnitVectors(
+    const length=Math.max(
+      2,
+      direction.length()
+    );
+
+    direction.normalize();
+
+    const quaternion=new THREE.Quaternion();
+
+    quaternion.setFromUnitVectors(
       new THREE.Vector3(0,1,0),
       direction
     );
 
-    [laser.core,laser.beam,laser.halo].forEach(mesh=>{
-      mesh.quaternion.copy(q);
-      mesh.position.copy(direction).multiplyScalar(length*.5);
-      mesh.scale.set(1,length,1);
-    });
+    laser.beam.quaternion.copy(quaternion);
+    laser.core.quaternion.copy(quaternion);
 
-    laser.core.material.opacity=.72+sharpBeat*.22;
-    laser.beam.material.opacity=.045+sharpBeat*.065;
-    laser.halo.material.opacity=.012+sharpBeat*.022;
+    laser.beam.position.copy(
+      direction.clone().multiplyScalar(length*.5)
+    );
+
+    laser.core.position.copy(
+      direction.clone().multiplyScalar(length*.5)
+    );
+
+    laser.beam.scale.set(1,length,1);
+    laser.core.scale.set(1,length,1);
+
+    const pulse=
+      .5+
+      .5*
+      Math.sin(
+        time*2.5+
+        laser.phase
+      );
+
+    laser.aperture.material.opacity=
+      .72+
+      pulse*.22;
+
+    laser.core.material.opacity=
+      .62+
+      pulse*.18+
+      flash*.08;
+
+    laser.beam.material.opacity=
+      .018+
+      pulse*.024+
+      flash*.04;
   });
 }
 
