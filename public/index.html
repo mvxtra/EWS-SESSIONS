@@ -747,14 +747,18 @@ function createAvatar(data) {
       const loader=new THREE.FBXLoader();
       loader.load(
         '/models/avatars/Running.fbx',
-        model=>resolve(model.animations && model.animations[0] ? model.animations[0] : null),
+        model=>{
+          const clip=model.animations && model.animations[0] ? model.animations[0] : null;
+          console.log('[EWS AVATAR] Running.fbx loaded:', !!clip, clip?.name || 'no clip');
+          resolve({source:model,clip});
+        },
         undefined,
         err=>reject(err)
       );
     });
   }
 
-  Promise.all([avatarModelPromise,runningAnimationPromise]).then(([source,runClip])=>{
+  Promise.all([avatarModelPromise,runningAnimationPromise]).then(([source,runData])=>{
     const model=THREE.SkeletonUtils && THREE.SkeletonUtils.clone
       ? THREE.SkeletonUtils.clone(source)
       : source.clone(true);
@@ -784,16 +788,33 @@ function createAvatar(data) {
     avatarHolder.add(model);
     fallback.visible=false;
 
-    // Running.fbx supplies the movement animation for the X Bot skeleton.
+    // Running.fbx supplies the movement animation. Retarget it to X Bot
+    // when SkeletonUtils supports retargetClip; otherwise use the original
+    // Mixamo clip directly (both files use the same skeleton family).
     let mixer=null;
     let runAction=null;
+    const runSource=runData?.source || null;
+    const rawRunClip=runData?.clip || null;
+    let runClip=rawRunClip;
+
+    if(runSource && rawRunClip && THREE.SkeletonUtils?.retargetClip){
+      try{
+        runClip=THREE.SkeletonUtils.retargetClip(model,runSource,rawRunClip);
+        console.log('[EWS AVATAR] Running.fbx retargeted to X Bot');
+      }catch(err){
+        console.warn('[EWS AVATAR] Retarget failed, using original clip:',err);
+        runClip=rawRunClip;
+      }
+    }
+
     if(runClip){
       mixer=new THREE.AnimationMixer(model);
       runAction=mixer.clipAction(runClip);
       runAction.setLoop(THREE.LoopRepeat,Infinity);
       runAction.enabled=true;
+      runAction.clampWhenFinished=false;
       runAction.setEffectiveWeight(0);
-      runAction.play();
+      runAction.stop();
     } else {
       console.warn('[EWS AVATAR] Running.fbx contains no animation clip.');
     }
@@ -801,9 +822,12 @@ function createAvatar(data) {
     // Store animation state on this avatar instance.
     avatar._mixer=mixer;
     avatar._runAction=runAction;
-    avatar._running=!!avatar.data?.moving;
-    if(runAction && avatar._running){
+    avatar._running=false;
+    if(runAction && avatar.data?.moving){
+      avatar._running=true;
+      runAction.reset();
       runAction.setEffectiveWeight(1);
+      runAction.play();
     }
 
     const finalBox=new THREE.Box3().setFromObject(model);
@@ -867,9 +891,12 @@ function updateRemotes(t,dt){
     if(r._runAction && moving!==r._running){
       r._running=moving;
       if(moving){
-        r._runAction.reset().fadeIn(.18).play();
+        r._runAction.reset();
+        r._runAction.setEffectiveWeight(1);
+        r._runAction.play();
       }else{
-        r._runAction.fadeOut(.18);
+        r._runAction.stop();
+        r._runAction.setEffectiveWeight(0);
       }
     }
 
