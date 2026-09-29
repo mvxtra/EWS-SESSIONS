@@ -261,6 +261,13 @@ function buildWorld() {
   grid.material.opacity=.17;
   scene.add(grid);
 
+  // White club roof
+  const roofMat = new THREE.MeshStandardMaterial({color:0xffffff,roughness:.72,metalness:.12,side:THREE.DoubleSide});
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(32,.22,28), roofMat);
+  roof.position.set(0,7.05,0);
+  roof.receiveShadow = true;
+  scene.add(roof);
+
   // Back wall and side walls
   const wallMat = new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:.78,metalness:.3});
   addBox(32,7,.3,0,3.5,-14,wallMat);
