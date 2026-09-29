@@ -40,8 +40,10 @@ button{cursor:pointer}
 #controls{position:absolute;bottom:14px;right:14px;width:auto}
 #screenControl{display:none;padding:10px;width:250px;margin-bottom:7px}
 #screenControl input{width:100%;margin:4px 0;padding:9px;background:#090909;color:#fff;border:1px solid #333}
-#screenButton{padding:9px 16px;border:1px solid #666;background:#080808;color:#fff;font-weight:800;letter-spacing:.12em}
-#screenButton:hover{background:#fff;color:#000}
+#screenActions{display:flex;gap:6px;margin-top:7px}
+#screenButton,#screenPlay{padding:9px 16px;border:1px solid #666;background:#080808;color:#fff;font-weight:800;letter-spacing:.12em}
+#screenButton:hover,#screenPlay:hover{background:#fff;color:#000}
+#screenPlay{display:none}
 #screenStatus{font-size:10px;color:#888;margin-top:7px;line-height:1.35}
 #help{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:10px;color:#aaa;letter-spacing:.12em;background:rgba(0,0,0,.5);padding:7px 10px}
 #crosshair{position:absolute;left:50%;top:50%;width:12px;height:12px;transform:translate(-50%,-50%);opacity:.55}
@@ -104,9 +106,12 @@ button{cursor:pointer}
         <div id="screenControl" class="panel">
           <div class="title">SCREEN</div>
           <input id="screenSrc" autocomplete="off" placeholder="Twitch / HLS ссылка">
-          <div id="screenStatus">ENTER в поле — показать экран</div>
+          <div id="screenActions">
+            <button id="screenPlay" type="button">PLAY</button>
+          </div>
+          <div id="screenStatus">Вставь ссылку и нажми PLAY</div>
         </div>
-        <button id="screenButton">SCREEN</button>
+        <button id="screenButton" type="button">SCREEN</button>
       </div>
     </div>
   </div>
@@ -831,7 +836,8 @@ function connect() {
   socket.on('club:ready',data=>{
     joined=true;
     host=!!data.host;
-    $('screenControl').style.display=host?'block':'none';
+    $('screenControl').style.display='none';
+    $('screenPlay').style.display=host?'block':'none';
     if(data.screen) applyScreen(data.screen);
   });
 
@@ -1036,8 +1042,31 @@ function applyScreen(state) {
   if(host) $('screenStatus').textContent='VIDEO · '+(state.title||'EWS SESSIONS');
 }
 
+function sendScreen() {
+  if(!host || !socket?.connected) return;
+
+  const src=$('screenSrc').value.trim();
+  if(!src){
+    socket.emit('screen:set',{src:''});
+    $('screenStatus').textContent='SCREEN OFF';
+    return;
+  }
+
+  const twitch=twitchEmbedUrl(src);
+  const type=twitch?'twitch':'video';
+
+  socket.emit('screen:set',{
+    src,
+    type,
+    title:'EWS SESSIONS'
+  });
+
+  $('screenStatus').textContent=twitch
+    ? 'PLAY · Twitch запущен'
+    : 'PLAY · ссылка отправлена';
+}
+
 $('screenButton').onclick=()=>{
-  // SCREEN control is available only to the host.
   if(!host) return;
 
   const panel=$('screenControl');
@@ -1049,23 +1078,12 @@ $('screenButton').onclick=()=>{
   }
 };
 
+$('screenPlay').onclick=sendScreen;
+
 $('screenSrc').addEventListener('keydown',e=>{
-  if(e.key!=='Enter' || !host || !socket?.connected) return;
+  if(e.key!=='Enter') return;
   e.preventDefault();
-
-  const src=$('screenSrc').value.trim();
-  if(!src){
-    socket.emit('screen:set',{src:''});
-    return;
-  }
-
-  const twitch=twitchEmbedUrl(src);
-  const type=twitch?'twitch':'video';
-  socket.emit('screen:set',{
-    src,
-    type,
-    title:'EWS SESSIONS'
-  });
+  sendScreen();
 });
 
 function startClub() {
