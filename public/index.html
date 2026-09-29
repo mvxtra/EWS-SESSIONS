@@ -777,6 +777,10 @@ function createAvatar(data) {
     const normalizedBox=new THREE.Box3().setFromObject(model);
     model.position.y -= normalizedBox.min.y;
 
+    // Mixamo X Bot faces the opposite direction from the EWS movement yaw.
+    // Rotate the visual model only; keep the network/player yaw unchanged.
+    model.rotation.y = Math.PI;
+
     avatarHolder.add(model);
     fallback.visible=false;
 
@@ -794,10 +798,11 @@ function createAvatar(data) {
       console.warn('[EWS AVATAR] Running.fbx contains no animation clip.');
     }
 
-    r._mixer=mixer;
-    r._runAction=runAction;
-    r._running=!!r.data?.moving;
-    if(runAction && r._running){
+    // Store animation state on this avatar instance.
+    avatar._mixer=mixer;
+    avatar._runAction=runAction;
+    avatar._running=!!avatar.data?.moving;
+    if(runAction && avatar._running){
       runAction.setEffectiveWeight(1);
     }
 
@@ -812,7 +817,7 @@ function createAvatar(data) {
     // Keep the fallback avatar so the club remains usable.
   });
 
-  return {
+  const avatar = {
     g,
     targetX:g.position.x,
     targetZ:g.position.z,
@@ -822,6 +827,8 @@ function createAvatar(data) {
     _runAction:null,
     _running:false
   };
+
+  return avatar;
 }
 
 function hash(s){
