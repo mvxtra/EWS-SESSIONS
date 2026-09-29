@@ -1,4 +1,4 @@
-import { Script } from 'playcanvas';
+import { Script, Entity, StandardMaterial, Color } from 'playcanvas';
 
 /**
  * EWS SESSIONS 3.0 — procedural club foundation.
@@ -41,7 +41,7 @@ export class EwsClubBuilder extends Script {
         const old = app.root.findByName('EWS_CLUB');
         if (old) old.destroy();
 
-        const club = new pc.Entity('EWS_CLUB');
+        const club = new Entity('EWS_CLUB');
         app.root.addChild(club);
 
         const groups = [
@@ -61,7 +61,7 @@ export class EwsClubBuilder extends Script {
         const nodes = {};
 
         for (const name of groups) {
-            const node = new pc.Entity(name);
+            const node = new Entity(name);
             club.addChild(node);
             nodes[name] = node;
         }
@@ -78,7 +78,7 @@ export class EwsClubBuilder extends Script {
     }
 
     primitive(parent, name, type, position, scale, color) {
-        const entity = new pc.Entity(name);
+        const entity = new Entity(name);
         parent.addChild(entity);
 
         entity.setLocalPosition(
@@ -97,8 +97,8 @@ export class EwsClubBuilder extends Script {
             type
         });
 
-        const material = new pc.StandardMaterial();
-        material.diffuse = new pc.Color(
+        const material = new StandardMaterial();
+        material.diffuse = new Color(
             color[0],
             color[1],
             color[2]
@@ -255,7 +255,7 @@ export class EwsClubBuilder extends Script {
             [.005,.005,.006]
         );
 
-        const anchor = new pc.Entity('SCREEN_ANCHOR');
+        const anchor = new Entity('SCREEN_ANCHOR');
         parent.addChild(anchor);
         anchor.setLocalPosition(0,5.15,-15.34);
     }
@@ -264,7 +264,7 @@ export class EwsClubBuilder extends Script {
         const positions = [-8.7, 8.7];
 
         for (const x of positions) {
-            const stack = new pc.Entity(
+            const stack = new Entity(
                 x < 0 ? 'LEFT_SPEAKER_STACK' : 'RIGHT_SPEAKER_STACK'
             );
 
@@ -340,7 +340,7 @@ export class EwsClubBuilder extends Script {
         ];
 
         rigPositions.forEach((position,index) => {
-            const fixture = new pc.Entity(
+            const fixture = new Entity(
                 'MOVING_HEAD_' + index
             );
 
@@ -354,12 +354,12 @@ export class EwsClubBuilder extends Script {
             fixture.setLocalScale(.35,.18,.55);
         });
 
-        const ambient = new pc.Entity('CLUB_AMBIENT');
+        const ambient = new Entity('CLUB_AMBIENT');
         parent.addChild(ambient);
 
         ambient.addComponent('light',{
             type:'omni',
-            color:new pc.Color(1,1,1),
+            color:new Color(1,1,1),
             intensity:.08,
             range:30
         });
@@ -379,7 +379,7 @@ export class EwsClubBuilder extends Script {
         ];
 
         points.forEach((point,index) => {
-            const spawn = new pc.Entity(
+            const spawn = new Entity(
                 'SPAWN_' + index
             );
 
