@@ -5,746 +5,548 @@ const fs = require('fs');
 const crypto = require('crypto');
 const https = require('https');
 const { Server } = require('socket.io');
-const NodeMediaServer = require('node-media-server');
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin:'*', methods:['GET','POST'] } });
+const httpServer = http.createServer(app);
 
-const PORT = process.env.PORT || 3000;
-const RTMP_PORT = process.env.RTMP_PORT || 1935;
-const NMS_HTTP_PORT = process.env.NMS_HTTP_PORT || 8000;
-const PUBLIC_DIR = path.join(__dirname,'public');
-const HLS_DIR = path.join(__dirname,'hls');
-const HLS_STREAM_DIR = path.join(HLS_DIR,'ews');
-const USERS_FILE = path.join(__dirname,'users.json');
+const io = new Server(httpServer, {
+  cors: { origin: '*', methods: ['GET', 'POST'] },
+  transports: ['websocket', 'polling'],
+  pingInterval: 10000,
+  pingTimeout: 25000
+});
+
+const PORT = Number(process.env.PORT || 3000);
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const USERS_FILE = path.join(__dirname, 'users.json');
+
+const CLUB_ROOM = 'ews-club';
 const SCREEN_HOST = 'mvxtra';
-const EMOTES = new Set([1,2,3,4,5,6]);
 
-for(const dir of [PUBLIC_DIR,HLS_DIR,HLS_STREAM_DIR]) fs.mkdirSync(dir,{recursive:true});
-if(!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE,JSON.stringify([],null,2),'utf8');
-
-app.use(express.json({limit:'2mb'}));
-app.use(express.urlencoded({extended:true}));
-app.use(express.static(PUBLIC_DIR));
-app.use('/hls',express.static(HLS_DIR,{setHeaders:(res,filePath)=>{
-  res.setHeader('Access-Control-Allow-Origin','*');
-  res.setHeader('Cache-Control','no-cache, no-store, must-revalidate');
-  if(filePath.endsWith('.m3u8')) res.setHeader('Content-Type','application/vnd.apple.mpegurl');
-  if(filePath.endsWith('.ts')) res.setHeader('Content-Type','video/mp2t');
-}}));
-
-function readUsers(){try{const users=JSON.parse(fs.readFileSync(USERS_FILE,'utf8'));return Array.isArray(users)?users:[];}catch(e){console.error('USERS READ ERROR:',e.message);return[];}}
-function saveUsers(users){fs.writeFileSync(USERS_FILE,JSON.stringify(users,null,2),'utf8');}
-function hashPassword(password){return crypto.createHash('sha256').update(String(password)).digest('hex');}
-function cleanUsername(value){return String(value||'').trim().replace(/\s+/g,' ').slice(0,24);}
-function isValidUsername(username){return username.length>=2&&username.length<=24&&/^[a-zA-Z0-9_\-а-яА-ЯёЁ ]+$/.test(username);}
-function isScreenHost(username){return String(username||'').trim().toLowerCase()===SCREEN_HOST;}
-function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
-
-app.get('/api/status',(req,res)=>res.json({ok:true,service:'EWS SESSIONS',online:onlineUsers.size,stream:true}));
-
-app.post('/api/register',(req,res)=>{
-  const username=cleanUsername(req.body.username), password=String(req.body.password||'');
-  if(!isValidUsername(username)) return res.status(400).json({ok:false,error:'Некорректное имя пользователя.'});
-  if(password.length<4) return res.status(400).json({ok:false,error:'Пароль должен быть минимум 4 символа.'});
-  const users=readUsers();
-  if(users.some(u=>String(u.username).toLowerCase()===username.toLowerCase())) return res.status(409).json({ok:false,error:'Такой пользователь уже существует.'});
-  users.push({username,password:hashPassword(password),createdAt:Date.now()}); saveUsers(users);
-  res.json({ok:true,username});
+const WORLD = Object.freeze({
+  groundY: 0,
+  minX: -16,
+  maxX: 16,
+  minZ: -14,
+  maxZ: 14
 });
 
-app.post('/api/login',(req,res)=>{
-  const username=cleanUsername(req.body.username), password=String(req.body.password||'');
-  const user=readUsers().find(u=>String(u.username).toLowerCase()===username.toLowerCase());
-  if(!user) return res.status(401).json({ok:false,error:'Пользователь не найден.'});
-  if(user.password!==hashPassword(password)) return res.status(401).json({ok:false,error:'Неверный пароль.'});
-  res.json({ok:true,username:user.username});
-});
+const SPAWNS = [
+  { x: 0, z: 10 },
+  { x: 3, z: 8 },
+  { x: -3, z: 8 },
+  { x: 6, z: 5 },
+  { x: -6, z: 5 },
+  { x: 8, z: 1 },
+  { x: -8, z: 1 },
+  { x: 4, z: -1 },
+  { x: -4, z: -1 }
+];
 
-const SUPPORTED_LANGUAGES=new Set(['ru','en','es','de','fr','zh','ja','ko','ar','hi','pt','it','tr','uk','nl','pl']);
-const translationCache=new Map();
-const MAX_TRANSLATION_CACHE=500;
+const EMOTES = new Set([1, 2, 3, 4, 5, 6]);
+const LANGUAGES = new Set([
+  'ru','en','es','de','fr','zh','ja','ko','ar','hi','pt','it','tr','uk','nl','pl'
+]);
 
-function normalizeLanguage(value){
-  const lang=String(value||'en').trim().toLowerCase();
-  return SUPPORTED_LANGUAGES.has(lang)?lang:'en';
+fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, '[]\n', 'utf8');
 }
 
-function httpsGetText(url,timeout=8000){
-  return new Promise((resolve,reject)=>{
-    const req=https.get(url,{headers:{'User-Agent':'EWS-SESSIONS/1.0'}},res=>{
-      let body='';
-      res.setEncoding('utf8');
-      res.on('data',chunk=>body+=chunk);
-      res.on('end',()=>{
-        if(res.statusCode>=200&&res.statusCode<300) resolve(body);
-        else reject(new Error('HTTP '+res.statusCode));
-      });
+app.use(express.json({ limit: '64kb' }));
+app.use(express.urlencoded({ extended: false }));
+app.use(express.static(PUBLIC_DIR));
+
+function readUsers() {
+  try {
+    const value = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveUsers(users) {
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+}
+
+function cleanUsername(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+}
+
+function validUsername(name) {
+  return name.length >= 2 &&
+    name.length <= 24 &&
+    /^[a-zA-Z0-9_\-а-яА-ЯёЁ ]+$/.test(name);
+}
+
+function normalizeLanguage(value) {
+  const lang = String(value || 'en').trim().toLowerCase();
+  return LANGUAGES.has(lang) ? lang : 'en';
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return 'scrypt:' + salt + ':' + hash;
+}
+
+function verifyPassword(password, stored) {
+  const value = String(stored || '');
+
+  if (!value.startsWith('scrypt:')) {
+    const legacy = crypto.createHash('sha256')
+      .update(String(password))
+      .digest('hex');
+    return legacy === value;
+  }
+
+  const parts = value.split(':');
+  if (parts.length !== 3) return false;
+
+  const expected = Buffer.from(parts[2], 'hex');
+  const actual = crypto.scryptSync(String(password), parts[1], 64);
+
+  return expected.length === actual.length &&
+    crypto.timingSafeEqual(expected, actual);
+}
+
+app.get('/health', (_req, res) => {
+  res.json({
+    ok: true,
+    club: 'EWS SESSIONS',
+    multiplayer: true,
+    screen: true
+  });
+});
+
+app.post('/api/register', (req, res) => {
+  const username = cleanUsername(req.body.username);
+  const password = String(req.body.password || '');
+
+  if (!validUsername(username)) {
+    return res.status(400).json({ ok: false, error: 'Invalid username.' });
+  }
+
+  if (password.length < 4 || password.length > 128) {
+    return res.status(400).json({ ok: false, error: 'Invalid password.' });
+  }
+
+  const users = readUsers();
+  const exists = users.some(user =>
+    String(user.username || '').toLowerCase() === username.toLowerCase()
+  );
+
+  if (exists) {
+    return res.status(409).json({
+      ok: false,
+      error: 'Username already exists.'
     });
-    req.setTimeout(timeout,()=>req.destroy(new Error('translation timeout')));
-    req.on('error',reject);
+  }
+
+  users.push({
+    username,
+    password: hashPassword(password),
+    createdAt: new Date().toISOString()
+  });
+
+  saveUsers(users);
+  res.json({ ok: true, username });
+});
+
+const translationCache = new Map();
+const MAX_TRANSLATION_CACHE = 500;
+
+function httpsGetText(url, timeout = 4000) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(
+      url,
+      {
+        headers: {
+          'User-Agent': 'EWS-SESSIONS/2.0'
+        }
+      },
+      response => {
+        let body = '';
+
+        response.setEncoding('utf8');
+        response.on('data', chunk => {
+          body += chunk;
+        });
+
+        response.on('end', () => {
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            resolve(body);
+          } else {
+            reject(new Error('HTTP ' + response.statusCode));
+          }
+        });
+      }
+    );
+
+    request.setTimeout(timeout, () => {
+      request.destroy(new Error('translation timeout'));
+    });
+
+    request.on('error', reject);
   });
 }
 
-async function translateText(text,targetLanguage){
-  if(!text) return '';
-  const target=normalizeLanguage(targetLanguage);
-  const source=String(text);
-  const key=target+'\n'+source;
-  if(translationCache.has(key)) return translationCache.get(key);
+async function translateText(text, targetLanguage) {
+  const source = String(text || '').trim();
+  if (!source) return '';
 
-  try{
-    const url='https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl='+encodeURIComponent(target)+'&dt=t&q='+encodeURIComponent(source);
-    const raw=await httpsGetText(url);
-    const data=JSON.parse(raw);
-    const translated=Array.isArray(data)&&Array.isArray(data[0])
-      ? data[0].map(part=>Array.isArray(part)?part[0]:'').join('')
-      : source;
+  const target = normalizeLanguage(targetLanguage);
+  const key = target + '\n' + source;
 
-    if(translationCache.size>=MAX_TRANSLATION_CACHE){
-      const firstKey=translationCache.keys().next().value;
-      if(firstKey) translationCache.delete(firstKey);
+  if (translationCache.has(key)) {
+    return translationCache.get(key);
+  }
+
+  try {
+    const url =
+      'https://translate.googleapis.com/translate_a/single' +
+      '?client=gtx' +
+      '&sl=auto' +
+      '&tl=' + encodeURIComponent(target) +
+      '&dt=t' +
+      '&q=' + encodeURIComponent(source);
+
+    const raw = await httpsGetText(url);
+    const data = JSON.parse(raw);
+
+    const translated =
+      Array.isArray(data) && Array.isArray(data[0])
+        ? data[0]
+            .map(part => Array.isArray(part) ? part[0] : '')
+            .join('')
+        : source;
+
+    const result = translated || source;
+
+    if (translationCache.size >= MAX_TRANSLATION_CACHE) {
+      const first = translationCache.keys().next().value;
+      if (first) translationCache.delete(first);
     }
-    translationCache.set(key,translated||source);
-    return translated||source;
-  }catch(e){
-    console.error('TRANSLATION ERROR:',e.message);
+
+    translationCache.set(key, result);
+    return result;
+  } catch (error) {
+    console.error('[TRANSLATION]', error.message);
     return source;
   }
 }
 
-app.post('/api/translate',async(req,res)=>{
-  const text=String(req.body.text||''), target=String(req.body.target||'en');
-  if(!text) return res.json({ok:true,text:''});
-  res.json({ok:true,text:await translateText(text,target)});
+app.post('/api/translate', async (req, res) => {
+  const source = String(req.body?.text || '').trim().slice(0, 500);
+  const target = String(req.body?.target || 'en');
+
+  if (!source) {
+    return res.json({ ok: true, text: '' });
+  }
+
+  res.json({
+    ok: true,
+    text: await translateText(source, target)
+  });
 });
 
-const onlineUsers=new Map();
-const players=new Map();
-const clubScreenState={active:false,src:'',url:'',name:'',owner:SCREEN_HOST};
+app.post('/api/login', (req, res) => {
+  const username = cleanUsername(req.body.username);
+  const password = String(req.body.password || '');
 
-const SPAWN_POINTS=[
-  {x:0,z:13},
-  {x:3,z:10},
-  {x:-3,z:10},
-  {x:6,z:7},
-  {x:-6,z:7},
-  {x:8,z:3},
-  {x:-8,z:3}
-];
+  const users = readUsers();
+  const user = users.find(item =>
+    String(item.username || '').toLowerCase() === username.toLowerCase()
+  );
 
-function getSpawnPoint(){
-  for(const point of SPAWN_POINTS){
-    const occupied=[...players.values()].some(
-      p=>Math.abs(p.x-point.x)<1.5&&Math.abs(p.z-point.z)<1.5
-    );
-    if(!occupied) return {x:point.x,z:point.z};
+  if (!user || !verifyPassword(password, user.password)) {
+    return res.status(401).json({
+      ok: false,
+      error: 'Invalid login.'
+    });
   }
+
+  res.json({ ok: true, username: user.username });
+});
+
+const players = new Map();
+
+const screen = {
+  active: false,
+  src: '',
+  url: '',
+  name: '',
+  owner: SCREEN_HOST,
+  version: 0
+};
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function screenSnapshot() {
   return {
-    x:Math.round(Math.random()*14-7),
-    z:Math.round(Math.random()*8+5)
+    active: screen.active,
+    src: screen.src,
+    url: screen.url,
+    name: screen.name,
+    owner: SCREEN_HOST,
+    version: screen.version
   };
 }
 
-function getOnlineUsers(){
-  return [...onlineUsers.values()].map(
-    u=>({username:u.username,language:u.language})
-  );
+function playerSnapshot(player) {
+  return {
+    id: player.id,
+    username: player.username,
+    language: player.language,
+    avatar: 'human-v1',
+    x: player.x,
+    y: WORLD.groundY,
+    z: player.z,
+    yaw: player.yaw,
+    moving: player.moving,
+    jumping: false,
+    dance: player.dance,
+    danceStartedAt: player.danceStartedAt
+  };
 }
 
-function broadcastOnline(){
-  io.emit('online-users',getOnlineUsers());
-  io.emit('online',getOnlineUsers());
+function onlineSnapshot() {
+  return [...players.values()].map(player => ({
+    username: player.username,
+    language: player.language
+  }));
 }
 
-function getPlayers(){
-  return [...players.values()].map(p=>({...p}));
+function worldSnapshot() {
+  return {
+    players: [...players.values()].map(playerSnapshot),
+    screen: screenSnapshot()
+  };
 }
 
-function sendPlayersSnapshot(socket){
-  socket.emit(
-    'players-state',
-    getPlayers().filter(p=>p.id!==socket.id)
-  );
+function emitOnline() {
+  io.to(CLUB_ROOM).emit('online:state', onlineSnapshot());
 }
 
-io.on('connection',socket=>{
-  console.log('SOCKET CONNECT:',socket.id);
-
-  socket.on('join',data=>{
-    data=data||{};
-
-    const username=cleanUsername(data.username);
-    if(!username) return;
-
-    const language=normalizeLanguage(data.language);
-
-    socket.username=username;
-    socket.language=language;
-
-    onlineUsers.set(
-      socket.id,
-      {
-        id:socket.id,
-        username,
-        language
-      }
+function spawnPoint() {
+  const free = SPAWNS.filter(point => {
+    return ![...players.values()].some(player =>
+      Math.hypot(player.x - point.x, player.z - point.z) < 1.8
     );
+  });
 
-    const spawn=getSpawnPoint();
+  return free[Math.floor(Math.random() * free.length)] ||
+    {
+      x: Math.random() * 12 - 6,
+      z: Math.random() * 10 - 3
+    };
+}
 
-    const player={
-      id:socket.id,
+io.on('connection', socket => {
+  console.log('[SOCKET] connect', socket.id);
+
+  socket.on('join', data => {
+    const username = cleanUsername(data && data.username);
+
+    if (!validUsername(username)) return;
+
+    players.delete(socket.id);
+
+    const spawn = spawnPoint();
+
+    socket.join(CLUB_ROOM);
+    socket.data.joined = true;
+    socket.data.username = username;
+
+    const player = {
+      id: socket.id,
       username,
-      x:spawn.x,
-      y:1.7,
-      z:spawn.z,
-      yaw:0,
-      pitch:0,
-      moving:false,
-      jumping:false,
-      dance:0,
-      danceStartedAt:0
+      language: normalizeLanguage(data && data.language),
+      x: clamp(Number(spawn.x) || 0, WORLD.minX, WORLD.maxX),
+      y: WORLD.groundY,
+      z: clamp(Number(spawn.z) || 0, WORLD.minZ, WORLD.maxZ),
+      yaw: 0,
+      moving: false,
+      dance: 0,
+      danceStartedAt: 0,
+      updatedAt: Date.now()
     };
 
-    players.set(socket.id,player);
+    players.set(socket.id, player);
 
-    socket.emit(
-      'screen-host',
-      {
-        host:isScreenHost(username),
-        username:SCREEN_HOST
-      }
-    );
-
-    socket.emit('player-spawn',player);
-
-    sendPlayersSnapshot(socket);
-
-    socket.broadcast.emit(
-      'player-state',
-      player
-    );
-
-    broadcastOnline();
-
-    socket.emit(
-      'club-screen-state',
-      clubScreenState
-    );
-
-    socket.emit(
-      'online',
-      getOnlineUsers()
-    );
-
-    console.log(
-      'JOIN:',
+    socket.emit('club:ready', {
       username,
-      '|',
-      language
+      host: username.toLowerCase() === SCREEN_HOST,
+      screen: screenSnapshot()
+    });
+
+    socket.emit('world:state', worldSnapshot());
+    socket.emit('online:state', onlineSnapshot());
+
+    socket.to(CLUB_ROOM).emit('player:joined', playerSnapshot(player));
+    emitOnline();
+
+    console.log('[JOIN]', username, socket.id);
+  });
+
+  socket.on('world:request', () => {
+    if (!socket.data.joined) return;
+
+    socket.emit('world:state', worldSnapshot());
+    socket.emit('online:state', onlineSnapshot());
+  });
+
+  socket.on('screen:request', () => {
+    if (!socket.data.joined) return;
+    socket.emit('screen:state', screenSnapshot());
+  });
+
+  socket.on('player:state', data => {
+    if (!socket.data.joined) return;
+
+    const player = players.get(socket.id);
+    if (!player || !data) return;
+
+    player.x = clamp(Number(data.x) || 0, WORLD.minX, WORLD.maxX);
+    player.y = WORLD.groundY;
+    player.z = clamp(Number(data.z) || 0, WORLD.minZ, WORLD.maxZ);
+    player.yaw = Number.isFinite(Number(data.yaw))
+      ? Number(data.yaw)
+      : player.yaw;
+    player.moving = Boolean(data.moving);
+    player.updatedAt = Date.now();
+
+    socket.to(CLUB_ROOM).emit(
+      'player:state',
+      playerSnapshot(player)
     );
   });
 
-  socket.on(
-    'request-online',
-    ()=>socket.emit(
-      'online-users',
-      getOnlineUsers()
-    )
-  );
+  socket.on('player:emote', value => {
+    if (!socket.data.joined) return;
 
-  socket.on(
-    'request-players',
-    ()=>sendPlayersSnapshot(socket)
-  );
+    const player = players.get(socket.id);
+    const dance = Number(value);
 
-  socket.on(
-    'request-club-screen',
-    ()=>socket.emit(
-      'club-screen-state',
-      clubScreenState
-    )
-  );
+    if (!player || !EMOTES.has(dance)) return;
 
-  socket.on('player-state',data=>{
-    const player=players.get(socket.id);
-    if(!player) return;
+    player.dance = dance;
+    player.danceStartedAt = Date.now();
 
-    data=data||{};
-
-    const x=Number(data.x);
-    const y=Number(data.y);
-    const z=Number(data.z);
-    const yaw=Number(data.yaw);
-    const pitch=Number(data.pitch);
-
-    if(Number.isFinite(x))
-      player.x=clamp(x,-16,16);
-
-    if(Number.isFinite(y))
-      player.y=clamp(y,0,8);
-
-    if(Number.isFinite(z))
-      player.z=clamp(z,-15.5,15.5);
-
-    if(Number.isFinite(yaw))
-      player.yaw=yaw;
-
-    if(Number.isFinite(pitch))
-      player.pitch=pitch;
-
-    if(typeof data.moving==='boolean')
-      player.moving=data.moving;
-
-    if(typeof data.jumping==='boolean')
-      player.jumping=data.jumping;
-
-    if(Number.isFinite(Number(data.dance)))
-      player.dance=
-        EMOTES.has(Number(data.dance))
-          ? Number(data.dance)
-          : 0;
-
-    if(Number.isFinite(Number(data.danceStartedAt)))
-      player.danceStartedAt=
-        Number(data.danceStartedAt)||0;
-
-    socket.broadcast.emit(
-      'player-state',
-      player
+    io.to(CLUB_ROOM).emit(
+      'player:state',
+      playerSnapshot(player)
     );
   });
 
-  socket.on('player-move',data=>{
-    const player=players.get(socket.id);
-    if(!player) return;
+  socket.on('player:language', value => {
+    if (!socket.data.joined) return;
 
-    data=data||{};
+    const player = players.get(socket.id);
+    if (!player) return;
 
-    if(Number.isFinite(Number(data.x)))
-      player.x=clamp(Number(data.x),-16,16);
+    player.language = normalizeLanguage(value);
 
-    if(Number.isFinite(Number(data.y)))
-      player.y=clamp(Number(data.y),0,8);
-
-    if(Number.isFinite(Number(data.z)))
-      player.z=clamp(Number(data.z),-15.5,15.5);
-
-    if(Number.isFinite(Number(data.yaw)))
-      player.yaw=Number(data.yaw);
-
-    if(Number.isFinite(Number(data.pitch)))
-      player.pitch=Number(data.pitch);
-
-    socket.broadcast.emit(
-      'player-state',
-      player
+    socket.emit(
+      'player:state',
+      playerSnapshot(player)
     );
+
+    emitOnline();
   });
 
-  // =====================================================
-  // DANCES / EMOTES
-  // =====================================================
+  socket.on('chat:message', value => {
+    if (!socket.data.joined) return;
 
-  socket.on('player-emote',data=>{
-    const player=players.get(socket.id);
-    if(!player) return;
+    const player = players.get(socket.id);
+    if (!player) return;
 
-    const id=Number(
-      data?.dance ??
-      data?.emote ??
-      0
-    );
+    const text = String(value || '').trim().slice(0, 240);
+    if (!text) return;
 
-    player.dance=
-      EMOTES.has(id)
-        ? id
-        : 0;
-
-    player.danceStartedAt=
-      player.dance
-        ? Date.now()
-        : 0;
-
-    io.emit(
-      'player-state',
-      player
-    );
+    io.to(CLUB_ROOM).emit('chat:message', {
+      user: player.username,
+      text,
+      ts: Date.now()
+    });
   });
 
-  socket.on('club-screen-state',state=>{
-    if(!isScreenHost(socket.username)){
-      console.log(
-        'SCREEN DENIED:',
-        socket.username
-      );
+  socket.on('screen:set', state => {
+    if (!socket.data.joined) return;
+
+    const username =
+      String(socket.data.username || '').trim().toLowerCase();
+
+    if (username !== SCREEN_HOST) {
+      console.log('[SCREEN] denied:', socket.data.username);
       return;
     }
 
-    state=state||{};
+    const active =
+      state &&
+      state.active === true &&
+      String(state.src || '').trim().length > 0;
 
-    if(
-      state.active===true &&
-      (
-        (typeof state.url==='string'&&state.url.trim()) ||
-        (typeof state.src==='string'&&state.src.trim())
-      )
-    ){
-      clubScreenState.active=true;
-
-      clubScreenState.src=
-        typeof state.src==='string'
-          ? state.src.trim().slice(0,2000)
-          : '';
-
-      clubScreenState.url=
-        typeof state.url==='string'
-          ? state.url.trim().slice(0,2000)
-          : '';
-
-      clubScreenState.name=
-        String(
-          state.name||'MEDIA'
-        ).slice(0,100);
-
-    }else{
-      clubScreenState.active=false;
-      clubScreenState.src='';
-      clubScreenState.url='';
-      clubScreenState.name='';
+    if (active) {
+      screen.active = true;
+      screen.src = String(state.src).trim().slice(0, 2000);
+      screen.url = String(state.url || '').trim().slice(0, 2000);
+      screen.name = String(state.name || 'MEDIA').trim().slice(0, 80);
+    } else {
+      screen.active = false;
+      screen.src = '';
+      screen.url = '';
+      screen.name = '';
     }
 
-    clubScreenState.owner=SCREEN_HOST;
+    screen.owner = SCREEN_HOST;
+    screen.version += 1;
 
-    io.emit(
-      'club-screen-state',
-      clubScreenState
+    io.to(CLUB_ROOM).emit(
+      'screen:state',
+      screenSnapshot()
+    );
+
+    console.log(
+      '[SCREEN]',
+      screen.active ? 'ON' : 'OFF',
+      screen.name,
+      'v' + screen.version
     );
   });
 
-  socket.on('chat-message',async message=>{
-    if(!socket.username) return;
+  socket.on('disconnect', reason => {
+    const player = players.get(socket.id);
 
-    const original=
-      String(message?.text||'')
-        .trim()
-        .slice(0,500);
+    if (!player) return;
 
-    if(!original) return;
+    players.delete(socket.id);
+    socket.to(CLUB_ROOM).emit('player:left', socket.id);
+    emitOnline();
 
-    // Every guest receives the same message in THEIR selected language.
-    // Translation is done once per unique target language and then reused.
-
-    const recipients=[
-      ...onlineUsers.entries()
-    ];
-
-    const targetLanguages=[
-      ...new Set(
-        recipients.map(
-          ([,user])=>
-            normalizeLanguage(user.language)
-        )
-      )
-    ];
-
-    const translations=new Map();
-
-    await Promise.all(
-      targetLanguages.map(
-        async targetLanguage=>{
-          translations.set(
-            targetLanguage,
-            await translateText(
-              original,
-              targetLanguage
-            )
-          );
-        }
-      )
+    console.log(
+      '[LEAVE]',
+      player.username,
+      reason
     );
-
-    const ts=Date.now();
-
-    for(const [id,user] of recipients){
-
-      const targetSocket=
-        io.sockets.sockets.get(id);
-
-      if(!targetSocket) continue;
-
-      const targetLanguage=
-        normalizeLanguage(
-          user.language
-        );
-
-      targetSocket.emit(
-        'chat-message',
-        {
-          user:socket.username,
-          username:socket.username,
-          text:
-            translations.get(
-              targetLanguage
-            )||original,
-          original,
-          targetLanguage,
-          translated:true,
-          ts
-        }
-      );
-    }
   });
-
-  socket.on(
-    'language-change',
-    language=>{
-      if(!socket.username) return;
-
-      socket.language=
-        normalizeLanguage(language);
-
-      const user=
-        onlineUsers.get(socket.id);
-
-      if(user)
-        user.language=
-          socket.language;
-
-      socket.emit(
-        'language-updated',
-        {
-          language:
-            socket.language
-        }
-      );
-
-      broadcastOnline();
-    }
-  );
-
-  socket.on(
-    'disconnect',
-    reason=>{
-      const username=
-        socket.username||'unknown';
-
-      onlineUsers.delete(
-        socket.id
-      );
-
-      players.delete(
-        socket.id
-      );
-
-      io.emit(
-        'player-left',
-        socket.id
-      );
-
-      io.emit(
-        'player-removed',
-        socket.id
-      );
-
-      broadcastOnline();
-
-      console.log(
-        'DISCONNECT:',
-        username,
-        '|',
-        reason
-      );
-    }
-  );
 });
 
-const nmsConfig={
-  rtmp:{
-    port:Number(RTMP_PORT),
-    chunk_size:60000,
-    gop_cache:true,
-    ping:30,
-    ping_timeout:60
-  },
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
 
-  http:{
-    port:Number(NMS_HTTP_PORT),
-    mediaroot:HLS_DIR,
-    allow_origin:'*'
-  },
-
-  trans:{
-    ffmpeg:
-      process.env.FFMPEG_PATH||
-      'ffmpeg',
-
-    tasks:[
-      {
-        app:'live',
-        hls:true,
-        hlsFlags:
-          '[hls_time=2:hls_list_size=6:hls_flags=delete_segments+append_list]',
-        hlsKeepSegments:6,
-        dash:false
-      }
-    ]
-  }
-};
-
-let nms=null;
-
-try{
-  nms=
-    new NodeMediaServer(
-      nmsConfig
-    );
-
-  nms.run();
-
-  console.log(
-    'RTMP SERVER READY'
-  );
-
-  console.log(
-    `RTMP: rtmp://localhost:${RTMP_PORT}/live`
-  );
-
-}catch(error){
-  console.error(
-    'NODE MEDIA SERVER ERROR:',
-    error
-  );
-}
-
-app.get(
-  '/',
-  (req,res)=>{
-    const index=
-      path.join(
-        PUBLIC_DIR,
-        'index.html'
-      );
-
-    if(fs.existsSync(index))
-      return res.sendFile(index);
-
-    res.status(404).send(
-      'EWS SESSIONS: index.html not found in public folder.'
-    );
-  }
-);
-
-app.use(
-  '/api',
-  (req,res)=>
-    res.status(404).json({
-      ok:false,
-      error:'API endpoint not found.'
-    })
-);
-
-app.use(
-  (err,req,res,next)=>{
-    console.error(
-      'EXPRESS ERROR:',
-      err
-    );
-
-    if(res.headersSent)
-      return next(err);
-
-    res.status(500).json({
-      ok:false,
-      error:'Internal server error.'
-    });
-  }
-);
-
-server.listen(
-  PORT,
-  '0.0.0.0',
-  ()=>{
-    console.log('');
-    console.log(
-      '========================================'
-    );
-    console.log(
-      '        EWS SESSIONS SERVER READY'
-    );
-    console.log(
-      '========================================'
-    );
-
-    console.log(
-      `WEB:  http://localhost:${PORT}`
-    );
-
-    console.log(
-      `RTMP: rtmp://localhost:${RTMP_PORT}/live`
-    );
-
-    console.log(
-      `HLS:  http://localhost:${PORT}/hls/`
-    );
-
-    console.log(
-      'SCREEN OWNER: mvxtra'
-    );
-
-    console.log(
-      'CHAT TRANSLATION: PERSONAL'
-    );
-
-    console.log(
-      'MULTIPLAYER: ON'
-    );
-
-    console.log(
-      'ONLINE USERS: ON'
-    );
-
-    console.log(
-      'DANCES / EMOTES: ON'
-    );
-
-    console.log(
-      'USERS FILE: ./users.json'
-    );
-
-    console.log(
-      '========================================'
-    );
-
-    console.log('');
-  }
-);
-
-function shutdown(){
-  console.log(
-    'EWS SESSIONS shutting down...'
-  );
-
-  try{
-    if(nms)
-      nms.stop();
-  }catch(e){
-    console.error(e);
-  }
-
-  server.close(
-    ()=>process.exit(0)
-  );
-}
-
-process.on(
-  'SIGINT',
-  shutdown
-);
-
-process.on(
-  'SIGTERM',
-  shutdown
-);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log('================================');
+  console.log('EWS SESSIONS CLEAN CORE');
+  console.log('PORT:', PORT);
+  console.log('MULTIPLAYER: ON');
+  console.log('ONLINE: ON');
+  console.log('SCREEN: ON');
+  console.log('SCREEN HOST:', SCREEN_HOST);
+  console.log('OWN RTMP/HLS: OFF');
+  console.log('================================');
+});

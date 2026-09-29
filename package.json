@@ -1,12 +1,11 @@
 {
   "name": "ews-sessions",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.22.3",
-    "node-media-server": "^4.4.3",
     "socket.io": "^4.8.4"
   }
 }
