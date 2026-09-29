@@ -6,6 +6,7 @@
 <title>EWS SESSIONS — Underground Club</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 
@@ -524,6 +525,8 @@ let chatRenderToken = 0;
 let dustField = null;
 let smokePuffs = [];
 let floorMist = null;
+let gltfLoader = null;
+let localAlien = null;
 
 let moverLights = [];
 let floorLights = [];
@@ -1737,6 +1740,8 @@ function addLaserFixture(x,y,z,phase){
 function init3D(){
   if(renderer) return;
 
+  gltfLoader=new THREE.GLTFLoader();
+
   renderer=new THREE.WebGLRenderer({
     canvas:$('canvas3d'),
     antialias:true,
@@ -1768,6 +1773,7 @@ function init3D(){
 
   buildArchitecture();
   buildAtmosphere();
+  createLocalAlien();
   buildLighting();
 
   cssScene=new THREE.Scene();
@@ -2009,116 +2015,81 @@ function hashId(id){
 
 function makeRemoteAvatar(data){
   const group=new THREE.Group();
-
   group.userData.id=data.id;
 
-  const seed=hashId(data.id);
-
-  const bodyTone=
-    0x3a3a3a+
-    (seed%4)*0x0b0b0b;
-
-  const suitMaterial=new THREE.MeshStandardMaterial({
-    color:bodyTone,
-    roughness:.72,
-    metalness:.18
+  const boneMat=new THREE.MeshStandardMaterial({
+    color:0xd8d8d8,
+    roughness:.62,
+    metalness:.05
+  });
+  const darkMat=new THREE.MeshStandardMaterial({
+    color:0x111111,
+    roughness:.85
   });
 
-  const accentMaterial=new THREE.MeshStandardMaterial({
-    color:seed%2?0xbdbdbd:0x8d8d8d,
-    roughness:.55,
-    metalness:.25
-  });
+  const pelvis=new THREE.Mesh(new THREE.BoxGeometry(.48,.24,.30),boneMat);
+  pelvis.position.y=.78;
+  group.add(pelvis);
 
-  const darkMaterial=new THREE.MeshStandardMaterial({
-    color:0x202020,
-    roughness:.78,
-    metalness:.1
-  });
+  const spine=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.82,8),boneMat);
+  spine.position.y=1.30;
+  group.add(spine);
 
-  const body=new THREE.Mesh(
-    new THREE.BoxGeometry(.82,1.28,.46),
-    suitMaterial
-  );
+  const skull=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),boneMat);
+  skull.position.y=2.10;
+  group.add(skull);
 
-  body.position.y=1.35;
-  body.castShadow=true;
-  group.add(body);
+  const jaw=new THREE.Mesh(new THREE.BoxGeometry(.34,.13,.28),boneMat);
+  jaw.position.set(0,1.91,.04);
+  group.add(jaw);
 
-  const chest=new THREE.Mesh(
-    new THREE.BoxGeometry(.54,.45,.06),
-    accentMaterial
-  );
-
-  chest.position.set(0,1.55,.26);
-  group.add(chest);
-
-  const head=new THREE.Mesh(
-    new THREE.SphereGeometry(.39,16,16),
-    accentMaterial
-  );
-
-  head.position.y=2.28;
-  head.castShadow=true;
-  group.add(head);
-
-  const eyeMaterial=new THREE.MeshBasicMaterial({
-    color:0x101010
-  });
-
-  for(let side=-1;side<=1;side+=2){
-    const eye=new THREE.Mesh(
-      new THREE.BoxGeometry(.07,.07,.025),
-      eyeMaterial
-    );
-
-    eye.position.set(
-      side*.12,
-      2.31,
-      .36
-    );
-
+  const eyeMat=new THREE.MeshBasicMaterial({color:0x050505});
+  for(const x of [-.105,.105]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.055,8,8),eyeMat);
+    eye.position.set(x,2.13,.30);
     group.add(eye);
   }
 
-  const legL=new THREE.Mesh(
-    new THREE.BoxGeometry(.22,.94,.24),
-    darkMaterial
-  );
+  const clavicle=new THREE.Mesh(new THREE.BoxGeometry(.72,.12,.12),boneMat);
+  clavicle.position.set(0,1.68,0);
+  group.add(clavicle);
 
-  legL.position.set(-.2,.48,0);
-  legL.castShadow=true;
+  const armL=new THREE.Mesh(new THREE.CylinderGeometry(.055,.075,.62,8),boneMat);
+  armL.position.set(-.48,1.38,0);
+  armL.rotation.z=-.35;
+  group.add(armL);
+  const armR=armL.clone();
+  armR.position.x=.48;
+  armR.rotation.z=.35;
+  group.add(armR);
+
+  const foreL=new THREE.Mesh(new THREE.CylinderGeometry(.045,.06,.58,8),boneMat);
+  foreL.position.set(-.66,.91,0);
+  foreL.rotation.z=.10;
+  group.add(foreL);
+  const foreR=foreL.clone();
+  foreR.position.x=.66;
+  foreR.rotation.z=-.10;
+  group.add(foreR);
+
+  const legL=new THREE.Mesh(new THREE.CylinderGeometry(.075,.10,.82,8),boneMat);
+  legL.position.set(-.19,.32,0);
   group.add(legL);
-
   const legR=legL.clone();
-  legR.position.x=.2;
+  legR.position.x=.19;
   group.add(legR);
 
-  const armL=new THREE.Mesh(
-    new THREE.BoxGeometry(.20,1.02,.23),
-    suitMaterial
-  );
-
-  armL.position.set(-.57,1.37,0);
-  armL.rotation.z=.05;
-  group.add(armL);
-
-  const armR=armL.clone();
-  armR.position.x=.57;
-  armR.rotation.z=-.05;
-  group.add(armR);
+  const footL=new THREE.Mesh(new THREE.BoxGeometry(.16,.10,.38),darkMat);
+  footL.position.set(-.19,-.10,.10);
+  group.add(footL);
+  const footR=footL.clone();
+  footR.position.x=.19;
+  group.add(footR);
 
   group.add(createLabel(data.username));
 
-  group.position.set(
-    Number(data.x)||0,
-    WORLD.floorY,
-    Number(data.z)||0
-  );
-
-  group.rotation.y=
-    Number(data.yaw)||0;
-
+  group.position.set(Number(data.x)||0,0,Number(data.z)||0);
+  group.rotation.y=Number(data.yaw)||0;
   scene.add(group);
 
   return {
@@ -2130,6 +2101,71 @@ function makeRemoteAvatar(data){
   };
 }
 
+function createLocalAlien(){
+  if(localAlien || !scene) return;
+
+  const group=new THREE.Group();
+
+  const skin=new THREE.MeshStandardMaterial({
+    color:0x63ff9a,
+    roughness:.48,
+    metalness:.05
+  });
+  const dark=new THREE.MeshStandardMaterial({
+    color:0x050505,
+    roughness:.8
+  });
+  const suit=new THREE.MeshStandardMaterial({
+    color:0x151515,
+    roughness:.55,
+    metalness:.35
+  });
+
+  const body=new THREE.Mesh(new THREE.CapsuleGeometry(.36,1.0,8,16),suit);
+  body.position.y=1.12;
+  body.castShadow=true;
+  group.add(body);
+
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.48,24,16),skin);
+  head.scale.set(.82,1.08,.78);
+  head.position.y=2.05;
+  head.castShadow=true;
+  group.add(head);
+
+  for(const x of [-.16,.16]){
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.13,16,12),dark);
+    eye.scale.set(.8,1.35,.35);
+    eye.position.set(x,2.09,.39);
+    group.add(eye);
+  }
+
+  const armL=new THREE.Mesh(new THREE.CapsuleGeometry(.10,.72,6,10),suit);
+  armL.position.set(-.48,1.22,0);
+  armL.rotation.z=.08;
+  group.add(armL);
+  const armR=armL.clone();
+  armR.position.x=.48;
+  armR.rotation.z=-.08;
+  group.add(armR);
+
+  const legL=new THREE.Mesh(new THREE.CapsuleGeometry(.12,.72,6,10),suit);
+  legL.position.set(-.18,.28,0);
+  group.add(legL);
+  const legR=legL.clone();
+  legR.position.x=.18;
+  group.add(legR);
+
+  group.add(createLabel(currentUser || 'mvxtra'));
+  group.position.set(playerX,0,playerZ);
+  scene.add(group);
+  localAlien=group;
+}
+
+function syncLocalAlien(){
+  if(!localAlien) return;
+  localAlien.position.set(playerX,0,playerZ);
+  localAlien.rotation.y=yaw;
+}
 function updateRemotePlayer(data){
   if(!data || !data.id) return;
 
@@ -2417,6 +2453,7 @@ function animate(){
 
   camera.rotation.y=yaw;
   camera.rotation.x=pitch;
+  syncLocalAlien();
 
   sendPlayerState(performance.now());
   animateRemotePlayers(time);
