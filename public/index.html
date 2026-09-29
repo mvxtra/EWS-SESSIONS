@@ -37,18 +37,18 @@ button{cursor:pointer}
 .msg{font-size:12px;line-height:1.45;margin:4px 0;text-shadow:0 2px 5px #000}
 .msg b{font-weight:800}
 #chatInput{width:100%;padding:11px;background:rgba(0,0,0,.8);border:1px solid #333;color:#fff;outline:0}
-#controls{position:absolute;bottom:14px;right:14px;width:240px}
-#screenControl{display:none;padding:12px}
-#screenControl input,#screenControl select{width:100%;margin:4px 0;padding:9px;background:#090909;color:#fff;border:1px solid #333}
-.smallbtn{width:100%;padding:9px;margin-top:5px;border:1px solid #555;background:#111;color:#fff}
+#controls{position:absolute;bottom:14px;right:14px;width:auto}
+#screenControl{display:none;padding:10px;width:250px;margin-bottom:7px}
+#screenControl input{width:100%;margin:4px 0;padding:9px;background:#090909;color:#fff;border:1px solid #333}
+#screenButton{padding:9px 16px;border:1px solid #666;background:#080808;color:#fff;font-weight:800;letter-spacing:.12em}
+#screenButton:hover{background:#fff;color:#000}
+#screenStatus{font-size:10px;color:#888;margin-top:7px;line-height:1.35}
 #help{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:10px;color:#aaa;letter-spacing:.12em;background:rgba(0,0,0,.5);padding:7px 10px}
-#screenStatus{font-size:10px;color:#888;margin-top:7px}
 #crosshair{position:absolute;left:50%;top:50%;width:12px;height:12px;transform:translate(-50%,-50%);opacity:.55}
 #crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff}
 #crosshair:before{width:12px;height:1px;top:5px}
 #crosshair:after{height:12px;width:1px;left:5px}
-#screenOverlay{position:absolute;left:50%;top:50%;width:min(760px,70vw);aspect-ratio:16/9;transform:translate(-50%,-50%);pointer-events:none;display:none}
-#screenOverlay iframe,#screenOverlay video{width:100%;height:100%;border:0;background:#000;object-fit:contain}
+#screenOverlay{position:absolute;inset:0;pointer-events:none;z-index:4}
 #toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:9px 13px;background:#111;border:1px solid #444;font-size:12px;opacity:0;transition:.2s}
 #toast.show{opacity:1}
 @media(max-width:700px){
@@ -102,17 +102,11 @@ button{cursor:pointer}
 
       <div id="controls">
         <div id="screenControl" class="panel">
-          <div class="title">SCREEN — HOST ONLY</div>
-          <select id="screenType">
-            <option value="video">HLS / VIDEO</option>
-            <option value="iframe">WEB / TWITCH EMBED</option>
-          </select>
-          <input id="screenSrc" placeholder="/hls/ews/index.m3u8">
-          <input id="screenTitle" placeholder="EWS SESSIONS">
-          <button id="screenOn" class="smallbtn">SHOW ON SCREEN</button>
-          <button id="screenOff" class="smallbtn">HIDE SCREEN</button>
-          <div id="screenStatus"></div>
+          <div class="title">SCREEN</div>
+          <input id="screenSrc" autocomplete="off" placeholder="Twitch / HLS ссылка">
+          <div id="screenStatus">ENTER в поле — показать экран</div>
         </div>
+        <button id="screenButton">SCREEN</button>
       </div>
     </div>
   </div>
@@ -122,6 +116,7 @@ button{cursor:pointer}
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 (() => {
@@ -143,7 +138,7 @@ let screenTexture = null;
 let screenMesh = null;
 let screenModel = null;
 
-let renderer, scene, camera;
+let renderer, cssRenderer, scene, camera, screenCssObject, screenCssFrame;
 let clock = new THREE.Clock();
 let yaw = 0, pitch = 0;
 let px = 0, py = 0, pz = 8;
@@ -229,6 +224,13 @@ function buildWorld() {
   renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
+
+  cssRenderer = new THREE.CSS3DRenderer();
+  cssRenderer.setSize(innerWidth, innerHeight);
+  cssRenderer.domElement.style.position = 'absolute';
+  cssRenderer.domElement.style.inset = '0';
+  cssRenderer.domElement.style.pointerEvents = 'none';
+  $('game').appendChild(cssRenderer.domElement);
 
   scene.add(new THREE.AmbientLight(0xffffff, .16));
 
@@ -335,7 +337,7 @@ function createPhysicalScreen() {
     new THREE.PlaneGeometry(11.6, 5.45),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  backing.position.set(0, 3.175, -13.43);
+  backing.position.set(0, 3.175, -13.48);
   scene.add(backing);
   screenMesh = backing;
 }
@@ -454,6 +456,7 @@ function resize() {
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
+  if(cssRenderer) cssRenderer.setSize(innerWidth,innerHeight);
 }
 
 function mouseLook(e) {
@@ -500,6 +503,7 @@ function animate() {
 
   updateRemotes(now/1000);
   renderer.render(scene,camera);
+  if(cssRenderer) cssRenderer.render(scene,camera);
 }
 
 document.addEventListener('keydown', e => {
@@ -696,10 +700,81 @@ async function renderMessage(msg) {
   }
 }
 
+function twitchEmbedUrl(value) {
+  const raw=String(value||'').trim();
+  if(!raw) return null;
+
+  let url;
+  try { url=new URL(raw, location.origin); } catch { return null; }
+
+  const hostName=url.hostname.toLowerCase();
+  const parent=location.hostname;
+
+  // Twitch channel URL: https://www.twitch.tv/mvxtra
+  if(hostName==='twitch.tv' || hostName==='www.twitch.tv'){
+    const parts=url.pathname.split('/').filter(Boolean);
+    if(parts.length>=1 && parts[0] && parts[0]!=='videos' && parts[0]!=='directory'){
+      return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+
+        '&parent='+encodeURIComponent(parent)+'&autoplay=true&muted=false';
+    }
+    // Twitch VOD URL: /videos/123456789
+    if(parts[0]==='videos' && parts[1]){
+      return 'https://player.twitch.tv/?video=v'+encodeURIComponent(parts[1])+
+        '&parent='+encodeURIComponent(parent)+'&autoplay=true&muted=false';
+    }
+  }
+
+  // Already a Twitch player URL.
+  if(hostName==='player.twitch.tv'){
+    url.searchParams.set('parent',parent);
+    return url.toString();
+  }
+
+  return null;
+}
+
+function clearCssScreen() {
+  if(screenCssObject){
+    scene.remove(screenCssObject);
+    screenCssObject=null;
+  }
+  screenCssFrame=null;
+}
+
+function createTwitchWallScreen(src) {
+  clearCssScreen();
+
+  const frame=document.createElement('div');
+  frame.style.width='1160px';
+  frame.style.height='545px';
+  frame.style.background='#000';
+  frame.style.border='0';
+  frame.style.overflow='hidden';
+  frame.style.pointerEvents='auto';
+
+  const iframe=document.createElement('iframe');
+  iframe.src=src;
+  iframe.allow='autoplay; fullscreen; picture-in-picture';
+  iframe.allowFullscreen=true;
+  iframe.style.width='1160px';
+  iframe.style.height='545px';
+  iframe.style.border='0';
+  iframe.style.display='block';
+  frame.appendChild(iframe);
+
+  screenCssFrame=frame;
+  screenCssObject=new THREE.CSS3DObject(frame);
+  screenCssObject.position.set(0,3.175,-13.42);
+  screenCssObject.scale.set(0.01,0.01,0.01);
+  screenCssObject.rotation.set(0,0,0);
+  scene.add(screenCssObject);
+}
+
 function applyScreen(state) {
-  const wrap=$('screenOverlay');
-  wrap.innerHTML='';
-  wrap.style.display='none';
+  $('screenOverlay').innerHTML='';
+  $('screenOverlay').style.display='none';
+
+  clearCssScreen();
 
   if(hls){ hls.destroy(); hls=null; }
   if(screenTexture){ screenTexture.dispose(); screenTexture=null; }
@@ -710,71 +785,89 @@ function applyScreen(state) {
     screenVideo=null;
   }
 
+  if(screenMesh){
+    screenMesh.material.map=null;
+    screenMesh.material.color.setHex(0x000000);
+    screenMesh.material.needsUpdate=true;
+  }
+
   if(!state?.active || !state.src){
-    if(screenMesh) screenMesh.material.map=null;
     if(host) $('screenStatus').textContent='SCREEN OFF';
     return;
   }
 
-  // VIDEO/HLS is rendered directly onto the physical Three.js screen.
-  if(state.type!=='iframe'){
-    const video=document.createElement('video');
-    screenVideo=video;
-    video.autoplay=true;
-    video.muted=false;
-    video.controls=false;
-    video.loop=false;
-    video.playsInline=true;
-    video.setAttribute('playsinline','');
-    video.crossOrigin='anonymous';
+  const twitch=twitchEmbedUrl(state.src);
 
-    screenTexture=new THREE.VideoTexture(video);
-    screenTexture.minFilter=THREE.LinearFilter;
-    screenTexture.magFilter=THREE.LinearFilter;
-    screenTexture.format=THREE.RGBAFormat;
-    screenTexture.encoding=THREE.sRGBEncoding;
-
-    if(screenMesh){
-      screenMesh.material.map=screenTexture;
-      screenMesh.material.needsUpdate=true;
-    }
-
-    if(window.Hls && Hls.isSupported() && /\.m3u8($|\?)/i.test(state.src)){
-      hls=new Hls({enableWorker:true, lowLatencyMode:true});
-      hls.loadSource(state.src);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-        video.play().catch(()=>toast('Нажми один раз по экрану для звука'));
-      });
-    } else {
-      video.src=state.src;
-      video.play().catch(()=>{});
-    }
-  } else {
-    // Non-video embeds stay supported, but the normal EWS screen is physical video.
-    const iframe=document.createElement('iframe');
-    iframe.src=state.src;
-    iframe.allow='autoplay; fullscreen; picture-in-picture';
-    iframe.allowFullscreen=true;
-    wrap.style.display='block';
-    wrap.appendChild(iframe);
+  // Twitch is rendered as a CSS3D object at the exact wall position.
+  if(twitch){
+    createTwitchWallScreen(twitch);
+    if(host) $('screenStatus').textContent='Twitch · '+(state.title||'EWS SESSIONS');
+    return;
   }
 
-  if(host) $('screenStatus').textContent='SCREEN ON · '+(state.title||'');
+  // HLS / normal video is rendered directly onto the physical Three.js wall.
+  const video=document.createElement('video');
+  screenVideo=video;
+  video.autoplay=true;
+  video.muted=false;
+  video.controls=false;
+  video.loop=false;
+  video.playsInline=true;
+  video.setAttribute('playsinline','');
+  video.crossOrigin='anonymous';
+
+  screenTexture=new THREE.VideoTexture(video);
+  screenTexture.minFilter=THREE.LinearFilter;
+  screenTexture.magFilter=THREE.LinearFilter;
+  screenTexture.format=THREE.RGBAFormat;
+  screenTexture.encoding=THREE.sRGBEncoding;
+
+  if(screenMesh){
+    screenMesh.material.map=screenTexture;
+    screenMesh.material.color.setHex(0xffffff);
+    screenMesh.material.needsUpdate=true;
+  }
+
+  if(window.Hls && Hls.isSupported() && /\\.m3u8($|\\?)/i.test(state.src)){
+    hls=new Hls({enableWorker:true,lowLatencyMode:true});
+    hls.loadSource(state.src);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>toast('Нажми на экран для звука')));
+  }else{
+    video.src=state.src;
+    video.play().catch(()=>{});
+  }
+
+  if(host) $('screenStatus').textContent='VIDEO · '+(state.title||'EWS SESSIONS');
 }
 
-$('screenOn').onclick=()=>{
-  if(!host || !socket?.connected) return;
-  socket.emit('screen:set',{
-    src:$('screenSrc').value.trim(),
-    type:$('screenType').value,
-    title:$('screenTitle').value.trim() || 'EWS SESSIONS'
-  });
+$('screenButton').onclick=()=>{
+  if(!host) return;
+  const panel=$('screenControl');
+  panel.style.display=panel.style.display==='block'?'none':'block';
+  if(panel.style.display==='block'){
+    $('screenSrc').focus();
+  }
 };
 
-$('screenOff').onclick=()=>{
-  if(host && socket?.connected) socket.emit('screen:set',{src:''});
-};
+$('screenSrc').addEventListener('keydown',e=>{
+  if(e.key!=='Enter' || !host || !socket?.connected) return;
+  e.preventDefault();
+
+  const src=$('screenSrc').value.trim();
+  if(!src){
+    socket.emit('screen:set',{src:''});
+    return;
+  }
+
+  const twitch=twitchEmbedUrl(src);
+  const type=twitch?'twitch':'video';
+  socket.emit('screen:set',{
+    src,
+    type,
+    title:'EWS SESSIONS'
+  });
+});
 
 function startClub() {
   buildWorld();
@@ -782,9 +875,7 @@ function startClub() {
   animate();
   $('langLabel').textContent=LANG_NAMES[language]||language.toUpperCase();
   $('chatInput').placeholder='ENTER → чат';
-  // The screen URL is intentionally editable only for the host.
-  $('screenSrc').value='/hls/ews/index.m3u8';
-  $('screenTitle').value='EWS SESSIONS';
+  $('screenSrc').value='';
 }
 
 // Keep the user signed in on this browser after the first successful login.
