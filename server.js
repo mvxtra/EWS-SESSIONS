@@ -259,9 +259,7 @@ function normalizePlayer(p) {
     y: world.groundY,
     z: p.z,
     yaw: p.yaw,
-    moving: p.moving,
-    emote: p.emote,
-    emoteAt: p.emoteAt
+    moving: p.moving
   };
 }
 
@@ -306,9 +304,7 @@ io.on('connection', socket => {
       y: 0,
       z: spawn.z,
       yaw: 0,
-      moving: false,
-      emote: 0,
-      emoteAt: 0
+      moving: false
     };
 
     players.set(socket.id, player);
@@ -347,19 +343,12 @@ io.on('connection', socket => {
     p.x = clamp(Number(data.x) || 0, world.minX, world.maxX);
     p.z = clamp(Number(data.z) || 0, world.minZ, world.maxZ);
     p.yaw = Number.isFinite(Number(data.yaw)) ? Number(data.yaw) : p.yaw;
-    p.moving = !!data.moving;
+    p.moving = !!data.moving;;
 
     socket.to(ROOM).emit('player:state', normalizePlayer(p));
   });
 
-  socket.on('player:emote', value => {
-    const p = players.get(socket.id);
-    const emote = Number(value);
-    if (!p || ![1,2,3,4].includes(emote)) return;
-    p.emote = emote;
-    p.emoteAt = Date.now();
-    io.to(ROOM).emit('player:state', normalizePlayer(p));
-  });
+
 
   socket.on('language:set', value => {
     const p = players.get(socket.id);
