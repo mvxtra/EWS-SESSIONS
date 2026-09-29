@@ -12,7 +12,7 @@ button{cursor:pointer}
 #app{position:fixed;inset:0;background:#030303}
 #game{position:absolute;inset:0}
 #scene{position:absolute;inset:0;width:100%;height:100%;display:block}
-#ui{position:absolute;inset:0;pointer-events:none}
+#ui{position:absolute;inset:0;pointer-events:none;z-index:10}
 .panel{pointer-events:auto;background:rgba(4,4,4,.88);border:1px solid rgba(255,255,255,.18);box-shadow:0 18px 60px rgba(0,0,0,.65);backdrop-filter:blur(10px)}
 #auth{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#171717 0,#050505 45%,#000 100%);z-index:20}
 .authbox{width:min(420px,calc(100vw - 32px));padding:30px}
@@ -37,18 +37,20 @@ button{cursor:pointer}
 .msg{font-size:12px;line-height:1.45;margin:4px 0;text-shadow:0 2px 5px #000}
 .msg b{font-weight:800}
 #chatInput{width:100%;padding:11px;background:rgba(0,0,0,.8);border:1px solid #333;color:#fff;outline:0}
-#controls{position:absolute;bottom:14px;right:14px;width:240px}
-#screenControl{display:none;padding:12px}
-#screenControl input,#screenControl select{width:100%;margin:4px 0;padding:9px;background:#090909;color:#fff;border:1px solid #333}
-.smallbtn{width:100%;padding:9px;margin-top:5px;border:1px solid #555;background:#111;color:#fff}
+#controls{position:absolute;bottom:14px;right:14px;width:auto;pointer-events:auto;z-index:30}
+#screenControl{display:none;padding:10px;width:250px;margin-bottom:7px}
+#screenControl input{width:100%;margin:4px 0;padding:9px;background:#090909;color:#fff;border:1px solid #333}
+#screenActions{display:flex;gap:6px;margin-top:7px}
+#screenButton,#screenPlay{padding:9px 16px;border:1px solid #666;background:#080808;color:#fff;font-weight:800;letter-spacing:.12em}
+#screenButton:hover,#screenPlay:hover{background:#fff;color:#000}
+#screenPlay{display:none}
+#screenStatus{font-size:10px;color:#888;margin-top:7px;line-height:1.35}
 #help{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:10px;color:#aaa;letter-spacing:.12em;background:rgba(0,0,0,.5);padding:7px 10px}
-#screenStatus{font-size:10px;color:#888;margin-top:7px}
 #crosshair{position:absolute;left:50%;top:50%;width:12px;height:12px;transform:translate(-50%,-50%);opacity:.55}
 #crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff}
 #crosshair:before{width:12px;height:1px;top:5px}
 #crosshair:after{height:12px;width:1px;left:5px}
-#screenOverlay{position:absolute;left:50%;top:50%;width:min(760px,70vw);aspect-ratio:16/9;transform:translate(-50%,-50%);pointer-events:none;display:none}
-#screenOverlay iframe,#screenOverlay video{width:100%;height:100%;border:0;background:#000;object-fit:contain}
+#screenOverlay{position:absolute;inset:0;pointer-events:none;z-index:4}
 #toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);padding:9px 13px;background:#111;border:1px solid #444;font-size:12px;opacity:0;transition:.2s}
 #toast.show{opacity:1}
 @media(max-width:700px){
@@ -102,17 +104,14 @@ button{cursor:pointer}
 
       <div id="controls">
         <div id="screenControl" class="panel">
-          <div class="title">SCREEN — HOST ONLY</div>
-          <select id="screenType">
-            <option value="video">HLS / VIDEO</option>
-            <option value="iframe">WEB / TWITCH EMBED</option>
-          </select>
-          <input id="screenSrc" placeholder="/hls/ews/index.m3u8">
-          <input id="screenTitle" placeholder="EWS SESSIONS">
-          <button id="screenOn" class="smallbtn">SHOW ON SCREEN</button>
-          <button id="screenOff" class="smallbtn">HIDE SCREEN</button>
-          <div id="screenStatus"></div>
+          <div class="title">SCREEN</div>
+          <input id="screenSrc" autocomplete="off" placeholder="Twitch / HLS ссылка">
+          <div id="screenActions">
+            <button id="screenPlay" type="button">PLAY</button>
+          </div>
+          <div id="screenStatus">Вставь ссылку и нажми PLAY</div>
         </div>
+        <button id="screenButton" type="button">SCREEN</button>
       </div>
     </div>
   </div>
@@ -122,6 +121,7 @@ button{cursor:pointer}
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 (() => {
@@ -143,7 +143,7 @@ let screenTexture = null;
 let screenMesh = null;
 let screenModel = null;
 
-let renderer, scene, camera;
+let renderer, cssRenderer, scene, camera, screenCssObject, screenCssFrame;
 let clock = new THREE.Clock();
 let yaw = 0, pitch = 0;
 let px = 0, py = 0, pz = 8;
@@ -230,6 +230,23 @@ function buildWorld() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
 
+  cssRenderer = new THREE.CSS3DRenderer();
+  cssRenderer.setSize(innerWidth, innerHeight);
+
+  // Twitch is a real iframe/CSS3D surface. It must be above the WebGL
+  // canvas or the physical black backing plane will hide it completely.
+  cssRenderer.domElement.style.position = 'absolute';
+  cssRenderer.domElement.style.inset = '0';
+  cssRenderer.domElement.style.pointerEvents = 'none';
+  cssRenderer.domElement.style.zIndex = '3';
+
+  renderer.domElement.style.position = 'absolute';
+  renderer.domElement.style.inset = '0';
+  renderer.domElement.style.zIndex = '2';
+
+  $('game').appendChild(cssRenderer.domElement);
+  $('game').appendChild(renderer.domElement);
+
   scene.add(new THREE.AmbientLight(0xffffff, .16));
 
   const floorMat = new THREE.MeshStandardMaterial({color:0x080808,roughness:.86,metalness:.18});
@@ -275,21 +292,11 @@ function buildWorld() {
   addBox(17,.14,.14,0,6.4,-3,rigMat);
   addBox(17,.14,.14,0,6.4,5,rigMat);
 
-  // Moving heads
-  for (const x of [-6,-2,2,6]) {
-    const lamp = new THREE.Mesh(
-      new THREE.BoxGeometry(.55,.35,.55),
-      new THREE.MeshStandardMaterial({color:0x050505,roughness:.35,metalness:.9})
-    );
-    lamp.position.set(x,6.05,-10.5);
-    scene.add(lamp);
-  }
+  // PROFESSIONAL CLUB LIGHTING RIG
+  setupClubLighting();
 
-  // Logo-like EWS wall sign
-  const sign = makeTextSprite('EWS', 2.8);
-  sign.position.set(0,4.2,-13.7);
-  scene.add(sign);
-
+  // No text/logo is placed over the screen surface.
+  // The screen must remain a clean video texture / Twitch surface.
   // Fog/dust
   const count = 500;
   const pos = new Float32Array(count*3);
@@ -335,7 +342,7 @@ function createPhysicalScreen() {
     new THREE.PlaneGeometry(11.6, 5.45),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  backing.position.set(0, 3.175, -13.43);
+  backing.position.set(0, 3.175, -13.48);
   scene.add(backing);
   screenMesh = backing;
 }
@@ -344,9 +351,9 @@ function loadSpeakerModel() {
   if (!THREE.GLTFLoader) return;
 
   const candidates = [
+    '/models/колонки.glb',
     '/models/speakers.glb',
     '/models/speaker.glb',
-    '/models/columns.glb',
     '/models/column.glb',
     '/assets/speakers.glb',
     '/assets/speaker.glb',
@@ -361,25 +368,135 @@ function loadSpeakerModel() {
     if (index >= candidates.length) return;
     const url = candidates[index++];
     loader.load(url, gltf => {
-      screenModel = gltf.scene;
-      screenModel.traverse(o => {
+      // Use the imported speaker as two physical stacks beside the screen.
+      const source = gltf.scene;
+      source.traverse(o => {
         if (o.isMesh) {
           o.castShadow = true;
           o.receiveShadow = true;
         }
       });
-      screenModel.scale.setScalar(1.35);
-      screenModel.position.set(0, 0, -12.75);
-      scene.add(screenModel);
 
-      // The imported model replaces the simple speaker blocks visually.
+      const left = source.clone(true);
+      const right = source.clone(true);
+
+      left.scale.setScalar(1.85);
+      right.scale.setScalar(1.85);
+      left.position.set(-7.25, 0, -12.15);
+      right.position.set(7.25, 0, -12.15);
+      left.rotation.y = 0;
+      right.rotation.y = 0;
+
+      scene.add(left);
+      scene.add(right);
+      screenModel = {left,right};
+
+      // Hide the old center speaker model/fallbacks so nothing sits in front of the screen.
       const fallback = scene.userData.fallbackSpeakers;
       if (fallback) fallback.forEach(o => o.visible = false);
-      toast('Модель колонок загружена');
+
+      toast('Колонки поставлены по краям экрана');
     }, undefined, () => tryNext());
   };
 
   tryNext();
+}
+
+function setupClubLighting() {
+  scene.userData.clubLights = [];
+  scene.userData.clubBeams = [];
+  scene.userData.strobe = [];
+
+  // Stage wash: two strong professional spotlights aimed at the dance floor.
+  const stageSpots = [
+    {x:-5.5, y:6.0, z:-10.5, color:0xffffff},
+    {x: 5.5, y:6.0, z:-10.5, color:0xffffff}
+  ];
+
+  for (const p of stageSpots) {
+    const spot = new THREE.SpotLight(p.color, 8.0, 25, Math.PI/7, 0.55, 1.3);
+    spot.position.set(p.x,p.y,p.z);
+    spot.target.position.set(p.x*0.25,0,1.5);
+    scene.add(spot.target);
+    scene.add(spot);
+    spot.castShadow = true;
+    scene.userData.clubLights.push(spot);
+  }
+
+  // Colored moving-head fixtures across the ceiling.
+  const colors = [0xff1744,0x247bff,0x8a2be2,0x00e5ff,0xffffff,0xff1744];
+  [-7.5,-4.5,-1.5,1.5,4.5,7.5].forEach((x,i)=>{
+    const housing = new THREE.Mesh(
+      new THREE.BoxGeometry(.62,.32,.62),
+      new THREE.MeshStandardMaterial({color:0x050505,roughness:.3,metalness:.95})
+    );
+    housing.position.set(x,6.12,-7.5);
+    scene.add(housing);
+
+    const beam = new THREE.SpotLight(colors[i], 5.5, 22, Math.PI/10, .72, 1.5);
+    beam.position.set(x,5.95,-7.5);
+    beam.target.position.set(x*.55,0,1.0);
+    scene.add(beam.target);
+    scene.add(beam);
+    scene.userData.clubBeams.push({light:beam,target:beam.target,phase:i*.75,baseX:x});
+  });
+
+  // Side/back washes make the room read like a real venue instead of a flat dark box.
+  [
+    [-15,3.2,-6,0xff1744],
+    [ 15,3.2,-6,0x247bff],
+    [-13,3.0, 7,0x8a2be2],
+    [ 13,3.0, 7,0x00e5ff]
+  ].forEach(([x,y,z,color])=>{
+    const l = new THREE.PointLight(color, 2.8, 13);
+    l.position.set(x,y,z);
+    scene.add(l);
+    scene.userData.clubLights.push(l);
+  });
+
+  // Two narrow laser-like beam fixtures aimed across the dance floor.
+  [-1,1].forEach(side=>{
+    const beam = new THREE.SpotLight(side<0?0xff1744:0x247bff, 4.2, 30, Math.PI/35, .25, 1.0);
+    beam.position.set(side*7.8,5.8,-8.8);
+    beam.target.position.set(-side*7.0,0,5.5);
+    scene.add(beam.target);
+    scene.add(beam);
+    scene.userData.clubBeams.push({light:beam,target:beam.target,phase:side*1.7,laser:true,baseX:side*7.8});
+  });
+
+  // Strobe fixtures at the front truss. Normally dim, then flash in short pulses.
+  [-6,-2,2,6].forEach(x=>{
+    const l = new THREE.PointLight(0xffffff,0,18);
+    l.position.set(x,5.9,-10.4);
+    scene.add(l);
+    scene.userData.strobe.push(l);
+  });
+}
+
+function updateClubLighting(t) {
+  const beams = scene.userData.clubBeams || [];
+  beams.forEach((b,i)=>{
+    const a = t*0.72 + b.phase;
+    if (b.laser) {
+      b.target.position.x = Math.sin(a)*7;
+      b.target.position.z = 4.5 + Math.cos(a*0.8)*4;
+      b.light.intensity = 3.0 + (Math.sin(t*2.2+b.phase)+1)*1.1;
+    } else {
+      b.target.position.x = Math.sin(a)*8;
+      b.target.position.z = -1 + Math.cos(a*0.67)*10;
+      b.target.position.y = 0.4 + Math.sin(a*0.55)*1.2;
+      b.light.intensity = 3.8 + (Math.sin(t*2.0+b.phase)+1)*1.7;
+    }
+  });
+
+  const washes = scene.userData.clubLights || [];
+  washes.forEach((l,i)=>{
+    if (l.isPointLight) l.intensity = 1.8 + (Math.sin(t*1.15+i*1.7)+1)*0.9;
+  });
+
+  const pulse = Math.sin(t*5.5);
+  const hit = pulse > 0.88 ? 7.5 : 0;
+  (scene.userData.strobe || []).forEach(l=>l.intensity=hit);
 }
 
 function addSpeaker(x,z) {
@@ -454,13 +571,24 @@ function resize() {
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
+  if(cssRenderer) cssRenderer.setSize(innerWidth,innerHeight);
 }
 
 function mouseLook(e) {
   if(document.pointerLockElement !== $('scene')) return;
-  yaw -= e.movementX*.0022;
-  pitch -= e.movementY*.0022;
+
+  // Mouse look is rotation ONLY. Never change the player's world position here.
+  // Movement of X/Z is handled exclusively by WASD in animate().
+  const keepX = px;
+  const keepZ = pz;
+
+  yaw -= e.movementX * 0.0022;
+  pitch -= e.movementY * 0.0022;
   pitch = THREE.MathUtils.clamp(pitch,-1.3,1.3);
+
+  // Hard guard: rotating the mouse can never make the player orbit/drift.
+  px = keepX;
+  pz = keepZ;
 }
 
 function animate() {
@@ -499,7 +627,9 @@ function animate() {
   }
 
   updateRemotes(now/1000);
+  updateClubLighting(now/1000);
   renderer.render(scene,camera);
+  if(cssRenderer) cssRenderer.render(scene,camera);
 }
 
 document.addEventListener('keydown', e => {
@@ -561,12 +691,62 @@ function createAvatar(data) {
   const a2=a1.clone();a2.position.x=.54;g.add(a2);
 
   const label=makeTextSprite(data.username,1.65);
-  label.position.y=3.0;
+  // Nickname is attached to the avatar, directly above its head.
+  label.position.set(0,3.15,0);
+  label.scale.set(1.8,.45,1);
   g.add(label);
 
   g.position.set(Number(data.x)||0,0,Number(data.z)||0);
   g.rotation.y=Number(data.yaw)||0;
   scene.add(g);
+
+  // mvxtra uses the dedicated alien model from /public/models.
+  // The procedural avatar stays visible until the GLB finishes loading.
+  if(String(data.username||'').toLowerCase()==='mvxtra' && THREE.GLTFLoader){
+    const loader=new THREE.GLTFLoader();
+    loader.load('/models/аватар%20mvxtra.glb', gltf=>{
+      const alien=gltf.scene;
+      alien.traverse(o=>{
+        if(o.isMesh){
+          o.castShadow=true;
+          o.receiveShadow=true;
+        }
+      });
+
+      // Keep only the nickname sprite; replace the temporary body.
+      const keep=[];
+      g.children.forEach(child=>{
+        if(child===label) keep.push(child);
+      });
+      g.clear();
+      keep.forEach(child=>g.add(child));
+
+      alien.scale.setScalar(1.45);
+      alien.position.set(0,0,0);
+      alien.rotation.y=Math.PI;
+      g.add(alien);
+
+      // Use an animation clip from the GLB when one is available.
+      // Movement is driven by the same "moving" state used by multiplayer.
+      if(gltf.animations && gltf.animations.length){
+        const mixer=new THREE.AnimationMixer(alien);
+        const clips=gltf.animations;
+        const walkClip=THREE.AnimationClip.findByName(alien, 'Walk')
+          || clips.find(c=>/walk|run|locomotion/i.test(c.name))
+          || clips[0];
+        const action=mixer.clipAction(walkClip);
+        action.loop=THREE.LoopRepeat;
+        action.enabled=true;
+        action.paused=true;
+        g.userData.alienMixer=mixer;
+        g.userData.alienWalk=action;
+        g.userData.alienClock=new THREE.Clock();
+      }
+      g.userData.alien=alien;
+    },undefined,()=>{
+      // If the alien asset fails, the normal avatar remains.
+    });
+  }
 
   return {g,targetX:g.position.x,targetZ:g.position.z,targetYaw:g.rotation.y,data};
 }
@@ -604,6 +784,26 @@ function updateRemotes(t){
     r.g.rotation.y += d*.22;
 
     const moving=!!r.data?.moving;
+
+    // Alien GLB walk animation.
+    if(r.g.userData.alienMixer){
+      const clock=r.g.userData.alienClock;
+      const dt=Math.min(clock.getDelta(),.05);
+      r.g.userData.alienMixer.update(dt);
+      const action=r.g.userData.alienWalk;
+      if(action){
+        if(moving){
+          action.paused=false;
+          action.enabled=true;
+          action.play();
+        }else{
+          action.paused=true;
+          action.enabled=true;
+        }
+      }
+    }
+
+    // Fallback procedural walk animation for non-GLB avatars.
     const swing=moving?Math.sin(t*9)*.28:0;
     if(r.g.children[4])r.g.children[4].rotation.x=swing;
     if(r.g.children[5])r.g.children[5].rotation.x=-swing;
@@ -632,7 +832,8 @@ function connect() {
   socket.on('club:ready',data=>{
     joined=true;
     host=!!data.host;
-    $('screenControl').style.display=host?'block':'none';
+    $('screenControl').style.display='none';
+    $('screenPlay').style.display=host?'block':'none';
     if(data.screen) applyScreen(data.screen);
   });
 
@@ -696,10 +897,82 @@ async function renderMessage(msg) {
   }
 }
 
+function twitchEmbedUrl(value) {
+  const raw=String(value||'').trim();
+  if(!raw) return null;
+
+  let url;
+  try { url=new URL(raw, location.origin); } catch { return null; }
+
+  const hostName=url.hostname.toLowerCase();
+  const parent=location.hostname;
+
+  // Twitch channel URL: https://www.twitch.tv/mvxtra
+  if(hostName==='twitch.tv' || hostName==='www.twitch.tv'){
+    const parts=url.pathname.split('/').filter(Boolean);
+    if(parts.length>=1 && parts[0] && parts[0]!=='videos' && parts[0]!=='directory'){
+      return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+
+        '&parent='+encodeURIComponent(parent)+'&autoplay=true&muted=false';
+    }
+    // Twitch VOD URL: /videos/123456789
+    if(parts[0]==='videos' && parts[1]){
+      return 'https://player.twitch.tv/?video=v'+encodeURIComponent(parts[1])+
+        '&parent='+encodeURIComponent(parent)+'&autoplay=true&muted=false';
+    }
+  }
+
+  // Already a Twitch player URL.
+  if(hostName==='player.twitch.tv'){
+    url.searchParams.set('parent',parent);
+    return url.toString();
+  }
+
+  return null;
+}
+
+function clearCssScreen() {
+  if(screenCssObject){
+    scene.remove(screenCssObject);
+    screenCssObject=null;
+  }
+  screenCssFrame=null;
+}
+
+function createTwitchWallScreen(src) {
+  clearCssScreen();
+
+  const frame=document.createElement('div');
+  frame.style.width='1160px';
+  frame.style.height='545px';
+  frame.style.background='#000';
+  frame.style.border='0';
+  frame.style.overflow='hidden';
+  frame.style.pointerEvents='none';
+
+  const iframe=document.createElement('iframe');
+  iframe.src=src;
+  iframe.allow='autoplay; fullscreen; picture-in-picture';
+  iframe.setAttribute('allowtransparency','true');
+  iframe.allowFullscreen=true;
+  iframe.style.width='1160px';
+  iframe.style.height='545px';
+  iframe.style.border='0';
+  iframe.style.display='block';
+  frame.appendChild(iframe);
+
+  screenCssFrame=frame;
+  screenCssObject=new THREE.CSS3DObject(frame);
+  screenCssObject.position.set(0,3.175,-13.42);
+  screenCssObject.scale.set(0.01,0.01,0.01);
+  screenCssObject.rotation.set(0,0,0);
+  scene.add(screenCssObject);
+}
+
 function applyScreen(state) {
-  const wrap=$('screenOverlay');
-  wrap.innerHTML='';
-  wrap.style.display='none';
+  $('screenOverlay').innerHTML='';
+  $('screenOverlay').style.display='none';
+
+  clearCssScreen();
 
   if(hls){ hls.destroy(); hls=null; }
   if(screenTexture){ screenTexture.dispose(); screenTexture=null; }
@@ -710,71 +983,105 @@ function applyScreen(state) {
     screenVideo=null;
   }
 
+  if(screenMesh){
+    screenMesh.material.map=null;
+    screenMesh.material.color.setHex(0x000000);
+    screenMesh.material.needsUpdate=true;
+  }
+
   if(!state?.active || !state.src){
-    if(screenMesh) screenMesh.material.map=null;
     if(host) $('screenStatus').textContent='SCREEN OFF';
     return;
   }
 
-  // VIDEO/HLS is rendered directly onto the physical Three.js screen.
-  if(state.type!=='iframe'){
-    const video=document.createElement('video');
-    screenVideo=video;
-    video.autoplay=true;
-    video.muted=false;
-    video.controls=false;
-    video.loop=false;
-    video.playsInline=true;
-    video.setAttribute('playsinline','');
-    video.crossOrigin='anonymous';
+  const twitch=twitchEmbedUrl(state.src);
 
-    screenTexture=new THREE.VideoTexture(video);
-    screenTexture.minFilter=THREE.LinearFilter;
-    screenTexture.magFilter=THREE.LinearFilter;
-    screenTexture.format=THREE.RGBAFormat;
-    screenTexture.encoding=THREE.sRGBEncoding;
-
-    if(screenMesh){
-      screenMesh.material.map=screenTexture;
-      screenMesh.material.needsUpdate=true;
-    }
-
-    if(window.Hls && Hls.isSupported() && /\.m3u8($|\?)/i.test(state.src)){
-      hls=new Hls({enableWorker:true, lowLatencyMode:true});
-      hls.loadSource(state.src);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED,()=>{
-        video.play().catch(()=>toast('Нажми один раз по экрану для звука'));
-      });
-    } else {
-      video.src=state.src;
-      video.play().catch(()=>{});
-    }
-  } else {
-    // Non-video embeds stay supported, but the normal EWS screen is physical video.
-    const iframe=document.createElement('iframe');
-    iframe.src=state.src;
-    iframe.allow='autoplay; fullscreen; picture-in-picture';
-    iframe.allowFullscreen=true;
-    wrap.style.display='block';
-    wrap.appendChild(iframe);
+  // Twitch is rendered as a CSS3D object at the exact wall position.
+  if(twitch){
+    createTwitchWallScreen(twitch);
+    if(host) $('screenStatus').textContent='Twitch · '+(state.title||'EWS SESSIONS');
+    return;
   }
 
-  if(host) $('screenStatus').textContent='SCREEN ON · '+(state.title||'');
+  // HLS / normal video is rendered directly onto the physical Three.js wall.
+  const video=document.createElement('video');
+  screenVideo=video;
+  video.autoplay=true;
+  video.muted=false;
+  video.controls=false;
+  video.loop=false;
+  video.playsInline=true;
+  video.setAttribute('playsinline','');
+  video.crossOrigin='anonymous';
+
+  screenTexture=new THREE.VideoTexture(video);
+  screenTexture.minFilter=THREE.LinearFilter;
+  screenTexture.magFilter=THREE.LinearFilter;
+  screenTexture.format=THREE.RGBAFormat;
+  screenTexture.encoding=THREE.sRGBEncoding;
+
+  if(screenMesh){
+    screenMesh.material.map=screenTexture;
+    screenMesh.material.color.setHex(0xffffff);
+    screenMesh.material.needsUpdate=true;
+  }
+
+  if(window.Hls && Hls.isSupported() && /\\.m3u8($|\\?)/i.test(state.src)){
+    hls=new Hls({enableWorker:true,lowLatencyMode:true});
+    hls.loadSource(state.src);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>toast('Нажми на экран для звука')));
+  }else{
+    video.src=state.src;
+    video.play().catch(()=>{});
+  }
+
+  if(host) $('screenStatus').textContent='VIDEO · '+(state.title||'EWS SESSIONS');
 }
 
-$('screenOn').onclick=()=>{
+function sendScreen() {
   if(!host || !socket?.connected) return;
+
+  const src=$('screenSrc').value.trim();
+  if(!src){
+    socket.emit('screen:set',{src:''});
+    $('screenStatus').textContent='SCREEN OFF';
+    return;
+  }
+
+  const twitch=twitchEmbedUrl(src);
+  const type=twitch?'twitch':'video';
+
   socket.emit('screen:set',{
-    src:$('screenSrc').value.trim(),
-    type:$('screenType').value,
-    title:$('screenTitle').value.trim() || 'EWS SESSIONS'
+    src,
+    type,
+    title:'EWS SESSIONS'
   });
+
+  $('screenStatus').textContent=twitch
+    ? 'PLAY · Twitch запущен'
+    : 'PLAY · ссылка отправлена';
+}
+
+$('screenButton').onclick=()=>{
+  if(!host) return;
+
+  const panel=$('screenControl');
+  const opening=panel.style.display!=='block';
+  panel.style.display=opening?'block':'none';
+
+  if(opening){
+    $('screenSrc').focus();
+  }
 };
 
-$('screenOff').onclick=()=>{
-  if(host && socket?.connected) socket.emit('screen:set',{src:''});
-};
+$('screenPlay').onclick=sendScreen;
+
+$('screenSrc').addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  sendScreen();
+});
 
 function startClub() {
   buildWorld();
@@ -782,9 +1089,7 @@ function startClub() {
   animate();
   $('langLabel').textContent=LANG_NAMES[language]||language.toUpperCase();
   $('chatInput').placeholder='ENTER → чат';
-  // The screen URL is intentionally editable only for the host.
-  $('screenSrc').value='/hls/ews/index.m3u8';
-  $('screenTitle').value='EWS SESSIONS';
+  $('screenSrc').value='';
 }
 
 // Keep the user signed in on this browser after the first successful login.
