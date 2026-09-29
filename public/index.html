@@ -227,10 +227,21 @@ function buildWorld() {
 
   cssRenderer = new THREE.CSS3DRenderer();
   cssRenderer.setSize(innerWidth, innerHeight);
+
+  // CSS3D is the Twitch layer. Keep it behind the WebGL canvas so
+  // 3D characters and physical objects can correctly occlude the screen.
   cssRenderer.domElement.style.position = 'absolute';
   cssRenderer.domElement.style.inset = '0';
   cssRenderer.domElement.style.pointerEvents = 'none';
+  cssRenderer.domElement.style.zIndex = '1';
+
+  // WebGL must be above CSS3D for normal 3D depth/occlusion.
+  renderer.domElement.style.position = 'absolute';
+  renderer.domElement.style.inset = '0';
+  renderer.domElement.style.zIndex = '2';
+
   $('game').appendChild(cssRenderer.domElement);
+  $('game').appendChild(renderer.domElement);
 
   scene.add(new THREE.AmbientLight(0xffffff, .16));
 
