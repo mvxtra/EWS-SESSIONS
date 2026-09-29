@@ -492,7 +492,14 @@ button{cursor:pointer}
     const m=document.getElementById('auth-message');
     if(m)m.textContent='LOGIN SYSTEM NOT READY — RELOAD PAGE';
   }
-  function register(){ window.location.href='/auth/twitch'; }
+  function register(){
+    if(typeof window.auth==='function'){
+      window.auth('/api/register');
+      return;
+    }
+    const m=document.getElementById('auth-message');
+    if(m)m.textContent='REGISTER SYSTEM NOT READY — RELOAD PAGE';
+  }
   window.__ewsLogin=login;
   window.__ewsRegister=register;
   function bind(){
@@ -680,7 +687,7 @@ $('auth-form').addEventListener('submit',event=>{
 
 $('register-button').addEventListener('click',event=>{
   event.preventDefault();
-  window.location.href='/auth/twitch';
+  window.auth('/api/register');
 });
 
 $('auth-password').addEventListener('keydown',event=>{
