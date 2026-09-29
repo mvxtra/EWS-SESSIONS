@@ -679,7 +679,9 @@ function createAvatar(data) {
   const a2=a1.clone();a2.position.x=.54;g.add(a2);
 
   const label=makeTextSprite(data.username,1.65);
-  label.position.y=3.0;
+  // Nickname is attached to the avatar, directly above its head.
+  label.position.set(0,3.15,0);
+  label.scale.set(1.8,.45,1);
   g.add(label);
 
   g.position.set(Number(data.x)||0,0,Number(data.z)||0);
