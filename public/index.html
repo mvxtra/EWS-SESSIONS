@@ -787,9 +787,24 @@ function startClub() {
   $('screenTitle').value='EWS SESSIONS';
 }
 
-// Restore login screen, but do not auto-login: this keeps authentication explicit.
+// Keep the user signed in on this browser after the first successful login.
 const saved=localStorage.getItem('ews-username');
 if(saved) $('username').value=saved;
+
+async function restoreSession() {
+  const token=localStorage.getItem('ews-session-token');
+  if(!token) return;
+
+  try {
+    const data=await api('/api/session',{token});
+    setLoggedIn(data.username,data.token);
+    startClub();
+  } catch {
+    localStorage.removeItem('ews-session-token');
+  }
+}
+
+restoreSession();
 
 })();
 </script>
