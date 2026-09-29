@@ -788,8 +788,10 @@ function createAvatar(data) {
     avatarHolder.add(model);
     fallback.visible=false;
 
-    // Running.fbx is a Mixamo animation. Bind it to the actual SkinnedMesh
-    // of X Bot instead of the outer Group.
+    // ANIMATION ENGINE
+    // X Bot and Running.fbx are both Mixamo rigs. First try the original
+    // Mixamo clip directly; this is the most reliable path when bone names match.
+    // Retargeting is only used as a fallback for differently named rigs.
     let mixer=null;
     let runAction=null;
     const runSource=runData?.source || null;
@@ -811,9 +813,39 @@ function createAvatar(data) {
     console.log('[EWS AVATAR] running clip:', rawRunClip?.name || 'NONE',
       'tracks:', rawRunClip?.tracks?.length || 0);
 
-    let runClip=null;
+    // Mixer is attached to the complete character hierarchy so tracks such as
+    // mixamorigHips.quaternion can resolve against the actual target bones.
+    if(rawRunClip){
+      try{
+        mixer=new THREE.AnimationMixer(model);
+        runAction=mixer.clipAction(rawRunClip);
+        runAction.setLoop(THREE.LoopRepeat,Infinity);
+        runAction.setEffectiveWeight(1);
+        runAction.enabled=true;
+        runAction.play();
+        runAction.paused=true;
 
-    if(targetSkin && sourceSkin && rawRunClip && THREE.SkeletonUtils?.retargetClip){
+        // If the clip has no resolvable bindings, Three.js will still create
+        // the action but the bones will not change. Keep a retarget fallback.
+        const boundTracks = rawRunClip.tracks.filter(track=>{
+          try{
+            return !!mixer.clipAction(rawRunClip).getRoot();
+          }catch(_){ return false; }
+        }).length;
+
+        console.log('[EWS AVATAR] Direct Mixamo animation prepared:',{
+          tracks:rawRunClip.tracks.length,
+          boundTracks
+        });
+      }catch(err){
+        console.error('[EWS AVATAR] Direct animation FAILED:',err);
+        mixer=null;
+        runAction=null;
+      }
+    }
+
+    // Retarget fallback for rigs whose track names do not bind directly.
+    if(!runAction && targetSkin && sourceSkin && rawRunClip && THREE.SkeletonUtils?.retargetClip){
       try{
         const targetBones=targetSkin.skeleton?.bones || [];
         const sourceBones=sourceSkin.skeleton?.bones || [];
@@ -821,7 +853,6 @@ function createAvatar(data) {
         const sourceByShortName=new Map(
           sourceBones.map(b=>[String(b.name).split(':').pop(),b.name])
         );
-
         const names={};
         targetBones.forEach(b=>{
           const exact=b.name;
@@ -830,36 +861,35 @@ function createAvatar(data) {
           else if(sourceByShortName.has(short)) names[exact]=sourceByShortName.get(short);
         });
 
-        runClip=THREE.SkeletonUtils.retargetClip(
+        const retargeted=THREE.SkeletonUtils.retargetClip(
           targetSkin,
           sourceSkin,
           rawRunClip,
           {hip:'mixamorigHips',names}
         );
 
-        console.log('[EWS AVATAR] Running.fbx RETARGET OK. mapped bones:',Object.keys(names).length);
+        mixer=new THREE.AnimationMixer(targetSkin);
+        runAction=mixer.clipAction(retargeted);
+        runAction.setLoop(THREE.LoopRepeat,Infinity);
+        runAction.setEffectiveWeight(1);
+        runAction.enabled=true;
+        runAction.play();
+        runAction.paused=true;
+
+        console.log('[EWS AVATAR] RETARGET fallback prepared. mapped bones:',Object.keys(names).length);
       }catch(err){
-        console.error('[EWS AVATAR] Running retarget FAILED:',err);
+        console.error('[EWS AVATAR] Retarget fallback FAILED:',err);
+        mixer=null;
+        runAction=null;
       }
-    } else {
-      console.error('[EWS AVATAR] Animation setup missing:',{
-        targetSkin:!!targetSkin,
-        sourceSkin:!!sourceSkin,
-        clip:!!rawRunClip,
-        retargetClip:!!THREE.SkeletonUtils?.retargetClip
-      });
     }
 
-    if(runClip && targetSkin){
-      mixer=new THREE.AnimationMixer(targetSkin);
-      runAction=mixer.clipAction(runClip);
-      runAction.setLoop(THREE.LoopRepeat,Infinity);
-      runAction.enabled=true;
-      runAction.clampWhenFinished=false;
+    if(!runAction){
+      console.error('[EWS AVATAR] NO WORKING RUN ANIMATION. Check Running.fbx bone names.');
+    }else{
+      // Start paused; movement code controls play/pause.
+      runAction.paused=true;
       runAction.setEffectiveWeight(1);
-      runAction.stop();
-    } else {
-      console.warn('[EWS AVATAR] Running.fbx could not be bound to X Bot.');
     }
 
     // Store animation state on this avatar instance.
@@ -961,9 +991,9 @@ function updateRemotes(t,dt){
     if(!moving && r._visualModel){
       r._idleTime += dt;
       const t=r._idleTime;
-      r._visualModel.position.y=r._idleBaseY + Math.sin(t*1.8)*0.018;
-      r._visualModel.rotation.z=Math.sin(t*0.9)*0.012;
-      r._visualModel.rotation.x=Math.sin(t*1.25)*0.006;
+      r._visualModel.position.y=r._idleBaseY + Math.sin(t*1.8)*0.035;
+      r._visualModel.rotation.z=Math.sin(t*0.9)*0.018;
+      r._visualModel.rotation.x=Math.sin(t*1.25)*0.010;
     }
 
     if(r._mixer) r._mixer.update(dt);
