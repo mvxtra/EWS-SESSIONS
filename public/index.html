@@ -123,6 +123,7 @@ button{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 (() => {
@@ -152,6 +153,7 @@ let px = 0, py = 0, pz = 8;
 let vy = 0, grounded = true;
 const keys = {};
 const remotes = new Map();
+let avatarModelPromise = null;
 let lastState = 0;
 
 const authMsg = $('authMsg');
@@ -690,28 +692,33 @@ function createAvatar(data) {
   const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:.85});
   const headMat=new THREE.MeshStandardMaterial({color:0xbcbcbc,roughness:.7});
 
+  // Safe fallback remains visible until the real Mixamo character loads.
+  const fallback=new THREE.Group();
   const body=new THREE.Mesh(new THREE.BoxGeometry(.8,1.25,.45),bodyMat);
-  body.position.y=1.3;g.add(body);
+  body.position.y=1.3;fallback.add(body);
 
   const head=new THREE.Mesh(new THREE.SphereGeometry(.38,16,12),headMat);
-  head.position.y=2.22;g.add(head);
+  head.position.y=2.22;fallback.add(head);
 
   const eyeMat=new THREE.MeshBasicMaterial({color:0x111111});
   for(const sx of [-.12,.12]){
     const eye=new THREE.Mesh(new THREE.BoxGeometry(.08,.07,.03),eyeMat);
-    eye.position.set(sx,2.25,.35);g.add(eye);
+    eye.position.set(sx,2.25,.35);fallback.add(eye);
   }
 
   const l1=new THREE.Mesh(new THREE.BoxGeometry(.22,.9,.23),dark);
-  l1.position.set(-.2,.45,0);g.add(l1);
-  const l2=l1.clone();l2.position.x=.2;g.add(l2);
+  l1.position.set(-.2,.45,0);fallback.add(l1);
+  const l2=l1.clone();l2.position.x=.2;fallback.add(l2);
 
   const a1=new THREE.Mesh(new THREE.BoxGeometry(.2,1,.22),bodyMat);
-  a1.position.set(-.54,1.3,0);g.add(a1);
-  const a2=a1.clone();a2.position.x=.54;g.add(a2);
+  a1.position.set(-.54,1.3,0);fallback.add(a1);
+  const a2=a1.clone();a2.position.x=.54;fallback.add(a2);
+  g.add(fallback);
+
+  const avatarHolder=new THREE.Group();
+  g.add(avatarHolder);
 
   const label=makeTextSprite(data.username,1.65);
-  // Nickname: clearly above the character and always visible.
   label.position.set(0,3.8,0);
   label.scale.set(1.8,.45,1);
   if(label.material){ label.material.depthTest=false; label.material.depthWrite=false; label.renderOrder=1000; }
@@ -721,9 +728,60 @@ function createAvatar(data) {
   g.rotation.y=Number(data.yaw)||0;
   scene.add(g);
 
+  if(!avatarModelPromise){
+    avatarModelPromise=new Promise((resolve,reject)=>{
+      if(!THREE.FBXLoader) return reject(new Error('FBXLoader unavailable'));
+      const loader=new THREE.FBXLoader();
+      loader.load(
+        '/models/avatars/X%20Bot.fbx',
+        model=>resolve(model),
+        undefined,
+        err=>reject(err)
+      );
+    });
+  }
 
+  avatarModelPromise.then(source=>{
+    const model=THREE.SkeletonUtils && THREE.SkeletonUtils.clone
+      ? THREE.SkeletonUtils.clone(source)
+      : source.clone(true);
 
-  return {g,targetX:g.position.x,targetZ:g.position.z,targetYaw:g.rotation.y,data};
+    model.traverse(o=>{
+      if(o.isMesh){
+        o.castShadow=true;
+        o.receiveShadow=true;
+      }
+    });
+
+    // Normalize the imported Mixamo character to a predictable club height.
+    const box=new THREE.Box3().setFromObject(model);
+    const size=box.getSize(new THREE.Vector3());
+    if(size.y>0){
+      const targetHeight=3.0;
+      model.scale.multiplyScalar(targetHeight/size.y);
+    }
+
+    const normalizedBox=new THREE.Box3().setFromObject(model);
+    model.position.y -= normalizedBox.min.y;
+
+    avatarHolder.add(model);
+    fallback.visible=false;
+
+    const finalBox=new THREE.Box3().setFromObject(model);
+    const h=finalBox.max.y-finalBox.min.y;
+    label.position.y=Math.max(3.45,h+.65);
+
+  }).catch(()=>{
+    // If the FBX is not deployed yet or fails to load, keep the fallback avatar.
+  });
+
+  return {
+    g,
+    targetX:g.position.x,
+    targetZ:g.position.z,
+    targetYaw:g.rotation.y,
+    data
+  };
 }
 
 function hash(s){
