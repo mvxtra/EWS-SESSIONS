@@ -701,6 +701,23 @@ function createAvatar(data) {
       alien.position.set(0,0,0);
       alien.rotation.y=Math.PI;
       g.add(alien);
+
+      // Use an animation clip from the GLB when one is available.
+      // Movement is driven by the same "moving" state used by multiplayer.
+      if(gltf.animations && gltf.animations.length){
+        const mixer=new THREE.AnimationMixer(alien);
+        const clips=gltf.animations;
+        const walkClip=THREE.AnimationClip.findByName(alien, 'Walk')
+          || clips.find(c=>/walk|run|locomotion/i.test(c.name))
+          || clips[0];
+        const action=mixer.clipAction(walkClip);
+        action.loop=THREE.LoopRepeat;
+        action.enabled=true;
+        action.paused=true;
+        g.userData.alienMixer=mixer;
+        g.userData.alienWalk=action;
+        g.userData.alienClock=new THREE.Clock();
+      }
       g.userData.alien=alien;
     },undefined,()=>{
       // If the alien asset fails, the normal avatar remains.
@@ -743,6 +760,26 @@ function updateRemotes(t){
     r.g.rotation.y += d*.22;
 
     const moving=!!r.data?.moving;
+
+    // Alien GLB walk animation.
+    if(r.g.userData.alienMixer){
+      const clock=r.g.userData.alienClock;
+      const dt=Math.min(clock.getDelta(),.05);
+      r.g.userData.alienMixer.update(dt);
+      const action=r.g.userData.alienWalk;
+      if(action){
+        if(moving){
+          action.paused=false;
+          action.enabled=true;
+          action.play();
+        }else{
+          action.paused=true;
+          action.enabled=true;
+        }
+      }
+    }
+
+    // Fallback procedural walk animation for non-GLB avatars.
     const swing=moving?Math.sin(t*9)*.28:0;
     if(r.g.children[4])r.g.children[4].rotation.x=swing;
     if(r.g.children[5])r.g.children[5].rotation.x=-swing;
