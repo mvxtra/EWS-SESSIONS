@@ -732,8 +732,92 @@ app.post('/api/twitch/exchange',(req,res)=>{
   });
 });
 
+app.post('/api/twitch/login', (req,res)=>{
+  cleanupTwitchAuth();
+
+  const ticket=String(req.query.ticket||'');
+  const record=twitchTickets.get(ticket);
+
+  if(!record){
+    return res.status(401).json({
+      ok:false,
+      error:'Twitch login ticket expired.'
+    });
+  }
+
+  twitchTickets.delete(ticket);
+
+  res.json({
+    ok:true,
+    username:record.username
+  });
+});
+
 app.get('*', (_req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+  const indexPath=path.join(PUBLIC_DIR,'index.html');
+
+  try{
+    let html=fs.readFileSync(indexPath,'utf8');
+
+    const script=`
+<script>
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  const ticket=params.get('twitch_ticket');
+  if(!ticket) return;
+
+  const run=async()=>{
+    try{
+      const usernameInput=document.getElementById('auth-username');
+      const passwordInput=document.getElementById('auth-password');
+
+      if(!usernameInput || !passwordInput || typeof window.auth!=='function'){
+        throw new Error('Auth UI is not ready');
+      }
+
+      usernameInput.value='';
+      passwordInput.value='twitch';
+
+      const response=await fetch(
+        '/api/twitch/login?ticket='+encodeURIComponent(ticket),
+        {method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store'}
+      );
+
+      const data=await response.json();
+
+      if(!response.ok || !data.ok){
+        throw new Error(data.error||'Twitch login failed');
+      }
+
+      usernameInput.value=String(data.username||'');
+      window.history.replaceState({},document.title,'/');
+      await window.auth('/api/twitch/login?ticket=consumed');
+    }catch(error){
+      console.error('[EWS TWITCH]',error);
+      const message=document.getElementById('auth-message');
+      if(message) message.textContent='TWITCH LOGIN ERROR — '+error.message;
+    }
+  };
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',run,{once:true});
+  }else{
+    run();
+  }
+})();
+</script>`;
+
+    if(html.includes('</body>')){
+      html=html.replace('</body>',script+'</body>');
+    }else{
+      html+=script;
+    }
+
+    res.type('html').send(html);
+  }catch(error){
+    console.error('[EWS] index load error',error);
+    res.status(500).send('EWS SESSIONS error');
+  }
 });
 
 httpServer.listen(PORT, '0.0.0.0', () => {
