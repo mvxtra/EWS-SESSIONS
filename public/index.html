@@ -657,7 +657,7 @@ $('auth-form').addEventListener('submit',event=>{
 
 $('register-button').addEventListener('click',event=>{
   event.preventDefault();
-  auth('/api/register');
+  window.location.href='/auth/twitch';
 });
 
 $('auth-password').addEventListener('keydown',event=>{
