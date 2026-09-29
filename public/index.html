@@ -473,10 +473,10 @@ button{cursor:pointer}
       <option value="fr">FRANÇAIS</option>
     </select>
 
-    <div class="auth-actions">
-      <button id="enter-button" type="button" onclick="auth('/api/login'); return false;">ENTER</button>
-      <button id="register-button" type="button" onclick="auth('/api/register'); return false;">REGISTER</button>
-    </div>
+    <form id="auth-form" class="auth-actions">
+      <button id="enter-button" type="submit">ENTER</button>
+      <button id="register-button" type="button">REGISTER</button>
+    </form>
 
     <div id="auth-message"></div>
   </div>
@@ -487,9 +487,9 @@ button{cursor:pointer}
 
 const $ = id => document.getElementById(id);
 
-window.auth = auth;
-
 let currentUser = '';
+
+window.auth = auth;
 let socket = null;
 
 let scene = null;
@@ -570,6 +570,7 @@ function showAuthMessage(text){
 
 async function auth(path){
   const username=$('auth-username').value.trim();
+  console.log('[EWS AUTH] request',path,username);
   const password=$('auth-password').value;
 
   if(!username || !password){
@@ -649,8 +650,15 @@ async function auth(path){
   }
 }
 
-$('enter-button').addEventListener('click',()=>auth('/api/login'));
-$('register-button').addEventListener('click',()=>auth('/api/register'));
+$('auth-form').addEventListener('submit',event=>{
+  event.preventDefault();
+  auth('/api/login');
+});
+
+$('register-button').addEventListener('click',event=>{
+  event.preventDefault();
+  auth('/api/register');
+});
 
 $('auth-password').addEventListener('keydown',event=>{
   if(event.key==='Enter'){
