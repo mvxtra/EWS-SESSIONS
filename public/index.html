@@ -282,8 +282,9 @@ function buildWorld() {
   createPhysicalScreen();
 
   // Speaker stacks / imported model slots.
-  addSpeaker(-8.1,-12.9);
-  addSpeaker(8.1,-12.9);
+  // Fallbacks are kept only if the imported large speaker model cannot load.
+  addSpeaker(-7.0,-12.9);
+  addSpeaker(7.0,-12.9);
   loadSpeakerModel();
 
   // Ceiling rig
@@ -380,12 +381,16 @@ function loadSpeakerModel() {
       const left = source.clone(true);
       const right = source.clone(true);
 
+      // Place the imported large speakers directly beside the screen.
+      // They replace the old fallback speaker stacks.
       left.scale.setScalar(1.85);
       right.scale.setScalar(1.85);
-      left.position.set(-7.25, 0, -12.15);
-      right.position.set(7.25, 0, -12.15);
+      left.position.set(-7.0, 0, -12.9);
+      right.position.set(7.0, 0, -12.9);
+
+      // Face the dance floor / center of the club.
       left.rotation.y = 0;
-      right.rotation.y = 0;
+      right.rotation.y = Math.PI;
 
       scene.add(left);
       scene.add(right);
