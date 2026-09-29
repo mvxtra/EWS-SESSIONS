@@ -383,22 +383,55 @@ function loadSpeakerModel() {
 }
 
 function addSpeaker(x,z) {
-  const mat = new THREE.MeshStandardMaterial({color:0x080808,roughness:.5,metalness:.3});
-  const sub = new THREE.Mesh(new THREE.BoxGeometry(1.9,1.5,1.1),mat);
-  sub.position.set(x,.75,z);
-  scene.add(sub);
-  scene.userData.fallbackSpeakers = scene.userData.fallbackSpeakers || [];
-  scene.userData.fallbackSpeakers.push(sub);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.35,2.8,.9),mat);
-  top.position.set(x,2.85,z);
-  scene.add(top);
-  scene.userData.fallbackSpeakers.push(top);
+  const group=new THREE.Group();
+  const cabinetMaterial=new THREE.MeshStandardMaterial({
+    color:0x080808,roughness:.43,metalness:.38
+  });
+  const edgeMaterial=new THREE.MeshStandardMaterial({
+    color:0x202020,roughness:.62,metalness:.14
+  });
+
+  const sub=new THREE.Mesh(new THREE.BoxGeometry(1.85,1.55,1.18),cabinetMaterial);
+  sub.position.y=.78;
+  group.add(sub);
+
+  const top=new THREE.Mesh(new THREE.BoxGeometry(1.45,2.85,.98),cabinetMaterial);
+  top.position.y=2.98;
+  group.add(top);
+
+  const subRing=new THREE.Mesh(new THREE.TorusGeometry(.42,.055,12,36),edgeMaterial);
+  subRing.position.set(0,.78,.61);
+  group.add(subRing);
+
+  const subCone=new THREE.Mesh(
+    new THREE.CircleGeometry(.37,36),
+    new THREE.MeshStandardMaterial({color:0x141414,roughness:.72,metalness:.04})
+  );
+  subCone.position.set(0,.78,.615);
+  group.add(subCone);
+
   for(let i=0;i<3;i++){
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(.22,.035,8,24),new THREE.MeshBasicMaterial({color:0x777777}));
-    ring.position.set(x,2.1+i*.7,z-.47);
-    ring.rotation.x=Math.PI/2;
-    scene.add(ring);
+    const y=2.16+i*.72;
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.245,.036,10,28),edgeMaterial);
+    ring.position.set(0,y,.505);
+    group.add(ring);
+
+    const driver=new THREE.Mesh(
+      new THREE.CircleGeometry(.21,30),
+      new THREE.MeshStandardMaterial({color:0x161616,roughness:.76,metalness:.03})
+    );
+    driver.position.set(0,y,.51);
+    group.add(driver);
   }
+
+  group.position.set(x,0,z);
+  group.rotation.y=Math.PI;
+  group.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+  scene.add(group);
+
+  scene.userData.fallbackSpeakers=scene.userData.fallbackSpeakers||[];
+  scene.userData.fallbackSpeakers.push(group);
+  return group;
 }
 
 function makeTextSprite(text,size) {
