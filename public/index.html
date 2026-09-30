@@ -203,13 +203,24 @@ function initStartLanguage(){
   const select=$('startLanguage');
   if(!select) return;
   select.value=language;
-  select.addEventListener('change',()=>{
-    language=select.value;
-    localStorage.setItem('ews-language',language);
-    const chat=$('chatLanguage');
-    if(chat) chat.value=language;
-    if(socket?.connected) socket.emit('language:set',language);
-  });
+  select.addEventListener('change',()=>setUserLanguage(select.value));
+}
+
+function setUserLanguage(next){
+  language=LANGS.includes(next)?next:'ru';
+  localStorage.setItem('ews-language',language);
+  const start=$('startLanguage');
+  const chat=$('chatLanguage');
+  if(start) start.value=language;
+  if(chat) chat.value=language;
+  if(socket?.connected) socket.emit('language:set',language);
+  const w=$('gopnikWindow');
+  const body=w?.querySelector('div[style*="line-height:1.7"]');
+  if(body){
+    body.dataset.translated='';
+    body.dataset.language='';
+    if(gopnikInfoVisible) openGopnikInfo();
+  }
 }
 initStartLanguage();
 
