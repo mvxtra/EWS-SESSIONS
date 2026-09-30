@@ -29,7 +29,7 @@ button{cursor:pointer}
 #lampMenu{display:none;pointer-events:auto;padding:7px 9px;background:rgba(0,0,0,.72);border:1px solid #292929;color:#fff;font-size:10px;letter-spacing:.08em}
 #lampMenu button{margin-left:5px;padding:4px 7px;background:#111;color:#fff;border:1px solid #444;font-size:10px} #lampMenu button:hover{border-color:#fff}
 .badge{padding:8px 11px;background:rgba(0,0,0,.62);border:1px solid #292929;font-size:12px;letter-spacing:.08em}
-#online{position:absolute;top:58px;right:14px;width:210px;padding:12px;max-height:260px;overflow:auto}
+#online{position:absolute;top:58px;right:14px;width:210px;padding:12px;max-height:260px;overflow:auto;transition:opacity .18s,transform .18s}#online.closed{display:none}#mobilePanelToggles{display:none;position:fixed;top:14px;left:14px;right:14px;z-index:10000;pointer-events:none;justify-content:space-between;gap:8px}#mobilePanelToggles button{pointer-events:auto;padding:8px 11px;background:rgba(0,0,0,.78);border:1px solid #444;color:#fff;font-size:10px;font-weight:800;letter-spacing:.08em;border-radius:3px}#mobilePanelToggles .right{margin-left:auto}#chat.closed{display:none}@media(max-width:900px),(pointer:coarse){#mobilePanelToggles{display:flex}#online{top:52px;right:14px;width:190px;max-height:220px}#chat{left:14px;bottom:14px;width:min(340px,calc(100vw - 28px));max-height:230px}#messages{height:130px}}
 #ghostScore{position:absolute;top:58px;left:14px;padding:9px 12px;background:rgba(0,0,0,.68);border:1px solid #292929;font-size:12px;line-height:1.5;letter-spacing:.06em;text-shadow:0 2px 5px #000}
 .title{font-size:10px;color:#888;letter-spacing:.2em;margin-bottom:8px}
 .user{font-size:12px;padding:5px 0;border-bottom:1px solid #171717}
@@ -2200,9 +2200,20 @@ let mobileMode=false,mobileLookTouch=null,mobileLookLastX=0,mobileLookLastY=0;
 function initMobileControls(){
  mobileMode=window.matchMedia('(pointer:coarse)').matches||window.innerWidth<=900;
  const wrap=document.createElement('div'); wrap.id='mobileControls';
- wrap.innerHTML='<div id="mobileHint">LEFT: MOVE · RIGHT: LOOK</div><div id="mobileStick" class="mobile-stick"><div id="mobileKnob" class="mobile-knob"></div></div><div id="mobileButtons"><button id="mobileSit" class="mobile-btn">SIT</button><button id="mobileJump" class="mobile-btn">JUMP</button><button id="mobileHeart" class="mobile-btn heart">♥</button></div>';
+ wrap.innerHTML='<div id="mobileHint">LEFT: MOVE · RIGHT: LOOK</div><div id="mobilePanelToggles"><button id="mobileOnlineToggle">ONLINE</button><button id="mobileChatToggle" class="right">CHAT</button></div><div id="mobileStick" class="mobile-stick"><div id="mobileKnob" class="mobile-knob"></div></div><div id="mobileButtons"><button id="mobileSit" class="mobile-btn">SIT</button><button id="mobileJump" class="mobile-btn">JUMP</button><button id="mobileHeart" class="mobile-btn heart">♥</button></div>';
  document.body.appendChild(wrap);
  const stick=$('mobileStick'),knob=$('mobileKnob');
+ const online=$('online'),chat=$('chat'),onlineBtn=$('mobileOnlineToggle'),chatBtn=$('mobileChatToggle');
+ let onlineOpen=true,chatOpen=false;
+ const syncPanels=()=>{
+   online.classList.toggle('closed',!onlineOpen);
+   chat.classList.toggle('closed',!chatOpen);
+   onlineBtn.textContent=onlineOpen?'HIDE ONLINE':'ONLINE';
+   chatBtn.textContent=chatOpen?'HIDE CHAT':'CHAT';
+ };
+ onlineBtn.addEventListener('touchstart',e=>{e.preventDefault();onlineOpen=!onlineOpen;syncPanels()},{passive:false});
+ chatBtn.addEventListener('touchstart',e=>{e.preventDefault();chatOpen=!chatOpen;syncPanels();if(chatOpen)setTimeout(()=>$('chatInput').focus(),40)},{passive:false});
+ syncPanels();
  const reset=()=>{keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;knob.style.transform='translate(0,0)'};
  const move=t=>{const r=stick.getBoundingClientRect(),x=t.clientX-(r.left+r.width/2),y=t.clientY-(r.top+r.height/2),len=Math.hypot(x,y)||1,k=Math.min(48,len),px=x/len*k,py=y/len*k;knob.style.transform='translate('+px+'px,'+py+'px)';keys.KeyW=py< -9;keys.KeyS=py>9;keys.KeyA=px< -9;keys.KeyD=px>9};
  stick.addEventListener('touchstart',e=>{e.preventDefault();move(e.changedTouches[0])},{passive:false});
