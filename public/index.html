@@ -1399,7 +1399,24 @@ function createCornerLasers(){
         if(o) o.userData.noCollision=true;
       });
 
-      beams.push({c,ci,slot,phase,start,core,cone,lens,bulb,halo});
+      const coreSegments=[];
+      const segmentCount=12;
+      for(let si=0;si<segmentCount;si++){
+        const sg=new THREE.BufferGeometry();
+        sg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+        const sm=new THREE.LineBasicMaterial({
+          color:col.color,transparent:true,opacity:.95,
+          blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false
+        });
+        const sl=new THREE.Line(sg,sm);
+        sl.name='EWS_LASER_SEGMENT_'+c.name+'_'+col.name+'_'+si;
+        sl.renderOrder=10;
+        sl.userData.noCollision=true;
+        group.add(sl);
+        coreSegments.push(sl);
+      }
+      core.visible=false;
+      beams.push({c,ci,slot,phase,start,core,coreSegments,cone,lens,bulb,halo});
     });
   });
 
@@ -1459,10 +1476,46 @@ function updateCornerLasers(t){
     const len=Math.sqrt(dx*dx+dy*dy+dz*dz);
     const dir=new THREE.Vector3(dx/len,dy/len,dz/len);
 
-    const a=item.core.geometry.attributes.position.array;
-    a[0]=item.start.x; a[1]=item.start.y; a[2]=item.start.z;
-    a[3]=target.x;     a[4]=target.y;     a[5]=target.z;
-    item.core.geometry.attributes.position.needsUpdate=true;
+    // Split the laser into short pieces so dense haze can actually hide
+    // the part of the beam that passes through it, instead of only dimming
+    // the whole laser at once.
+    const smokeData=scene.userData.smoke?.data || [];
+    const segmentCount=item.coreSegments.length;
+    let totalOcclusion=0;
+
+    for(let si=0;si<segmentCount;si++){
+      const u0=si/segmentCount;
+      const u1=(si+1)/segmentCount;
+      const p0=item.start.clone().lerp(target,u0);
+      const p1=item.start.clone().lerp(target,u1);
+      const mid=p0.clone().lerp(p1,.5);
+
+      let density=0;
+      for(let mi=0;mi<smokeData.length;mi+=3){
+        const d=smokeData[mi];
+        if(!d || !d.sprite) continue;
+        const s=d.sprite;
+        const dx=mid.x-s.position.x;
+        const dy=mid.y-s.position.y;
+        const dz=mid.z-s.position.z;
+        const distSq=dx*dx+dy*dy+dz*dz;
+        const radius=Math.max(1.15,Math.min(3.6,s.scale.x*.38));
+        if(distSq<radius*radius){
+          const falloff=1-Math.sqrt(distSq)/radius;
+          density=Math.max(density,falloff*(d.baseOpacity/.095));
+        }
+      }
+
+      const seg=item.coreSegments[si];
+      const a=seg.geometry.attributes.position.array;
+      a[0]=p0.x; a[1]=p0.y; a[2]=p0.z;
+      a[3]=p1.x; a[4]=p1.y; a[5]=p1.z;
+      seg.geometry.attributes.position.needsUpdate=true;
+      seg.material.color.setHex(laserColor);
+      const smokeFade=THREE.MathUtils.clamp(density*2.15,0,1);
+      seg.material.opacity=intensity*(1-smokeFade);
+      totalOcclusion=Math.max(totalOcclusion,smokeFade);
+    }
 
     // Volumetric cone reaches exactly to the same point as the laser core.
     item.cone.position.copy(item.start).addScaledVector(dir,len*.5);
@@ -1483,8 +1536,8 @@ function updateCornerLasers(t){
     const shimmer=.5+.5*Math.sin(t*6.2+item.phase*1.7);
     const intensity=.78+.12*pulse+.035*shimmer;
 
-    item.core.material.opacity=intensity;
-    item.cone.material.opacity=.115+.035*pulse;
+    item.core.material.opacity=0;
+    item.cone.material.opacity=(.115+.035*pulse)*(1-totalOcclusion*.88);
     item.lens.material.opacity=.84+.12*pulse;
     item.bulb.material.opacity=.76+.16*pulse;
     item.halo.material.opacity=.10+.045*pulse;
