@@ -521,6 +521,7 @@ function buildWorld() {
 createCornerSofas();
 
 createWallLogo();
+  createClubMirror();
 
 // Ceiling: three long hospital-style fluorescent fixtures.
   const ceilingLampGroups = [];
@@ -773,6 +774,40 @@ function createCornerSofas() {
 }
 
 
+
+function createClubMirror(){
+  const mirrorGroup=new THREE.Group();
+  mirrorGroup.name='EWS_REAL_MIRROR';
+  mirrorGroup.position.set(15.35,3.0,0);
+  mirrorGroup.rotation.y=-Math.PI/2;
+
+  const mirrorMat=new THREE.MeshStandardMaterial({
+    color:0xffffff,
+    metalness:1,
+    roughness:.04,
+    envMapIntensity:1.8
+  });
+  const glass=new THREE.Mesh(new THREE.PlaneGeometry(8.8,5.2),mirrorMat);
+  glass.position.z=.02;
+  glass.userData.noCollision=true;
+  mirrorGroup.add(glass);
+
+  const frameMat=new THREE.MeshStandardMaterial({color:0x101010,metalness:.8,roughness:.3});
+  const frameParts=[
+    [9.15,.16,.12,0,2.68,0],
+    [9.15,.16,.12,0,-2.68,0],
+    [.16,5.2,.12,-4.5,0,0],
+    [.16,5.2,.12,4.5,0,0]
+  ];
+  frameParts.forEach(([w,h,d,x,y,z])=>{
+    const f=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),frameMat);
+    f.position.set(x,y,z);
+    f.userData.noCollision=true;
+    mirrorGroup.add(f);
+  });
+  scene.add(mirrorGroup);
+  scene.userData.clubMirror=mirrorGroup;
+}
 
 function createWallLogo() {
   const logoTexture = new THREE.TextureLoader().load('/assets/logo.png');
@@ -1795,6 +1830,17 @@ function createAvatar(data) {
   const variant = hash(data.username || '') % 3;
   if(variant===1) darkMat.color.setHex(0x171717);
   if(variant===2) darkMat.color.setHex(0x222222);
+
+  // mvxtra logo on the shirt/chest.
+  const logoTexture = new THREE.TextureLoader().load('/assets/logo.png');
+  logoTexture.colorSpace = THREE.SRGBColorSpace || undefined;
+  const shirtLogo = new THREE.Mesh(
+    new THREE.PlaneGeometry(.30,.15),
+    new THREE.MeshBasicMaterial({map:logoTexture,transparent:true,depthWrite:false})
+  );
+  shirtLogo.position.set(0,2.08,.265);
+  shirtLogo.rotation.y=Math.PI;
+  rig.add(shirtLogo);
 
   const label = makeTextSprite(data.username,1.65);
   label.position.y = 3.55;
