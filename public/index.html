@@ -1896,7 +1896,7 @@ function youtubeEmbedUrl(value) {
     else if(url.pathname.startsWith('/embed/')) id=url.pathname.split('/')[2]||'';
   }
   if(!id) return null;
-  return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&mute=0&controls=1&playsinline=1';
+  return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&mute=0&controls=1&playsinline=1&enablejsapi=1';
 }
 
 function clearCssScreen() {
@@ -2070,7 +2070,7 @@ function applyScreen(state) {
   const video=document.createElement('video');
   screenVideo=video;
   video.autoplay=true;
-  video.muted=false;
+  video.muted=true;
   video.controls=false;
   video.loop=false;
   video.playsInline=true;
@@ -2097,7 +2097,7 @@ function applyScreen(state) {
     hls=new Hls({enableWorker:true,lowLatencyMode:true});
     hls.loadSource(state.src);
     hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>toast('Нажми на экран для звука')));
+    hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play().catch(()=>{}));
   }else{
     video.src=state.src;
     video.play().catch(()=>{});
@@ -2150,9 +2150,23 @@ $('screenSrc').addEventListener('keydown',e=>{
   sendScreen();
 });
 
+function resumeScreenPlayback(){
+  if(screenVideo){
+    screenVideo.play().catch(()=>{});
+  }
+  if(screenCssFrame){
+    const iframe=screenCssFrame.querySelector('iframe');
+    if(iframe){
+      try{ iframe.contentWindow?.postMessage({event:'command',func:'play',args:[]},'*'); }catch(_){}
+    }
+  }
+}
+
 function startClub() {
   buildWorld();
   connect();
+  window.addEventListener('pointerdown',resumeScreenPlayback,{once:true,passive:true});
+  window.addEventListener('keydown',resumeScreenPlayback,{once:true});
   animate();
   const chatLanguage=$('chatLanguage');
   if(chatLanguage) chatLanguage.value=language;
