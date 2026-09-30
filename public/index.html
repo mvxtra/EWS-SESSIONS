@@ -1233,13 +1233,16 @@ function toggleSeat(){
   if(seated){
     const idx=seatedSofa;
     const seat=(idx>=0 && sofaSeats[idx]) ? sofaSeats[idx] : {x:px,z:pz,yaw};
-    // Stand up on the dancefloor side of the sofa so the player is not
-    // left inside the sofa/collision box and cannot immediately sit again.
-    const standDistances=[1.55,1.15,0.8];
+    // Always stand toward the center of the club, away from the sofa.
+    // This avoids placing the player back inside the sofa collision box.
+    const len=Math.hypot(seat.x,seat.z)||1;
+    const outX=-seat.x/len;
+    const outZ=-seat.z/len;
+    const standDistances=[2.8,3.3,3.8,4.3];
     let placed=false;
     for(const dist of standDistances){
-      const sx=seat.x + Math.sin(seat.yaw)*dist;
-      const sz=seat.z + Math.cos(seat.yaw)*dist;
+      const sx=seat.x + outX*dist;
+      const sz=seat.z + outZ*dist;
       if(canPlayerOccupy(sx,sz)){
         px=sx;
         pz=sz;
@@ -1247,9 +1250,18 @@ function toggleSeat(){
         break;
       }
     }
+    // Fallback: move directly toward the club center until clear.
     if(!placed){
-      px=seat.x;
-      pz=seat.z;
+      for(let dist=1;dist<=5;dist+=0.25){
+        const sx=seat.x + outX*dist;
+        const sz=seat.z + outZ*dist;
+        if(canPlayerOccupy(sx,sz)){
+          px=sx;
+          pz=sz;
+          placed=true;
+          break;
+        }
+      }
     }
     seated=false;
     seatedSofa=-1;
