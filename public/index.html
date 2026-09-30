@@ -149,6 +149,7 @@ let yaw = 0, pitch = 0;
 let px = 0, py = 0, pz = 8;
 let vy = 0, grounded = true;
 const keys = {};
+let crouching = false;
 const remotes = new Map();let lastState = 0;
 
 const authMsg = $('authMsg');
@@ -234,7 +235,7 @@ function buildWorld() {
   scene.add(player);
   player.add(camera);
   // First-person camera: no visible local avatar.
-  camera.position.set(0, 2.05, 0);
+  camera.position.set(0, crouching ? 1.35 : 2.05, 0);
   camera.rotation.set(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, alpha:true, powerPreference:'high-performance'});
@@ -1229,8 +1230,9 @@ function animate() {
     const f=forward/len, s=side/len;
     const fx=-Math.sin(yaw), fz=-Math.cos(yaw);
     const rx=Math.cos(yaw), rz=-Math.sin(yaw);
-    const moveX=(fx*f+rx*s)*4.5*dt;
-    const moveZ=(fz*f+rz*s)*4.5*dt;
+    const moveSpeed = (keys.ShiftLeft || keys.ShiftRight) ? 8.0 : (crouching ? 2.1 : 4.5);
+    const moveX=(fx*f+rx*s)*moveSpeed*dt;
+    const moveZ=(fz*f+rz*s)*moveSpeed*dt;
     tryMovePlayer(
       THREE.MathUtils.clamp(px+moveX,-15,15),
       THREE.MathUtils.clamp(pz+moveZ,-13,13)
@@ -1338,10 +1340,17 @@ document.addEventListener('keydown', e => {
     return;
   }
 
+  if(e.code==='ControlLeft' || e.code==='ControlRight'){
+    e.preventDefault();
+    crouching=true;
+  }
   keys[e.code]=true;
 });
 
-document.addEventListener('keyup',e => keys[e.code]=false);
+document.addEventListener('keyup',e => {
+  keys[e.code]=false;
+  if(e.code==='ControlLeft' || e.code==='ControlRight') crouching=false;
+});
 
 $('chatInput').addEventListener('keydown', async e => {
   if(e.key!=='Enter') return;
