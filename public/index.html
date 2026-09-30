@@ -390,9 +390,7 @@ function buildWorld() {
   // Fallbacks are kept only if the imported large speaker model cannot load.
   addSpeaker(-7.15,-10.9);
   addSpeaker(7.15,-10.9);
-  loadSpeakerModel();
-
-  // Ceiling rig
+// Ceiling rig
   const rigMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:.4,metalness:.8});
   addBox(17,.14,.14,0,6.4,-10.5,rigMat);
   addBox(17,.14,.14,0,6.4,-3,rigMat);
@@ -452,68 +450,6 @@ function createPhysicalScreen() {
   scene.add(backing);
   screenMesh = backing;
 }
-
-function loadSpeakerModel() {
-  if (!THREE.GLTFLoader) return;
-
-  const candidates = [
-    '/models/speakers big.glb',
-    '/models/колонки.glb',
-    '/models/speakers.glb',
-    '/models/speaker.glb',
-    '/models/column.glb',
-    '/assets/speakers.glb',
-    '/assets/speaker.glb',
-    '/media/speakers.glb',
-    '/media/speaker.glb'
-  ];
-
-  const loader = new THREE.GLTFLoader();
-  let index = 0;
-
-  const tryNext = () => {
-    if (index >= candidates.length) return;
-    const url = candidates[index++];
-    loader.load(url, gltf => {
-      // Use the imported speaker as two physical stacks beside the screen.
-      const source = gltf.scene;
-      source.traverse(o => {
-        if (o.isMesh) {
-          o.castShadow = true;
-          o.receiveShadow = true;
-        }
-      });
-
-      const left = source.clone(true);
-      const right = source.clone(true);
-
-      // Place the imported large speakers directly beside the screen.
-      // They replace the old fallback speaker stacks.
-      left.scale.setScalar(0.62);
-      right.scale.setScalar(0.62);
-      // Large speakers stand directly on the dance-floor, symmetrically beside the screen.
-      left.position.set(-6.55, 0, -13.25);
-      right.position.set(6.55, 0, -13.25);
-
-      // Face the dance floor / center of the club.
-      left.rotation.y = 0;
-      right.rotation.y = Math.PI;
-
-      scene.add(left);
-      scene.add(right);
-      screenModel = {left,right};
-
-      // Hide the old center speaker model/fallbacks so nothing sits in front of the screen.
-      const fallback = scene.userData.fallbackSpeakers;
-      if (fallback) fallback.forEach(o => o.visible = false);
-
-      toast('Колонки поставлены по краям экрана');
-    }, undefined, () => tryNext());
-  };
-
-  tryNext();
-}
-
 
 function createDJSetup() {
   const table = new THREE.Group();
