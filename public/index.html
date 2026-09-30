@@ -73,6 +73,7 @@ button{cursor:pointer}
       <div class="sub">UNDERGROUND CLUB / LIVE</div>
       <input id="username" class="field" autocomplete="username" placeholder="Username">
       <input id="password" class="field" autocomplete="current-password" type="password" placeholder="Password">
+      <select id="startLanguage" class="field" aria-label="Язык"><option value="ru">Русский</option><option value="en">English</option><option value="es">Español</option><option value="de">Deutsch</option><option value="fr">Français</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="ar">العربية</option><option value="hi">हिन्दी</option><option value="pt">Português</option><option value="it">Italiano</option><option value="tr">Türkçe</option><option value="uk">Українська</option><option value="nl">Nederlands</option><option value="pl">Polski</option></select>
       <div class="row">
         <button id="loginBtn" class="action">ВХОД</button>
         <button id="registerBtn" class="action alt">РЕГИСТРАЦИЯ</button>
@@ -196,6 +197,14 @@ const remotes = new Map();let lastState = 0;
 
 const authMsg = $('authMsg');
 
+function initStartLanguage(){
+  const select=$('startLanguage');
+  if(!select) return;
+  select.value=language;
+  select.addEventListener('change',()=>{ language=select.value; localStorage.setItem('ews-language',language); });
+}
+initStartLanguage();
+
 let gopnikInfoVisible=false;
 function isNearGopnik(){
   const g=scene.userData.gopnik;
@@ -205,10 +214,19 @@ function isNearGopnik(){
   const pp=new THREE.Vector3(px,py,pz);
   return pp.distanceTo(gp)<3.0;
 }
-function openGopnikInfo(){
+async function openGopnikInfo(){
   if(!isNearGopnik()) return false;
   gopnikInfoVisible=true;
   $('gopnikWindow').style.display='block';
+  const body=$('gopnikWindow').querySelector('div[style*="line-height:1.7"]');
+  if(language!=='ru' && body && !body.dataset.translated){
+    const source=body.innerText;
+    try{
+      const r=await fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:source,target:language})});
+      const d=await r.json();
+      if(d.ok&&d.text){ body.textContent=d.text; body.dataset.translated=language; }
+    }catch{}
+  }
   return true;
 }
 function updateGopnikInteraction(){
