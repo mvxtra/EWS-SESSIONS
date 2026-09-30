@@ -195,6 +195,12 @@ const sofaSeats = [
   {x:-13.25,z: 11.05,yaw:3*Math.PI/4},
   {x: 13.25,z: 11.05,yaw:-3*Math.PI/4}
 ];
+
+function markSofaCollisionExempt(root){
+  if(!root) return;
+  root.userData.isSofa=true;
+  root.traverse?.(n=>{ n.userData.isSofa=true; });
+}
 const remotes = new Map();let lastState = 0;
 
 const authMsg = $('authMsg');
@@ -1351,6 +1357,9 @@ function canPlayerOccupy(x,z){
       if(blocked || !node.isMesh) return;
       if(node.userData?.noCollision) return;
       if(node.userData?.isFloor) return;
+      // Sofas are handled by the dedicated seating system. Their geometry
+      // must not block the approach to the seat point.
+      if(node.parent?.userData?.isSofa || node.userData?.isSofa) return;
 
       // Never collide with the local player or CSS3D screen objects.
       if(player && (node===player || player.getObjectById(node.id))) return;
@@ -1396,7 +1405,24 @@ function nearestSofaSeat(){
     const d=Math.hypot(px-seat.x,pz-seat.z);
     if(d<bestD){bestD=d;best=i;}
   });
-  return bestD<=2.15 ? best : -1;
+  return bestD<=2.5 ? best : -1;
+}
+
+function updateSofaHint(){
+  const hint=$('sitHint');
+  if(!hint || !joined) return;
+  if(seated){
+    hint.style.display='block';
+    hint.textContent='E — ВСТАТЬ';
+    return;
+  }
+  const idx=nearestSofaSeat();
+  if(idx>=0){
+    hint.style.display='block';
+    hint.textContent='E — СЕСТЬ';
+  }else{
+    hint.style.display='none';
+  }
 }
 
 function toggleSeat(){
@@ -1467,6 +1493,7 @@ function tryMovePlayer(nx,nz){
 
 function animate() {
   requestAnimationFrame(animate);
+  updateSofaHint();
   const dt=Math.min(clock.getDelta(),.05);
 
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0);
@@ -1585,14 +1612,16 @@ document.addEventListener('keydown', e => {
 
   if(e.target?.tagName==='INPUT' || e.target?.tagName==='SELECT') return;
 
-  if(e.code==='KeyE' && document.pointerLockElement === $('scene')){
+  if(e.code==='KeyE'){
     if(openGopnikInfo()){
       e.preventDefault();
       return;
     }
-    toggleSeat();
-    e.preventDefault();
-    return;
+    if(joined && document.pointerLockElement === $('scene')){
+      toggleSeat();
+      e.preventDefault();
+      return;
+    }
   }
 
   if(e.code==='Space' && !seated){
