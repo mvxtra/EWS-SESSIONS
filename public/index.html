@@ -253,13 +253,13 @@ function buildWorld() {
   cssRenderer.domElement.style.position = 'absolute';
   cssRenderer.domElement.style.inset = '0';
   cssRenderer.domElement.style.pointerEvents = 'none';
-  cssRenderer.domElement.style.zIndex = '2';
+  cssRenderer.domElement.style.zIndex = '4';
 
   renderer.domElement.style.position = 'absolute';
   renderer.domElement.style.inset = '0';
   // WebGL is ABOVE the CSS3D screen. This gives normal 3D occlusion:
   // every real mesh rendered by WebGL can physically cover the screen.
-  renderer.domElement.style.zIndex = '3';
+  renderer.domElement.style.zIndex = '2';
 
   $('game').appendChild(cssRenderer.domElement);
   $('game').appendChild(renderer.domElement);
@@ -425,6 +425,7 @@ function buildWorld() {
   $('scene').addEventListener('click', () => {
     if (document.activeElement === $('chatInput')) return;
     if(screenVideo) screenVideo.play().catch(()=>{});
+    enableTwitchAudio();
     $('scene').requestPointerLock?.();
   });
 }
@@ -1327,6 +1328,23 @@ function refreshScreenOcclusion(){
   screenCssFrame.style.visibility = blocked >= 5 ? 'hidden' : 'visible';
 }
 
+function enableTwitchAudio(){
+  const iframe=screenCssFrame?.querySelector('iframe');
+  if(!iframe) return;
+  try{
+    iframe.contentWindow?.postMessage({
+      event:'command',
+      func:'setMuted',
+      args:[false]
+    },'*');
+    iframe.contentWindow?.postMessage({
+      event:'command',
+      func:'play',
+      args:[]
+    },'*');
+  }catch(_){}
+}
+
 function createTwitchWallScreen(src) {
   clearCssScreen();
 
@@ -1392,9 +1410,12 @@ function applyScreen(state) {
   // Twitch is rendered behind the transparent WebGL scene. Real 3D meshes
   // therefore cover the iframe naturally instead of appearing behind it.
   if(twitch){
-    scene.background=null;
+    scene.background=new THREE.Color(0x030303);
     if(screenMesh) screenMesh.visible=false;
     createTwitchWallScreen(twitch);
+    // Browsers block audible autoplay in cross-origin Twitch iframes.
+    // The first click inside the club is used to start the player with sound.
+    setTimeout(()=>enableTwitchAudio(),120);
     if(host) $('screenStatus').textContent='Twitch · '+(state.title||'EWS SESSIONS');
     return;
   }
