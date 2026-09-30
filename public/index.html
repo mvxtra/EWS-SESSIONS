@@ -388,13 +388,42 @@ function buildWorld() {
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
 
-// Ceiling rig
-  const rigMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:.4,metalness:.8});
-  addBox(17,.14,.14,0,6.4,-10.5,rigMat);
-  addBox(17,.14,.14,0,6.4,-3,rigMat);
-  addBox(17,.14,.14,0,6.4,5,rigMat);
+// Ceiling: three long hospital-style fluorescent fixtures.
+  const ceilingLampGroups = [];
+  const lampHousingMat = new THREE.MeshStandardMaterial({color:0x171717,roughness:.45,metalness:.7});
+  const lampGlowMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:1,depthWrite:false});
 
-  // PROFESSIONAL CLUB LIGHTING RIG
+  [-10.5,-3,5].forEach((z,i)=>{
+    const g=new THREE.Group();
+    g.name='CEILING_HOSPITAL_LAMP_'+(i+1);
+    g.position.set(0,6.86,z);
+
+    const housing=new THREE.Mesh(new THREE.BoxGeometry(15.5,.12,.48),lampHousingMat);
+    housing.position.y=.02;
+    g.add(housing);
+
+    const glow=new THREE.Mesh(new THREE.BoxGeometry(14.9,.035,.30),lampGlowMat.clone());
+    glow.position.y=-.055;
+    g.add(glow);
+
+    [-7.75,7.75].forEach(x=>{
+      const cap=new THREE.Mesh(new THREE.BoxGeometry(.12,.10,.52),lampHousingMat);
+      cap.position.set(x,0,0);
+      g.add(cap);
+    });
+
+    const lampLight=new THREE.PointLight(0xffffff,0,18);
+    lampLight.position.set(0,-.15,0);
+    g.add(lampLight);
+
+    g.userData.glow=glow;
+    g.userData.light=lampLight;
+    g.userData.phase=i*1.73;
+    ceilingLampGroups.push(g);
+    scene.add(g);
+  });
+
+  scene.userData.ceilingLamps=ceilingLampGroups;
   setupClubLighting();
 
   // No text/logo is placed over the screen surface.
@@ -412,12 +441,6 @@ function buildWorld() {
   scene.add(new THREE.Points(pg,new THREE.PointsMaterial({
     color:0x999999,size:.025,transparent:true,opacity:.3,depthWrite:false
   })));
-
-  for(let i=0;i<5;i++){
-    const light = new THREE.PointLight(0xffffff,.35,12);
-    light.position.set(-10+i*5,4,-4);
-    scene.add(light);
-  }
 
   window.addEventListener('resize', resize);
   document.addEventListener('mousemove', mouseLook);
@@ -637,38 +660,22 @@ function createDJSetup() {
 }
 
 function setupClubLighting() {
-  // Светомузыка полностью отключена.
-  // Оставляем пустые массивы, чтобы остальной код клуба не ломался.
+  // Старую светомузыку и движущиеся лучи убираем.
   scene.userData.clubLights = [];
   scene.userData.clubBeams = [];
   scene.userData.strobe = [];
 }
 function updateClubLighting(t) {
-  const beams = scene.userData.clubBeams || [];
-  beams.forEach((b,i)=>{
-    const a = t*0.72 + b.phase;
-    if (b.laser) {
-      b.target.position.x = Math.sin(a)*7;
-      b.target.position.z = 4.5 + Math.cos(a*0.8)*4;
-      b.light.intensity = 3.0 + (Math.sin(t*2.2+b.phase)+1)*1.1;
-    } else {
-      b.target.position.x = Math.sin(a)*8;
-      b.target.position.z = -1 + Math.cos(a*0.67)*10;
-      b.target.position.y = 0.4 + Math.sin(a*0.55)*1.2;
-      b.light.intensity = 3.8 + (Math.sin(t*2.0+b.phase)+1)*1.7;
-    }
+  const lamps=scene.userData.ceilingLamps || [];
+  lamps.forEach((lamp,i)=>{
+    const p=lamp.userData.phase || 0;
+    const wave=Math.sin(t*7.2+p)+0.45*Math.sin(t*13.7+p*2.1);
+    const on=wave>0.72;
+    const brightness=on ? 0.72+0.28*(0.5+0.5*Math.sin(t*18+p)) : 0.025;
+    lamp.userData.glow.material.opacity=brightness;
+    lamp.userData.light.intensity=on ? 1.7+brightness*1.4 : 0;
   });
-
-  const washes = scene.userData.clubLights || [];
-  washes.forEach((l,i)=>{
-    if (l.isPointLight) l.intensity = 1.8 + (Math.sin(t*1.15+i*1.7)+1)*0.9;
-  });
-
-  const pulse = Math.sin(t*5.5);
-  const hit = pulse > 0.88 ? 7.5 : 0;
-  (scene.userData.strobe || []).forEach(l=>l.intensity=hit);
 }
-
 function addSpeaker(x,z) {
   const group=new THREE.Group();
   const cabinetMaterial=new THREE.MeshStandardMaterial({
