@@ -19,6 +19,7 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const USERS_FILE = path.join(__dirname, 'users.json');
 const SCREEN_FILE = path.join(__dirname, 'screen-state.json');
+const LAMP_FILE = path.join(__dirname, 'lamp-state.json');
 const HOST_NAME = 'mvxtra';
 const ROOM = 'ews-club';
 
@@ -55,6 +56,9 @@ function readScreen() {
 }
 
 const screen = readScreen();
+function readLampColor(){ try { const d=JSON.parse(fs.readFileSync(LAMP_FILE,'utf8')); return d.color==='red'?'red':'white'; } catch { return 'white'; } }
+function writeLampColor(){ fs.writeFileSync(LAMP_FILE, JSON.stringify({color:lampColor},null,2),'utf8'); }
+let lampColor=readLampColor();
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]\n', 'utf8');
 
@@ -320,7 +324,8 @@ io.on('connection', socket => {
     socket.emit('club:ready', {
       username,
       host: username.toLowerCase() === HOST_NAME,
-      screen: screenState()
+      screen: screenState(),
+      lampColor
     });
 
     socket.emit('world:state', {
@@ -339,6 +344,7 @@ io.on('connection', socket => {
       screen: screenState()
     });
     socket.emit('online:state', onlineState());
+    socket.emit('lamp-color:state', lampColor);
   });
 
   socket.on('player:state', data => {
@@ -357,6 +363,16 @@ io.on('connection', socket => {
   });
 
 
+
+  socket.on('lamp-color:set', value => {
+    const p=players.get(socket.id);
+    if(!p || p.username.toLowerCase()!==HOST_NAME) return;
+    const color=String(value||'').toLowerCase();
+    if(color!=='red' && color!=='white') return;
+    lampColor=color;
+    writeLampColor();
+    io.to(ROOM).emit('lamp-color:state',lampColor);
+  });
 
   socket.on('language:set', value => {
     const p = players.get(socket.id);
