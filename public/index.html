@@ -576,7 +576,7 @@ function createDJSetup() {
   [-1,1].forEach(side=>{
     const subGroup=new THREE.Group();
     subGroup.name=side<0?'SUBWOOFER_LEFT':'SUBWOOFER_RIGHT';
-    subGroup.position.set(side*2.55,0,-0.02);
+    subGroup.position.set(side*4.15,0,-0.02);
     table.add(subGroup);
 
     subwooferLoader.load('/models/%D1%81%D0%B0%D0%B1%D1%83%D1%84%D0%B5%D1%80.glb',gltf=>{
