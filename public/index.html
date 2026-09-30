@@ -386,6 +386,7 @@ function buildWorld() {
   // EWS logo mounted on the wall behind the DJ booth.
   createWallDoor();
 createCornerSofas();
+createWallBar();
 createWallLogo();
 
 // Ceiling: three long hospital-style fluorescent fixtures.
@@ -635,6 +636,45 @@ function createCornerSofas() {
       scene.add(sofa);
     }, undefined, err => console.warn('[EWS SOFA] load failed', err));
   });
+}
+
+
+function createWallBar() {
+  const loader = new THREE.GLTFLoader();
+  loader.load('/models/barcounter_-_8192px2.glb', gltf => {
+    const bar = gltf.scene;
+    bar.name = 'EWS_WALL_BAR';
+    bar.traverse(o => {
+      if(o.isMesh){
+        o.castShadow = true;
+        o.receiveShadow = true;
+        if(o.material){
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach(m => {
+            if(!m) return;
+            m.transparent = false;
+            m.opacity = 1;
+            m.depthWrite = true;
+            m.depthTest = true;
+          });
+        }
+      }
+    });
+
+    // Right side wall, running along the wall without blocking the dancefloor.
+    bar.position.set(11.2, 0, 3.0);
+    bar.rotation.y = -Math.PI / 2;
+
+    const box = new THREE.Box3().setFromObject(bar);
+    const size = box.getSize(new THREE.Vector3());
+    const targetWidth = 6.8;
+    if(size.x > 0) bar.scale.multiplyScalar(targetWidth / size.x);
+
+    const fitted = new THREE.Box3().setFromObject(bar);
+    bar.position.y -= fitted.min.y;
+
+    scene.add(bar);
+  }, undefined, err => console.warn('[EWS BAR] load failed', err));
 }
 
 function createWallLogo() {
