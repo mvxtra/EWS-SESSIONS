@@ -28,6 +28,8 @@ const players = new Map();
 const ghosts = new Map();
 let nextGhostId = 1;
 let ghostTimer = null;
+let defeatedGhosts = 0;
+let bossEncountered = false;
 
 const world = {
   minX: -15, maxX: 15,
@@ -413,7 +415,23 @@ io.on('connection', socket => {
     ghost.hp -= 1;
     if (ghost.hp <= 0) {
       ghosts.delete(id);
-      io.to(ROOM).emit('ghost:dead', { id, by: p.username });
+      if (!ghost.boss) {
+        defeatedGhosts++;
+        io.to(ROOM).emit('ghost:progress', { count: defeatedGhosts, target: 50 });
+        io.to(ROOM).emit('ghost:dead', { id, by: p.username, count: defeatedGhosts });
+        if (defeatedGhosts >= 50 && !bossEncountered) {
+          bossEncountered = true;
+          const boss = {
+            id: 'ghost-boss-1', hp: 100, boss: true,
+            x: (Math.random() * 10) - 5, y: 4.2, z: (Math.random() * 8) - 1,
+            born: Date.now(), phase: Math.random() * Math.PI * 2,
+            speed: 0.42, radius: 3.4, life: 0
+          };
+          ghosts.set(boss.id, boss);
+          io.to(ROOM).emit('ghost:boss-spawn', boss);
+        }
+      } else {
+        io.to(ROOM).emit('ghost:dead', { id, by: p.username, boss: true });
     } else {
       io.to(ROOM).emit('ghost:hit', { id, hp: ghost.hp, by: p.username });
     }
