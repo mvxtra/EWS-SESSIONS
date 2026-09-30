@@ -956,10 +956,10 @@ function animate() {
   }
 
   const now=performance.now();
-  if(socket?.connected && now-lastState>70){
+  if(socket?.connected && now-lastState>40){
     lastState=now;
     socket.emit('player:state',{
-      x:px,z:pz,yaw,moving:Boolean(forward||side)
+      x:px,z:pz,yaw,moving:Boolean(forward||side),vy,grounded
     });
   }
 
@@ -1221,6 +1221,8 @@ function updateRemotes(t,dt){
   remotes.forEach(r=>{
     r.g.position.x += (r.targetX-r.g.position.x)*.22;
     r.g.position.z += (r.targetZ-r.g.position.z)*.22;
+    const desiredY=Math.max(0, Number(r.targetY)||0);
+    r.g.position.y += (desiredY-r.g.position.y)*.35;
     let d=r.targetYaw-r.g.rotation.y;
     while(d>Math.PI)d-=Math.PI*2;
     while(d<-Math.PI)d+=Math.PI*2;
