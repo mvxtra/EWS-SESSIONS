@@ -665,8 +665,8 @@ function createWallLogo() {
   );
 
   logo.name = 'EWS_WALL_LOGO';
-  logo.position.set(0, 3.55, -13.78);
-  logo.rotation.y = 0;
+  logo.position.set(0, 3.175, 13.78);
+  logo.rotation.y = Math.PI;
   scene.add(logo);
 
   // Only a thin neon outline remains around the logo.
@@ -679,10 +679,10 @@ function createWallLogo() {
   });
 
   [
-    [6.05,.055,.06,0,5.01,-13.93],
-    [6.05,.055,.06,0,2.09,-13.93],
-    [.055,2.97,.06,-3.00,3.55,-13.93],
-    [.055,2.97,.06,3.00,3.55,-13.93]
+    [6.05,.055,.06,0,4.635,13.93],
+    [6.05,.055,.06,0,1.715,13.93],
+    [.055,2.97,.06,-3.00,3.175,13.93],
+    [.055,2.97,.06,3.00,3.175,13.93]
   ].forEach(([w,h,d,x,y,z])=>{
     const e=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),edgeMat);
     e.position.set(x,y,z);
@@ -696,8 +696,8 @@ function createPhysicalScreen() {
     new THREE.PlaneGeometry(11.6, 5.45),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  backing.position.set(0, 3.175, 13.48);
-  backing.rotation.y = Math.PI;
+  backing.position.set(0, 3.175, -13.48);
+  backing.rotation.y = 0;
   scene.add(backing);
   screenMesh = backing;
 
@@ -711,8 +711,8 @@ function createPhysicalScreen() {
     })
   );
   frame.name = 'EWS_SCREEN_FRAME';
-  frame.position.set(0, 3.175, 13.64);
-  frame.rotation.y = Math.PI;
+  frame.position.set(0, 3.175, -13.64);
+  frame.rotation.y = 0;
   scene.add(frame);
 
   // Thin white luminous trim.
@@ -1936,9 +1936,9 @@ function createTwitchWallScreen(src) {
 
   screenCssFrame=frame;
   screenCssObject=new THREE.CSS3DObject(frame);
-  screenCssObject.position.set(0,3.175,13.42);
+  screenCssObject.position.set(0,3.175,-13.42);
   // Face the opposite wall without mirroring the HTML/Twitch content.
-  screenCssObject.rotation.set(0,Math.PI,0);
+  screenCssObject.rotation.set(0,0,0);
   screenCssObject.scale.set(-0.01,0.01,0.01);
   scene.add(screenCssObject);
 }
