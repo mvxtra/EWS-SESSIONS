@@ -332,6 +332,85 @@ $('password').addEventListener('keydown', e => {
 
 
 let firstPersonHands = null;
+const heartProjectiles = [];
+
+function createHeartMesh(){
+  const shape = new THREE.Shape();
+  shape.moveTo(0,0.28);
+  shape.bezierCurveTo(-0.42,0.62,-0.72,0.20,0,-0.38);
+  shape.bezierCurveTo(0.72,0.20,0.42,0.62,0,0.28);
+  const geo = new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.045,bevelThickness:.035});
+  geo.center();
+
+  const mat = new THREE.MeshStandardMaterial({
+    color:0xff3b72,
+    emissive:0x8f103f,
+    emissiveIntensity:1.5,
+    roughness:.3,
+    metalness:.05,
+    transparent:true,
+    opacity:1
+  });
+
+  const mesh = new THREE.Mesh(geo,mat);
+  mesh.scale.setScalar(.34);
+  mesh.rotation.x=Math.PI;
+  mesh.userData.noCollision=true;
+  mesh.renderOrder=60;
+  return mesh;
+}
+
+function shootHeart(){
+  if(!camera || !scene || !joined) return;
+
+  const direction = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+
+  const start = new THREE.Vector3();
+  camera.getWorldPosition(start);
+  start.addScaledVector(direction,.85);
+
+  const heart = createHeartMesh();
+  heart.position.copy(start);
+  heart.quaternion.copy(camera.quaternion);
+
+  const glow = new THREE.PointLight(0xff3b72,1.4,3.2,.8);
+  glow.userData.noCollision=true;
+  heart.add(glow);
+
+  scene.add(heart);
+  heartProjectiles.push({
+    mesh:heart,
+    velocity:direction.multiplyScalar(13),
+    born:performance.now(),
+    life:1.35
+  });
+}
+
+function updateHeartProjectiles(dt,now){
+  for(let i=heartProjectiles.length-1;i>=0;i--){
+    const p=heartProjectiles[i];
+    const age=(now-p.born)/1000;
+
+    p.mesh.position.addScaledVector(p.velocity,dt);
+    p.mesh.rotation.z += dt*7;
+    p.mesh.rotation.y += dt*3.5;
+
+    const fade=Math.max(0,1-age/p.life);
+    p.mesh.material.opacity=fade;
+    p.mesh.children.forEach(child=>{
+      if(child.isLight) child.intensity=1.4*fade;
+    });
+
+    if(age>=p.life){
+      scene.remove(p.mesh);
+      p.mesh.geometry.dispose();
+      p.mesh.material.dispose();
+      heartProjectiles.splice(i,1);
+    }
+  }
+}
+
 
 function createFirstPersonHands(){
   if(!camera || firstPersonHands) return;
@@ -792,8 +871,15 @@ createWallLogo();
     $('help').style.opacity = document.pointerLockElement ? '.18' : '.7';
   });
 
-  $('scene').addEventListener('click', () => {
-    if (document.activeElement === $('chatInput')) return;
+  $('scene').addEventListener('mousedown', e => {
+    if(e.button!==0) return;
+    if(document.activeElement === $('chatInput')) return;
+
+    if(document.pointerLockElement === $('scene')){
+      shootHeart();
+      return;
+    }
+
     if(screenVideo) screenVideo.play().catch(()=>{});
     enableTwitchAudio();
     $('scene').requestPointerLock?.();
@@ -2000,7 +2086,8 @@ function tryMovePlayer(nx,nz){
 }
 
 function animate() {
-  updateFirstPersonHands(performance.now()*.001);
+  const frameNow=performance.now();
+  updateFirstPersonHands(frameNow*.001);
 
   requestAnimationFrame(animate);
   updateSofaHint();
@@ -2114,6 +2201,8 @@ function animate() {
 
     dustState.points.geometry.attributes.position.needsUpdate=true;
   }
+
+  updateHeartProjectiles(dt,frameNow);
 
   renderer.render(scene,camera);
   if(cssRenderer) cssRenderer.render(scene,camera);
