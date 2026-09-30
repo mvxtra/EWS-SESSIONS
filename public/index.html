@@ -263,17 +263,16 @@ function buildWorld() {
 
   scene.add(new THREE.AmbientLight(0xffffff, .16));
 
-  const floorMat = new THREE.MeshStandardMaterial({color:0x080808,roughness:.86,metalness:.18});
+  // Clean white main floor — no grid/cells.
+  const floorMat = new THREE.MeshStandardMaterial({
+    color:0xffffff,
+    roughness:.62,
+    metalness:.22
+  });
   const floor = new THREE.Mesh(new THREE.BoxGeometry(32,.25,28), floorMat);
   floor.position.y=-.13;
   floor.receiveShadow=true;
   scene.add(floor);
-
-  const grid = new THREE.GridHelper(30,30,0xaaaaaa,0x555555);
-  grid.position.y=.01;
-  grid.material.transparent=true;
-  grid.material.opacity=.17;
-  scene.add(grid);
 
   // Central EWS dancefloor — flush with the main floor so it never affects movement.
   const dance = new THREE.Group();
