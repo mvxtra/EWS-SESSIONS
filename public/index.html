@@ -45,7 +45,7 @@ button{cursor:pointer}
 #screenControl{display:none;padding:10px;width:250px;margin-bottom:7px}
 #screenControl input{width:100%;margin:4px 0;padding:9px;background:#090909;color:#fff;border:1px solid #333}
 #screenActions{display:flex;gap:6px;margin-top:7px}
-#screenButton,#screenPlay{padding:9px 16px;border:1px solid #666;background:#080808;color:#fff;font-weight:800;letter-spacing:.12em}
+#screenButton,#screenPlay{padding:9px 16px;border:1px solid #666;background:#080808;color:#fff;font-weight:800;letter-spacing:.12em} #screenButton{display:none}
 #screenButton:hover,#screenPlay:hover{background:#fff;color:#000}
 #screenPlay{display:none}
 #screenStatus{font-size:10px;color:#888;margin-top:7px;line-height:1.35}
@@ -2270,7 +2270,8 @@ function connect() {
     host=!!data.host;
     $('lampMenu').style.display=host?'block':'none';
     if(data.lampColor) setLampColor(data.lampColor);
-    $('screenControl').style.display='none';
+    $('screenControl').style.display=host?'block':'none';
+    $('screenButton').style.display=host?'inline-block':'none';
     $('screenPlay').style.display=host?'block':'none';
     if(data.screen) applyScreen(data.screen);
   });
