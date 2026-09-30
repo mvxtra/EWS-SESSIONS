@@ -121,6 +121,20 @@ button{cursor:pointer}
     </div>
   </div>
   <div id="toast"></div>
+  <div id="gopnikWindow" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,82vw);max-height:72vh;overflow:auto;padding:26px 28px;background:rgba(5,5,7,.96);border:1px solid rgba(255,255,255,.28);box-shadow:0 0 45px rgba(0,0,0,.8);z-index:120;pointer-events:auto">
+  <div style="font-size:18px;font-weight:800;letter-spacing:.12em;margin-bottom:18px">EWS SESSIONS</div>
+  <div style="font-size:14px;line-height:1.7;color:#ddd">
+    <b style="color:#fff">EWS SESSIONS</b> — это виртуальный underground-клуб, созданный вокруг музыки, атмосферы и живого присутствия.<br><br>
+    Ты заходишь не просто на страницу с музыкой — ты попадаешь в полноценное 3D-пространство. Здесь есть танцпол, DJ-зона, большой экран, неоновый свет, лазеры, дым, тёмные углы и детали, которые создают ощущение настоящего ночного клуба.<br><br>
+    В клубе игроки видят друг друга в реальном времени, могут перемещаться по пространству, садиться на диваны, общаться в общем чате и наблюдать за происходящим на большом экране.<br><br>
+    Главная идея EWS SESSIONS — <b>музыка прежде всего</b>. Никакой лишней суеты. Тёмный зал, громкая система, свет, дым и DJ за пультом.<br><br>
+    Экран клуба может показывать трансляцию DJ, видео или другой контент. Освещение меняется, клуб периодически погружается в полный <b>blackout</b>, после чего остаются только экран и красные аварийные огни.<br><br>
+    EWS SESSIONS — это место, где <b>онлайн превращается в физическое пространство</b>.<br><br>
+    <span style="letter-spacing:.12em">ENTER THE CLUB.<br>FEEL THE SESSION.</span>
+  </div>
+  <button id="gopnikClose" type="button" style="margin-top:20px;padding:9px 18px;background:#111;color:#fff;border:1px solid #555;cursor:pointer">ЗАКРЫТЬ</button>
+</div>
+
   <div id="sitHint" style="display:none;position:absolute;left:50%;bottom:88px;transform:translateX(-50%);padding:8px 12px;background:rgba(0,0,0,.72);border:1px solid #444;font-size:11px;letter-spacing:.08em;z-index:50;pointer-events:none">E — СЕСТЬ</div>
 </div>
 
@@ -181,6 +195,21 @@ const sofaSeats = [
 const remotes = new Map();let lastState = 0;
 
 const authMsg = $('authMsg');
+
+let gopnikInfoVisible=false;
+function updateGopnikInteraction(){
+  const g=scene.userData.gopnik;
+  const win=$('gopnikWindow');
+  if(!g||!player||!win||!joined) return;
+  const gp=new THREE.Vector3();
+  g.getWorldPosition(gp);
+  const pp=new THREE.Vector3(px,py,pz);
+  const near=pp.distanceTo(gp)<3.0;
+  if(near && !gopnikInfoVisible){
+    gopnikInfoVisible=true;
+    win.style.display='block';
+  }
+}
 
 function toast(text) {
   const el = $('toast');
@@ -1049,6 +1078,7 @@ function createDJSetup() {
           // clearly outside the cabinet rather than inside/behind it.
           // The parent is the DJ table, so these are table-local coordinates.
           gopnik.position.x = -7.25;
+          scene.userData.gopnik = gopnik;
           gopnik.position.z = -0.05;
 
           // Re-align the model's actual feet to the club floor.
@@ -1438,6 +1468,7 @@ function animate() {
 
   updateRemotes(now/1000,dt);
   updateClubLighting(now/1000);
+  updateGopnikInteraction();
   if(host && !scene.userData.blackoutTimer) scheduleBlackouts();
   // CSS3D cannot depth-test against WebGL, so hide the screen when 3D geometry is in front.
   refreshScreenOcclusion();
@@ -2229,6 +2260,7 @@ function resumeScreenPlayback(){
 }
 
 function startClub() {
+  $('gopnikClose').onclick=()=>{gopnikInfoVisible=false;$('gopnikWindow').style.display='none';};
   buildWorld();
   connect();
   window.addEventListener('pointerdown',resumeScreenPlayback,{once:true,passive:true});
