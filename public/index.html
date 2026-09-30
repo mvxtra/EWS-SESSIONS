@@ -2213,7 +2213,7 @@ function initMobileControls(){
  };
  onlineBtn.addEventListener('touchstart',e=>{e.preventDefault();onlineOpen=!onlineOpen;syncPanels()},{passive:false});
  chatBtn.addEventListener('touchstart',e=>{e.preventDefault();chatOpen=!chatOpen;syncPanels();if(chatOpen)setTimeout(()=>$('chatInput').focus(),40)},{passive:false});
- syncPanels();
+ if(mobileMode){syncPanels()}else{online.classList.remove('closed');chat.classList.remove('closed');}
  const reset=()=>{keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;knob.style.transform='translate(0,0)'};
  stick.addEventListener('pointerdown',e=>e.stopPropagation());
  const move=t=>{const r=stick.getBoundingClientRect(),x=t.clientX-(r.left+r.width/2),y=t.clientY-(r.top+r.height/2),len=Math.hypot(x,y)||1,k=Math.min(48,len),px=x/len*k,py=y/len*k;knob.style.transform='translate('+px+'px,'+py+'px)';keys.KeyW=py< -9;keys.KeyS=py>9;keys.KeyA=px< -9;keys.KeyD=px>9};
