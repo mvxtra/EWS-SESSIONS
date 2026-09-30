@@ -843,40 +843,46 @@ function createDJSetup() {
       model.rotation.y=Math.PI*2;
       subGroup.add(model);
 
-      // Real column speaker mounted directly on top of each subwoofer.
+      // Three real column speakers on top of each subwoofer.
       const columnLoader = new THREE.GLTFLoader();
-      columnLoader.load('/models/колонки.glb', columnGltf => {
-        const column = columnGltf.scene;
-        column.name = side < 0 ? 'EWS_COLUMN_SPEAKER_LEFT' : 'EWS_COLUMN_SPEAKER_RIGHT';
-        column.traverse(o => {
-          if(o.isMesh){
-            o.castShadow = true;
-            o.receiveShadow = true;
-            if(o.material){
-              const mats = Array.isArray(o.material) ? o.material : [o.material];
-              mats.forEach(m => {
-                if(!m) return;
-                m.transparent = false;
-                m.opacity = 1;
-                m.depthWrite = true;
-                m.depthTest = true;
-              });
+      [ -0.52, 0, 0.52 ].forEach((offsetX, speakerIndex) => {
+        columnLoader.load('/models/колонки.glb', columnGltf => {
+          const column = columnGltf.scene;
+          column.name = (side < 0 ? 'EWS_COLUMN_SPEAKER_LEFT_' : 'EWS_COLUMN_SPEAKER_RIGHT_') + (speakerIndex + 1);
+
+          column.traverse(o => {
+            if(o.isMesh){
+              o.castShadow = true;
+              o.receiveShadow = true;
+              if(o.material){
+                const mats = Array.isArray(o.material) ? o.material : [o.material];
+                mats.forEach(m => {
+                  if(!m) return;
+                  m.transparent = false;
+                  m.opacity = 1;
+                  m.depthWrite = true;
+                  m.depthTest = true;
+                });
+              }
             }
-          }
-        });
+          });
 
-        // Fit the column to the subwoofer and place its feet exactly on top.
-        const cb = new THREE.Box3().setFromObject(column);
-        const cs = cb.getSize(new THREE.Vector3());
-        if(cs.y > 0) column.scale.multiplyScalar(2.15 / cs.y);
+          // Smaller club-scale columns, positioned side-by-side on the sub.
+          const cb = new THREE.Box3().setFromObject(column);
+          const cs = cb.getSize(new THREE.Vector3());
+          if(cs.y > 0) column.scale.multiplyScalar(1.65 / cs.y);
 
-        const fittedColumn = new THREE.Box3().setFromObject(column);
-        const subTopBox = new THREE.Box3().setFromObject(model);
-        column.position.y += subTopBox.max.y - fittedColumn.min.y + 0.005;
+          const fittedColumn = new THREE.Box3().setFromObject(column);
+          const subTopBox = new THREE.Box3().setFromObject(model);
 
-        column.rotation.y = Math.PI;
-        subGroup.add(column);
-      }, undefined, err => console.warn('[EWS COLUMN] load failed', err));
+          column.position.x = offsetX;
+          column.position.y += subTopBox.max.y - fittedColumn.min.y + 0.005;
+
+          // Turn all columns 180 degrees toward the dancefloor.
+          column.rotation.y = Math.PI;
+          subGroup.add(column);
+        }, undefined, err => console.warn('[EWS COLUMN] load failed', err));
+      });
 
       // Gopnik stands BESIDE the LEFT subwoofer, never inside it.
       if(side < 0){
