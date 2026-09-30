@@ -452,6 +452,10 @@ function createGhostMesh(){
 function addGhost(data){
   if(!data?.id || ghosts.has(data.id) || !scene) return;
   const mesh=createGhostMesh();
+  if(data.boss){
+    mesh.scale.setScalar(3.5);
+    mesh.renderOrder=45;
+  }
   scene.add(mesh);
   ghosts.set(data.id,{data:{...data},mesh});
   updateGhostHealth(ghosts.get(data.id));
@@ -486,7 +490,8 @@ function updateGhostHealth(g){
   const sprite=g.mesh.children.find(o=>o.userData?.healthCanvas);
   if(!sprite) return;
 
-  const hp=Math.max(0,Math.min(10,Number(g.data.hp)||10));
+  const maxHp=g.data.boss?100:10;
+  const hp=Math.max(0,Math.min(maxHp,Number(g.data.hp)||maxHp));
   const ctx=sprite.userData.healthCanvas.getContext('2d');
   ctx.clearRect(0,0,256,64);
 
@@ -496,8 +501,8 @@ function updateGhostHealth(g){
   ctx.fillStyle='#ffffff';
   ctx.strokeStyle='#000000';
   ctx.lineWidth=7;
-  ctx.strokeText('HP '+hp+'/10',128,32);
-  ctx.fillText('HP '+hp+'/10',128,32);
+  ctx.strokeText('HP '+hp+'/'+maxHp,128,32);
+  ctx.fillText('HP '+hp+'/'+maxHp,128,32);
 
   sprite.userData.healthTexture.needsUpdate=true;
 }
@@ -515,7 +520,8 @@ function updateGhosts(now,dt){
 
 function ghostHitTest(heartMesh){
   for(const [id,g] of ghosts){
-    if(heartMesh.position.distanceTo(g.mesh.position)<.9) return id;
+    const hitRadius=g.data.boss?3.1:.9;
+    if(heartMesh.position.distanceTo(g.mesh.position)<hitRadius) return id;
   }
   return null;
 }
@@ -2598,6 +2604,10 @@ function connect() {
     for(const id of ghosts.keys()) if(!ids.has(id)) removeGhost(id);
   });
   socket.on('ghost:spawn',addGhost);
+  socket.on('ghost:boss-spawn',addGhost);
+  socket.on('ghost:progress',data=>{
+    if(data?.count && data.count<50) toast('Призраки: '+data.count+'/50');
+  });
   socket.on('ghost:hit',data=>{
     const g=ghosts.get(data?.id);
     if(g){
