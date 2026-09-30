@@ -275,6 +275,94 @@ function buildWorld() {
   grid.material.opacity=.17;
   scene.add(grid);
 
+  // Central EWS dancefloor — flush with the main floor so it never affects movement.
+  const dance = new THREE.Group();
+  dance.name = 'EWS_DANCEFLOOR';
+  dance.position.set(0,0.012,1.0);
+  scene.add(dance);
+
+  const danceSurface = new THREE.Mesh(
+    new THREE.BoxGeometry(18.6,0.055,12.6),
+    new THREE.MeshStandardMaterial({
+      color:0x0d0d0d,
+      roughness:.28,
+      metalness:.52
+    })
+  );
+  danceSurface.position.y = 0;
+  danceSurface.receiveShadow = true;
+  dance.add(danceSurface);
+
+  // Crisp white rectangular neon border.
+  const borderMat = new THREE.LineBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.9,
+    depthWrite:false
+  });
+  const bw=18.35, bd=12.35, by=.055;
+  const borderPts = [
+    new THREE.Vector3(-bw/2,by,-bd/2), new THREE.Vector3(bw/2,by,-bd/2),
+    new THREE.Vector3(bw/2,by,-bd/2), new THREE.Vector3(bw/2,by,bd/2),
+    new THREE.Vector3(bw/2,by,bd/2), new THREE.Vector3(-bw/2,by,bd/2),
+    new THREE.Vector3(-bw/2,by,bd/2), new THREE.Vector3(-bw/2,by,-bd/2)
+  ];
+  const borderGeo = new THREE.BufferGeometry().setFromPoints(borderPts);
+  dance.add(new THREE.LineSegments(borderGeo,borderMat));
+
+  // Straight white grid lines, slightly brighter toward the centre.
+  const gridMat = new THREE.LineBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.30,
+    depthWrite:false
+  });
+  const gridPts=[];
+  for(let x=-8;x<=8;x+=2){
+    gridPts.push(new THREE.Vector3(x,by+.002,-6),new THREE.Vector3(x,by+.002,6));
+  }
+  for(let z=-6;z<=6;z+=2){
+    gridPts.push(new THREE.Vector3(-9,by+.002,z),new THREE.Vector3(9,by+.002,z));
+  }
+  const danceGridGeo = new THREE.BufferGeometry().setFromPoints(gridPts);
+  dance.add(new THREE.LineSegments(danceGridGeo,gridMat));
+
+  // Four soft corner strips give the floor a premium club edge without adding colour clutter.
+  const edgeMat = new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.10,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+  const edgeH = .018;
+  const edges = [
+    [18.0,edgeH,.055,0,by+.02,-6.18],
+    [18.0,edgeH,.055,0,by+.02, 6.18],
+    [.055,edgeH,12.25,-9.0,by+.02,0],
+    [.055,edgeH,12.25, 9.0,by+.02,0]
+  ];
+  edges.forEach(([w,h,d,x,y,z])=>{
+    const e=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),edgeMat);
+    e.position.set(x,y,z);
+    dance.add(e);
+  });
+
+  // Subtle central reflection so the dancefloor feels polished under the moving lights.
+  const sheen = new THREE.Mesh(
+    new THREE.PlaneGeometry(14.5,8.0),
+    new THREE.MeshBasicMaterial({
+      color:0xffffff,
+      transparent:true,
+      opacity:.025,
+      blending:THREE.AdditiveBlending,
+      depthWrite:false
+    })
+  );
+  sheen.rotation.x=-Math.PI/2;
+  sheen.position.y=.041;
+  dance.add(sheen);
+
   // White club roof
   const roofMat = new THREE.MeshStandardMaterial({color:0xffffff,roughness:.72,metalness:.12,side:THREE.DoubleSide});
   const roof = new THREE.Mesh(new THREE.BoxGeometry(32,.22,28), roofMat);
