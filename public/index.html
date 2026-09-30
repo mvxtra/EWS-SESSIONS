@@ -965,65 +965,6 @@ function createDJSetup() {
       });
 
     
-      // Interactive NPC: talk to the gopnik near the left subwoofer.
-      window.ewsGopnikNPC = null;
-      window.ewsGopnikDialogOpen = false;
-      window.ewsGopnikDialogIndex = 0;
-
-      function createGopnikDialogUI(){
-        if(document.getElementById('gopnikTalkHint')) return;
-        const hint=document.createElement('div');
-        hint.id='gopnikTalkHint';
-        hint.style.cssText='position:fixed;left:50%;bottom:92px;transform:translateX(-50%);padding:10px 18px;background:rgba(0,0,0,.82);border:1px solid rgba(255,255,255,.35);color:#fff;font:700 14px Arial,sans-serif;letter-spacing:.08em;z-index:10000;display:none;pointer-events:none;';
-        hint.textContent='E — ПОГОВОРИТЬ';
-        document.body.appendChild(hint);
-        const box=document.createElement('div');
-        box.id='gopnikDialog';
-        box.style.cssText='position:fixed;left:50%;bottom:45px;transform:translateX(-50%);width:min(620px,82vw);padding:18px 20px;background:rgba(7,7,7,.94);border:1px solid rgba(255,255,255,.45);box-shadow:0 12px 40px rgba(0,0,0,.55);color:#fff;font:14px Arial,sans-serif;z-index:10001;display:none;';
-        box.innerHTML='<div style="font-weight:800;letter-spacing:.08em;margin-bottom:8px;">ГОПНИК</div><div id="gopnikDialogText" style="line-height:1.5;"></div><div style="margin-top:12px;font-size:11px;opacity:.55;">E / ENTER — следующая реплика · ESC — закрыть</div>';
-        document.body.appendChild(box);
-      }
-      const gopnikDialogLines=[
-        'Чё, братан? В клуб первый раз?',
-        'Музыку слышишь? Значит всё нормально.',
-        'Только аппаратуру не трогай — она дорогая.',
-        'Ладно, отдыхай. Увидимся на танцполе.'
-      ];
-      function openGopnikDialog(){
-        if(!window.ewsGopnikNPC) return;
-        window.ewsGopnikDialogOpen=true;
-        window.ewsGopnikDialogIndex=0;
-        const box=document.getElementById('gopnikDialog');
-        const hint=document.getElementById('gopnikTalkHint');
-        if(box) box.style.display='block';
-        if(hint) hint.style.display='none';
-        showGopnikDialogLine();
-      }
-      function showGopnikDialogLine(){
-        const el=document.getElementById('gopnikDialogText');
-        if(el) el.textContent=gopnikDialogLines[window.ewsGopnikDialogIndex]||gopnikDialogLines[gopnikDialogLines.length-1];
-      }
-      function advanceGopnikDialog(){
-        if(!window.ewsGopnikDialogOpen) return;
-        window.ewsGopnikDialogIndex++;
-        if(window.ewsGopnikDialogIndex>=gopnikDialogLines.length){ closeGopnikDialog(); return; }
-        showGopnikDialogLine();
-      }
-      function closeGopnikDialog(){
-        window.ewsGopnikDialogOpen=false;
-        const box=document.getElementById('gopnikDialog');
-        if(box) box.style.display='none';
-      }
-      function updateGopnikInteraction(){
-        if(!window.ewsGopnikNPC || seated) return;
-        const dx=px-window.ewsGopnikNPC.position.x;
-        const dz=pz-window.ewsGopnikNPC.position.z;
-        const near=Math.hypot(dx,dz)<=2.7;
-        const hint=document.getElementById('gopnikTalkHint');
-        if(hint) hint.style.display=(near&&!window.ewsGopnikDialogOpen)?'block':'none';
-      }
-      createGopnikDialogUI();
-
   const halfLifeBeerLoader = new THREE.GLTFLoader();
       const halfLifeOffsets = [ -0.85, 0.05, 0.78 ];
       halfLifeOffsets.forEach((offsetX, beerIndex) => {
@@ -1053,7 +994,6 @@ function createDJSetup() {
         gopnikLoader.load('/models/gopnik.glb',gltf2=>{
           const gopnik = gltf2.scene;
           gopnik.name = 'GOPNIK_BESIDE_SUBWOOFER';
-    window.ewsGopnikNPC = gopnik;
           gopnik.traverse(o=>{
             if(o.isMesh){
               o.castShadow=true;
@@ -1358,7 +1298,6 @@ function tryMovePlayer(nx,nz){
 }
 
 function animate() {
-  updateGopnikInteraction();
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);
 
@@ -1471,13 +1410,6 @@ function animate() {
 }
 
 document.addEventListener('keydown', e => {
-
-  if(window.ewsGopnikDialogOpen && (e.key==='e'||e.key==='E'||e.key==='Enter')){ e.preventDefault(); advanceGopnikDialog(); return; }
-  if(window.ewsGopnikDialogOpen && e.key==='Escape'){ e.preventDefault(); closeGopnikDialog(); return; }
-  if(!window.ewsGopnikDialogOpen && (e.key==='e'||e.key==='E') && window.ewsGopnikNPC && !seated){
-    const dx=px-window.ewsGopnikNPC.position.x, dz=pz-window.ewsGopnikNPC.position.z;
-    if(Math.hypot(dx,dz)<=2.7){ e.preventDefault(); openGopnikDialog(); return; }
-  }
 
   if(e.target?.tagName==='INPUT' || e.target?.tagName==='SELECT') return;
 
