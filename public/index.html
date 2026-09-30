@@ -868,11 +868,11 @@ function createDJSetup() {
         // Fit the column to the subwoofer and place its feet exactly on top.
         const cb = new THREE.Box3().setFromObject(column);
         const cs = cb.getSize(new THREE.Vector3());
-        if(cs.x > 0) column.scale.multiplyScalar(3.15 / cs.x);
+        if(cs.y > 0) column.scale.multiplyScalar(2.15 / cs.y);
 
         const fittedColumn = new THREE.Box3().setFromObject(column);
         const subTopBox = new THREE.Box3().setFromObject(model);
-        column.position.y += subTopBox.max.y - fittedColumn.min.y + 0.02;
+        column.position.y += subTopBox.max.y - fittedColumn.min.y + 0.005;
 
         column.rotation.y = Math.PI;
         subGroup.add(column);
