@@ -589,6 +589,37 @@ function createDJSetup() {
       model.position.y-=fitted.min.y;
       model.rotation.y=Math.PI*2;
       subGroup.add(model);
+
+      // Gopnik sits on top of the LEFT subwoofer.
+      if(side < 0){
+        const gopnikLoader = new THREE.GLTFLoader();
+        gopnikLoader.load('/models/gopnik.glb',gltf2=>{
+          const gopnik = gltf2.scene;
+          gopnik.name = 'GOPNIK_ON_SUBWOOFER';
+          gopnik.traverse(o=>{
+            if(o.isMesh){
+              o.castShadow=true;
+              o.receiveShadow=true;
+            }
+          });
+
+          // Fit the character to the subwoofer and place his feet directly on top.
+          const gb = new THREE.Box3().setFromObject(gopnik);
+          const gs = gb.getSize(new THREE.Vector3());
+          if(gs.y > 0) gopnik.scale.multiplyScalar(2.7/gs.y);
+
+          const fittedGopnik = new THREE.Box3().setFromObject(gopnik);
+          const subTop = new THREE.Box3().setFromObject(model).max.y;
+
+          gopnik.position.x = 0;
+          gopnik.position.z = 0;
+          gopnik.position.y = subTop - fittedGopnik.min.y;
+
+          // Face the club / dancefloor.
+          gopnik.rotation.y = Math.PI;
+          subGroup.add(gopnik);
+        },undefined,err=>console.warn('[EWS GOPNIK] load failed',err));
+      }
     },undefined,()=>{});
   });
 
