@@ -766,6 +766,7 @@ function createCornerSofas() {
       const fitted = new THREE.Box3().setFromObject(sofa);
       sofa.position.set(x, -fitted.min.y, z);
       sofa.rotation.y = rotation;
+      markSofaCollisionExempt(sofa);
       scene.add(sofa);
     }, undefined, err => console.warn('[EWS SOFA] load failed', err));
   });
@@ -1474,10 +1475,11 @@ function toggleSeat(){
   seated=true;
   seatedSofa=idx;
   crouching=false;
+  // Put the character on the cushion, not on the floor.
   px=seat.x;
   pz=seat.z;
   yaw=seat.yaw;
-  py=0;
+  py=0.72;
   vy=0;
   grounded=true;
   $('sitHint').style.display='block';
@@ -1625,7 +1627,7 @@ document.addEventListener('keydown', e => {
   }
 
   if(e.code==='Space' && !seated){
-    if(grounded){
+    if(grounded && !seated){
       vy=9;
       grounded=false;
       jumpsUsed=1;
