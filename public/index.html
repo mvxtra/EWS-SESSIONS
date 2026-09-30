@@ -760,6 +760,66 @@ function mouseLook(e) {
   }
 }
 
+const PLAYER_COLLISION_RADIUS = 0.42;
+const playerCollisionBox = new THREE.Box3();
+const playerCollisionSize = new THREE.Vector3();
+
+function canPlayerOccupy(x,z){
+  if(!scene) return true;
+
+  for(const obj of scene.children){
+    // Check all descendants without treating the player's own body/camera as a wall.
+    let blocked=false;
+    obj.traverse?.(node=>{
+      if(blocked || !node.isMesh) return;
+      if(node.userData?.noCollision) return;
+      if(node.userData?.isFloor) return;
+
+      // Never collide with the local player or CSS3D screen objects.
+      if(player && (node===player || player.getObjectById(node.id))) return;
+      if(screenMesh && (node===screenMesh || screenMesh.getObjectById(node.id))) {
+        // The physical screen backing is a real wall and should block movement.
+      }
+
+      playerCollisionBox.setFromObject(node);
+      if(!Number.isFinite(playerCollisionBox.min.x) || !Number.isFinite(playerCollisionBox.max.x)) return;
+
+      const h=playerCollisionBox.max.y-playerCollisionBox.min.y;
+      const bottom=playerCollisionBox.min.y;
+
+      // Ignore the flat main floor and tiny decorative meshes.
+      if(playerCollisionBox.max.y < 0.12) return;
+      if(h < 0.18 && bottom < 0.25) return;
+
+      // The player's body occupies the lower ~1.8m. Objects entirely above
+      // the head do not prevent walking underneath them.
+      if(playerCollisionBox.min.y > 1.85) return;
+
+      const minX=playerCollisionBox.min.x-PLAYER_COLLISION_RADIUS;
+      const maxX=playerCollisionBox.max.x+PLAYER_COLLISION_RADIUS;
+      const minZ=playerCollisionBox.min.z-PLAYER_COLLISION_RADIUS;
+      const maxZ=playerCollisionBox.max.z+PLAYER_COLLISION_RADIUS;
+
+      if(x>=minX && x<=maxX && z>=minZ && z<=maxZ){
+        // Very large horizontal surfaces are usually the floor/ceiling.
+        const w=playerCollisionBox.max.x-playerCollisionBox.min.x;
+        const d=playerCollisionBox.max.z-playerCollisionBox.min.z;
+        if(w>28 && d>20) return;
+        blocked=true;
+      }
+    });
+    if(blocked) return false;
+  }
+  return true;
+}
+
+function tryMovePlayer(nx,nz){
+  // Resolve X and Z independently so the player can slide along walls/objects
+  // instead of getting completely stuck on a corner.
+  if(canPlayerOccupy(nx,pz)) px=nx;
+  if(canPlayerOccupy(px,nz)) pz=nz;
+}
+
 function animate() {
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);
@@ -772,10 +832,12 @@ function animate() {
     const f=forward/len, s=side/len;
     const fx=-Math.sin(yaw), fz=-Math.cos(yaw);
     const rx=Math.cos(yaw), rz=-Math.sin(yaw);
-    px+=(fx*f+rx*s)*4.5*dt;
-    pz+=(fz*f+rz*s)*4.5*dt;
-    px=THREE.MathUtils.clamp(px,-15,15);
-    pz=THREE.MathUtils.clamp(pz,-13,13);
+    const moveX=(fx*f+rx*s)*4.5*dt;
+    const moveZ=(fz*f+rz*s)*4.5*dt;
+    tryMovePlayer(
+      THREE.MathUtils.clamp(px+moveX,-15,15),
+      THREE.MathUtils.clamp(pz+moveZ,-13,13)
+    );
   }
 
   if(document.pointerLockElement === $('scene')) {
