@@ -2162,7 +2162,7 @@ function animate() {
     dustState.points.geometry.attributes.position.needsUpdate=true;
   }
 
-  updateGhosts(frameNow,dt);
+  updateGhosts(Date.now(),dt);
   updateHeartProjectiles(dt,frameNow);
 
   renderer.render(scene,camera);
