@@ -630,76 +630,12 @@ function createDJSetup() {
 }
 
 function setupClubLighting() {
+  // Светомузыка полностью отключена.
+  // Оставляем пустые массивы, чтобы остальной код клуба не ломался.
   scene.userData.clubLights = [];
   scene.userData.clubBeams = [];
   scene.userData.strobe = [];
-
-  // Stage wash: two strong professional spotlights aimed at the dance floor.
-  const stageSpots = [
-    {x:-5.5, y:6.0, z:-10.5, color:0xffffff},
-    {x: 5.5, y:6.0, z:-10.5, color:0xffffff}
-  ];
-
-  for (const p of stageSpots) {
-    const spot = new THREE.SpotLight(p.color, 8.0, 25, Math.PI/7, 0.55, 1.3);
-    spot.position.set(p.x,p.y,p.z);
-    spot.target.position.set(p.x*0.25,0,1.5);
-    scene.add(spot.target);
-    scene.add(spot);
-    spot.castShadow = true;
-    scene.userData.clubLights.push(spot);
-  }
-
-  // Colored moving-head fixtures across the ceiling.
-  const colors = [0xff1744,0x247bff,0x8a2be2,0x00e5ff,0xffffff,0xff1744];
-  [-7.5,-4.5,-1.5,1.5,4.5,7.5].forEach((x,i)=>{
-    const housing = new THREE.Mesh(
-      new THREE.BoxGeometry(.62,.32,.62),
-      new THREE.MeshStandardMaterial({color:0x050505,roughness:.3,metalness:.95})
-    );
-    housing.position.set(x,6.12,-7.5);
-    scene.add(housing);
-
-    const beam = new THREE.SpotLight(colors[i], 5.5, 22, Math.PI/10, .72, 1.5);
-    beam.position.set(x,5.95,-7.5);
-    beam.target.position.set(x*.55,0,1.0);
-    scene.add(beam.target);
-    scene.add(beam);
-    scene.userData.clubBeams.push({light:beam,target:beam.target,phase:i*.75,baseX:x});
-  });
-
-  // Side/back washes make the room read like a real venue instead of a flat dark box.
-  [
-    [-15,3.2,-6,0xff1744],
-    [ 15,3.2,-6,0x247bff],
-    [-13,3.0, 7,0x8a2be2],
-    [ 13,3.0, 7,0x00e5ff]
-  ].forEach(([x,y,z,color])=>{
-    const l = new THREE.PointLight(color, 2.8, 13);
-    l.position.set(x,y,z);
-    scene.add(l);
-    scene.userData.clubLights.push(l);
-  });
-
-  // Two narrow laser-like beam fixtures aimed across the dance floor.
-  [-1,1].forEach(side=>{
-    const beam = new THREE.SpotLight(side<0?0xff1744:0x247bff, 4.2, 30, Math.PI/35, .25, 1.0);
-    beam.position.set(side*7.8,5.8,-8.8);
-    beam.target.position.set(-side*7.0,0,5.5);
-    scene.add(beam.target);
-    scene.add(beam);
-    scene.userData.clubBeams.push({light:beam,target:beam.target,phase:side*1.7,laser:true,baseX:side*7.8});
-  });
-
-  // Strobe fixtures at the front truss. Normally dim, then flash in short pulses.
-  [-6,-2,2,6].forEach(x=>{
-    const l = new THREE.PointLight(0xffffff,0,18);
-    l.position.set(x,5.9,-10.4);
-    scene.add(l);
-    scene.userData.strobe.push(l);
-  });
 }
-
 function updateClubLighting(t) {
   const beams = scene.userData.clubBeams || [];
   beams.forEach((b,i)=>{
