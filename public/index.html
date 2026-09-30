@@ -1615,7 +1615,10 @@ document.addEventListener('keydown', e => {
   if(e.target?.tagName==='INPUT' || e.target?.tagName==='SELECT') return;
 
   if(e.code==='KeyE'){
-    if(openGopnikInfo()){
+    // Gopnik interaction is checked synchronously; openGopnikInfo() is async
+    // and its Promise must never block sofa interaction.
+    if(joined && isNearGopnik()){
+      openGopnikInfo();
       e.preventDefault();
       return;
     }
