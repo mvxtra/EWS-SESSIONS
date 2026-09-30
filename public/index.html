@@ -1864,7 +1864,7 @@ function twitchEmbedUrl(value) {
     const parts=url.pathname.split('/').filter(Boolean);
     if(parts.length>=1 && parts[0] && parts[0]!=='videos' && parts[0]!=='directory'){
       return 'https://player.twitch.tv/?channel='+encodeURIComponent(parts[0])+
-        '&parent='+encodeURIComponent(parent)+'&autoplay=true&muted=false';
+        '&parent='+encodeURIComponent(parent)+'&autoplay=true&muted=true';
     }
     // Twitch VOD URL: /videos/123456789
     if(parts[0]==='videos' && parts[1]){
@@ -1896,7 +1896,7 @@ function youtubeEmbedUrl(value) {
     else if(url.pathname.startsWith('/embed/')) id=url.pathname.split('/')[2]||'';
   }
   if(!id) return null;
-  return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&mute=0&controls=1&playsinline=1&enablejsapi=1';
+  return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&mute=1&controls=1&playsinline=1&enablejsapi=1&origin='+encodeURIComponent(location.origin);
 }
 
 function clearCssScreen() {
@@ -2152,12 +2152,18 @@ $('screenSrc').addEventListener('keydown',e=>{
 
 function resumeScreenPlayback(){
   if(screenVideo){
-    screenVideo.play().catch(()=>{});
+    screenVideo.play().then(()=>{
+      screenVideo.muted=false;
+    }).catch(()=>{});
   }
   if(screenCssFrame){
     const iframe=screenCssFrame.querySelector('iframe');
     if(iframe){
-      try{ iframe.contentWindow?.postMessage({event:'command',func:'play',args:[]},'*'); }catch(_){}
+      try{
+        iframe.contentWindow?.postMessage({event:'command',func:'playVideo',args:[]},'*');
+        iframe.contentWindow?.postMessage({event:'command',func:'unMute',args:[]},'*');
+        iframe.contentWindow?.postMessage({event:'command',func:'setMuted',args:[false]},'*');
+      }catch(_){}
     }
   }
 }
