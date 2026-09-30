@@ -852,6 +852,8 @@ function buildWorld() {
   addNeonBaseboard(31.6,.20,0,.01,-13.82,0);
   addNeonBaseboard(27.6,.20,-15.82,.01,0,Math.PI/2);
   addNeonBaseboard(27.6,.20,15.82,.01,0,Math.PI/2);
+  // Front wall edge: complete the neon line around the full club perimeter.
+  addNeonBaseboard(31.6,.20,0,.01,13.82,0);
 
   scene.userData.neonBaseboards=baseboards;
 
@@ -1146,17 +1148,19 @@ function createClubMirror(){
     mirrorGroup.rotation.y=rotationY;
 
     const mirrorMat=new THREE.MeshStandardMaterial({
-      color:0x8f969c,
-      metalness:1,
-      roughness:.025,
-      envMapIntensity:2.2
+      color:0x6f7b86,
+      metalness:.35,
+      roughness:.18,
+      emissive:0x182028,
+      emissiveIntensity:.35,
+      side:THREE.DoubleSide
     });
 
     const glass=new THREE.Mesh(
       new THREE.PlaneGeometry(8.8,5.2),
       mirrorMat
     );
-    glass.position.z=-.08;
+    glass.position.z=.08;
     glass.userData.noCollision=true;
     glass.userData.isMirror=true;
     mirrorGroup.add(glass);
