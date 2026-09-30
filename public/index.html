@@ -1207,6 +1207,9 @@ function upsertRemote(data){
   r.data=data;
   r.targetX=Number(data.x)||0;
   r.targetZ=Number(data.z)||0;
+  r.targetY=Number(data.y)||0;
+  r.targetVy=Number(data.vy)||0;
+  r.targetGrounded=data.grounded!==false;
   r.targetYaw=(Number(data.yaw)||0) + Math.PI;
 }
 
