@@ -1227,102 +1227,94 @@ function createDJSetup() {
 
 
 function createCornerLasers(){
-  // 12 lasers total: exactly 3 in every corner.
-  // Each laser is physically paired with one colored corner lamp:
-  // BLUE -> WHITE -> RED. The laser housing is mounted directly above/behind
-  // its matching lamp so it reads as one real lighting fixture.
-  const corners = [
+  // Realistic corner laser rigs: 3 fixed fixtures per corner.
+  // BLUE / WHITE / RED laser stays physically locked to its matching lamp.
+  const corners=[
     {x:-15.05,z:-13.05,sx:1,sz:1,name:'NW'},
-    {x: 15.05,z:-13.05,sx:-1,sz:1,name:'NE'},
-    {x:-15.05,z: 13.05,sx:1,sz:-1,name:'SW'},
-    {x: 15.05,z: 13.05,sx:-1,sz:-1,name:'SE'}
+    {x:15.05,z:-13.05,sx:-1,sz:1,name:'NE'},
+    {x:-15.05,z:13.05,sx:1,sz:-1,name:'SW'},
+    {x:15.05,z:13.05,sx:-1,sz:-1,name:'SE'}
   ];
-
-  const colors = [
-    {name:'BLUE', color:0x287cff},
+  const colors=[
+    {name:'BLUE',color:0x287cff},
     {name:'WHITE',color:0xffffff},
-    {name:'RED',  color:0xff244f}
+    {name:'RED',color:0xff244f}
   ];
 
   const group=new THREE.Group();
   group.name='EWS_PRO_LASER_RIG_12';
   scene.add(group);
 
-  const bodyMat=new THREE.MeshStandardMaterial({color:0x090909,roughness:.25,metalness:.9});
-  const metalMat=new THREE.MeshStandardMaterial({color:0x303030,roughness:.3,metalness:.95});
-  const blackMat=new THREE.MeshStandardMaterial({color:0x050505,roughness:.4,metalness:.7});
+  const bodyMat=new THREE.MeshStandardMaterial({color:0x080808,roughness:.24,metalness:.92});
+  const metalMat=new THREE.MeshStandardMaterial({color:0x383838,roughness:.28,metalness:.95});
+  const blackMat=new THREE.MeshStandardMaterial({color:0x030303,roughness:.38,metalness:.75});
+  const boltsMat=new THREE.MeshStandardMaterial({color:0x888888,roughness:.18,metalness:1});
   const beams=[];
 
   corners.forEach((c,ci)=>{
     colors.forEach((col,slot)=>{
-      const rig=new THREE.Group();
-      rig.name='EWS_LASER_'+c.name+'_'+col.name;
+      const offset=(slot-1)*.72;
 
-      // Colored corner lamp: this is the exact visual anchor for this laser.
+      // Matching colored corner lamp.
       const lamp=new THREE.Group();
       lamp.name='EWS_CORNER_LAMP_'+c.name+'_'+col.name;
-      lamp.position.set(c.sx*(slot-1)*.72,6.18,c.sz*.10);
+      lamp.position.set(c.x+c.sx*offset,6.18,c.z+c.sz*.10);
 
       const lampHousing=new THREE.Mesh(
-        new THREE.CylinderGeometry(.115,.145,.18,16),
+        new THREE.CylinderGeometry(.12,.15,.18,16),
         blackMat
       );
       lamp.add(lampHousing);
 
-      const bulbMat=new THREE.MeshBasicMaterial({
-        color:col.color,
-        transparent:true,
-        opacity:.98,
-        blending:THREE.AdditiveBlending,
-        depthWrite:false
-      });
-      const bulb=new THREE.Mesh(new THREE.SphereGeometry(.10,16,12),bulbMat);
+      const bulb=new THREE.Mesh(
+        new THREE.SphereGeometry(.095,16,12),
+        new THREE.MeshBasicMaterial({
+          color:col.color,transparent:true,opacity:.9,
+          blending:THREE.AdditiveBlending,depthWrite:false
+        })
+      );
       bulb.position.y=-.12;
       lamp.add(bulb);
 
-      const bulbHalo=new THREE.Mesh(
-        new THREE.SphereGeometry(.18,16,12),
+      const halo=new THREE.Mesh(
+        new THREE.SphereGeometry(.20,16,12),
         new THREE.MeshBasicMaterial({
-          color:col.color,
-          transparent:true,
-          opacity:.10,
-          blending:THREE.AdditiveBlending,
-          depthWrite:false
+          color:col.color,transparent:true,opacity:.10,
+          blending:THREE.AdditiveBlending,depthWrite:false
         })
       );
-      bulbHalo.position.y=-.12;
-      lamp.add(bulbHalo);
+      halo.position.y=-.12;
+      lamp.add(halo);
       group.add(lamp);
 
-      // Mounting plate is directly above the matching colored lamp.
-      const plate=new THREE.Mesh(new THREE.BoxGeometry(.58,.07,.42),metalMat);
-      plate.position.set(0,.05,0);
+      // Rigid fixture directly above the lamp.
+      const rig=new THREE.Group();
+      rig.name='EWS_LASER_'+c.name+'_'+col.name;
+      rig.position.set(c.x+c.sx*offset,6.72,c.z+c.sz*.10);
+
+      const plate=new THREE.Mesh(new THREE.BoxGeometry(.60,.07,.44),metalMat);
+      plate.position.y=.05;
       rig.add(plate);
 
-      // Four real-looking fixing bolts.
-      [-.19,.19].forEach(x=>[-.13,.13].forEach(z=>{
-        const bolt=new THREE.Mesh(
-          new THREE.CylinderGeometry(.032,.032,.025,10),
-          new THREE.MeshStandardMaterial({color:0x777777,metalness:1,roughness:.2})
-        );
+      [-.20,.20].forEach(x=>[-.14,.14].forEach(z=>{
+        const bolt=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,.026,10),boltsMat);
         bolt.position.set(x,.095,z);
         rig.add(bolt);
       }));
 
-      // Rigid drop bracket connecting the ceiling mount to the laser.
       const arm=new THREE.Mesh(new THREE.BoxGeometry(.14,.30,.14),blackMat);
       arm.position.y=-.17;
       rig.add(arm);
 
       const yoke=new THREE.Group();
       yoke.position.y=-.34;
-      [-.21,.21].forEach(x=>{
-        const side=new THREE.Mesh(new THREE.BoxGeometry(.065,.26,.12),metalMat);
+      [-.22,.22].forEach(x=>{
+        const side=new THREE.Mesh(new THREE.BoxGeometry(.065,.27,.13),metalMat);
         side.position.x=x;
         yoke.add(side);
       });
-      const cross=new THREE.Mesh(new THREE.BoxGeometry(.48,.055,.13),metalMat);
-      cross.position.y=.08;
+      const cross=new THREE.Mesh(new THREE.BoxGeometry(.49,.055,.13),metalMat);
+      cross.position.y=.09;
       yoke.add(cross);
       rig.add(yoke);
 
@@ -1330,89 +1322,73 @@ function createCornerLasers(){
       head.position.y=-.42;
 
       const housing=new THREE.Mesh(new THREE.BoxGeometry(.40,.23,.58),bodyMat);
-      housing.position.z=.02;
       head.add(housing);
 
-      for(let f=0;f<3;f++){
-        const fin=new THREE.Mesh(new THREE.BoxGeometry(.32,.022,.055),metalMat);
-        fin.position.set(0,.085,.18+f*.075);
+      for(let f=0;f<4;f++){
+        const fin=new THREE.Mesh(new THREE.BoxGeometry(.33,.022,.055),metalMat);
+        fin.position.set(0,.08,.16+f*.075);
         head.add(fin);
       }
 
       const barrel=new THREE.Mesh(
-        new THREE.CylinderGeometry(.095,.11,.14,20),
+        new THREE.CylinderGeometry(.095,.11,.16,20),
         blackMat
       );
       barrel.rotation.x=Math.PI/2;
-      barrel.position.z=-.32;
+      barrel.position.z=-.33;
       head.add(barrel);
 
       const lens=new THREE.Mesh(
-        new THREE.CylinderGeometry(.066,.066,.018,24),
+        new THREE.CylinderGeometry(.067,.067,.018,24),
         new THREE.MeshBasicMaterial({
-          color:col.color,
-          transparent:true,
-          opacity:.99,
-          blending:THREE.AdditiveBlending,
-          depthWrite:false
+          color:col.color,transparent:true,opacity:.98,
+          blending:THREE.AdditiveBlending,depthWrite:false
         })
       );
       lens.rotation.x=Math.PI/2;
-      lens.position.z=-.405;
+      lens.position.z=-.425;
       head.add(lens);
 
-      // Small status LED uses the same color as its corner lamp.
-      const led=new THREE.Mesh(
+      const statusLed=new THREE.Mesh(
         new THREE.BoxGeometry(.035,.025,.018),
         new THREE.MeshBasicMaterial({color:col.color})
       );
-      led.position.set(.115,.07,-.27);
-      head.add(led);
+      statusLed.position.set(.115,.07,-.27);
+      head.add(statusLed);
 
-      // Keep every laser rigidly attached to its own corner lamp position.
-      rig.position.set(
-        c.x + c.sx*(slot-1)*.72,
-        6.72,
-        c.z + c.sz*.10
-      );
-
-      head.rotation.z=(slot-1)*.035;
-      rig.add(head);
-
-      // Aim into the room while preserving the physical mounting point.
       const baseYaw=Math.atan2(-c.sx,-c.sz);
-      rig.rotation.y=baseYaw + c.sx*(slot-1)*.055;
+      rig.rotation.y=baseYaw+c.sx*(slot-1)*.055;
       rig.rotation.x=-.27;
-
       group.add(rig);
 
-      // Beam starts at the actual front lens, not at a detached point.
-      const start=new THREE.Vector3(
-        rig.position.x,
-        6.30,
-        rig.position.z
+      // The laser's direction is calculated from the real corner toward the room.
+      const start=new THREE.Vector3(rig.position.x,6.30,rig.position.z);
+      const phase=ci*1.41+(slot+1)*1.7;
+
+      const lineGeo=new THREE.BufferGeometry();
+      lineGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+
+      const core=new THREE.Line(lineGeo,new THREE.LineBasicMaterial({
+        color:col.color,transparent:true,opacity:.95,
+        blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false
+      }));
+      core.name='EWS_LASER_CORE_'+c.name+'_'+col.name;
+      group.add(core);
+
+      // Volumetric glow cone: this is what makes the beam visible through haze,
+      // instead of looking like a flat neon line.
+      const cone=new THREE.Mesh(
+        new THREE.CylinderGeometry(.055,.012,1,10,1,true),
+        new THREE.MeshBasicMaterial({
+          color:col.color,transparent:true,opacity:.16,
+          blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,
+          side:THREE.DoubleSide
+        })
       );
+      cone.name='EWS_LASER_GLOW_'+c.name+'_'+col.name;
+      group.add(cone);
 
-      const geo=new THREE.BufferGeometry();
-      geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
-
-      const beamMat=new THREE.LineBasicMaterial({
-        color:col.color,
-        transparent:true,
-        opacity:.84,
-        blending:THREE.AdditiveBlending,
-        depthWrite:false,
-        depthTest:false
-      });
-
-      const beam=new THREE.Line(geo,beamMat);
-      beam.name='EWS_LASER_BEAM_'+c.name+'_'+col.name;
-      group.add(beam);
-
-      beams.push({
-        beam,start,ci,slot,
-        phase:ci*1.41+(slot+1)*1.7
-      });
+      beams.push({c,ci,slot,phase,start,core,cone,lens,bulb,halo});
     });
   });
 
@@ -1423,76 +1399,48 @@ function updateCornerLasers(t){
   const state=scene.userData.cornerLasers;
   if(!state)return;
 
-  const corners=[
-    {x:-15.05,z:-13.05,sx:1,sz:1},
-    {x:15.05,z:-13.05,sx:-1,sz:1},
-    {x:-15.05,z:13.05,sx:1,sz:-1},
-    {x:15.05,z:13.05,sx:-1,sz:-1}
-  ];
-
   state.beams.forEach(item=>{
-    const c=corners[item.ci];
-    const a=item.beam.geometry.attributes.position.array;
+    const c=item.c;
 
-    // Scanner movement only changes the far end. The near end stays locked
-    // to the real laser lens above its matching colored corner lamp.
-    const x=THREE.MathUtils.clamp(
-      Math.sin(t*.43+item.phase)*7.2 + item.slot*2.0,
-      -14,14
-    );
-    const z=THREE.MathUtils.clamp(
-      Math.cos(t*.31+item.phase*.83)*5.5 - 1.5,
-      -12.2,12.2
-    );
-    const y=THREE.MathUtils.clamp(
-      1.25 + item.slot*.55 + Math.sin(t*.57+item.phase)*.45,
-      .7,5.8
+    // Scanner head: slow, wide club movement.
+    const localX=Math.sin(t*.34+item.phase)*10.8 + (item.slot-1)*2.6;
+    const localZ=Math.cos(t*.27+item.phase*.79)*9.6;
+    const target=new THREE.Vector3(
+      THREE.MathUtils.clamp(localX,-14.2,14.2),
+      THREE.MathUtils.clamp(1.0+Math.sin(t*.41+item.phase)*2.2,.65,6.0),
+      THREE.MathUtils.clamp(localZ,-12.3,12.3)
     );
 
-    a[0]=item.start.x;
-    a[1]=item.start.y;
-    a[2]=item.start.z;
-    a[3]=x;
-    a[4]=y;
-    a[5]=z;
+    // Make every beam physically continuous from its lens to its final endpoint.
+    const dx=target.x-item.start.x;
+    const dy=target.y-item.start.y;
+    const dz=target.z-item.start.z;
+    const len=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    const dir=new THREE.Vector3(dx/len,dy/len,dz/len);
 
-    item.beam.material.opacity=.76+.18*(.5+.5*Math.sin(t*2.4+item.phase));
-    item.beam.material.linewidth=3;
-    item.beam.geometry.attributes.position.needsUpdate=true;
-  });
-}
+    const a=item.core.geometry.attributes.position.array;
+    a[0]=item.start.x; a[1]=item.start.y; a[2]=item.start.z;
+    a[3]=target.x;     a[4]=target.y;     a[5]=target.z;
+    item.core.geometry.attributes.position.needsUpdate=true;
 
-function updateCornerLasers(t){
-  const state=scene.userData.cornerLasers;
-  if(!state)return;
+    // Volumetric cone reaches exactly to the same point as the laser core.
+    item.cone.position.copy(item.start).addScaledVector(dir,len*.5);
+    item.cone.scale.set(1,len,1);
+    item.cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
 
-  const corners=[
-    {x:-15.15,z:-13.15,sx:1,sz:1},
-    {x:15.15,z:-13.15,sx:-1,sz:1},
-    {x:-15.15,z:13.15,sx:1,sz:-1},
-    {x:15.15,z:13.15,sx:-1,sz:-1}
-  ];
+    // Real laser-style rapid flicker/strobe: short flashes with slight variation.
+    const pulse=Math.sin(t*13.5+item.phase)+.32*Math.sin(t*29.0+item.phase*1.7);
+    const on=pulse>-.18;
+    const intensity=on ? (.78+.20*(.5+.5*Math.sin(t*8.0+item.phase))) : .025;
 
-  state.beams.forEach(item=>{
-    const c=corners[item.ci];
-    const a=item.beam.geometry.attributes.position.array;
+    item.core.material.opacity=intensity;
+    item.cone.material.opacity=on ? .11+.07*(.5+.5*Math.sin(t*9+item.phase)) : .008;
+    item.lens.material.opacity=on ? .95 : .12;
+    item.bulb.material.opacity=on ? .92 : .16;
+    item.halo.material.opacity=on ? .16 : .025;
 
-    // Slow, deliberate pan/tilt movement like real club laser scanners.
-    const x=Math.sin(t*.43+item.phase)*7.2 + item.slot*2.4;
-    const z=Math.cos(t*.31+item.phase*.83)*5.5 - 1.5;
-    const y=1.15 + (item.slot+1)*1.05 + Math.sin(t*.57+item.phase)*.55;
-
-    a[0]=item.start.x;
-    a[1]=item.start.y;
-    a[2]=item.start.z;
-    a[3]=THREE.MathUtils.clamp(x,-14,14);
-    a[4]=THREE.MathUtils.clamp(y,.7,5.8);
-    a[5]=THREE.MathUtils.clamp(z,-12.2,12.2);
-
-    // Strong, thick-looking luminous core.
-    item.beam.material.opacity=.72+.18*(.5+.5*Math.sin(t*2.4+item.phase));
-    item.beam.material.linewidth=3;
-    item.beam.geometry.attributes.position.needsUpdate=true;
+    // Tiny mechanical head motion makes each fixture feel independently driven.
+    item.core.material.linewidth=2;
   });
 }
 
