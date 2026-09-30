@@ -776,37 +776,73 @@ function createCornerSofas() {
 
 
 function createClubMirror(){
-  const mirrorGroup=new THREE.Group();
-  mirrorGroup.name='EWS_REAL_MIRROR';
-  mirrorGroup.position.set(15.35,3.0,0);
-  mirrorGroup.rotation.y=-Math.PI/2;
-
-  const mirrorMat=new THREE.MeshStandardMaterial({
-    color:0xffffff,
-    metalness:1,
-    roughness:.04,
-    envMapIntensity:1.8
+  // Full-height club mirrors on opposite side walls.
+  // They are decorative/reflective surfaces and never block player movement.
+  const frameMat=new THREE.MeshStandardMaterial({
+    color:0x101010,
+    metalness:.8,
+    roughness:.3
   });
-  const glass=new THREE.Mesh(new THREE.PlaneGeometry(8.8,5.2),mirrorMat);
-  glass.position.z=.02;
-  glass.userData.noCollision=true;
-  mirrorGroup.add(glass);
 
-  const frameMat=new THREE.MeshStandardMaterial({color:0x101010,metalness:.8,roughness:.3});
-  const frameParts=[
-    [9.15,.16,.12,0,2.68,0],
-    [9.15,.16,.12,0,-2.68,0],
-    [.16,5.2,.12,-4.5,0,0],
-    [.16,5.2,.12,4.5,0,0]
-  ];
-  frameParts.forEach(([w,h,d,x,y,z])=>{
-    const f=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),frameMat);
-    f.position.set(x,y,z);
-    f.userData.noCollision=true;
-    mirrorGroup.add(f);
-  });
-  scene.add(mirrorGroup);
-  scene.userData.clubMirror=mirrorGroup;
+  function addMirror(name,x,rotationY){
+    const mirrorGroup=new THREE.Group();
+    mirrorGroup.name=name;
+    mirrorGroup.position.set(x,3.0,0);
+    mirrorGroup.rotation.y=rotationY;
+
+    const mirrorMat=new THREE.MeshStandardMaterial({
+      color:0x8f969c,
+      metalness:1,
+      roughness:.025,
+      envMapIntensity:2.2
+    });
+
+    const glass=new THREE.Mesh(
+      new THREE.PlaneGeometry(8.8,5.2),
+      mirrorMat
+    );
+    glass.position.z=.02;
+    glass.userData.noCollision=true;
+    glass.userData.isMirror=true;
+    mirrorGroup.add(glass);
+
+    const frameParts=[
+      [9.15,.16,.12,0,2.68,0],
+      [9.15,.16,.12,0,-2.68,0],
+      [.16,5.2,.12,-4.5,0,0],
+      [.16,5.2,.12,4.5,0,0]
+    ];
+
+    frameParts.forEach(([w,h,d,fx,fy,fz])=>{
+      const f=new THREE.Mesh(
+        new THREE.BoxGeometry(w,h,d),
+        frameMat
+      );
+      f.position.set(fx,fy,fz);
+      f.userData.noCollision=true;
+      mirrorGroup.add(f);
+    });
+
+    scene.add(mirrorGroup);
+    return mirrorGroup;
+  }
+
+  // Existing mirror on the right wall.
+  const rightMirror=addMirror(
+    'EWS_REAL_MIRROR_RIGHT',
+    15.35,
+    -Math.PI/2
+  );
+
+  // NEW: matching mirror directly opposite on the left wall.
+  const leftMirror=addMirror(
+    'EWS_REAL_MIRROR_LEFT',
+    -15.35,
+    Math.PI/2
+  );
+
+  scene.userData.clubMirror=rightMirror;
+  scene.userData.clubMirrorOpposite=leftMirror;
 }
 
 function createWallLogo() {
