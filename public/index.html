@@ -1003,6 +1003,93 @@ $('chatInput').addEventListener('keydown', async e => {
   if(text && socket?.connected) socket.emit('chat:send',text);
 });
 
+function createEWSRig(model) {
+  // EWS-01 rig layer: X Bot remains the visual base, but movement is driven
+  // by our own named bone map and procedural club animation instead of
+  // Running.fbx/Mixamo animation clips.
+  const bones = {};
+  model.traverse(o => {
+    if(o.isBone) bones[o.name] = o;
+  });
+
+  const find = (...names) => {
+    for(const name of names){
+      if(bones[name]) return bones[name];
+    }
+    const wanted = names.map(n => String(n).toLowerCase());
+    const key = Object.keys(bones).find(k => wanted.includes(String(k).toLowerCase()));
+    return key ? bones[key] : null;
+  };
+
+  const rig = {
+    hips: find('mixamorigHips','Hips'),
+    spine: find('mixamorigSpine','Spine'),
+    spine1: find('mixamorigSpine1','Spine1','mixamorigSpine2','Spine2'),
+    spine2: find('mixamorigSpine2','Spine2'),
+    neck: find('mixamorigNeck','Neck'),
+    head: find('mixamorigHead','Head'),
+    lUpperArm: find('mixamorigLeftArm','LeftArm'),
+    lForearm: find('mixamorigLeftForeArm','LeftForeArm'),
+    lHand: find('mixamorigLeftHand','LeftHand'),
+    rUpperArm: find('mixamorigRightArm','RightArm'),
+    rForearm: find('mixamorigRightForeArm','RightForeArm'),
+    rHand: find('mixamorigRightHand','RightHand'),
+    lThigh: find('mixamorigLeftUpLeg','LeftUpLeg'),
+    lShin: find('mixamorigLeftLeg','LeftLeg'),
+    lFoot: find('mixamorigLeftFoot','LeftFoot'),
+    rThigh: find('mixamorigRightUpLeg','RightUpLeg'),
+    rShin: find('mixamorigRightLeg','RightLeg'),
+    rFoot: find('mixamorigRightFoot','RightFoot')
+  };
+
+  rig.rest = new Map();
+  Object.values(rig).forEach(b=>{
+    if(!b || b===rig.rest) return;
+    if(b.isBone) rig.rest.set(b,b.rotation.clone());
+  });
+
+  rig.apply = (time, moving, dt) => {
+    const wave = moving ? Math.sin(time*10.5) : Math.sin(time*1.8);
+    const step = moving ? wave : 0;
+    const sway = Math.sin(time*(moving?5.25:.9));
+
+    const setRot = (bone,x,y,z) => {
+      if(!bone) return;
+      const base=rig.rest.get(bone);
+      if(!base) return;
+      bone.rotation.set(base.x+x,base.y+y,base.z+z);
+    };
+
+    // Reset/drive only the bones EWS needs. This keeps the character's
+    // existing skinning intact while giving us our own animation language.
+    setRot(rig.spine, moving ? Math.sin(time*5.25)*.025 : Math.sin(time*1.5)*.012, 0, moving ? sway*.018 : sway*.010);
+    setRot(rig.spine1, moving ? -Math.abs(step)*.018 : Math.sin(time*1.7)*.010, 0, moving ? sway*.014 : 0);
+    setRot(rig.spine2, moving ? Math.sin(time*5.25)*.018 : 0, 0, 0);
+    setRot(rig.neck, 0, moving ? Math.sin(time*2.6)*.035 : Math.sin(time*.8)*.025, 0);
+    setRot(rig.head, moving ? Math.sin(time*2.6)*.018 : Math.sin(time*1.1)*.035, moving ? Math.sin(time*1.3)*.025 : 0, 0);
+
+    setRot(rig.lUpperArm, moving ? -step*.42 : Math.sin(time*1.2)*.025, 0, moving ? .06 : .02);
+    setRot(rig.rUpperArm, moving ? step*.42 : -Math.sin(time*1.2)*.025, 0, moving ? -.06 : -.02);
+    setRot(rig.lForearm, moving ? Math.max(0,step)*.10 : 0, 0, 0);
+    setRot(rig.rForearm, moving ? Math.max(0,-step)*.10 : 0, 0, 0);
+
+    setRot(rig.lThigh, moving ? step*.55 : Math.sin(time*1.2)*.018, 0, 0);
+    setRot(rig.rThigh, moving ? -step*.55 : -Math.sin(time*1.2)*.018, 0, 0);
+    setRot(rig.lShin, moving ? Math.max(0,-step)*.22 : 0, 0, 0);
+    setRot(rig.rShin, moving ? Math.max(0,step)*.22 : 0, 0, 0);
+    setRot(rig.lFoot, moving ? Math.max(0,step)*.12 : 0, 0, 0);
+    setRot(rig.rFoot, moving ? Math.max(0,-step)*.12 : 0, 0, 0);
+
+    // Small hand motion makes the walk feel less robotic.
+    setRot(rig.lHand, moving ? Math.sin(time*10.5)*.035 : Math.sin(time*1.5)*.018, 0, 0);
+    setRot(rig.rHand, moving ? -Math.sin(time*10.5)*.035 : -Math.sin(time*1.5)*.018, 0, 0);
+  };
+
+  rig.ready = !!(rig.hips && rig.spine && rig.head && rig.lThigh && rig.rThigh);
+  console.log('[EWS-01] custom rig ready:', rig.ready, Object.keys(rig).filter(k=>rig[k]?.isBone));
+  return rig;
+}
+
 function createAvatar(data) {
   const g=new THREE.Group();
   const seed=hash(data.id||data.username);
@@ -1060,6 +1147,8 @@ function createAvatar(data) {
     });
   }
 
+  // Running.fbx remains on disk as a rollback asset, but EWS-01 no longer
+  // depends on it for movement. The custom rig below drives the X Bot bones.
   if(!runningAnimationPromise){
     runningAnimationPromise=new Promise((resolve,reject)=>{
       if(!THREE.FBXLoader) return reject(new Error('FBXLoader unavailable'));
@@ -1212,9 +1301,10 @@ function createAvatar(data) {
     }
 
     // Store animation state on this avatar instance.
-    avatar._mixer=mixer;
-    avatar._runAction=runAction;
+    avatar._mixer=null;
+    avatar._runAction=null;
     avatar._visualModel=model;
+    avatar._ewsRig=createEWSRig(model);
     avatar._idleTime=0;
     avatar._idleBaseY=model.position.y;
     avatar._running=false;
@@ -1244,6 +1334,7 @@ function createAvatar(data) {
     data,
     _mixer:null,
     _runAction:null,
+    _ewsRig:null,
     _visualModel:null,
     _idleTime:0,
     _idleBaseY:0,
@@ -1287,32 +1378,18 @@ function updateRemotes(t,dt){
 
     const moving=!!r.data?.moving;
 
-    if(r._runAction && moving!==r._running){
-      r._running=moving;
-      if(moving){
-        r._runAction.reset();
-        r._runAction.setEffectiveWeight(1);
-        r._runAction.play();
-      }else{
-        r._runAction.stop();
-        r._runAction.setEffectiveWeight(0);
-        r._runAction.setEffectiveWeight(0);
-        r._idleTime=0;
-        if(r._visualModel){
-          r._visualModel.position.y=r._idleBaseY;
-          r._visualModel.rotation.z=0;
-        }
-      }
+    r._running=moving;
+
+    // EWS-01 custom rig animation: no Running.fbx playback.
+    if(r._ewsRig?.ready){
+      r._ewsRig.apply(t,moving,dt);
     }
 
-    // Idle animation: subtle breathing/weight shift while standing still.
-    // This works even when no separate Idle.fbx is available.
+    // Subtle whole-body idle motion keeps the character alive even while still.
     if(!moving && r._visualModel){
       r._idleTime += dt;
-      const t=r._idleTime;
-      r._visualModel.position.y=r._idleBaseY + Math.sin(t*1.8)*0.035;
-      r._visualModel.rotation.z=Math.sin(t*0.9)*0.018;
-      r._visualModel.rotation.x=Math.sin(t*1.25)*0.010;
+      const idle=r._idleTime;
+      r._visualModel.position.y=r._idleBaseY + Math.sin(idle*1.8)*0.018;
     }
 
     if(r._mixer) r._mixer.update(dt);
