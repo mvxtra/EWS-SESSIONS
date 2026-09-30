@@ -1882,6 +1882,23 @@ function twitchEmbedUrl(value) {
   return null;
 }
 
+function youtubeEmbedUrl(value) {
+  const raw=String(value||'').trim();
+  if(!raw) return null;
+  let url;
+  try { url=new URL(raw, location.origin); } catch { return null; }
+  const hostName=url.hostname.toLowerCase();
+  let id='';
+  if(hostName==='youtu.be') id=url.pathname.split('/').filter(Boolean)[0]||'';
+  if(hostName==='youtube.com' || hostName==='www.youtube.com' || hostName==='m.youtube.com') {
+    if(url.pathname==='/watch') id=url.searchParams.get('v')||'';
+    else if(url.pathname.startsWith('/shorts/')) id=url.pathname.split('/')[2]||'';
+    else if(url.pathname.startsWith('/embed/')) id=url.pathname.split('/')[2]||'';
+  }
+  if(!id) return null;
+  return 'https://www.youtube.com/embed/'+encodeURIComponent(id)+'?autoplay=1&mute=0&controls=1&playsinline=1';
+}
+
 function clearCssScreen() {
   if(screenCssObject){
     scene.remove(screenCssObject);
@@ -2023,6 +2040,15 @@ function applyScreen(state) {
   }
 
   const twitch=twitchEmbedUrl(state.src);
+  const youtube=youtubeEmbedUrl(state.src);
+
+  if(youtube){
+    scene.background=null;
+    if(screenMesh) screenMesh.visible=false;
+    createTwitchWallScreen(youtube);
+    if(host) $('screenStatus').textContent='YouTube · '+(state.title||'EWS SESSIONS');
+    return;
+  }
 
   // Twitch is rendered behind the transparent WebGL scene. Real 3D meshes
   // therefore cover the iframe naturally instead of appearing behind it.
