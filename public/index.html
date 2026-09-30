@@ -1065,8 +1065,8 @@ function setupClubLighting() {
     lamp.userData.light.intensity=0;
   });
 }
-function applyLocalLampColor(){
-  const color=localStorage.getItem('ews-lamp-color') || '#ffffff';
+function applyLampColor(color){
+  color=String(color || '#ffffff');
   const lamps=scene.userData.ceilingLamps || [];
   lamps.forEach(lamp=>{
     if(lamp.userData.glow) lamp.userData.glow.material.color.set(color);
@@ -1075,14 +1075,18 @@ function applyLocalLampColor(){
   const select=$('lampColor');
   if(select) select.value=color;
 }
-function initLocalLampColor(){
+function initLampColor(){
   const select=$('lampColor');
+  const wrap=$('lampColorWrap');
   if(!select) return;
-  select.value=localStorage.getItem('ews-lamp-color') || '#ffffff';
+  if(wrap) wrap.style.display='none';
   select.addEventListener('change',()=>{
-    localStorage.setItem('ews-lamp-color',select.value);
-    applyLocalLampColor();
+    if(host && socket?.connected) socket.emit('lamp-color:set',select.value);
   });
+}
+function setLampControlVisibility(){
+  const wrap=$('lampColorWrap');
+  if(wrap) wrap.style.display=host?'flex':'none';
 }
 function updateClubLighting(t) {
   const lamps=scene.userData.ceilingLamps || [];
@@ -1775,6 +1779,8 @@ function connect() {
   socket.on('club:ready',data=>{
     joined=true;
     host=!!data.host;
+    setLampControlVisibility();
+    if(data.lighting) applyLampColor(data.lighting.color);
     $('screenControl').style.display='none';
     $('screenPlay').style.display=host?'block':'none';
     if(data.screen) applyScreen(data.screen);
@@ -1785,7 +1791,10 @@ function connect() {
     remotes.clear();
     (data.players||[]).forEach(upsertRemote);
     if(data.screen) applyScreen(data.screen);
+    if(data.lighting) applyLampColor(data.lighting.color);
   });
+
+  socket.on('lamp-color:state',data=>applyLampColor(data?.color));
 
   socket.on('player:joined',upsertRemote);
   socket.on('player:state',upsertRemote);
