@@ -259,7 +259,9 @@ function normalizePlayer(p) {
     y: world.groundY,
     z: p.z,
     yaw: p.yaw,
-    moving: p.moving
+    moving: p.moving,
+    vy: p.vy || 0,
+    grounded: p.grounded !== false
   };
 }
 
@@ -304,7 +306,9 @@ io.on('connection', socket => {
       y: 0,
       z: spawn.z,
       yaw: 0,
-      moving: false
+      moving: false,
+      vy: 0,
+      grounded: true
     };
 
     players.set(socket.id, player);
@@ -343,7 +347,9 @@ io.on('connection', socket => {
     p.x = clamp(Number(data.x) || 0, world.minX, world.maxX);
     p.z = clamp(Number(data.z) || 0, world.minZ, world.maxZ);
     p.yaw = Number.isFinite(Number(data.yaw)) ? Number(data.yaw) : p.yaw;
-    p.moving = !!data.moving;;
+    p.moving = !!data.moving;
+    p.vy = Number.isFinite(Number(data.vy)) ? Number(data.vy) : 0;
+    p.grounded = data.grounded !== false;
 
     socket.to(ROOM).emit('player:state', normalizePlayer(p));
   });
