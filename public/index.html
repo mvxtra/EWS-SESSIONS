@@ -1130,7 +1130,7 @@ function createAvatar(data) {
   g.add(label);
 
   g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y = Number(data.yaw)||0;
+  g.rotation.y = (Number(data.yaw)||0) + Math.PI;
   scene.add(g);
 
   const avatar = {
