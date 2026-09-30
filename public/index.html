@@ -121,8 +121,6 @@ button{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.6.10/umd/index.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 (() => {
@@ -151,10 +149,7 @@ let yaw = 0, pitch = 0;
 let px = 0, py = 0, pz = 8;
 let vy = 0, grounded = true;
 const keys = {};
-const remotes = new Map();
-let avatarModelPromise = null;
-let runningAnimationPromise = null;
-let lastState = 0;
+const remotes = new Map();let lastState = 0;
 
 const authMsg = $('authMsg');
 
@@ -1003,336 +998,137 @@ $('chatInput').addEventListener('keydown', async e => {
   if(text && socket?.connected) socket.emit('chat:send',text);
 });
 
-function createEWSRig(model) {
-  // EWS-01 rig layer: X Bot remains the visual base, but movement is driven
-  // by our own named bone map and procedural club animation instead of
-  // Running.fbx/Mixamo animation clips.
-  const bones = {};
-  model.traverse(o => {
-    if(o.isBone) bones[o.name] = o;
-  });
-
-  const find = (...names) => {
-    for(const name of names){
-      if(bones[name]) return bones[name];
-    }
-    const wanted = names.map(n => String(n).toLowerCase());
-    const key = Object.keys(bones).find(k => wanted.includes(String(k).toLowerCase()));
-    return key ? bones[key] : null;
-  };
-
-  const rig = {
-    hips: find('mixamorigHips','Hips'),
-    spine: find('mixamorigSpine','Spine'),
-    spine1: find('mixamorigSpine1','Spine1','mixamorigSpine2','Spine2'),
-    spine2: find('mixamorigSpine2','Spine2'),
-    neck: find('mixamorigNeck','Neck'),
-    head: find('mixamorigHead','Head'),
-    lUpperArm: find('mixamorigLeftArm','LeftArm'),
-    lForearm: find('mixamorigLeftForeArm','LeftForeArm'),
-    lHand: find('mixamorigLeftHand','LeftHand'),
-    rUpperArm: find('mixamorigRightArm','RightArm'),
-    rForearm: find('mixamorigRightForeArm','RightForeArm'),
-    rHand: find('mixamorigRightHand','RightHand'),
-    lThigh: find('mixamorigLeftUpLeg','LeftUpLeg'),
-    lShin: find('mixamorigLeftLeg','LeftLeg'),
-    lFoot: find('mixamorigLeftFoot','LeftFoot'),
-    rThigh: find('mixamorigRightUpLeg','RightUpLeg'),
-    rShin: find('mixamorigRightLeg','RightLeg'),
-    rFoot: find('mixamorigRightFoot','RightFoot')
-  };
-
-  rig.rest = new Map();
-  Object.values(rig).forEach(b=>{
-    if(!b || b===rig.rest) return;
-    if(b.isBone) rig.rest.set(b,b.rotation.clone());
-  });
-
-  rig.apply = (time, moving, dt) => {
-    const wave = moving ? Math.sin(time*10.5) : Math.sin(time*1.8);
-    const step = moving ? wave : 0;
-    const sway = Math.sin(time*(moving?5.25:.9));
-
-    const setRot = (bone,x,y,z) => {
-      if(!bone) return;
-      const base=rig.rest.get(bone);
-      if(!base) return;
-      bone.rotation.set(base.x+x,base.y+y,base.z+z);
-    };
-
-    // Reset/drive only the bones EWS needs. This keeps the character's
-    // existing skinning intact while giving us our own animation language.
-    setRot(rig.spine, moving ? Math.sin(time*5.25)*.025 : Math.sin(time*1.5)*.012, 0, moving ? sway*.018 : sway*.010);
-    setRot(rig.spine1, moving ? -Math.abs(step)*.018 : Math.sin(time*1.7)*.010, 0, moving ? sway*.014 : 0);
-    setRot(rig.spine2, moving ? Math.sin(time*5.25)*.018 : 0, 0, 0);
-    setRot(rig.neck, 0, moving ? Math.sin(time*2.6)*.035 : Math.sin(time*.8)*.025, 0);
-    setRot(rig.head, moving ? Math.sin(time*2.6)*.018 : Math.sin(time*1.1)*.035, moving ? Math.sin(time*1.3)*.025 : 0, 0);
-
-    // Pull the arms down from X Bot's default T-pose.
-    // The shoulder rotation is relative to the imported bind pose so the
-    // character starts in a relaxed club stance instead of a T-pose.
-    const armDrop=1.22;
-    setRot(rig.lUpperArm, moving ? -step*.30 : 0, 0, armDrop);
-    setRot(rig.rUpperArm, moving ? step*.30 : 0, 0, -armDrop);
-    setRot(rig.lForearm, moving ? Math.max(0,step)*.16 : .08, 0, 0);
-    setRot(rig.rForearm, moving ? Math.max(0,-step)*.16 : .08, 0, 0);
-
-    setRot(rig.lThigh, moving ? step*.55 : Math.sin(time*1.2)*.018, 0, 0);
-    setRot(rig.rThigh, moving ? -step*.55 : -Math.sin(time*1.2)*.018, 0, 0);
-    setRot(rig.lShin, moving ? Math.max(0,-step)*.22 : 0, 0, 0);
-    setRot(rig.rShin, moving ? Math.max(0,step)*.22 : 0, 0, 0);
-    setRot(rig.lFoot, moving ? Math.max(0,step)*.12 : 0, 0, 0);
-    setRot(rig.rFoot, moving ? Math.max(0,-step)*.12 : 0, 0, 0);
-
-    // Small hand motion makes the walk feel less robotic.
-    setRot(rig.lHand, moving ? Math.sin(time*10.5)*.035 : Math.sin(time*1.5)*.018, 0, 0);
-    setRot(rig.rHand, moving ? -Math.sin(time*10.5)*.035 : -Math.sin(time*1.5)*.018, 0, 0);
-  };
-
-  rig.ready = !!(rig.hips && rig.spine && rig.head && rig.lThigh && rig.rThigh);
-  console.log('[EWS-01] custom rig ready:', rig.ready, Object.keys(rig).filter(k=>rig[k]?.isBone));
-  return rig;
-}
-
 function createAvatar(data) {
-  const g=new THREE.Group();
-  const seed=hash(data.id||data.username);
-  const bodyColor=[0x454545,0x666666,0x303030,0x777777][seed%4];
-  const bodyMat=new THREE.MeshStandardMaterial({color:bodyColor,roughness:.75});
-  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:.85});
-  const headMat=new THREE.MeshStandardMaterial({color:0xbcbcbc,roughness:.7});
+  const g = new THREE.Group();
+  g.name = 'EWS_CHARACTER_' + (data.username || 'guest');
 
-  // Safe fallback remains visible until the real Mixamo character loads.
-  const fallback=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.8,1.25,.45),bodyMat);
-  body.position.y=1.3;fallback.add(body);
+  // EWS character: original low-poly club character built directly in Three.js.
+  // No X Bot / Mixamo / FBX dependency. Each remote gets its own simple rig.
+  const rig = new THREE.Group();
+  rig.name = 'EWS01_RIG';
+  g.add(rig);
 
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.38,16,12),headMat);
-  head.position.y=2.22;fallback.add(head);
+  const skinMat = new THREE.MeshStandardMaterial({
+    color: 0xb8b8b8,
+    roughness: .78,
+    metalness: .05
+  });
+  const darkMat = new THREE.MeshStandardMaterial({
+    color: 0x111111,
+    roughness: .62,
+    metalness: .28
+  });
+  const blackMat = new THREE.MeshStandardMaterial({
+    color: 0x050505,
+    roughness: .72,
+    metalness: .18
+  });
+  const soleMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2a2a,
+    roughness: .7,
+    metalness: .12
+  });
 
-  const eyeMat=new THREE.MeshBasicMaterial({color:0x111111});
-  for(const sx of [-.12,.12]){
-    const eye=new THREE.Mesh(new THREE.BoxGeometry(.08,.07,.03),eyeMat);
-    eye.position.set(sx,2.25,.35);fallback.add(eye);
-  }
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(.78, 1.02, .46), darkMat);
+  torso.position.y = 1.86;
+  torso.castShadow = true;
+  rig.add(torso);
 
-  const l1=new THREE.Mesh(new THREE.BoxGeometry(.22,.9,.23),dark);
-  l1.position.set(-.2,.45,0);fallback.add(l1);
-  const l2=l1.clone();l2.position.x=.2;fallback.add(l2);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(.62, .38, .49), blackMat);
+  chest.position.set(0, 2.08, .015);
+  chest.castShadow = true;
+  rig.add(chest);
 
-  const a1=new THREE.Mesh(new THREE.BoxGeometry(.2,1,.22),bodyMat);
-  a1.position.set(-.54,1.3,0);fallback.add(a1);
-  const a2=a1.clone();a2.position.x=.54;fallback.add(a2);
-  g.add(fallback);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.13,.15,.18,8), skinMat);
+  neck.position.y = 2.43;
+  neck.castShadow = true;
+  rig.add(neck);
 
-  const avatarHolder=new THREE.Group();
-  g.add(avatarHolder);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.34, 12, 8), skinMat);
+  head.scale.set(1,.98,.94);
+  head.position.y = 2.78;
+  head.castShadow = true;
+  rig.add(head);
 
-  const label=makeTextSprite(data.username,1.65);
-  label.position.set(0,3.8,0);
-  label.scale.set(1.8,.45,1);
-  if(label.material){ label.material.depthTest=false; label.material.depthWrite=false; label.renderOrder=1000; }
+  // Minimal EWS face: two small dark eyes, no cartoon smile.
+  const eyeMat = new THREE.MeshBasicMaterial({color:0x050505});
+  [-.105,.105].forEach(x=>{
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),eyeMat);
+    eye.position.set(x,2.82,.315);
+    rig.add(eye);
+  });
+
+  const makeArm = side => {
+    const upper = new THREE.Group();
+    upper.position.set(side*.49,2.22,0);
+    rig.add(upper);
+
+    const upperMesh = new THREE.Mesh(new THREE.CylinderGeometry(.105,.12,.55,7), darkMat);
+    upperMesh.position.y = -.28;
+    upperMesh.castShadow = true;
+    upper.add(upperMesh);
+
+    const fore = new THREE.Group();
+    fore.position.y = -.55;
+    upper.add(fore);
+
+    const foreMesh = new THREE.Mesh(new THREE.CylinderGeometry(.09,.105,.52,7), blackMat);
+    foreMesh.position.y = -.26;
+    foreMesh.castShadow = true;
+    fore.add(foreMesh);
+
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(.115,8,6), skinMat);
+    hand.position.y = -.55;
+    hand.castShadow = true;
+    fore.add(hand);
+
+    return {upper,fore};
+  };
+
+  const makeLeg = side => {
+    const thigh = new THREE.Group();
+    thigh.position.set(side*.22,1.38,0);
+    rig.add(thigh);
+
+    const thighMesh = new THREE.Mesh(new THREE.CylinderGeometry(.145,.17,.65,7), darkMat);
+    thighMesh.position.y=-.32;
+    thighMesh.castShadow=true;
+    thigh.add(thighMesh);
+
+    const shin = new THREE.Group();
+    shin.position.y=-.65;
+    thigh.add(shin);
+
+    const shinMesh = new THREE.Mesh(new THREE.CylinderGeometry(.115,.14,.62,7), blackMat);
+    shinMesh.position.y=-.31;
+    shinMesh.castShadow=true;
+    shin.add(shinMesh);
+
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(.25,.13,.52), soleMat);
+    foot.position.set(0,-.64,.10);
+    foot.castShadow=true;
+    shin.add(foot);
+
+    return {thigh,shin,foot};
+  };
+
+  const leftArm = makeArm(-1);
+  const rightArm = makeArm(1);
+  const leftLeg = makeLeg(-1);
+  const rightLeg = makeLeg(1);
+
+  // Slightly different jacket tone per user, still within the black/white EWS palette.
+  const variant = hash(data.username || '') % 3;
+  if(variant===1) darkMat.color.setHex(0x171717);
+  if(variant===2) darkMat.color.setHex(0x222222);
+
+  const label = makeTextSprite(data.username,1.65);
+  label.position.y = 3.55;
   g.add(label);
 
   g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y=Number(data.yaw)||0;
+  g.rotation.y = Number(data.yaw)||0;
   scene.add(g);
-
-  if(!avatarModelPromise){
-    avatarModelPromise=new Promise((resolve,reject)=>{
-      if(!THREE.FBXLoader) return reject(new Error('FBXLoader unavailable'));
-      const loader=new THREE.FBXLoader();
-      loader.load(
-        '/models/avatars/X%20Bot.fbx',
-        model=>resolve(model),
-        undefined,
-        err=>reject(err)
-      );
-    });
-  }
-
-  // Running.fbx remains on disk as a rollback asset, but EWS-01 no longer
-  // depends on it for movement. The custom rig below drives the X Bot bones.
-  if(!runningAnimationPromise){
-    runningAnimationPromise=new Promise((resolve,reject)=>{
-      if(!THREE.FBXLoader) return reject(new Error('FBXLoader unavailable'));
-      const loader=new THREE.FBXLoader();
-      loader.load(
-        '/models/avatars/Running.fbx',
-        model=>{
-          const clip=model.animations && model.animations[0] ? model.animations[0] : null;
-          console.log('[EWS AVATAR] Running.fbx loaded:', !!clip, clip?.name || 'no clip');
-          resolve({source:model,clip});
-        },
-        undefined,
-        err=>reject(err)
-      );
-    });
-  }
-
-  Promise.all([avatarModelPromise,runningAnimationPromise]).then(([source,runData])=>{
-    const model=THREE.SkeletonUtils && THREE.SkeletonUtils.clone
-      ? THREE.SkeletonUtils.clone(source)
-      : source.clone(true);
-
-    model.traverse(o=>{
-      if(o.isMesh){
-        o.castShadow=true;
-        o.receiveShadow=true;
-      }
-    });
-
-    // Normalize the imported Mixamo character to a predictable club height.
-    const box=new THREE.Box3().setFromObject(model);
-    const size=box.getSize(new THREE.Vector3());
-    if(size.y>0){
-      const targetHeight=3.0;
-      model.scale.multiplyScalar(targetHeight/size.y);
-    }
-
-    const normalizedBox=new THREE.Box3().setFromObject(model);
-    model.position.y -= normalizedBox.min.y;
-
-    // Mixamo X Bot faces the opposite direction from the EWS movement yaw.
-    // Rotate the visual model only; keep the network/player yaw unchanged.
-    model.rotation.y = Math.PI;
-
-    avatarHolder.add(model);
-    fallback.visible=false;
-
-    // ANIMATION ENGINE
-    // X Bot and Running.fbx are both Mixamo rigs. First try the original
-    // Mixamo clip directly; this is the most reliable path when bone names match.
-    // Retargeting is only used as a fallback for differently named rigs.
-    let mixer=null;
-    let runAction=null;
-    const runSource=runData?.source || null;
-    const rawRunClip=runData?.clip || null;
-
-    const findSkinnedMesh = root => {
-      let found=null;
-      root?.traverse?.(o => {
-        if(!found && o.isSkinnedMesh) found=o;
-      });
-      return found;
-    };
-
-    const targetSkin=findSkinnedMesh(model);
-    const sourceSkin=findSkinnedMesh(runSource);
-
-    console.log('[EWS AVATAR] target skin:', targetSkin?.name || 'NONE');
-    console.log('[EWS AVATAR] source skin:', sourceSkin?.name || 'NONE');
-    console.log('[EWS AVATAR] running clip:', rawRunClip?.name || 'NONE',
-      'tracks:', rawRunClip?.tracks?.length || 0);
-
-    // Mixer is attached to the complete character hierarchy so tracks such as
-    // mixamorigHips.quaternion can resolve against the actual target bones.
-    if(rawRunClip){
-      try{
-        mixer=new THREE.AnimationMixer(model);
-        runAction=mixer.clipAction(rawRunClip);
-        runAction.setLoop(THREE.LoopRepeat,Infinity);
-        runAction.setEffectiveWeight(1);
-        runAction.enabled=true;
-        runAction.play();
-        runAction.paused=true;
-
-        // If the clip has no resolvable bindings, Three.js will still create
-        // the action but the bones will not change. Keep a retarget fallback.
-        const boundTracks = rawRunClip.tracks.filter(track=>{
-          try{
-            return !!mixer.clipAction(rawRunClip).getRoot();
-          }catch(_){ return false; }
-        }).length;
-
-        console.log('[EWS AVATAR] Direct Mixamo animation prepared:',{
-          tracks:rawRunClip.tracks.length,
-          boundTracks
-        });
-      }catch(err){
-        console.error('[EWS AVATAR] Direct animation FAILED:',err);
-        mixer=null;
-        runAction=null;
-      }
-    }
-
-    // Retarget fallback for rigs whose track names do not bind directly.
-    if(!runAction && targetSkin && sourceSkin && rawRunClip && THREE.SkeletonUtils?.retargetClip){
-      try{
-        const targetBones=targetSkin.skeleton?.bones || [];
-        const sourceBones=sourceSkin.skeleton?.bones || [];
-        const sourceNames=new Set(sourceBones.map(b=>b.name));
-        const sourceByShortName=new Map(
-          sourceBones.map(b=>[String(b.name).split(':').pop(),b.name])
-        );
-        const names={};
-        targetBones.forEach(b=>{
-          const exact=b.name;
-          const short=String(b.name).split(':').pop();
-          if(sourceNames.has(exact)) names[exact]=exact;
-          else if(sourceByShortName.has(short)) names[exact]=sourceByShortName.get(short);
-        });
-
-        const retargeted=THREE.SkeletonUtils.retargetClip(
-          targetSkin,
-          sourceSkin,
-          rawRunClip,
-          {hip:'mixamorigHips',names}
-        );
-
-        mixer=new THREE.AnimationMixer(targetSkin);
-        runAction=mixer.clipAction(retargeted);
-        runAction.setLoop(THREE.LoopRepeat,Infinity);
-        runAction.setEffectiveWeight(1);
-        runAction.enabled=true;
-        runAction.play();
-        runAction.paused=true;
-
-        console.log('[EWS AVATAR] RETARGET fallback prepared. mapped bones:',Object.keys(names).length);
-      }catch(err){
-        console.error('[EWS AVATAR] Retarget fallback FAILED:',err);
-        mixer=null;
-        runAction=null;
-      }
-    }
-
-    if(!runAction){
-      console.error('[EWS AVATAR] NO WORKING RUN ANIMATION. Check Running.fbx bone names.');
-    }else{
-      // Start paused; movement code controls play/pause.
-      runAction.paused=true;
-      runAction.setEffectiveWeight(1);
-    }
-
-    // Apply the relaxed EWS-01 pose immediately. This prevents the
-    // asynchronous model load from leaving a visible T-pose for a frame.
-    avatar._ewsRig=createEWSRig(model);
-    if(avatar._ewsRig?.ready) avatar._ewsRig.apply(0,false,0);
-
-    // Store animation state on this avatar instance.
-    avatar._mixer=null;
-    avatar._runAction=null;
-    avatar._visualModel=model;
-    avatar._idleTime=0;
-    avatar._idleBaseY=model.position.y;
-    avatar._running=false;
-    if(runAction && avatar.data?.moving){
-      avatar._running=true;
-      runAction.reset();
-      runAction.setEffectiveWeight(1);
-      runAction.play();
-    }
-
-    const finalBox=new THREE.Box3().setFromObject(model);
-    const h=finalBox.max.y-finalBox.min.y;
-    label.position.y=Math.max(3.45,h+.65);
-
-  }).catch(err=>{
-    console.error('[EWS AVATAR] X Bot.fbx failed to load:', err);
-    console.error('[EWS AVATAR] URL:', location.origin + '/models/avatars/X%20Bot.fbx');
-    console.error('[EWS AVATAR] Check Network tab for the FBX request and its HTTP status.');
-    // Keep the fallback avatar so the club remains usable.
-  });
 
   const avatar = {
     g,
@@ -1340,13 +1136,56 @@ function createAvatar(data) {
     targetZ:g.position.z,
     targetYaw:g.rotation.y,
     data,
-    _mixer:null,
-    _runAction:null,
-    _ewsRig:null,
-    _visualModel:null,
+    _ewsRig:{
+      ready:true,
+      apply(t,moving,dt){
+        const speed = moving ? 8.5 : 2.0;
+        const step = Math.sin(t*speed);
+        const step2 = Math.sin(t*speed*2);
+
+        if(moving){
+          // Natural walk cycle: legs, knees, feet and opposite arms.
+          leftLeg.thigh.rotation.x = step*.62;
+          rightLeg.thigh.rotation.x = -step*.62;
+          leftLeg.shin.rotation.x = Math.max(0,-step)*.48;
+          rightLeg.shin.rotation.x = Math.max(0,step)*.48;
+          leftLeg.foot.rotation.x = -Math.max(0,-step)*.18;
+          rightLeg.foot.rotation.x = -Math.max(0,step)*.18;
+
+          leftArm.upper.rotation.x = -step*.42;
+          rightArm.upper.rotation.x = step*.42;
+          leftArm.fore.rotation.x = .12 + Math.max(0,step)*.10;
+          rightArm.fore.rotation.x = .12 + Math.max(0,-step)*.10;
+
+          torso.rotation.z = step*.025;
+          torso.position.y = 1.86 + Math.abs(step)*.018;
+          rig.position.y = Math.abs(step2)*.025;
+          rig.rotation.z = step*.012;
+        } else {
+          // Relaxed idle pose — arms stay down, never a T-pose.
+          leftLeg.thigh.rotation.x *= .82;
+          rightLeg.thigh.rotation.x *= .82;
+          leftLeg.shin.rotation.x *= .82;
+          rightLeg.shin.rotation.x *= .82;
+          leftLeg.foot.rotation.x *= .82;
+          rightLeg.foot.rotation.x *= .82;
+
+          leftArm.upper.rotation.x = -0.035;
+          rightArm.upper.rotation.x = 0.035;
+          leftArm.fore.rotation.x = .12;
+          rightArm.fore.rotation.x = .12;
+
+          torso.rotation.z *= .82;
+          torso.position.y = 1.86;
+          rig.position.y = Math.sin(t*1.7)*.018;
+          rig.rotation.z = Math.sin(t*.9)*.008;
+        }
+      }
+    },
+    _visualModel:rig,
     _idleTime:0,
     _idleBaseY:0,
-    _running:false
+    _running:!!data.moving
   };
 
   return avatar;
