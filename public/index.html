@@ -570,6 +570,41 @@ function createDJSetup() {
     },undefined,()=>{});
   });
 
+  // Subwoofers on both sides of the DJ table, with large speakers mounted on top.
+  const subwooferLoader = new THREE.GLTFLoader();
+  const speakerLoader = new THREE.GLTFLoader();
+
+  [-1,1].forEach(side=>{
+    const subGroup=new THREE.Group();
+    subGroup.name=side<0?'SUBWOOFER_LEFT':'SUBWOOFER_RIGHT';
+    subGroup.position.set(side*3.05,0,-0.02);
+    table.add(subGroup);
+
+    subwooferLoader.load('/models/%D1%81%D0%B0%D0%B1%D1%83%D1%84%D0%B5%D1%80.glb',gltf=>{
+      const model=gltf.scene;
+      model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      const box=new THREE.Box3().setFromObject(model);
+      const size=box.getSize(new THREE.Vector3());
+      if(size.x>0) model.scale.multiplyScalar(1.45/size.x);
+      const fitted=new THREE.Box3().setFromObject(model);
+      model.position.y-=fitted.min.y;
+      model.rotation.y=Math.PI;
+      subGroup.add(model);
+    },undefined,()=>{});
+
+    speakerLoader.load('/models/speakers%20big.glb',gltf=>{
+      const model=gltf.scene;
+      model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      const box=new THREE.Box3().setFromObject(model);
+      const size=box.getSize(new THREE.Vector3());
+      if(size.x>0) model.scale.multiplyScalar(1.75/size.x);
+      const fitted=new THREE.Box3().setFromObject(model);
+      model.position.y=1.55-fitted.min.y;
+      model.rotation.y=Math.PI;
+      subGroup.add(model);
+    },undefined,()=>{});
+  });
+
   // Keep the setup visually centred and facing the DJ, without moving the screen.
   table.rotation.y=0;
 }
