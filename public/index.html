@@ -224,7 +224,9 @@ $('password').addEventListener('keydown', e => {
 
 function buildWorld() {
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x030303);
+  // Transparent WebGL canvas: the Twitch CSS3D screen remains visible behind
+  // the 3D club, while real meshes can occlude it by normal depth.
+  scene.background = null;
   scene.fog = new THREE.FogExp2(0x030303, 0.022);
 
   camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, .05, 100);
@@ -259,6 +261,7 @@ function buildWorld() {
   renderer.domElement.style.inset = '0';
   // WebGL is ABOVE the CSS3D screen. This gives normal 3D occlusion:
   // every real mesh rendered by WebGL can physically cover the screen.
+  // WebGL stays above the CSS3D iframe so club geometry occludes the screen.
   renderer.domElement.style.zIndex = '2';
 
   $('game').appendChild(cssRenderer.domElement);
@@ -802,7 +805,6 @@ function animate() {
   updateRemotes(now/1000,dt);
   updateClubLighting(now/1000);
   renderer.render(scene,camera);
-  refreshScreenOcclusion();
   if(cssRenderer) cssRenderer.render(scene,camera);
 }
 
@@ -1380,7 +1382,7 @@ function applyScreen(state) {
   $('screenOverlay').style.display='none';
 
   clearCssScreen();
-  scene.background=new THREE.Color(0x030303);
+  scene.background=null;
   if(screenMesh) screenMesh.visible=true;
 
   if(hls){ hls.destroy(); hls=null; }
@@ -1399,7 +1401,7 @@ function applyScreen(state) {
   }
 
   if(!state?.active || !state.src){
-    scene.background=new THREE.Color(0x030303);
+    scene.background=null;
     if(screenMesh) screenMesh.visible=true;
     if(host) $('screenStatus').textContent='SCREEN OFF';
     return;
@@ -1410,7 +1412,7 @@ function applyScreen(state) {
   // Twitch is rendered behind the transparent WebGL scene. Real 3D meshes
   // therefore cover the iframe naturally instead of appearing behind it.
   if(twitch){
-    scene.background=new THREE.Color(0x030303);
+    scene.background=null;
     if(screenMesh) screenMesh.visible=false;
     createTwitchWallScreen(twitch);
     // Browsers block audible autoplay in cross-origin Twitch iframes.
