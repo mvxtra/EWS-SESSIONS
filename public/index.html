@@ -937,7 +937,7 @@ function createDJSetup() {
 
           // Turn every column on both subwoofers 180 degrees.
           // There are 3 columns per subwoofer = 6 total.
-          column.rotation.y = Math.PI;
+          column.rotation.y = 0;
           subGroup.add(column);
         }, undefined, err => console.warn('[EWS COLUMN] load failed', err));
       });
