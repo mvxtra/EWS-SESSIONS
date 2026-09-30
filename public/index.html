@@ -608,9 +608,14 @@ function createDJSetup() {
           const gs = gb.getSize(new THREE.Vector3());
           if(gs.y > 0) gopnik.scale.multiplyScalar(1.9/gs.y);
 
-          gopnik.position.x = -1.25;
-          gopnik.position.y = 0;
-          gopnik.position.z = 0.15;
+          // Move him completely outside the subwoofer, toward the back wall.
+          // x=0 keeps him beside the cabinet; z=-2.8 moves him closer to the wall.
+          gopnik.position.x = 0;
+          gopnik.position.z = -2.8;
+
+          // Re-align the model's actual feet to the club floor.
+          const floorBox = new THREE.Box3().setFromObject(gopnik);
+          gopnik.position.y -= floorBox.min.y;
 
           // Rotate exactly 180 degrees.
           gopnik.rotation.y = Math.PI;
