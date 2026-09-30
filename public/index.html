@@ -399,6 +399,26 @@ function buildWorld() {
   roof.receiveShadow = true;
   scene.add(roof);
 
+  // Deep shadow pockets in the four corners. These are local dark zones,
+  // so the dancefloor and DJ area stay readable while the room edges feel deeper.
+  const cornerShadowMat = new THREE.MeshBasicMaterial({
+    color:0x000000,
+    transparent:true,
+    opacity:.72,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+  [
+    [-14.65,1.9,-13.55,.7,3.8,.8],
+    [14.65,1.9,-13.55,.7,3.8,.8],
+    [-14.65,1.9,13.55,.7,3.8,.8],
+    [14.65,1.9,13.55,.7,3.8,.8]
+  ].forEach(([x,y,z,w,h,d])=>{
+    const s=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),cornerShadowMat.clone());
+    s.position.set(x,y,z);
+    scene.add(s);
+  });
+
   // Back wall and side walls
   const wallMat = new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:.78,metalness:.3});
   addBox(32,7,.3,0,3.5,-14,wallMat);
