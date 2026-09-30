@@ -806,6 +806,55 @@ function buildWorld() {
   addBox(.3,7,28,-16,3.5,0,wallMat);
   addBox(.3,7,28,16,3.5,0,wallMat);
 
+  // Neon baseboards: three continuous strips running along the club walls.
+  // Their colour follows the main lamp colour (white / red) via setLampColor().
+  const baseboards = [];
+  const baseGlowMat = new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.22,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+  const baseCoreMat = new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.96,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+
+  function addNeonBaseboard(w,d,x,y,z,rotY){
+    const g=new THREE.Group();
+    g.name='EWS_NEON_BASEBOARD';
+    g.position.set(x,y,z);
+    g.rotation.y=rotY||0;
+
+    const glow=new THREE.Mesh(
+      new THREE.BoxGeometry(w,.18,d),
+      baseGlowMat.clone()
+    );
+    glow.position.y=.11;
+    glow.userData.noCollision=true;
+
+    const core=new THREE.Mesh(
+      new THREE.BoxGeometry(w,.035,d*.72),
+      baseCoreMat.clone()
+    );
+    core.position.y=.11;
+    core.userData.noCollision=true;
+
+    g.add(glow,core);
+    scene.add(g);
+    baseboards.push(g);
+  }
+
+  addNeonBaseboard(31.6,.20,0,.01,-13.82,0);
+  addNeonBaseboard(27.6,.20,-15.82,.01,0,Math.PI/2);
+  addNeonBaseboard(27.6,.20,15.82,.01,0,Math.PI/2);
+
+  scene.userData.neonBaseboards=baseboards;
+
   // Stage removed. The wall-mounted screen stays in place, and the DJ table + CDJ remain.
   // Central DJ table and one Pioneer CDJ-3000.
   createDJSetup();
@@ -1910,6 +1959,14 @@ function setLampColor(color){
   lamps.forEach(lamp=>{
     if(lamp.userData.glow) lamp.userData.glow.material.color.set(red?0xff1744:0xffffff);
     if(lamp.userData.light) lamp.userData.light.color.set(red?0xff1744:0xffffff);
+  });
+
+  const baseboards=scene.userData.neonBaseboards||[];
+  baseboards.forEach(base=>{
+    base.traverse(node=>{
+      if(!node.isMesh || !node.material?.color) return;
+      node.material.color.set(red?0xff1744:0xffffff);
+    });
   });
 }
 function initLampMenu(){
