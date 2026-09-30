@@ -33,6 +33,8 @@ button{cursor:pointer}
 .user:last-child{border-bottom:0}
 .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;margin-right:7px}
 #chat{position:absolute;left:14px;bottom:14px;width:min(390px,calc(100vw - 28px))}
+#chatLangRow{display:flex;justify-content:flex-end;margin-bottom:5px}
+#chatLanguage{padding:5px 8px;background:rgba(0,0,0,.82);border:1px solid #333;color:#fff;font-size:10px;letter-spacing:.08em;outline:none}
 #messages{height:180px;overflow:auto;padding:10px;margin-bottom:7px;background:linear-gradient(transparent,rgba(0,0,0,.7));mask-image:linear-gradient(transparent 0,#000 18%)}
 .msg{font-size:12px;line-height:1.45;margin:4px 0;text-shadow:0 2px 5px #000}
 .msg b{font-weight:800}
@@ -96,6 +98,9 @@ button{cursor:pointer}
       </div>
 
       <div id="chat">
+        <div id="chatLangRow">
+          <select id="chatLanguage" aria-label="Язык перевода"></select>
+        </div>
         <div id="messages"></div>
         <input id="chatInput" maxlength="240" autocomplete="off" placeholder="Нажми ENTER и напиши сообщение...">
       </div>
@@ -129,6 +134,18 @@ button{cursor:pointer}
 
 const $ = id => document.getElementById(id);
 const HOST = 'mvxtra';
+
+function initChatLanguage(){
+  const select=$('chatLanguage');
+  if(!select) return;
+  select.innerHTML=LANGS.map(code=>'<option value="'+code+'">'+(LANG_NAMES[code]||code.toUpperCase())+'</option>').join('');
+  select.value=language;
+  select.addEventListener('change',()=>{
+    language=select.value;
+    localStorage.setItem('ews-language',language);
+    if(socket?.connected) socket.emit('language:set',language);
+  });
+}
 const LANGS = ['ru','en','es','de','fr','zh','ja','ko','ar','hi','pt','it','tr','uk','nl','pl'];
 const LANG_NAMES = {ru:'RU',en:'EN',es:'ES',de:'DE',fr:'FR',zh:'ZH',ja:'JA',ko:'KO',ar:'AR',hi:'HI',pt:'PT',it:'IT',tr:'TR',uk:'UK',nl:'NL',pl:'PL'};
 
@@ -1720,6 +1737,8 @@ function updateRemotes(t,dt){
   });
 }
 
+initChatLanguage();
+
 function connect() {
   socket=io({
     transports:['websocket','polling'],
@@ -1758,7 +1777,8 @@ function connect() {
   socket.on('language:state',lang=>{
     language=lang;
     localStorage.setItem('ews-language',lang);
-    $('langLabel').textContent=LANG_NAMES[lang]||lang.toUpperCase();
+    const chatLanguage=$('chatLanguage');
+    if(chatLanguage) chatLanguage.value=lang;
   });
 
   socket.on('chat:message',msg=>renderMessage(msg));
@@ -2076,7 +2096,8 @@ function startClub() {
   buildWorld();
   connect();
   animate();
-  $('langLabel').textContent=LANG_NAMES[language]||language.toUpperCase();
+  const chatLanguage=$('chatLanguage');
+  if(chatLanguage) chatLanguage.value=language;
   $('chatInput').placeholder='ENTER → чат';
   $('screenSrc').value='';
 }
