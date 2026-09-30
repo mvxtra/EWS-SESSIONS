@@ -197,17 +197,29 @@ const remotes = new Map();let lastState = 0;
 const authMsg = $('authMsg');
 
 let gopnikInfoVisible=false;
-function updateGopnikInteraction(){
+function isNearGopnik(){
   const g=scene.userData.gopnik;
-  const win=$('gopnikWindow');
-  if(!g||!player||!win||!joined) return;
+  if(!g||!player||!joined) return false;
   const gp=new THREE.Vector3();
   g.getWorldPosition(gp);
   const pp=new THREE.Vector3(px,py,pz);
-  const near=pp.distanceTo(gp)<3.0;
+  return pp.distanceTo(gp)<3.0;
+}
+function openGopnikInfo(){
+  if(!isNearGopnik()) return false;
+  gopnikInfoVisible=true;
+  $('gopnikWindow').style.display='block';
+  return true;
+}
+function updateGopnikInteraction(){
+  const near=isNearGopnik();
+  if(!joined) return;
   if(near && !gopnikInfoVisible){
-    gopnikInfoVisible=true;
-    win.style.display='block';
+    $('sitHint').style.display='block';
+    $('sitHint').textContent='E — ПОГОВОРИТЬ';
+  }
+  if(!near && !gopnikInfoVisible && $('sitHint').textContent==='E — ПОГОВОРИТЬ'){
+    $('sitHint').style.display='none';
   }
 }
 
@@ -1537,6 +1549,10 @@ document.addEventListener('keydown', e => {
   if(e.target?.tagName==='INPUT' || e.target?.tagName==='SELECT') return;
 
   if(e.code==='KeyE' && document.pointerLockElement === $('scene')){
+    if(openGopnikInfo()){
+      e.preventDefault();
+      return;
+    }
     toggleSeat();
     e.preventDefault();
     return;
