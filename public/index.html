@@ -468,7 +468,8 @@ function createPhysicalScreen() {
     new THREE.PlaneGeometry(11.6, 5.45),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  backing.position.set(0, 3.175, -13.48);
+  backing.position.set(0, 3.175, 13.48);
+  backing.rotation.y = Math.PI;
   scene.add(backing);
   screenMesh = backing;
 }
@@ -1456,7 +1457,8 @@ function createTwitchWallScreen(src) {
 
   screenCssFrame=frame;
   screenCssObject=new THREE.CSS3DObject(frame);
-  screenCssObject.position.set(0,3.175,-13.42);
+  screenCssObject.position.set(0,3.175,13.42);
+  screenCssObject.rotation.y = Math.PI;
   screenCssObject.scale.set(0.01,0.01,0.01);
   screenCssObject.rotation.set(0,0,0);
   scene.add(screenCssObject);
