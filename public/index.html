@@ -1231,8 +1231,31 @@ function nearestSofaSeat(){
 
 function toggleSeat(){
   if(seated){
+    const idx=seatedSofa;
+    const seat=(idx>=0 && sofaSeats[idx]) ? sofaSeats[idx] : {x:px,z:pz,yaw};
+    // Stand up on the dancefloor side of the sofa so the player is not
+    // left inside the sofa/collision box and cannot immediately sit again.
+    const standDistances=[1.55,1.15,0.8];
+    let placed=false;
+    for(const dist of standDistances){
+      const sx=seat.x + Math.sin(seat.yaw)*dist;
+      const sz=seat.z + Math.cos(seat.yaw)*dist;
+      if(canPlayerOccupy(sx,sz)){
+        px=sx;
+        pz=sz;
+        placed=true;
+        break;
+      }
+    }
+    if(!placed){
+      px=seat.x;
+      pz=seat.z;
+    }
     seated=false;
     seatedSofa=-1;
+    crouching=false;
+    py=0;
+    vy=0;
     grounded=true;
     $('sitHint').style.display='none';
     return;
