@@ -114,6 +114,7 @@ button{cursor:pointer}
     </div>
   </div>
   <div id="toast"></div>
+  <div id="sitHint" style="display:none;position:absolute;left:50%;bottom:88px;transform:translateX(-50%);padding:8px 12px;background:rgba(0,0,0,.72);border:1px solid #444;font-size:11px;letter-spacing:.08em;z-index:50;pointer-events:none">E — СЕСТЬ</div>
 </div>
 
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
@@ -150,6 +151,14 @@ let px = 0, py = 0, pz = 8;
 let vy = 0, grounded = true;
 const keys = {};
 let crouching = false;
+let seated = false;
+let seatedSofa = -1;
+const sofaSeats = [
+  {x:-13.25,z:-11.25,yaw:Math.PI/4},
+  {x: 13.25,z:-11.25,yaw:-Math.PI/4},
+  {x:-13.25,z: 11.05,yaw:3*Math.PI/4},
+  {x: 13.25,z: 11.05,yaw:-3*Math.PI/4}
+];
 const remotes = new Map();let lastState = 0;
 
 const authMsg = $('authMsg');
@@ -235,7 +244,7 @@ function buildWorld() {
   scene.add(player);
   player.add(camera);
   // First-person camera: no visible local avatar.
-  camera.position.set(0, crouching ? 1.35 : 2.05, 0);
+  camera.position.set(0, seated ? 1.25 : (crouching ? 1.35 : 2.05), 0);
   camera.rotation.set(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, alpha:true, powerPreference:'high-performance'});
@@ -1211,6 +1220,39 @@ function canPlayerOccupy(x,z){
   return true;
 }
 
+function nearestSofaSeat(){
+  let best=-1, bestD=Infinity;
+  sofaSeats.forEach((seat,i)=>{
+    const d=Math.hypot(px-seat.x,pz-seat.z);
+    if(d<bestD){bestD=d;best=i;}
+  });
+  return bestD<=2.15 ? best : -1;
+}
+
+function toggleSeat(){
+  if(seated){
+    seated=false;
+    seatedSofa=-1;
+    grounded=true;
+    $('sitHint').style.display='none';
+    return;
+  }
+  const idx=nearestSofaSeat();
+  if(idx<0) return;
+  const seat=sofaSeats[idx];
+  seated=true;
+  seatedSofa=idx;
+  crouching=false;
+  px=seat.x;
+  pz=seat.z;
+  yaw=seat.yaw;
+  py=0;
+  vy=0;
+  grounded=true;
+  $('sitHint').style.display='block';
+  $('sitHint').textContent='E — ВСТАТЬ';
+}
+
 function tryMovePlayer(nx,nz){
   // Resolve X and Z independently so the player can slide along walls/objects
   // instead of getting completely stuck on a corner.
@@ -1225,7 +1267,7 @@ function animate() {
   const forward=(keys.KeyW?1:0)-(keys.KeyS?1:0);
   const side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
 
-  if(document.pointerLockElement === $('scene') && (forward||side)) {
+  if(!seated && document.pointerLockElement === $('scene') && (forward||side)) {
     const len=Math.hypot(forward,side)||1;
     const f=forward/len, s=side/len;
     const fx=-Math.sin(yaw), fz=-Math.cos(yaw);
@@ -1256,10 +1298,15 @@ function animate() {
   }
 
   const now=performance.now();
+  const nearbySeat=nearestSofaSeat();
+  if(!seated) {
+    $('sitHint').style.display=nearbySeat>=0 ? 'block' : 'none';
+    if(nearbySeat>=0) $('sitHint').textContent='E — СЕСТЬ';
+  }
   if(socket?.connected && now-lastState>40){
     lastState=now;
     socket.emit('player:state',{
-      x:px,z:pz,yaw,moving:Boolean(forward||side),vy,grounded
+      x:px,z:pz,yaw,moving:Boolean(!seated && (forward||side)),vy,grounded,seated
     });
   }
 
@@ -1328,7 +1375,13 @@ function animate() {
 document.addEventListener('keydown', e => {
   if(e.target?.tagName==='INPUT' || e.target?.tagName==='SELECT') return;
 
-  if(e.code==='Space' && grounded){
+  if(e.code==='KeyE' && document.pointerLockElement === $('scene')){
+    toggleSeat();
+    e.preventDefault();
+    return;
+  }
+
+  if(e.code==='Space' && grounded && !seated){
     vy=7;
     grounded=false;
     e.preventDefault();
@@ -1504,7 +1557,21 @@ function createAvatar(data) {
     data,
     _ewsRig:{
       ready:true,
-      apply(t,moving,dt){
+      apply(t,moving,dt,seatedNow=false){
+        if(seatedNow){
+          leftLeg.thigh.rotation.x = -1.15;
+          rightLeg.thigh.rotation.x = -1.15;
+          leftLeg.shin.rotation.x = 1.25;
+          rightLeg.shin.rotation.x = 1.25;
+          leftArm.upper.rotation.x = -0.35;
+          rightArm.upper.rotation.x = 0.35;
+          leftArm.fore.rotation.x = .65;
+          rightArm.fore.rotation.x = .65;
+          torso.rotation.x = -0.12;
+          rig.position.y = -.62;
+          return;
+        }
+        rig.position.y = 0;
         const speed = moving ? 8.5 : 2.0;
         const step = Math.sin(t*speed);
         const step2 = Math.sin(t*speed*2);
@@ -1573,6 +1640,7 @@ function upsertRemote(data){
   r.targetY=Number(data.y)||0;
   r.targetVy=Number(data.vy)||0;
   r.targetGrounded=data.grounded!==false;
+  r.targetSeated=!!data.seated;
   r.targetYaw=(Number(data.yaw)||0) + Math.PI;
 }
 
@@ -1595,12 +1663,12 @@ function updateRemotes(t,dt){
     r.g.rotation.y += d*.22;
 
     const moving=!!r.data?.moving;
-
+    const remoteSeated=!!r.targetSeated;
     r._running=moving;
 
     // EWS-01 custom rig animation: no Running.fbx playback.
     if(r._ewsRig?.ready){
-      r._ewsRig.apply(t,moving,dt);
+      r._ewsRig.apply(t,moving,dt,remoteSeated);
     }
 
     // Subtle whole-body idle motion keeps the character alive even while still.
