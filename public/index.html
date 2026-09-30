@@ -375,21 +375,13 @@ function buildWorld() {
   addBox(.3,7,28,-16,3.5,0,wallMat);
   addBox(.3,7,28,16,3.5,0,wallMat);
 
-  // Stage
-  addBox(18,.7,4,0,.35,-11.5,new THREE.MeshStandardMaterial({color:0x111111,roughness:.55,metalness:.35}));
-  addBox(17,5,.18,0,3.0,-13.85,new THREE.MeshStandardMaterial({color:0x151515,roughness:.5,metalness:.5}));
-
-
-  // Central DJ table and one Pioneer CDJ-3000. The stage and screen stay untouched.
+  // Stage removed. The wall-mounted screen stays in place, and the DJ table + CDJ remain.
+  // Central DJ table and one Pioneer CDJ-3000.
   createDJSetup();
 
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
 
-  // Speaker stacks / imported model slots.
-  // Fallbacks are kept only if the imported large speaker model cannot load.
-  addSpeaker(-7.15,-10.9);
-  addSpeaker(7.15,-10.9);
 // Ceiling rig
   const rigMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:.4,metalness:.8});
   addBox(17,.14,.14,0,6.4,-10.5,rigMat);
