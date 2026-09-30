@@ -364,6 +364,12 @@ io.on('connection', socket => {
 
 
 
+  socket.on('blackout:start', () => {
+    const p = players.get(socket.id);
+    if (!p || p.username.toLowerCase() !== HOST_NAME) return;
+    io.to(ROOM).emit('blackout:start');
+  });
+
   socket.on('lamp-color:set', value => {
     const p=players.get(socket.id);
     if(!p || p.username.toLowerCase()!==HOST_NAME) return;
