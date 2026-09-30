@@ -845,7 +845,7 @@ function createDJSetup() {
 
       // Three real column speakers on top of each subwoofer.
       const columnLoader = new THREE.GLTFLoader();
-      [ -0.9, 0, 0.9 ].forEach((offsetX, speakerIndex) => {
+      [ -1.2, 0, 1.2 ].forEach((offsetX, speakerIndex) => {
         columnLoader.load('/models/колонки.glb', columnGltf => {
           const column = columnGltf.scene;
           column.name = (side < 0 ? 'EWS_COLUMN_SPEAKER_LEFT_' : 'EWS_COLUMN_SPEAKER_RIGHT_') + (speakerIndex + 1);
@@ -882,6 +882,51 @@ function createDJSetup() {
           column.rotation.y = Math.PI;
           subGroup.add(column);
         }, undefined, err => console.warn('[EWS COLUMN] load failed', err));
+      });
+
+      // A couple of beer cans on each subwoofer, plus a few randomly placed Half-Life 2 beers.
+      const beerCanLoader = new THREE.GLTFLoader();
+      [-0.72, 0.72].forEach((offsetX, beerIndex) => {
+        beerCanLoader.load('/models/beer_can.glb', beerGltf => {
+          const beer = beerGltf.scene;
+          beer.name = (side < 0 ? 'BEER_CAN_LEFT_' : 'BEER_CAN_RIGHT_') + (beerIndex + 1);
+          beer.traverse(o => {
+            if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; }
+          });
+          const bb = new THREE.Box3().setFromObject(beer);
+          const bs = bb.getSize(new THREE.Vector3());
+          if(bs.y > 0) beer.scale.multiplyScalar(0.48 / bs.y);
+          const fittedBeer = new THREE.Box3().setFromObject(beer);
+          const subTop = new THREE.Box3().setFromObject(model);
+          beer.position.x = offsetX;
+          beer.position.y += subTop.max.y - fittedBeer.min.y + 0.012;
+          beer.position.z = (Math.random() - 0.5) * 0.28;
+          beer.rotation.y = Math.random() * Math.PI * 2;
+          subGroup.add(beer);
+        }, undefined, err => console.warn('[EWS BEER CAN] load failed', err));
+      });
+
+      const halfLifeBeerLoader = new THREE.GLTFLoader();
+      const halfLifeOffsets = [-0.85, 0.05, 0.78];
+      halfLifeOffsets.forEach((offsetX, beerIndex) => {
+        halfLifeBeerLoader.load('/models/half-_life_2_beer.glb', beerGltf => {
+          const beer = beerGltf.scene;
+          beer.name = (side < 0 ? 'HL2_BEER_LEFT_' : 'HL2_BEER_RIGHT_') + (beerIndex + 1);
+          beer.traverse(o => {
+            if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; }
+          });
+          const bb = new THREE.Box3().setFromObject(beer);
+          const bs = bb.getSize(new THREE.Vector3());
+          if(bs.y > 0) beer.scale.multiplyScalar(0.62 / bs.y);
+          const fittedBeer = new THREE.Box3().setFromObject(beer);
+          const subTop = new THREE.Box3().setFromObject(model);
+          beer.position.x = offsetX + (Math.random() - 0.5) * 0.22;
+          beer.position.y += subTop.max.y - fittedBeer.min.y + 0.014;
+          beer.position.z = (Math.random() - 0.5) * 0.38;
+          beer.rotation.y = Math.random() * Math.PI * 2;
+          beer.rotation.z = (Math.random() - 0.5) * 0.12;
+          subGroup.add(beer);
+        }, undefined, err => console.warn('[EWS HL2 BEER] load failed', err));
       });
 
       // Gopnik stands BESIDE the LEFT subwoofer, never inside it.
