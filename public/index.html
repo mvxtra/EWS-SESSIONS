@@ -167,7 +167,7 @@ let player = null;
 let clock = new THREE.Clock();
 let yaw = 0, pitch = 0;
 let px = 0, py = 0, pz = 8;
-let vy = 0, grounded = true;
+let vy = 0, grounded = true, jumpsUsed = 0;
 const keys = {};
 let crouching = false;
 let seated = false;
@@ -1352,7 +1352,7 @@ function animate() {
   if(document.pointerLockElement === $('scene')) {
     vy -= 18*dt;
     py += vy*dt;
-    if(py<=0){py=0;vy=0;grounded=true}
+    if(py<=0){py=0;vy=0;grounded=true;jumpsUsed=0}
   }
 
   if(player){
@@ -1452,10 +1452,17 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  if(e.code==='Space' && grounded && !seated){
-    vy=7;
-    grounded=false;
-    e.preventDefault();
+  if(e.code==='Space' && !seated){
+    if(grounded){
+      vy=7;
+      grounded=false;
+      jumpsUsed=1;
+      e.preventDefault();
+    } else if(jumpsUsed===1){
+      vy=7;
+      jumpsUsed=2;
+      e.preventDefault();
+    }
   }
 
   if(e.code==='Enter'){
