@@ -240,7 +240,8 @@ function buildWorld() {
   camera.position.set(0, 1.65, 0);
   camera.rotation.set(0, 0, 0);
 
-  renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, powerPreference:'high-performance'});
+  renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, alpha:true, powerPreference:'high-performance'});
+  renderer.setClearColor(0x000000,0);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
 
@@ -252,11 +253,13 @@ function buildWorld() {
   cssRenderer.domElement.style.position = 'absolute';
   cssRenderer.domElement.style.inset = '0';
   cssRenderer.domElement.style.pointerEvents = 'none';
-  cssRenderer.domElement.style.zIndex = '3';
+  cssRenderer.domElement.style.zIndex = '2';
 
   renderer.domElement.style.position = 'absolute';
   renderer.domElement.style.inset = '0';
-  renderer.domElement.style.zIndex = '2';
+  // WebGL is ABOVE the CSS3D screen. This gives normal 3D occlusion:
+  // every real mesh rendered by WebGL can physically cover the screen.
+  renderer.domElement.style.zIndex = '3';
 
   $('game').appendChild(cssRenderer.domElement);
   $('game').appendChild(renderer.domElement);
@@ -1359,6 +1362,8 @@ function applyScreen(state) {
   $('screenOverlay').style.display='none';
 
   clearCssScreen();
+  scene.background=new THREE.Color(0x030303);
+  if(screenMesh) screenMesh.visible=true;
 
   if(hls){ hls.destroy(); hls=null; }
   if(screenTexture){ screenTexture.dispose(); screenTexture=null; }
@@ -1376,20 +1381,27 @@ function applyScreen(state) {
   }
 
   if(!state?.active || !state.src){
+    scene.background=new THREE.Color(0x030303);
+    if(screenMesh) screenMesh.visible=true;
     if(host) $('screenStatus').textContent='SCREEN OFF';
     return;
   }
 
   const twitch=twitchEmbedUrl(state.src);
 
-  // Twitch is rendered as a CSS3D object at the exact wall position.
+  // Twitch is rendered behind the transparent WebGL scene. Real 3D meshes
+  // therefore cover the iframe naturally instead of appearing behind it.
   if(twitch){
+    scene.background=null;
+    if(screenMesh) screenMesh.visible=false;
     createTwitchWallScreen(twitch);
     if(host) $('screenStatus').textContent='Twitch · '+(state.title||'EWS SESSIONS');
     return;
   }
 
   // HLS / normal video is rendered directly onto the physical Three.js wall.
+  scene.background=new THREE.Color(0x030303);
+  if(screenMesh) screenMesh.visible=true;
   const video=document.createElement('video');
   screenVideo=video;
   video.autoplay=true;
