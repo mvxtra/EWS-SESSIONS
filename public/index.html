@@ -829,18 +829,19 @@ function createDJSetup() {
           const gs = gb.getSize(new THREE.Vector3());
           if(gs.y > 0) gopnik.scale.multiplyScalar(1.9/gs.y);
 
-          // Move him completely outside the subwoofer, toward the back wall.
-          // x=0 keeps him beside the cabinet; z=-2.8 moves him closer to the wall.
-          gopnik.position.x = 0;
-          gopnik.position.z = -2.8;
+          // Put the gopnik beside the outer end of the left subwoofer,
+          // clearly outside the cabinet rather than inside/behind it.
+          // The parent is the DJ table, so these are table-local coordinates.
+          gopnik.position.x = -5.25;
+          gopnik.position.z = -0.05;
 
           // Re-align the model's actual feet to the club floor.
           const floorBox = new THREE.Box3().setFromObject(gopnik);
           gopnik.position.y -= floorBox.min.y;
 
-          // Rotate exactly 180 degrees.
+          // Rotate toward the dancefloor.
           gopnik.rotation.y = Math.PI;
-          subGroup.add(gopnik);
+          table.add(gopnik);
         },undefined,err=>console.warn('[EWS GOPNIK] load failed',err));
       }
     },undefined,()=>{});
