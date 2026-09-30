@@ -428,6 +428,7 @@ io.on('connection', socket => {
       ghosts.delete(id);
       if (!ghost.boss) {
         defeatedGhosts++;
+        broadcastGhostScore();
         io.to(ROOM).emit('ghost:progress', { count: defeatedGhosts, target: 50 });
         io.to(ROOM).emit('ghost:dead', { id, by: p.username, count: defeatedGhosts });
         if (defeatedGhosts >= 50 && !bossEncountered) {
