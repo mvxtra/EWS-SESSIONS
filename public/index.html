@@ -26,6 +26,8 @@ button{cursor:pointer}
 #authMsg{min-height:20px;margin-top:12px;text-align:center;color:#bbb;font-size:12px}
 #hud{display:none;position:absolute;inset:0}
 #topbar{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+#lampMenu{display:none;pointer-events:auto;padding:7px 9px;background:rgba(0,0,0,.72);border:1px solid #292929;color:#fff;font-size:10px;letter-spacing:.08em}
+#lampMenu button{margin-left:5px;padding:4px 7px;background:#111;color:#fff;border:1px solid #444;font-size:10px} #lampMenu button:hover{border-color:#fff}
 .badge{padding:8px 11px;background:rgba(0,0,0,.62);border:1px solid #292929;font-size:12px;letter-spacing:.08em}
 #online{position:absolute;top:58px;right:14px;width:210px;padding:12px;max-height:260px;overflow:auto}
 .title{font-size:10px;color:#888;letter-spacing:.2em;margin-bottom:8px}
@@ -87,7 +89,7 @@ button{cursor:pointer}
   <div id="ui">
     <div id="hud">
       <div id="topbar">
-        <div class="badge">EWS SESSIONS <span id="me"></span></div>
+        <div class="badge">EWS SESSIONS <span id="me"></span></div><div id="lampMenu">LAMPS <button id="lampWhite">WHITE</button><button id="lampRed">RED</button></div>
       </div>
 
       <div id="crosshair"></div>
@@ -1065,6 +1067,18 @@ function setupClubLighting() {
     lamp.userData.light.intensity=0;
   });
 }
+function setLampColor(color){
+  const red=String(color)==='red';
+  const lamps=scene.userData.ceilingLamps||[];
+  lamps.forEach(lamp=>{
+    if(lamp.userData.glow) lamp.userData.glow.material.color.set(red?0xff1744:0xffffff);
+    if(lamp.userData.light) lamp.userData.light.color.set(red?0xff1744:0xffffff);
+  });
+}
+function initLampMenu(){
+  $('lampWhite').onclick=()=>{if(host&&socket?.connected)socket.emit('lamp-color:set','white');};
+  $('lampRed').onclick=()=>{if(host&&socket?.connected)socket.emit('lamp-color:set','red');};
+}
 function updateClubLighting(t) {
   const lamps=scene.userData.ceilingLamps || [];
   lamps.forEach(lamp=>{
@@ -1738,6 +1752,7 @@ function updateRemotes(t,dt){
 }
 
 initChatLanguage();
+initLampMenu();
 
 function connect() {
   socket=io({
@@ -1756,6 +1771,8 @@ function connect() {
   socket.on('club:ready',data=>{
     joined=true;
     host=!!data.host;
+    $('lampMenu').style.display=host?'block':'none';
+    if(data.lampColor) setLampColor(data.lampColor);
     $('screenControl').style.display='none';
     $('screenPlay').style.display=host?'block':'none';
     if(data.screen) applyScreen(data.screen);
@@ -1772,6 +1789,7 @@ function connect() {
   socket.on('player:state',upsertRemote);
   socket.on('player:left',removeRemote);
   socket.on('online:state',renderOnline);
+  socket.on('lamp-color:state',setLampColor);
   socket.on('screen:state',applyScreen);
 
   socket.on('language:state',lang=>{
