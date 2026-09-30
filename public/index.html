@@ -380,6 +380,9 @@ function buildWorld() {
   addBox(17,5,.18,0,3.0,-13.85,new THREE.MeshStandardMaterial({color:0x151515,roughness:.5,metalness:.5}));
 
 
+  // Central DJ table and one Pioneer CDJ-3000. The stage and screen stay untouched.
+  createDJSetup();
+
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
 
@@ -509,6 +512,110 @@ function loadSpeakerModel() {
   };
 
   tryNext();
+}
+
+
+function createDJSetup() {
+  const table = new THREE.Group();
+  table.name = 'EWS_DJ_TABLE';
+  table.position.set(0,0,-11.5);
+  scene.add(table);
+
+  const darkMat = new THREE.MeshStandardMaterial({
+    color:0x0b0b0b,
+    roughness:.38,
+    metalness:.62
+  });
+
+  const top = new THREE.Mesh(new THREE.BoxGeometry(4.2,.18,1.25), darkMat);
+  top.position.y=.90;
+  top.castShadow=true;
+  top.receiveShadow=true;
+  table.add(top);
+
+  const legGeo = new THREE.BoxGeometry(.16,.9,.16);
+  [[-1.85,-.48],[-1.85,.48],[1.85,-.48],[1.85,.48]].forEach(([x,z])=>{
+    const leg=new THREE.Mesh(legGeo,darkMat);
+    leg.position.set(x,.45,z);
+    leg.castShadow=true;
+    table.add(leg);
+  });
+
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(3.8,.10,.95),darkMat);
+  shelf.position.y=.38;
+  shelf.castShadow=true;
+  table.add(shelf);
+
+  const edgeMat = new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.42,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false
+  });
+  const frontEdge = new THREE.Mesh(new THREE.BoxGeometry(4.05,.025,.025),edgeMat);
+  frontEdge.position.set(0,.995,.61);
+  table.add(frontEdge);
+
+  const cdjGroup = new THREE.Group();
+  cdjGroup.name='PIONEER_CDJ_3000';
+  cdjGroup.position.set(0,1.02,0);
+  table.add(cdjGroup);
+
+  const fallback = new THREE.Group();
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(1.12,.12,.74),
+    new THREE.MeshStandardMaterial({color:0x101010,roughness:.3,metalness:.75})
+  );
+  fallback.add(base);
+  const jog = new THREE.Mesh(
+    new THREE.CylinderGeometry(.245,.245,.045,32),
+    new THREE.MeshStandardMaterial({color:0x555555,roughness:.22,metalness:.8})
+  );
+  jog.rotation.x=Math.PI/2;
+  jog.position.set(0,.085,.015);
+  fallback.add(jog);
+  const display = new THREE.Mesh(
+    new THREE.BoxGeometry(.30,.035,.12),
+    new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.65})
+  );
+  display.position.set(-.22,.09,-.23);
+  fallback.add(display);
+  cdjGroup.add(fallback);
+
+  const loader = new THREE.GLTFLoader();
+  const gltfCandidates = [
+    '/models/pioneer_cdj_3000.glb',
+    '/models/pioneer_cdj_3000.gltf',
+    '/models/Pioneer_CDj_3000.glb',
+    '/models/Pioneer_CDj_3000.gltf'
+  ];
+
+  let loaded=false;
+  const tryGLTF = (i=0) => {
+    if(i>=gltfCandidates.length) return;
+    loader.load(gltfCandidates[i], gltf=>{
+      if(loaded) return;
+      loaded=true;
+      const model=gltf.scene;
+      model.traverse(o=>{
+        if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}
+      });
+      const box=new THREE.Box3().setFromObject(model);
+      const size=box.getSize(new THREE.Vector3());
+      const targetWidth=1.12;
+      if(size.x>0) model.scale.multiplyScalar(targetWidth/size.x);
+      const b2=new THREE.Box3().setFromObject(model);
+      model.position.y-=b2.min.y;
+      model.rotation.y=0;
+      fallback.visible=false;
+      cdjGroup.add(model);
+    },undefined,()=>tryGLTF(i+1));
+  };
+  tryGLTF();
+
+  // Keep the setup visually centred and facing the DJ, without moving the stage or screen.
+  table.rotation.y=0;
 }
 
 function setupClubLighting() {
