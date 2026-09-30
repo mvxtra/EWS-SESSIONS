@@ -1410,23 +1410,43 @@ function updateCornerLasers(t){
   state.beams.forEach(item=>{
     const c=item.c;
 
-    // Smooth scanner movement: every beam paints the dancefloor surface,
-    // with long eased sweeps instead of twitchy/random-looking jumps.
-    // Dancefloor bounds: X [-9.3,9.3], Z [-5.3,7.3], surface Y ~= 0.04.
-    // Cinematic scanner pattern: each fixture follows a different,
-    // phase-shifted Lissajous-style path with smooth acceleration.
-    const sx=item.phase*.83;
-    const sz=item.phase*.57;
-    const sweepX =
-      Math.sin(t*.145+sx)*7.4 +
-      Math.sin(t*.061+sx*1.31)*1.05;
-    const sweepZ =
-      Math.sin(t*.205+sz)*4.35 +
-      Math.cos(t*.083+sz*1.17)*1.35;
+    // Patterned laser choreography: the 12 beams paint recognizable
+    // geometric shapes across the dancefloor instead of moving randomly.
+    // The pattern slowly morphs between a flower, star and rotating ring.
+    // Each fixture owns one point of the 12-point pattern.
+    const beamIndex=item.ci*3+item.slot;
+    const beamAngle=(Math.PI*2/12)*beamIndex;
+    const patternPhase=t*.16;
+    const a0=beamAngle+patternPhase;
+
+    // Three long, smooth pattern sections. No hard jumps between them.
+    const mode=(t/14)%3;
+    const modeA=Math.floor(mode);
+    const blend=mode-modeA;
+    const ease=blend*blend*(3-2*blend);
+
+    const flowerR=1.35 + 5.85*(.5+.5*Math.cos(6*a0));
+    const starR=2.15 + 5.55*(.5+.5*Math.cos(5*a0));
+    const ringR=6.35 + .55*Math.sin(3*a0);
+
+    let radiusA, radiusB;
+    if(modeA===0){
+      radiusA=flowerR;
+      radiusB=starR;
+    }else if(modeA===1){
+      radiusA=starR;
+      radiusB=ringR;
+    }else{
+      radiusA=ringR;
+      radiusB=flowerR;
+    }
+    const radius=radiusA+(radiusB-radiusA)*ease;
+
+    // Slightly oval projection fills the actual dancefloor.
     const target=new THREE.Vector3(
-      THREE.MathUtils.clamp(sweepX + Math.sin(t*.11+item.phase)*.45,-8.85,8.85),
+      THREE.MathUtils.clamp(Math.cos(a0)*radius,-8.65,8.65),
       .055,
-      THREE.MathUtils.clamp(sweepZ + 1.0,-4.85,6.85)
+      THREE.MathUtils.clamp(Math.sin(a0)*radius*.70+1.0,-4.75,6.75)
     );
 
     // Make every beam physically continuous from its lens to its final endpoint.
