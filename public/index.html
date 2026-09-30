@@ -798,6 +798,7 @@ function animate() {
   updateRemotes(now/1000,dt);
   updateClubLighting(now/1000);
   renderer.render(scene,camera);
+  refreshScreenOcclusion();
   if(cssRenderer) cssRenderer.render(scene,camera);
 }
 
@@ -1267,6 +1268,60 @@ function clearCssScreen() {
     screenCssObject=null;
   }
   screenCssFrame=null;
+}
+
+// CSS3D iframes do not participate in WebGL depth testing. To keep the
+// screen from appearing "through" 3D objects, we hide the iframe whenever
+// the camera's view toward the screen is blocked by a real scene object.
+// This makes speakers, avatars and props behave as solid occluders.
+const screenOcclusionRaycaster = new THREE.Raycaster();
+const screenOcclusionTargets = [];
+const screenOcclusionSamples = [
+  new THREE.Vector2(-.42,-.30), new THREE.Vector2(0,-.30), new THREE.Vector2(.42,-.30),
+  new THREE.Vector2(-.42,0),    new THREE.Vector2(0,0),    new THREE.Vector2(.42,0),
+  new THREE.Vector2(-.42,.30),  new THREE.Vector2(0,.30),  new THREE.Vector2(.42,.30)
+];
+
+function refreshScreenOcclusion(){
+  if(!screenCssObject || !screenCssFrame || !camera) return;
+
+  const center = new THREE.Vector3(0,0,0);
+  screenCssObject.getWorldPosition(center);
+
+  // Build the list once per check. CSS3D objects themselves are ignored.
+  screenOcclusionTargets.length = 0;
+  scene.traverse(obj=>{
+    if(!obj.isMesh) return;
+    if(obj===screenMesh) return;
+    if(screenCssObject && (obj===screenCssObject || screenCssObject.getObjectById(obj.id))) return;
+    if(obj.userData && obj.userData.screenOccluder===false) return;
+    screenOcclusionTargets.push(obj);
+  });
+
+  let blocked=0;
+  const from=camera.getWorldPosition(new THREE.Vector3());
+
+  for(const s of screenOcclusionSamples){
+    const target=center.clone();
+
+    // Spread sample points across the screen plane.
+    target.x += s.x * 5.35;
+    target.y += s.y * 2.45;
+
+    const dir=target.clone().sub(from);
+    const distance=dir.length();
+    if(distance<=0.01) continue;
+    dir.normalize();
+
+    screenOcclusionRaycaster.set(from,dir);
+    const hits=screenOcclusionRaycaster.intersectObjects(screenOcclusionTargets,true);
+
+    if(hits.some(hit=>hit.distance < distance-0.05)) blocked++;
+  }
+
+  // If the majority of the screen is behind geometry, hide the CSS iframe.
+  // Otherwise keep it visible so small props do not make the whole screen blink.
+  screenCssFrame.style.visibility = blocked >= 5 ? 'hidden' : 'visible';
 }
 
 function createTwitchWallScreen(src) {
