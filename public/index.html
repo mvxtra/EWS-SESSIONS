@@ -1051,10 +1051,21 @@ function setupClubLighting() {
   scene.userData.clubLights = [];
   scene.userData.clubBeams = [];
   scene.userData.strobe = [];
+  scene.userData.blackoutUntil = 0;
+  scene.userData.blackoutActive = false;
+  scene.userData.blackoutTimer = null;
+  scene.userData.blackoutLights = [];
 
-  // Each ceiling lamp gets its own generated rhythm.
-  // The rhythm changes automatically, so lamps can blink quickly, slowly,
-  // in short bursts or pause for a moment before starting again.
+  // Dim red emergency lights remain visible during blackout.
+  [
+    [-14.2,-12.8], [14.2,-12.8], [-14.2,12.5], [14.2,12.5]
+  ].forEach(([x,z])=>{
+    const emergency=new THREE.PointLight(0xff1738,.055,8);
+    emergency.position.set(x,1.9,z);
+    scene.add(emergency);
+    scene.userData.blackoutLights.push(emergency);
+  });
+
   const lamps=scene.userData.ceilingLamps || [];
   lamps.forEach((lamp,i)=>{
     lamp.userData.random={
@@ -1067,6 +1078,24 @@ function setupClubLighting() {
     lamp.userData.light.intensity=0;
   });
 }
+
+function triggerBlackout(duration=1100){
+  scene.userData.blackoutUntil=Math.max(scene.userData.blackoutUntil||0,performance.now()+duration);
+  const lamps=scene.userData.ceilingLamps||[];
+  lamps.forEach(lamp=>{
+    if(lamp.userData.glow) lamp.userData.glow.material.opacity=0;
+    if(lamp.userData.light) lamp.userData.light.intensity=0;
+  });
+  (scene.userData.blackoutLights||[]).forEach(light=>light.intensity=.42);
+}
+
+function updateBlackout(){
+  const active=performance.now() < (scene.userData.blackoutUntil||0);
+  if(active===scene.userData.blackoutActive) return;
+  scene.userData.blackoutActive=active;
+  (scene.userData.blackoutLights||[]).forEach(light=>light.intensity=active?.42:.055);
+}
+
 function setLampColor(color){
   const red=String(color)==='red';
   const lamps=scene.userData.ceilingLamps||[];
@@ -1080,6 +1109,9 @@ function initLampMenu(){
   $('lampRed').onclick=()=>{if(host&&socket?.connected)socket.emit('lamp-color:set','red');};
 }
 function updateClubLighting(t) {
+  updateBlackout();
+  if(scene.userData.blackoutActive) return;
+
   const lamps=scene.userData.ceilingLamps || [];
   lamps.forEach(lamp=>{
     const r=lamp.userData.random;
@@ -1089,13 +1121,10 @@ function updateClubLighting(t) {
       r.on=!r.on;
       r.speed=.55 + Math.random()*7.0;
       r.hold=.03 + Math.random()*.75;
-
       if(r.on){
-        // Sometimes a very fast flash, sometimes a long club-style glow.
         const fast=Math.random()<.38;
         r.nextChange=t + (fast ? .025+Math.random()*.16 : .12+Math.random()*.95);
       }else{
-        // Dark pauses are also randomly generated.
         r.nextChange=t + .04+Math.random()*.9;
       }
     }
@@ -1104,11 +1133,20 @@ function updateClubLighting(t) {
     const current=lamp.userData.glow.material.opacity;
     const smooth=Math.min(1, .12 + r.speed*.018);
     lamp.userData.glow.material.opacity += (target-current)*smooth;
-
     const glow=lamp.userData.glow.material.opacity;
     lamp.userData.light.intensity=r.on ? 1.0+glow*2.4 : 0;
   });
 }
+
+function scheduleBlackouts(){
+  if(!host) return;
+  clearTimeout(scene.userData.blackoutTimer);
+  scene.userData.blackoutTimer=setTimeout(()=>{
+    if(host&&socket?.connected) socket.emit('blackout:start');
+    scheduleBlackouts();
+  },26000+Math.random()*34000);
+}
+
 function addSpeaker(x,z) {
   const group=new THREE.Group();
   const cabinetMaterial=new THREE.MeshStandardMaterial({
@@ -1380,6 +1418,7 @@ function animate() {
 
   updateRemotes(now/1000,dt);
   updateClubLighting(now/1000);
+  if(host && !scene.userData.blackoutTimer) scheduleBlackouts();
   // CSS3D cannot depth-test against WebGL, so hide the screen when 3D geometry is in front.
   refreshScreenOcclusion();
 
@@ -1799,6 +1838,7 @@ function connect() {
   socket.on('player:left',removeRemote);
   socket.on('online:state',renderOnline);
   socket.on('lamp-color:state',setLampColor);
+  socket.on('blackout:start',()=>triggerBlackout(1100));
   socket.on('screen:state',applyScreen);
 
   socket.on('language:state',lang=>{
