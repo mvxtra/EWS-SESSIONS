@@ -25,6 +25,9 @@ const ROOM = 'ews-club';
 
 const LANGS = new Set(['ru','en','es','de','fr','zh','ja','ko','ar','hi','pt','it','tr','uk','nl','pl']);
 const players = new Map();
+const ghosts = new Map();
+let nextGhostId = 1;
+let ghostTimer = null;
 
 const world = {
   minX: -15, maxX: 15,
@@ -284,6 +287,42 @@ function broadcastOnline() {
   io.to(ROOM).emit('online:state', onlineState());
 }
 
+function spawnGhost() {
+  if (ghosts.size >= 2) return;
+  const id = 'ghost-' + nextGhostId++;
+  const ghost = {
+    id,
+    hp: 10,
+    x: (Math.random() * 16) - 8,
+    y: 2.8 + Math.random() * 2.4,
+    z: (Math.random() * 10) - 2,
+    born: Date.now(),
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.7 + Math.random() * 0.45,
+    radius: 2.2 + Math.random() * 1.8,
+    life: 18000
+  };
+  ghosts.set(id, ghost);
+  io.to(ROOM).emit('ghost:spawn', ghost);
+}
+
+function broadcastGhosts() {
+  io.to(ROOM).emit('ghost:state', [...ghosts.values()]);
+}
+
+function startGhostEvents() {
+  clearInterval(ghostTimer);
+  const schedule = () => {
+    const delay = 14000 + Math.floor(Math.random() * 18000);
+    ghostTimer = setTimeout(() => {
+      spawnGhost();
+      schedule();
+    }, delay);
+  };
+  schedule();
+}
+startGhostEvents();
+
 function randomSpawn() {
   const points = [
     [0,10],[3,8],[-3,8],[6,5],[-6,5],
@@ -332,6 +371,7 @@ io.on('connection', socket => {
       players: [...players.values()].map(normalizePlayer),
       screen: screenState()
     });
+    socket.emit('ghost:state', [...ghosts.values()]);
 
     socket.to(ROOM).emit('player:joined', normalizePlayer(player));
     broadcastOnline();
@@ -345,6 +385,7 @@ io.on('connection', socket => {
     });
     socket.emit('online:state', onlineState());
     socket.emit('lamp-color:state', lampColor);
+    socket.emit('ghost:state', [...ghosts.values()]);
   });
 
   socket.on('player:state', data => {
@@ -360,6 +401,22 @@ io.on('connection', socket => {
     p.seated = !!data.seated;
 
     socket.to(ROOM).emit('player:state', normalizePlayer(p));
+  });
+
+  socket.on('ghost:hit', ghostId => {
+    const p = players.get(socket.id);
+    if (!p || !socket.data.joined) return;
+    const id = String(ghostId || '');
+    const ghost = ghosts.get(id);
+    if (!ghost) return;
+
+    ghost.hp -= 1;
+    if (ghost.hp <= 0) {
+      ghosts.delete(id);
+      io.to(ROOM).emit('ghost:dead', { id, by: p.username });
+    } else {
+      io.to(ROOM).emit('ghost:hit', { id, hp: ghost.hp, by: p.username });
+    }
   });
 
 
@@ -446,6 +503,16 @@ io.on('connection', socket => {
 app.get('*', (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, ghost] of ghosts) {
+    if (now - ghost.born >= ghost.life) {
+      ghosts.delete(id);
+      io.to(ROOM).emit('ghost:dead', { id, expired: true });
+    }
+  }
+}, 2000);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('======================================');
