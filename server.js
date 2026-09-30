@@ -300,7 +300,7 @@ function spawnGhost() {
     phase: Math.random() * Math.PI * 2,
     speed: 0.7 + Math.random() * 0.45,
     radius: 2.2 + Math.random() * 1.8,
-    life: 18000
+    life: 0
   };
   ghosts.set(id, ghost);
   io.to(ROOM).emit('ghost:spawn', ghost);
@@ -507,7 +507,7 @@ app.get('*', (_req, res) => {
 setInterval(() => {
   const now = Date.now();
   for (const [id, ghost] of ghosts) {
-    if (now - ghost.born >= ghost.life) {
+    if (ghost.life > 0 && now - ghost.born >= ghost.life) {
       ghosts.delete(id);
       io.to(ROOM).emit('ghost:dead', { id, expired: true });
     }
