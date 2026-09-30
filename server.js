@@ -19,6 +19,7 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const USERS_FILE = path.join(__dirname, 'users.json');
 const SCREEN_FILE = path.join(__dirname, 'screen-state.json');
+const LIGHTING_FILE = path.join(__dirname, 'lighting-state.json');
 const HOST_NAME = 'mvxtra';
 const ROOM = 'ews-club';
 
@@ -55,6 +56,21 @@ function readScreen() {
 }
 
 const screen = readScreen();
+function readLampColor() {
+  try {
+    const data = JSON.parse(fs.readFileSync(LIGHTING_FILE, 'utf8'));
+    return /^#[0-9a-fA-F]{6}$/.test(String(data.color || '')) ? data.color : '#ffffff';
+  } catch {
+    return '#ffffff';
+  }
+}
+function writeLampColor() {
+  fs.writeFileSync(LIGHTING_FILE, JSON.stringify({ color: lampColor }, null, 2), 'utf8');
+}
+let lampColor = readLampColor();
+function lightingState() { return { color: lampColor }; }
+
+
 
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]\n', 'utf8');
@@ -321,7 +337,8 @@ io.on('connection', socket => {
     socket.emit('club:ready', {
       username,
       host: username.toLowerCase() === HOST_NAME,
-      screen: screenState()
+      screen: screenState(),
+      lighting: lightingState()
     });
 
     socket.emit('world:state', {
@@ -337,7 +354,8 @@ io.on('connection', socket => {
     if (!socket.data.joined) return;
     socket.emit('world:state', {
       players: [...players.values()].map(normalizePlayer),
-      screen: screenState()
+      screen: screenState(),
+      lighting: lightingState()
     });
     socket.emit('online:state', onlineState());
   });
@@ -365,6 +383,16 @@ io.on('connection', socket => {
     p.language = translateLanguage(value);
     socket.emit('language:state', p.language);
     broadcastOnline();
+  });
+
+  socket.on('lamp-color:set', value => {
+    const p = players.get(socket.id);
+    if (!p || p.username.toLowerCase() !== HOST_NAME) return;
+    const color = String(value || '').trim();
+    if (!/^#[0-9a-fA-F]{6}$/.test(color)) return;
+    lampColor = color;
+    writeLampColor();
+    io.to(ROOM).emit('lamp-color:state', lightingState());
   });
 
   socket.on('chat:send', async raw => {
