@@ -845,7 +845,7 @@ function createDJSetup() {
 
       // Three real column speakers on top of each subwoofer.
       const columnLoader = new THREE.GLTFLoader();
-      [ -0.52, 0, 0.52 ].forEach((offsetX, speakerIndex) => {
+      [ -0.9, 0, 0.9 ].forEach((offsetX, speakerIndex) => {
         columnLoader.load('/models/колонки.glb', columnGltf => {
           const column = columnGltf.scene;
           column.name = (side < 0 ? 'EWS_COLUMN_SPEAKER_LEFT_' : 'EWS_COLUMN_SPEAKER_RIGHT_') + (speakerIndex + 1);
