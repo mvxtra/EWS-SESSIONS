@@ -29,6 +29,7 @@ const ghosts = new Map();
 let nextGhostId = 1;
 let ghostTimer = null;
 let defeatedGhosts = 0;
+let defeatedBosses = 0;
 let bossEncountered = false;
 
 const world = {
@@ -312,6 +313,14 @@ function broadcastGhosts() {
   io.to(ROOM).emit('ghost:state', [...ghosts.values()]);
 }
 
+function ghostScoreState() {
+  return { ghosts: defeatedGhosts, bosses: defeatedBosses };
+}
+
+function broadcastGhostScore() {
+  io.to(ROOM).emit('ghost:score', ghostScoreState());
+}
+
 function startGhostEvents() {
   clearInterval(ghostTimer);
   const schedule = () => {
@@ -374,6 +383,7 @@ io.on('connection', socket => {
       screen: screenState()
     });
     socket.emit('ghost:state', [...ghosts.values()]);
+    socket.emit('ghost:score', ghostScoreState());
 
     socket.to(ROOM).emit('player:joined', normalizePlayer(player));
     broadcastOnline();
@@ -388,6 +398,7 @@ io.on('connection', socket => {
     socket.emit('online:state', onlineState());
     socket.emit('lamp-color:state', lampColor);
     socket.emit('ghost:state', [...ghosts.values()]);
+    socket.emit('ghost:score', ghostScoreState());
   });
 
   socket.on('player:state', data => {
@@ -431,7 +442,10 @@ io.on('connection', socket => {
           io.to(ROOM).emit('ghost:boss-spawn', boss);
         }
       } else {
+        defeatedBosses++;
         io.to(ROOM).emit('ghost:dead', { id, by: p.username, boss: true });
+        broadcastGhostScore();
+      }
     } else {
       io.to(ROOM).emit('ghost:hit', { id, hp: ghost.hp, by: p.username });
     }
