@@ -1954,6 +1954,8 @@ function createTwitchWallScreen(src) {
   iframe.style.height='545px';
   iframe.style.border='0';
   iframe.style.display='block';
+  // Mirror the actual picture shown on the club screen.
+  iframe.style.transform='scaleX(-1)';
   frame.appendChild(iframe);
 
   screenCssFrame=frame;
@@ -1961,7 +1963,7 @@ function createTwitchWallScreen(src) {
   screenCssObject.position.set(0,3.175,-13.42);
   // Face the opposite wall without mirroring the HTML/Twitch content.
   screenCssObject.rotation.set(0,0,0);
-  screenCssObject.scale.set(-0.01,0.01,0.01);
+  screenCssObject.scale.set(0.01,0.01,0.01);
   scene.add(screenCssObject);
 }
 
@@ -2028,6 +2030,10 @@ function applyScreen(state) {
   screenTexture.magFilter=THREE.LinearFilter;
   screenTexture.format=THREE.RGBAFormat;
   screenTexture.encoding=THREE.sRGBEncoding;
+  // Mirror HLS/video content horizontally on the physical screen.
+  screenTexture.wrapS=THREE.RepeatWrapping;
+  screenTexture.repeat.x=-1;
+  screenTexture.offset.x=1;
 
   if(screenMesh){
     screenMesh.material.map=screenTexture;
