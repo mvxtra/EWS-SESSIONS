@@ -30,6 +30,7 @@ button{cursor:pointer}
 #lampMenu button{margin-left:5px;padding:4px 7px;background:#111;color:#fff;border:1px solid #444;font-size:10px} #lampMenu button:hover{border-color:#fff}
 .badge{padding:8px 11px;background:rgba(0,0,0,.62);border:1px solid #292929;font-size:12px;letter-spacing:.08em}
 #online{position:absolute;top:58px;right:14px;width:210px;padding:12px;max-height:260px;overflow:auto}
+#ghostScore{position:absolute;top:58px;left:14px;padding:9px 12px;background:rgba(0,0,0,.68);border:1px solid #292929;font-size:12px;line-height:1.5;letter-spacing:.06em;text-shadow:0 2px 5px #000}
 .title{font-size:10px;color:#888;letter-spacing:.2em;margin-bottom:8px}
 .user{font-size:12px;padding:5px 0;border-bottom:1px solid #171717}
 .user:last-child{border-bottom:0}
@@ -92,6 +93,7 @@ button{cursor:pointer}
       <div id="topbar">
         <div class="badge">EWS SESSIONS <span id="me"></span></div><div id="lampMenu">LAMPS <button id="lampWhite">WHITE</button><button id="lampRed">RED</button></div>
       </div>
+      <div id="ghostScore">👻 0&nbsp;&nbsp; 👑 0</div>
 
       <div id="crosshair"></div>
 
@@ -332,6 +334,91 @@ $('password').addEventListener('keydown', e => {
 
 
 const heartProjectiles = [];
+const ghostBursts = [];
+let ghostAudio = null;
+
+function ensureGhostAudio(){
+  if(!ghostAudio){
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!Ctx) return null;
+    ghostAudio=new Ctx();
+  }
+  if(ghostAudio.state==='suspended') ghostAudio.resume().catch(()=>{});
+  return ghostAudio;
+}
+
+function playGhostHitSound(){
+  const a=ensureGhostAudio(); if(!a) return;
+  const now=a.currentTime;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type='sine';
+  o.frequency.setValueAtTime(520,now);
+  o.frequency.exponentialRampToValueAtTime(260,now+.12);
+  g.gain.setValueAtTime(.0001,now);
+  g.gain.exponentialRampToValueAtTime(.16,now+.012);
+  g.gain.exponentialRampToValueAtTime(.0001,now+.14);
+  o.connect(g).connect(a.destination); o.start(now); o.stop(now+.15);
+}
+
+function playGhostDeathSound(){
+  const a=ensureGhostAudio(); if(!a) return;
+  const now=a.currentTime;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type='sawtooth';
+  o.frequency.setValueAtTime(260,now);
+  o.frequency.exponentialRampToValueAtTime(58,now+.42);
+  g.gain.setValueAtTime(.0001,now);
+  g.gain.exponentialRampToValueAtTime(.22,now+.015);
+  g.gain.exponentialRampToValueAtTime(.0001,now+.46);
+  o.connect(g).connect(a.destination); o.start(now); o.stop(now+.48);
+}
+
+function updateGhostScore(data){
+  const ghostsKilled=Number(data?.ghosts)||0;
+  const bossesKilled=Number(data?.bosses)||0;
+  const el=$('ghostScore');
+  if(el) el.textContent='👻 '+ghostsKilled+'    👑 '+bossesKilled;
+}
+
+function flashGhost(id){
+  const g=ghosts.get(id); if(!g) return;
+  g.flashUntil=performance.now()+190;
+  g.mesh.traverse(n=>{
+    if(!n.isMesh || n.userData?.healthCanvas || !n.material) return;
+    const mats=Array.isArray(n.material)?n.material:[n.material];
+    mats.forEach(m=>{
+      if(m.color){ if(m.userData._ghostBaseColor===undefined) m.userData._ghostBaseColor=m.color.getHex(); m.color.setHex(0xff2020); }
+      if(m.emissive){ if(m.userData._ghostBaseEmissive===undefined) m.userData._ghostBaseEmissive=m.emissive.getHex(); m.emissive.setHex(0xff0000); m.emissiveIntensity=2.2; }
+    });
+  });
+}
+
+function createGhostBurst(pos,boss=false){
+  if(!scene) return;
+  const count=boss?30:16;
+  for(let i=0;i<count;i++){
+    const mat=new THREE.MeshBasicMaterial({color:i%2?0xff2222:0xffffff,transparent:true,opacity:1});
+    const mesh=new THREE.Mesh(new THREE.SphereGeometry(boss?.10:.065,6,6),mat);
+    mesh.position.copy(pos);
+    mesh.userData.noCollision=true;
+    scene.add(mesh);
+    const v=new THREE.Vector3((Math.random()-.5)*5,Math.random()*3.8+.6,(Math.random()-.5)*5);
+    ghostBursts.push({mesh,velocity:v,born:performance.now(),life:boss?.75:.48});
+  }
+  const light=new THREE.PointLight(0xff2020,boss?5:2.5, boss?7:4,1.5);
+  light.position.copy(pos); light.userData.noCollision=true; scene.add(light);
+  ghostBursts.push({mesh:light,velocity:new THREE.Vector3(),born:performance.now(),life:boss?.5:.28,light:true});
+}
+
+function updateGhostBursts(now,dt){
+  for(let i=ghostBursts.length-1;i>=0;i--){
+    const b=ghostBursts[i], age=(now-b.born)/1000, f=Math.max(0,1-age/b.life);
+    b.mesh.position.addScaledVector(b.velocity,dt);
+    if(b.light) b.mesh.intensity*=Math.pow(f,.7);
+    else { b.mesh.material.opacity=f; b.mesh.scale.setScalar(.7+f); }
+    if(age>=b.life){ scene.remove(b.mesh); if(b.mesh.geometry)b.mesh.geometry.dispose(); if(b.mesh.material)b.mesh.material.dispose(); ghostBursts.splice(i,1); }
+  }
+}
 
 function createHeartMesh(){
   const shape=new THREE.Shape();
@@ -346,6 +433,7 @@ function createHeartMesh(){
   return mesh;
 }
 function shootHeart(){
+  ensureGhostAudio();
   if(!camera||!scene||!joined)return;
   const direction=new THREE.Vector3(); camera.getWorldDirection(direction);
   const start=new THREE.Vector3(); camera.getWorldPosition(start); start.addScaledVector(direction,.85);
@@ -461,9 +549,10 @@ function addGhost(data){
   updateGhostHealth(ghosts.get(data.id));
 }
 
-function removeGhost(id){
+function removeGhost(id,withBurst=true){
   const g=ghosts.get(id);
   if(!g) return;
+  if(withBurst) createGhostBurst(g.mesh.position,g.data.boss);
   scene.remove(g.mesh);
   g.mesh.traverse(n=>{
     if(n.geometry) n.geometry.dispose();
@@ -512,8 +601,20 @@ function updateGhosts(now,dt){
     const pos=ghostPosition(g.data,now);
     g.mesh.position.lerp(pos,.16);
     g.mesh.rotation.y+=dt*.8;
-    const bob=1+Math.sin(now*.004+g.data.phase)*.055;
+    const baseScale=g.data.boss?3.5:1;
+    const bob=baseScale*(1+Math.sin(now*.004+g.data.phase)*.055);
     g.mesh.scale.setScalar(bob);
+    if(g.flashUntil && now>=g.flashUntil){
+      g.flashUntil=0;
+      g.mesh.traverse(n=>{
+        if(!n.isMesh || n.userData?.healthCanvas || !n.material) return;
+        const mats=Array.isArray(n.material)?n.material:[n.material];
+        mats.forEach(m=>{
+          if(m.color && m.userData._ghostBaseColor!==undefined) m.color.setHex(m.userData._ghostBaseColor);
+          if(m.emissive && m.userData._ghostBaseEmissive!==undefined){m.emissive.setHex(m.userData._ghostBaseEmissive);m.emissiveIntensity=.65;}
+        });
+      });
+    }
     updateGhostHealth(g);
   });
 }
@@ -2211,6 +2312,7 @@ function animate() {
   }
 
   updateGhosts(Date.now(),dt);
+  updateGhostBursts(frameNow,dt);
   updateHeartProjectiles(dt,frameNow);
 
   renderer.render(scene,camera);
@@ -2606,16 +2708,23 @@ function connect() {
   socket.on('ghost:spawn',addGhost);
   socket.on('ghost:boss-spawn',addGhost);
   socket.on('ghost:progress',data=>{
+    updateGhostScore({ghosts:data?.count,bosses:Number($('ghostScore')?.textContent.match(/👑\s*(\d+)/)?.[1])||0});
     if(data?.count && data.count<50) toast('Призраки: '+data.count+'/50');
   });
+  socket.on('ghost:score',updateGhostScore);
   socket.on('ghost:hit',data=>{
     const g=ghosts.get(data?.id);
     if(g){
       g.data.hp=Number(data.hp)||g.data.hp;
+      flashGhost(data.id);
+      playGhostHitSound();
       updateGhostHealth(g);
     }
   });
-  socket.on('ghost:dead',data=>removeGhost(data?.id));
+  socket.on('ghost:dead',data=>{
+    playGhostDeathSound();
+    removeGhost(data?.id,true);
+  });
 
   socket.on('language:state',lang=>{
     language=lang;
