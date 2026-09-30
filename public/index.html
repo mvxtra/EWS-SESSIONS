@@ -2037,7 +2037,8 @@ function applyScreen(state) {
     return;
   }
 
-  // HLS / normal video is rendered directly onto the physical Three.js wall.
+  // Direct MP4/WebM/HLS sources are rendered as a real Three.js texture.
+  // This path participates in the WebGL depth buffer, so 3D objects can occlude it.
   scene.background=new THREE.Color(0x030303);
   if(screenMesh) screenMesh.visible=true;
   const video=document.createElement('video');
