@@ -234,7 +234,7 @@ function buildWorld() {
   scene.add(player);
   player.add(camera);
   // First-person camera: no visible local avatar.
-  camera.position.set(0, 1.65, 0);
+  camera.position.set(0, 1.55, 0);
   camera.rotation.set(0, 0, 0);
 
   renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, alpha:true, powerPreference:'high-performance'});
@@ -1028,6 +1028,9 @@ function createAvatar(data) {
     roughness: .7,
     metalness: .12
   });
+
+  const characterScale = 0.88;
+  rig.scale.setScalar(characterScale);
 
   const torso = new THREE.Mesh(new THREE.BoxGeometry(.78, 1.02, .46), darkMat);
   torso.position.y = 1.86;
