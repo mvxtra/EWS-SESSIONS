@@ -25,7 +25,7 @@ button{cursor:pointer}
 .action.alt{background:#111;color:#fff;border-color:#444}
 #authMsg{min-height:20px;margin-top:12px;text-align:center;color:#bbb;font-size:12px}
 #hud{display:none;position:absolute;inset:0}
-#topbar{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+#topbar{position:absolute;top:14px;left:14px;right:14px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}\n#lampColorWrap{pointer-events:auto;display:flex;align-items:center;gap:7px;padding:7px 9px;background:rgba(0,0,0,.62);border:1px solid #292929}\n#lampColorWrap span{font-size:10px;color:#888;letter-spacing:.12em}\n#lampColor{background:#090909;color:#fff;border:1px solid #444;padding:4px 7px;font-size:11px;outline:none}
 .badge{padding:8px 11px;background:rgba(0,0,0,.62);border:1px solid #292929;font-size:12px;letter-spacing:.08em}
 #online{position:absolute;top:58px;right:14px;width:210px;padding:12px;max-height:260px;overflow:auto}
 .title{font-size:10px;color:#888;letter-spacing:.2em;margin-bottom:8px}
@@ -87,7 +87,7 @@ button{cursor:pointer}
   <div id="ui">
     <div id="hud">
       <div id="topbar">
-        <div class="badge">EWS SESSIONS <span id="me"></span></div>
+        <div class="badge">EWS SESSIONS <span id="me"></span></div>\n        <div id="lampColorWrap"><span>LAMPS</span><select id="lampColor" aria-label="Цвет ламп"><option value="#ffffff">WHITE</option><option value="#ff1744">RED</option><option value="#2979ff">BLUE</option><option value="#b000ff">PURPLE</option><option value="#00e676">GREEN</option><option value="#ffb300">AMBER</option><option value="#00e5ff">CYAN</option></select></div>
       </div>
 
       <div id="crosshair"></div>
@@ -1065,6 +1065,25 @@ function setupClubLighting() {
     lamp.userData.light.intensity=0;
   });
 }
+function applyLocalLampColor(){
+  const color=localStorage.getItem('ews-lamp-color') || '#ffffff';
+  const lamps=scene.userData.ceilingLamps || [];
+  lamps.forEach(lamp=>{
+    if(lamp.userData.glow) lamp.userData.glow.material.color.set(color);
+    if(lamp.userData.light) lamp.userData.light.color.set(color);
+  });
+  const select=$('lampColor');
+  if(select) select.value=color;
+}
+function initLocalLampColor(){
+  const select=$('lampColor');
+  if(!select) return;
+  select.value=localStorage.getItem('ews-lamp-color') || '#ffffff';
+  select.addEventListener('change',()=>{
+    localStorage.setItem('ews-lamp-color',select.value);
+    applyLocalLampColor();
+  });
+}
 function updateClubLighting(t) {
   const lamps=scene.userData.ceilingLamps || [];
   lamps.forEach(lamp=>{
@@ -1737,7 +1756,7 @@ function updateRemotes(t,dt){
   });
 }
 
-initChatLanguage();
+initChatLanguage();\ninitLocalLampColor();
 
 function connect() {
   socket=io({
