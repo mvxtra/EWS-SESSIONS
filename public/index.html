@@ -1410,13 +1410,22 @@ function updateCornerLasers(t){
   state.beams.forEach(item=>{
     const c=item.c;
 
-    // Scanner head: slow, wide club movement.
-    const localX=Math.sin(t*.34+item.phase)*10.8 + (item.slot-1)*2.6;
-    const localZ=Math.cos(t*.27+item.phase*.79)*9.6;
+    // Smooth scanner movement: every beam paints the dancefloor surface,
+    // with long eased sweeps instead of twitchy/random-looking jumps.
+    // Dancefloor bounds: X [-9.3,9.3], Z [-5.3,7.3], surface Y ~= 0.04.
+    const sx=item.phase*0.71;
+    const sz=item.phase*0.43;
+    const localX =
+      Math.sin(t*.22+sx)*7.7 +
+      Math.sin(t*.075+sx*1.7)*1.15 +
+      (item.slot-1)*.72;
+    const localZ =
+      Math.sin(t*.17+sz)*4.7 +
+      Math.cos(t*.055+sz*1.3)*1.05;
     const target=new THREE.Vector3(
-      THREE.MathUtils.clamp(localX,-9.0,9.0),
-      THREE.MathUtils.clamp(1.0+Math.sin(t*.41+item.phase)*2.2,.65,6.0),
-      THREE.MathUtils.clamp(localZ,-5.15,7.15)
+      THREE.MathUtils.clamp(localX,-8.85,8.85),
+      .055,
+      THREE.MathUtils.clamp(localZ+1.0,-4.85,6.85)
     );
 
     // Make every beam physically continuous from its lens to its final endpoint.
@@ -1444,16 +1453,16 @@ function updateCornerLasers(t){
     item.bulb.material.color.setHex(laserColor);
     item.halo.material.color.setHex(laserColor);
 
-    // Real laser-style rapid flicker/strobe: short flashes with slight variation.
-    const pulse=Math.sin(t*13.5+item.phase)+.32*Math.sin(t*29.0+item.phase*1.7);
-    const on=pulse>-.18;
-    const intensity=on ? (.78+.20*(.5+.5*Math.sin(t*8.0+item.phase))) : .025;
+    // Stable laser output: gentle brightness modulation instead of harsh
+    // frame-to-frame blinking. The club strobe can still blackout the room.
+    const pulse=.5+.5*Math.sin(t*2.8+item.phase);
+    const intensity=.72+.18*pulse;
 
     item.core.material.opacity=intensity;
-    item.cone.material.opacity=on ? .11+.07*(.5+.5*Math.sin(t*9+item.phase)) : .008;
-    item.lens.material.opacity=on ? .95 : .12;
-    item.bulb.material.opacity=on ? .92 : .16;
-    item.halo.material.opacity=on ? .16 : .025;
+    item.cone.material.opacity=.105+.045*pulse;
+    item.lens.material.opacity=.78+.17*pulse;
+    item.bulb.material.opacity=.70+.20*pulse;
+    item.halo.material.opacity=.09+.05*pulse;
 
     // Tiny mechanical head motion makes each fixture feel independently driven.
     item.core.material.linewidth=2;
