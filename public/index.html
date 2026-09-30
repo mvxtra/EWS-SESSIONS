@@ -590,12 +590,12 @@ function createDJSetup() {
       model.rotation.y=Math.PI*2;
       subGroup.add(model);
 
-      // Gopnik sits on top of the LEFT subwoofer.
+      // Gopnik stands BESIDE the LEFT subwoofer, never inside it.
       if(side < 0){
         const gopnikLoader = new THREE.GLTFLoader();
         gopnikLoader.load('/models/gopnik.glb',gltf2=>{
           const gopnik = gltf2.scene;
-          gopnik.name = 'GOPNIK_ON_SUBWOOFER';
+          gopnik.name = 'GOPNIK_BESIDE_SUBWOOFER';
           gopnik.traverse(o=>{
             if(o.isMesh){
               o.castShadow=true;
@@ -603,20 +603,17 @@ function createDJSetup() {
             }
           });
 
-          // Fit the character to the subwoofer and place his feet directly on top.
+          // Smaller character with feet on the floor.
           const gb = new THREE.Box3().setFromObject(gopnik);
           const gs = gb.getSize(new THREE.Vector3());
-          if(gs.y > 0) gopnik.scale.multiplyScalar(2.2/gs.y);
+          if(gs.y > 0) gopnik.scale.multiplyScalar(1.9/gs.y);
 
-          const fittedGopnik = new THREE.Box3().setFromObject(gopnik);
-          const subTop = new THREE.Box3().setFromObject(model).max.y;
-
-          gopnik.position.x = -1.05;
-          gopnik.position.z = 0.15;
+          gopnik.position.x = -1.25;
           gopnik.position.y = 0;
+          gopnik.position.z = 0.15;
 
-          // Stand beside the subwoofer and turn 90 degrees toward the dancefloor.
-          gopnik.rotation.y = Math.PI/2;
+          // Rotate exactly 180 degrees.
+          gopnik.rotation.y = Math.PI;
           subGroup.add(gopnik);
         },undefined,err=>console.warn('[EWS GOPNIK] load failed',err));
       }
