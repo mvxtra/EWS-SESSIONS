@@ -1142,7 +1142,7 @@ function createClubMirror(){
   function addMirror(name,x,rotationY){
     const mirrorGroup=new THREE.Group();
     mirrorGroup.name=name;
-    mirrorGroup.position.set(x,3.0,0);
+    mirrorGroup.position.set(x,3.65,0);
     mirrorGroup.rotation.y=rotationY;
 
     const mirrorMat=new THREE.MeshStandardMaterial({
@@ -1156,7 +1156,7 @@ function createClubMirror(){
       new THREE.PlaneGeometry(8.8,5.2),
       mirrorMat
     );
-    glass.position.z=.02;
+    glass.position.z=-.08;
     glass.userData.noCollision=true;
     glass.userData.isMirror=true;
     mirrorGroup.add(glass);
@@ -1178,7 +1178,7 @@ function createClubMirror(){
       mirrorGroup.add(f);
     });
 
-    scene.add(mirrorGroup);
+    // Keep the mirror face almost flush with the wall so it reads as wall-mounted, not floating.\n    mirrorGroup.position.x = x > 0 ? 15.83 : -15.83;\n    scene.add(mirrorGroup);
     return mirrorGroup;
   }
 
