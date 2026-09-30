@@ -471,34 +471,113 @@ function createWallLogo() {
   const logoTexture = new THREE.TextureLoader().load('/assets/logo.png');
   logoTexture.colorSpace = THREE.SRGBColorSpace || undefined;
 
-  const mat = new THREE.MeshBasicMaterial({
-    map: logoTexture,
-    transparent: true,
-    depthWrite: false,
-    side: THREE.DoubleSide
-  });
-
   const logo = new THREE.Mesh(
     new THREE.PlaneGeometry(5.8, 2.9),
-    mat
+    new THREE.MeshBasicMaterial({
+      map: logoTexture,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
   );
 
   logo.name = 'EWS_WALL_LOGO';
   logo.position.set(0, 3.55, -13.78);
   logo.rotation.y = 0;
   scene.add(logo);
+
+  // Industrial EWS frame: black metal, white edge, subtle club glow.
+  const outer = new THREE.Mesh(
+    new THREE.BoxGeometry(6.35, 3.45, 0.12),
+    new THREE.MeshStandardMaterial({
+      color: 0x050505,
+      roughness: .28,
+      metalness: .82
+    })
+  );
+  outer.name = 'EWS_LOGO_FRAME';
+  outer.position.set(0, 3.55, -13.91);
+  scene.add(outer);
+
+  const glow = new THREE.Mesh(
+    new THREE.BoxGeometry(6.05, 3.15, 0.025),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: .20,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    })
+  );
+  glow.name = 'EWS_LOGO_FRAME_GLOW';
+  glow.position.set(0, 3.55, -13.975);
+  scene.add(glow);
+
+  const frameEdges = [
+    [6.45,.055,.08,0,5.29,-13.99],
+    [6.45,.055,.08,0,1.81,-13.99],
+    [.055,3.53,.08,-3.20,3.55,-13.99],
+    [.055,3.53,.08,3.20,3.55,-13.99]
+  ];
+  const edgeMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: .85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  frameEdges.forEach(([w,h,d,x,y,z])=>{
+    const e = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), edgeMat);
+    e.position.set(x,y,z);
+    scene.add(e);
+  });
 }
 
 function createPhysicalScreen() {
+  // Black screen body.
   const backing = new THREE.Mesh(
     new THREE.PlaneGeometry(11.6, 5.45),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
   backing.position.set(0, 3.175, 13.48);
   backing.rotation.y = Math.PI;
-  
   scene.add(backing);
   screenMesh = backing;
+
+  // Heavy industrial frame matching the underground EWS club.
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(12.15, 5.98, .16),
+    new THREE.MeshStandardMaterial({
+      color: 0x050505,
+      roughness: .25,
+      metalness: .86
+    })
+  );
+  frame.name = 'EWS_SCREEN_FRAME';
+  frame.position.set(0, 3.175, 13.64);
+  frame.rotation.y = Math.PI;
+  scene.add(frame);
+
+  // Thin white luminous trim.
+  const trimMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: .88,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const trim = [
+    [12.25,.07,.10,0,6.16,13.55],
+    [12.25,.07,.10,0,.19,13.55],
+    [.07,5.97,.10,-6.09,3.175,13.55],
+    [.07,5.97,.10,6.09,3.175,13.55]
+  ];
+  trim.forEach(([w,h,d,x,y,z])=>{
+    const e = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), trimMat);
+    e.position.set(x,y,z);
+    e.rotation.y = Math.PI;
+    scene.add(e);
+  });
 }
 
 function createDJSetup() {
