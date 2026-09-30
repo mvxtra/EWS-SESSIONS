@@ -542,7 +542,35 @@ function createDJSetup() {
   };
   tryGLTF();
 
-  // Keep the setup visually centred and facing the DJ, without moving the stage or screen.
+  // Two Technics SL-1210MK2 turntables, one on each side of the CDJ.
+  const technicsLoader = new THREE.GLTFLoader();
+  const technicsPath = '/models/technics_sl-1210mk2.glb';
+
+  [-1,1].forEach(side=>{
+    const turntableGroup = new THREE.Group();
+    turntableGroup.name = side < 0 ? 'TECHNICS_SL1210MK2_LEFT' : 'TECHNICS_SL1210MK2_RIGHT';
+    turntableGroup.position.set(side*1.28,1.02,0);
+    table.add(turntableGroup);
+
+    technicsLoader.load(technicsPath, gltf=>{
+      const model = gltf.scene;
+      model.traverse(o=>{
+        if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}
+      });
+
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const targetWidth = 1.12;
+      if(size.x > 0) model.scale.multiplyScalar(targetWidth/size.x);
+
+      const fitted = new THREE.Box3().setFromObject(model);
+      model.position.y -= fitted.min.y;
+      model.rotation.y = Math.PI;
+      turntableGroup.add(model);
+    },undefined,()=>{});
+  });
+
+  // Keep the setup visually centred and facing the DJ, without moving the screen.
   table.rotation.y=0;
 }
 
