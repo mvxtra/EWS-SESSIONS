@@ -121,8 +121,6 @@ button{cursor:pointer}
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.6.10/umd/index.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
 <script>
 (() => {
@@ -151,10 +149,7 @@ let yaw = 0, pitch = 0;
 let px = 0, py = 0, pz = 8;
 let vy = 0, grounded = true;
 const keys = {};
-const remotes = new Map();
-let avatarModelPromise = null;
-let runningAnimationPromise = null;
-let lastState = 0;
+const remotes = new Map();let lastState = 0;
 
 const authMsg = $('authMsg');
 
@@ -224,7 +219,9 @@ $('password').addEventListener('keydown', e => {
 
 function buildWorld() {
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x030303);
+  // Transparent WebGL canvas: the Twitch CSS3D screen remains visible behind
+  // the 3D club, while real meshes can occlude it by normal depth.
+  scene.background = null;
   scene.fog = new THREE.FogExp2(0x030303, 0.022);
 
   camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, .05, 100);
@@ -237,10 +234,11 @@ function buildWorld() {
   scene.add(player);
   player.add(camera);
   // First-person camera: no visible local avatar.
-  camera.position.set(0, 1.65, 0);
+  camera.position.set(0, 2.05, 0);
   camera.rotation.set(0, 0, 0);
 
-  renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, powerPreference:'high-performance'});
+  renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, alpha:true, powerPreference:'high-performance'});
+  renderer.setClearColor(0x000000,0);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
 
@@ -252,10 +250,13 @@ function buildWorld() {
   cssRenderer.domElement.style.position = 'absolute';
   cssRenderer.domElement.style.inset = '0';
   cssRenderer.domElement.style.pointerEvents = 'none';
-  cssRenderer.domElement.style.zIndex = '3';
+  cssRenderer.domElement.style.zIndex = '4';
 
   renderer.domElement.style.position = 'absolute';
   renderer.domElement.style.inset = '0';
+  // WebGL is ABOVE the CSS3D screen. This gives normal 3D occlusion:
+  // every real mesh rendered by WebGL can physically cover the screen.
+  // WebGL stays above the CSS3D iframe so club geometry occludes the screen.
   renderer.domElement.style.zIndex = '2';
 
   $('game').appendChild(cssRenderer.domElement);
@@ -382,36 +383,161 @@ function buildWorld() {
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
 
-// Ceiling rig
-  const rigMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:.4,metalness:.8});
-  addBox(17,.14,.14,0,6.4,-10.5,rigMat);
-  addBox(17,.14,.14,0,6.4,-3,rigMat);
-  addBox(17,.14,.14,0,6.4,5,rigMat);
+  // EWS logo mounted on the wall behind the DJ booth.
+  createWallLogo();
 
-  // PROFESSIONAL CLUB LIGHTING RIG
+// Ceiling: three long hospital-style fluorescent fixtures.
+  const ceilingLampGroups = [];
+  const lampHousingMat = new THREE.MeshStandardMaterial({color:0x171717,roughness:.45,metalness:.7});
+  const lampGlowMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:1,depthWrite:false});
+
+  [-10.5,-3,5].forEach((z,i)=>{
+    const g=new THREE.Group();
+    g.name='CEILING_HOSPITAL_LAMP_'+(i+1);
+    g.position.set(0,6.86,z);
+
+    const housing=new THREE.Mesh(new THREE.BoxGeometry(15.5,.12,.48),lampHousingMat);
+    housing.position.y=.02;
+    g.add(housing);
+
+    const glow=new THREE.Mesh(new THREE.BoxGeometry(14.9,.035,.30),lampGlowMat.clone());
+    glow.position.y=-.055;
+    g.add(glow);
+
+    [-7.75,7.75].forEach(x=>{
+      const cap=new THREE.Mesh(new THREE.BoxGeometry(.12,.10,.52),lampHousingMat);
+      cap.position.set(x,0,0);
+      g.add(cap);
+    });
+
+    const lampLight=new THREE.PointLight(0xffffff,0,18);
+    lampLight.position.set(0,-.15,0);
+    g.add(lampLight);
+
+    g.userData.glow=glow;
+    g.userData.light=lampLight;
+    g.userData.phase=i*1.73;
+    ceilingLampGroups.push(g);
+    scene.add(g);
+  });
+
+  scene.userData.ceilingLamps=ceilingLampGroups;
   setupClubLighting();
 
   // No text/logo is placed over the screen surface.
   // The screen must remain a clean video texture / Twitch surface.
-  // Fog/dust
-  const count = 500;
+  // Floating dust: each particle gets its own slow, drifting motion.
+  const count = 650;
   const pos = new Float32Array(count*3);
+  const dustData = new Float32Array(count*4);
+
   for(let i=0;i<count;i++){
     pos[i*3] = Math.random()*30-15;
     pos[i*3+1] = Math.random()*6+.2;
     pos[i*3+2] = Math.random()*26-13;
+
+    dustData[i*4] = .15 + Math.random()*.55; // horizontal speed
+    dustData[i*4+1] = .08 + Math.random()*.30; // vertical speed
+    dustData[i*4+2] = Math.random()*Math.PI*2; // phase
+    dustData[i*4+3] = .25 + Math.random()*.8; // drift strength
   }
+
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.BufferAttribute(pos,3));
-  scene.add(new THREE.Points(pg,new THREE.PointsMaterial({
-    color:0x999999,size:.025,transparent:true,opacity:.3,depthWrite:false
-  })));
 
-  for(let i=0;i<5;i++){
-    const light = new THREE.PointLight(0xffffff,.35,12);
-    light.position.set(-10+i*5,4,-4);
-    scene.add(light);
+  const dustMaterial = new THREE.PointsMaterial({
+    color:0x999999,
+    size:.028,
+    transparent:true,
+    opacity:.34,
+    depthWrite:false
+  });
+
+  const dust = new THREE.Points(pg,dustMaterial);
+  dust.name='EWS_FLOATING_DUST';
+  scene.add(dust);
+  scene.userData.dust={points:dust,data:dustData,count};
+
+  // Wind direction and strength are regenerated periodically.
+  scene.userData.dustWind={x:.12,z:.08,nextChange:performance.now()/1000+2};
+
+  // Dense underground-club haze: broad translucent volumes drift through the room.
+  // It is intentionally thick so ceiling lights and lasers bloom through the air.
+  const smokeCanvas = document.createElement('canvas');
+  smokeCanvas.width = 128;
+  smokeCanvas.height = 128;
+  const smokeCtx = smokeCanvas.getContext('2d');
+  const smokeGrad = smokeCtx.createRadialGradient(64,64,4,64,64,62);
+  smokeGrad.addColorStop(0,'rgba(255,255,255,.24)');
+  smokeGrad.addColorStop(.28,'rgba(210,210,210,.12)');
+  smokeGrad.addColorStop(.62,'rgba(150,150,150,.045)');
+  smokeGrad.addColorStop(1,'rgba(80,80,80,0)');
+  smokeCtx.fillStyle = smokeGrad;
+  smokeCtx.fillRect(0,0,128,128);
+  const smokeTexture = new THREE.CanvasTexture(smokeCanvas);
+
+  const smokeCount = 420;
+  const smokeGroup = new THREE.Group();
+  smokeGroup.name = 'EWS_DENSE_CLUB_HAZE';
+  scene.add(smokeGroup);
+
+  const smokeData = [];
+  for(let i=0;i<smokeCount;i++){
+    const mat = new THREE.SpriteMaterial({
+      map: smokeTexture,
+      color: new THREE.Color(.72 + Math.random()*.18, .72 + Math.random()*.18, .72 + Math.random()*.18),
+      transparent:true,
+      opacity:.045 + Math.random()*.075,
+      depthWrite:false,
+      depthTest:true,
+      blending:THREE.NormalBlending
+    });
+    const s = new THREE.Sprite(mat);
+    const y = .45 + Math.random()*5.4;
+    s.position.set(Math.random()*29-14.5,y,Math.random()*25-12.5);
+    const size = 2.8 + Math.random()*6.2;
+    s.scale.set(size,size*(.55+Math.random()*.55),1);
+    smokeGroup.add(s);
+    smokeData.push({
+      sprite:s,
+      vx:-.018 + Math.random()*.036,
+      vz:-.018 + Math.random()*.036,
+      vy:.004 + Math.random()*.018,
+      phase:Math.random()*Math.PI*2,
+      sway:.3 + Math.random()*1.1,
+      baseY:y,
+      baseOpacity:mat.opacity
+    });
   }
+
+  // Extra low haze makes the dancefloor feel genuinely smoky.
+  for(let i=0;i<70;i++){
+    const mat = new THREE.SpriteMaterial({
+      map: smokeTexture,
+      color:0x9a9a9a,
+      transparent:true,
+      opacity:.07 + Math.random()*.055,
+      depthWrite:false,
+      depthTest:true
+    });
+    const s = new THREE.Sprite(mat);
+    s.position.set(Math.random()*27-13.5,.28+Math.random()*.75,Math.random()*23-11.5);
+    const size=4.2+Math.random()*5.8;
+    s.scale.set(size*1.35,size*.42,1);
+    smokeGroup.add(s);
+    smokeData.push({
+      sprite:s,
+      vx:-.012+Math.random()*.024,
+      vz:-.012+Math.random()*.024,
+      vy:.003+Math.random()*.009,
+      phase:Math.random()*Math.PI*2,
+      sway:.5+Math.random()*1.4,
+      baseY:s.position.y,
+      baseOpacity:mat.opacity
+    });
+  }
+
+  scene.userData.smoke={group:smokeGroup,data:smokeData};
 
   window.addEventListener('resize', resize);
   document.addEventListener('mousemove', mouseLook);
@@ -422,6 +548,7 @@ function buildWorld() {
   $('scene').addEventListener('click', () => {
     if (document.activeElement === $('chatInput')) return;
     if(screenVideo) screenVideo.play().catch(()=>{});
+    enableTwitchAudio();
     $('scene').requestPointerLock?.();
   });
 }
@@ -433,14 +560,92 @@ function addBox(w,h,d,x,y,z,mat) {
   return m;
 }
 
+
+function createWallLogo() {
+  const logoTexture = new THREE.TextureLoader().load('/assets/logo.png');
+  logoTexture.colorSpace = THREE.SRGBColorSpace || undefined;
+
+  const logo = new THREE.Mesh(
+    new THREE.PlaneGeometry(5.8, 2.9),
+    new THREE.MeshBasicMaterial({
+      map: logoTexture,
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
+  );
+
+  logo.name = 'EWS_WALL_LOGO';
+  logo.position.set(0, 3.55, -13.78);
+  logo.rotation.y = 0;
+  scene.add(logo);
+
+  // Only a thin neon outline remains around the logo.
+  const edgeMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: .85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+
+  [
+    [6.05,.055,.06,0,5.01,-13.93],
+    [6.05,.055,.06,0,2.09,-13.93],
+    [.055,2.97,.06,-3.00,3.55,-13.93],
+    [.055,2.97,.06,3.00,3.55,-13.93]
+  ].forEach(([w,h,d,x,y,z])=>{
+    const e=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),edgeMat);
+    e.position.set(x,y,z);
+    scene.add(e);
+  });
+}
+
 function createPhysicalScreen() {
+  // Black screen body.
   const backing = new THREE.Mesh(
     new THREE.PlaneGeometry(11.6, 5.45),
     new THREE.MeshBasicMaterial({ color: 0x000000 })
   );
-  backing.position.set(0, 3.175, -13.48);
+  backing.position.set(0, 3.175, 13.48);
+  backing.rotation.y = Math.PI;
   scene.add(backing);
   screenMesh = backing;
+
+  // Heavy industrial frame matching the underground EWS club.
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(12.15, 5.98, .16),
+    new THREE.MeshStandardMaterial({
+      color: 0x050505,
+      roughness: .25,
+      metalness: .86
+    })
+  );
+  frame.name = 'EWS_SCREEN_FRAME';
+  frame.position.set(0, 3.175, 13.64);
+  frame.rotation.y = Math.PI;
+  scene.add(frame);
+
+  // Thin white luminous trim.
+  const trimMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: .88,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const trim = [
+    [12.25,.07,.10,0,6.16,13.55],
+    [12.25,.07,.10,0,.19,13.55],
+    [.07,5.97,.10,-6.09,3.175,13.55],
+    [.07,5.97,.10,6.09,3.175,13.55]
+  ];
+  trim.forEach(([w,h,d,x,y,z])=>{
+    const e = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), trimMat);
+    e.position.set(x,y,z);
+    e.rotation.y = Math.PI;
+    scene.add(e);
+  });
 }
 
 function createDJSetup() {
@@ -581,7 +786,23 @@ function createDJSetup() {
 
     subwooferLoader.load('/models/%D1%81%D0%B0%D0%B1%D1%83%D1%84%D0%B5%D1%80.glb',gltf=>{
       const model=gltf.scene;
-      model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      model.traverse(o=>{
+      if(o.isMesh){
+        o.castShadow=true;
+        o.receiveShadow=true;
+        // Opaque physical objects: no see-through materials.
+        if(o.material){
+          const mats=Array.isArray(o.material)?o.material:[o.material];
+          mats.forEach(m=>{
+            if(!m) return;
+            m.transparent=false;
+            m.opacity=1;
+            m.depthWrite=true;
+            m.depthTest=true;
+          });
+        }
+      }
+    });
       const box=new THREE.Box3().setFromObject(model);
       const size=box.getSize(new THREE.Vector3());
       if(size.x>0) model.scale.multiplyScalar(4.35/size.x);
@@ -589,6 +810,40 @@ function createDJSetup() {
       model.position.y-=fitted.min.y;
       model.rotation.y=Math.PI*2;
       subGroup.add(model);
+
+      // Gopnik stands BESIDE the LEFT subwoofer, never inside it.
+      if(side < 0){
+        const gopnikLoader = new THREE.GLTFLoader();
+        gopnikLoader.load('/models/gopnik.glb',gltf2=>{
+          const gopnik = gltf2.scene;
+          gopnik.name = 'GOPNIK_BESIDE_SUBWOOFER';
+          gopnik.traverse(o=>{
+            if(o.isMesh){
+              o.castShadow=true;
+              o.receiveShadow=true;
+            }
+          });
+
+          // Smaller character with feet on the floor.
+          const gb = new THREE.Box3().setFromObject(gopnik);
+          const gs = gb.getSize(new THREE.Vector3());
+          if(gs.y > 0) gopnik.scale.multiplyScalar(1.9/gs.y);
+
+          // Put the gopnik beside the outer end of the left subwoofer,
+          // clearly outside the cabinet rather than inside/behind it.
+          // The parent is the DJ table, so these are table-local coordinates.
+          gopnik.position.x = -7.25;
+          gopnik.position.z = -0.05;
+
+          // Re-align the model's actual feet to the club floor.
+          const floorBox = new THREE.Box3().setFromObject(gopnik);
+          gopnik.position.y -= floorBox.min.y;
+
+          // Rotate toward the dancefloor.
+          gopnik.rotation.y = Math.PI;
+          table.add(gopnik);
+        },undefined,err=>console.warn('[EWS GOPNIK] load failed',err));
+      }
     },undefined,()=>{});
   });
 
@@ -601,98 +856,51 @@ function setupClubLighting() {
   scene.userData.clubBeams = [];
   scene.userData.strobe = [];
 
-  // Stage wash: two strong professional spotlights aimed at the dance floor.
-  const stageSpots = [
-    {x:-5.5, y:6.0, z:-10.5, color:0xffffff},
-    {x: 5.5, y:6.0, z:-10.5, color:0xffffff}
-  ];
-
-  for (const p of stageSpots) {
-    const spot = new THREE.SpotLight(p.color, 8.0, 25, Math.PI/7, 0.55, 1.3);
-    spot.position.set(p.x,p.y,p.z);
-    spot.target.position.set(p.x*0.25,0,1.5);
-    scene.add(spot.target);
-    scene.add(spot);
-    spot.castShadow = true;
-    scene.userData.clubLights.push(spot);
-  }
-
-  // Colored moving-head fixtures across the ceiling.
-  const colors = [0xff1744,0x247bff,0x8a2be2,0x00e5ff,0xffffff,0xff1744];
-  [-7.5,-4.5,-1.5,1.5,4.5,7.5].forEach((x,i)=>{
-    const housing = new THREE.Mesh(
-      new THREE.BoxGeometry(.62,.32,.62),
-      new THREE.MeshStandardMaterial({color:0x050505,roughness:.3,metalness:.95})
-    );
-    housing.position.set(x,6.12,-7.5);
-    scene.add(housing);
-
-    const beam = new THREE.SpotLight(colors[i], 5.5, 22, Math.PI/10, .72, 1.5);
-    beam.position.set(x,5.95,-7.5);
-    beam.target.position.set(x*.55,0,1.0);
-    scene.add(beam.target);
-    scene.add(beam);
-    scene.userData.clubBeams.push({light:beam,target:beam.target,phase:i*.75,baseX:x});
-  });
-
-  // Side/back washes make the room read like a real venue instead of a flat dark box.
-  [
-    [-15,3.2,-6,0xff1744],
-    [ 15,3.2,-6,0x247bff],
-    [-13,3.0, 7,0x8a2be2],
-    [ 13,3.0, 7,0x00e5ff]
-  ].forEach(([x,y,z,color])=>{
-    const l = new THREE.PointLight(color, 2.8, 13);
-    l.position.set(x,y,z);
-    scene.add(l);
-    scene.userData.clubLights.push(l);
-  });
-
-  // Two narrow laser-like beam fixtures aimed across the dance floor.
-  [-1,1].forEach(side=>{
-    const beam = new THREE.SpotLight(side<0?0xff1744:0x247bff, 4.2, 30, Math.PI/35, .25, 1.0);
-    beam.position.set(side*7.8,5.8,-8.8);
-    beam.target.position.set(-side*7.0,0,5.5);
-    scene.add(beam.target);
-    scene.add(beam);
-    scene.userData.clubBeams.push({light:beam,target:beam.target,phase:side*1.7,laser:true,baseX:side*7.8});
-  });
-
-  // Strobe fixtures at the front truss. Normally dim, then flash in short pulses.
-  [-6,-2,2,6].forEach(x=>{
-    const l = new THREE.PointLight(0xffffff,0,18);
-    l.position.set(x,5.9,-10.4);
-    scene.add(l);
-    scene.userData.strobe.push(l);
+  // Each ceiling lamp gets its own generated rhythm.
+  // The rhythm changes automatically, so lamps can blink quickly, slowly,
+  // in short bursts or pause for a moment before starting again.
+  const lamps=scene.userData.ceilingLamps || [];
+  lamps.forEach((lamp,i)=>{
+    lamp.userData.random={
+      nextChange: performance.now()/1000 + Math.random()*1.5,
+      on:false,
+      speed:.8 + Math.random()*5.5,
+      hold:.04 + Math.random()*.65
+    };
+    lamp.userData.glow.material.opacity=.025;
+    lamp.userData.light.intensity=0;
   });
 }
-
 function updateClubLighting(t) {
-  const beams = scene.userData.clubBeams || [];
-  beams.forEach((b,i)=>{
-    const a = t*0.72 + b.phase;
-    if (b.laser) {
-      b.target.position.x = Math.sin(a)*7;
-      b.target.position.z = 4.5 + Math.cos(a*0.8)*4;
-      b.light.intensity = 3.0 + (Math.sin(t*2.2+b.phase)+1)*1.1;
-    } else {
-      b.target.position.x = Math.sin(a)*8;
-      b.target.position.z = -1 + Math.cos(a*0.67)*10;
-      b.target.position.y = 0.4 + Math.sin(a*0.55)*1.2;
-      b.light.intensity = 3.8 + (Math.sin(t*2.0+b.phase)+1)*1.7;
+  const lamps=scene.userData.ceilingLamps || [];
+  lamps.forEach(lamp=>{
+    const r=lamp.userData.random;
+    if(!r) return;
+
+    if(t>=r.nextChange){
+      r.on=!r.on;
+      r.speed=.55 + Math.random()*7.0;
+      r.hold=.03 + Math.random()*.75;
+
+      if(r.on){
+        // Sometimes a very fast flash, sometimes a long club-style glow.
+        const fast=Math.random()<.38;
+        r.nextChange=t + (fast ? .025+Math.random()*.16 : .12+Math.random()*.95);
+      }else{
+        // Dark pauses are also randomly generated.
+        r.nextChange=t + .04+Math.random()*.9;
+      }
     }
-  });
 
-  const washes = scene.userData.clubLights || [];
-  washes.forEach((l,i)=>{
-    if (l.isPointLight) l.intensity = 1.8 + (Math.sin(t*1.15+i*1.7)+1)*0.9;
-  });
+    const target=r.on ? (.55+Math.random()*.45) : .018;
+    const current=lamp.userData.glow.material.opacity;
+    const smooth=Math.min(1, .12 + r.speed*.018);
+    lamp.userData.glow.material.opacity += (target-current)*smooth;
 
-  const pulse = Math.sin(t*5.5);
-  const hit = pulse > 0.88 ? 7.5 : 0;
-  (scene.userData.strobe || []).forEach(l=>l.intensity=hit);
+    const glow=lamp.userData.glow.material.opacity;
+    lamp.userData.light.intensity=r.on ? 1.0+glow*2.4 : 0;
+  });
 }
-
 function addSpeaker(x,z) {
   const group=new THREE.Group();
   const cabinetMaterial=new THREE.MeshStandardMaterial({
@@ -784,6 +992,66 @@ function mouseLook(e) {
   }
 }
 
+const PLAYER_COLLISION_RADIUS = 0.42;
+const playerCollisionBox = new THREE.Box3();
+const playerCollisionSize = new THREE.Vector3();
+
+function canPlayerOccupy(x,z){
+  if(!scene) return true;
+
+  for(const obj of scene.children){
+    // Check all descendants without treating the player's own body/camera as a wall.
+    let blocked=false;
+    obj.traverse?.(node=>{
+      if(blocked || !node.isMesh) return;
+      if(node.userData?.noCollision) return;
+      if(node.userData?.isFloor) return;
+
+      // Never collide with the local player or CSS3D screen objects.
+      if(player && (node===player || player.getObjectById(node.id))) return;
+      if(screenMesh && (node===screenMesh || screenMesh.getObjectById(node.id))) {
+        // The physical screen backing is a real wall and should block movement.
+      }
+
+      playerCollisionBox.setFromObject(node);
+      if(!Number.isFinite(playerCollisionBox.min.x) || !Number.isFinite(playerCollisionBox.max.x)) return;
+
+      const h=playerCollisionBox.max.y-playerCollisionBox.min.y;
+      const bottom=playerCollisionBox.min.y;
+
+      // Ignore the flat main floor and tiny decorative meshes.
+      if(playerCollisionBox.max.y < 0.12) return;
+      if(h < 0.18 && bottom < 0.25) return;
+
+      // The player's body occupies the lower ~1.8m. Objects entirely above
+      // the head do not prevent walking underneath them.
+      if(playerCollisionBox.min.y > 1.85) return;
+
+      const minX=playerCollisionBox.min.x-PLAYER_COLLISION_RADIUS;
+      const maxX=playerCollisionBox.max.x+PLAYER_COLLISION_RADIUS;
+      const minZ=playerCollisionBox.min.z-PLAYER_COLLISION_RADIUS;
+      const maxZ=playerCollisionBox.max.z+PLAYER_COLLISION_RADIUS;
+
+      if(x>=minX && x<=maxX && z>=minZ && z<=maxZ){
+        // Very large horizontal surfaces are usually the floor/ceiling.
+        const w=playerCollisionBox.max.x-playerCollisionBox.min.x;
+        const d=playerCollisionBox.max.z-playerCollisionBox.min.z;
+        if(w>28 && d>20) return;
+        blocked=true;
+      }
+    });
+    if(blocked) return false;
+  }
+  return true;
+}
+
+function tryMovePlayer(nx,nz){
+  // Resolve X and Z independently so the player can slide along walls/objects
+  // instead of getting completely stuck on a corner.
+  if(canPlayerOccupy(nx,pz)) px=nx;
+  if(canPlayerOccupy(px,nz)) pz=nz;
+}
+
 function animate() {
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);
@@ -796,10 +1064,12 @@ function animate() {
     const f=forward/len, s=side/len;
     const fx=-Math.sin(yaw), fz=-Math.cos(yaw);
     const rx=Math.cos(yaw), rz=-Math.sin(yaw);
-    px+=(fx*f+rx*s)*4.5*dt;
-    pz+=(fz*f+rz*s)*4.5*dt;
-    px=THREE.MathUtils.clamp(px,-15,15);
-    pz=THREE.MathUtils.clamp(pz,-13,13);
+    const moveX=(fx*f+rx*s)*4.5*dt;
+    const moveZ=(fz*f+rz*s)*4.5*dt;
+    tryMovePlayer(
+      THREE.MathUtils.clamp(px+moveX,-15,15),
+      THREE.MathUtils.clamp(pz+moveZ,-13,13)
+    );
   }
 
   if(document.pointerLockElement === $('scene')) {
@@ -813,21 +1083,77 @@ function animate() {
     player.rotation.y = yaw;
 
     // First-person camera stays at the player's head position.
-    camera.position.set(0, 1.65, 0);
+    camera.position.set(0, 2.05, 0);
     camera.rotation.x = pitch;
     camera.rotation.y = 0;
   }
 
   const now=performance.now();
-  if(socket?.connected && now-lastState>70){
+  if(socket?.connected && now-lastState>40){
     lastState=now;
     socket.emit('player:state',{
-      x:px,z:pz,yaw,moving:Boolean(forward||side)
+      x:px,z:pz,yaw,moving:Boolean(forward||side),vy,grounded
     });
   }
 
   updateRemotes(now/1000,dt);
   updateClubLighting(now/1000);
+
+  // Move the dense haze slowly through the room. Large, soft layers overlap
+  // so the air stays visibly filled with smoky club atmosphere.
+  const smokeState=scene.userData.smoke;
+  if(smokeState){
+    const smokeT=now/1000;
+    smokeState.data.forEach(d=>{
+      const s=d.sprite;
+      s.position.x += d.vx*dt + Math.sin(smokeT*.18+d.phase)*.004*d.sway;
+      s.position.z += d.vz*dt + Math.cos(smokeT*.15+d.phase)*.004*d.sway;
+      s.position.y += d.vy*dt + Math.sin(smokeT*.28+d.phase)*.0015;
+
+      s.material.opacity = d.baseOpacity * (
+        .78 + .22*Math.sin(smokeT*.35+d.phase)
+      );
+
+      if(s.position.x>15) s.position.x=-15;
+      if(s.position.x<-15) s.position.x=15;
+      if(s.position.z>13) s.position.z=-13;
+      if(s.position.z<-13) s.position.z=13;
+      if(s.position.y>6.4) s.position.y=.25;
+    });
+  }
+
+  // Animate the dust through the club with gentle random air currents.
+  const dustState=scene.userData.dust;
+  const windState=scene.userData.dustWind;
+  if(dustState && windState){
+    const positions=dustState.points.geometry.attributes.position.array;
+
+    if(now/1000 >= windState.nextChange){
+      windState.x=-.35+Math.random()*.7;
+      windState.z=-.35+Math.random()*.7;
+      windState.nextChange=now/1000+1.5+Math.random()*4;
+    }
+
+    for(let i=0;i<dustState.count;i++){
+      const k=i*3;
+      const s=i*4;
+      const phase=dustState.data[s+2];
+      const drift=dustState.data[s+3];
+      positions[k] += (windState.x*dustState.data[s]*dt) + Math.sin(now/1000*.7+phase)*.006*drift;
+      positions[k+1] += (Math.sin(now/1000*dustState.data[s+1]+phase)*.012*drift + dustState.data[s+1]*dt*.08);
+      positions[k+2] += (windState.z*dustState.data[s]*dt) + Math.cos(now/1000*.6+phase)*.006*drift;
+
+      if(positions[k]>15) positions[k]=-15;
+      if(positions[k]<-15) positions[k]=15;
+      if(positions[k+2]>13) positions[k+2]=-13;
+      if(positions[k+2]<-13) positions[k+2]=13;
+      if(positions[k+1]>6.2) positions[k+1]=.2;
+      if(positions[k+1]<.2) positions[k+1]=6.2;
+    }
+
+    dustState.points.geometry.attributes.position.needsUpdate=true;
+  }
+
   renderer.render(scene,camera);
   if(cssRenderer) cssRenderer.render(scene,camera);
 }
@@ -862,237 +1188,139 @@ $('chatInput').addEventListener('keydown', async e => {
 });
 
 function createAvatar(data) {
-  const g=new THREE.Group();
-  const seed=hash(data.id||data.username);
-  const bodyColor=[0x454545,0x666666,0x303030,0x777777][seed%4];
-  const bodyMat=new THREE.MeshStandardMaterial({color:bodyColor,roughness:.75});
-  const dark=new THREE.MeshStandardMaterial({color:0x151515,roughness:.85});
-  const headMat=new THREE.MeshStandardMaterial({color:0xbcbcbc,roughness:.7});
+  const g = new THREE.Group();
+  g.name = 'EWS_CHARACTER_' + (data.username || 'guest');
 
-  // Safe fallback remains visible until the real Mixamo character loads.
-  const fallback=new THREE.Group();
-  const body=new THREE.Mesh(new THREE.BoxGeometry(.8,1.25,.45),bodyMat);
-  body.position.y=1.3;fallback.add(body);
+  // EWS character: original low-poly club character built directly in Three.js.
+  // No X Bot / Mixamo / FBX dependency. Each remote gets its own simple rig.
+  const rig = new THREE.Group();
+  rig.name = 'EWS01_RIG';
+  g.add(rig);
 
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.38,16,12),headMat);
-  head.position.y=2.22;fallback.add(head);
+  const skinMat = new THREE.MeshStandardMaterial({
+    color: 0xb8b8b8,
+    roughness: .78,
+    metalness: .05
+  });
+  const darkMat = new THREE.MeshStandardMaterial({
+    color: 0x111111,
+    roughness: .62,
+    metalness: .28
+  });
+  const blackMat = new THREE.MeshStandardMaterial({
+    color: 0x050505,
+    roughness: .72,
+    metalness: .18
+  });
+  const soleMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2a2a,
+    roughness: .7,
+    metalness: .12
+  });
 
-  const eyeMat=new THREE.MeshBasicMaterial({color:0x111111});
-  for(const sx of [-.12,.12]){
-    const eye=new THREE.Mesh(new THREE.BoxGeometry(.08,.07,.03),eyeMat);
-    eye.position.set(sx,2.25,.35);fallback.add(eye);
-  }
+  const characterScale = 0.72;
+  rig.scale.setScalar(characterScale);
 
-  const l1=new THREE.Mesh(new THREE.BoxGeometry(.22,.9,.23),dark);
-  l1.position.set(-.2,.45,0);fallback.add(l1);
-  const l2=l1.clone();l2.position.x=.2;fallback.add(l2);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(.78, 1.02, .46), darkMat);
+  torso.position.y = 1.86;
+  torso.castShadow = true;
+  rig.add(torso);
 
-  const a1=new THREE.Mesh(new THREE.BoxGeometry(.2,1,.22),bodyMat);
-  a1.position.set(-.54,1.3,0);fallback.add(a1);
-  const a2=a1.clone();a2.position.x=.54;fallback.add(a2);
-  g.add(fallback);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(.62, .38, .49), blackMat);
+  chest.position.set(0, 2.08, .015);
+  chest.castShadow = true;
+  rig.add(chest);
 
-  const avatarHolder=new THREE.Group();
-  g.add(avatarHolder);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.13,.15,.18,8), skinMat);
+  neck.position.y = 2.43;
+  neck.castShadow = true;
+  rig.add(neck);
 
-  const label=makeTextSprite(data.username,1.65);
-  label.position.set(0,3.8,0);
-  label.scale.set(1.8,.45,1);
-  if(label.material){ label.material.depthTest=false; label.material.depthWrite=false; label.renderOrder=1000; }
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.34, 12, 8), skinMat);
+  head.scale.set(1,.98,.94);
+  head.position.y = 2.78;
+  head.castShadow = true;
+  rig.add(head);
+
+  // Minimal EWS face: two small dark eyes, no cartoon smile.
+  const eyeMat = new THREE.MeshBasicMaterial({color:0x050505});
+  [-.105,.105].forEach(x=>{
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),eyeMat);
+    eye.position.set(x,2.82,.315);
+    rig.add(eye);
+  });
+
+  const makeArm = side => {
+    const upper = new THREE.Group();
+    upper.position.set(side*.49,2.22,0);
+    rig.add(upper);
+
+    const upperMesh = new THREE.Mesh(new THREE.CylinderGeometry(.105,.12,.55,7), darkMat);
+    upperMesh.position.y = -.28;
+    upperMesh.castShadow = true;
+    upper.add(upperMesh);
+
+    const fore = new THREE.Group();
+    fore.position.y = -.55;
+    upper.add(fore);
+
+    const foreMesh = new THREE.Mesh(new THREE.CylinderGeometry(.09,.105,.52,7), blackMat);
+    foreMesh.position.y = -.26;
+    foreMesh.castShadow = true;
+    fore.add(foreMesh);
+
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(.115,8,6), skinMat);
+    hand.position.y = -.55;
+    hand.castShadow = true;
+    fore.add(hand);
+
+    return {upper,fore};
+  };
+
+  const makeLeg = side => {
+    const thigh = new THREE.Group();
+    thigh.position.set(side*.22,1.38,0);
+    rig.add(thigh);
+
+    const thighMesh = new THREE.Mesh(new THREE.CylinderGeometry(.145,.17,.65,7), darkMat);
+    thighMesh.position.y=-.32;
+    thighMesh.castShadow=true;
+    thigh.add(thighMesh);
+
+    const shin = new THREE.Group();
+    shin.position.y=-.65;
+    thigh.add(shin);
+
+    const shinMesh = new THREE.Mesh(new THREE.CylinderGeometry(.115,.14,.62,7), blackMat);
+    shinMesh.position.y=-.31;
+    shinMesh.castShadow=true;
+    shin.add(shinMesh);
+
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(.25,.13,.52), soleMat);
+    foot.position.set(0,-.64,.10);
+    foot.castShadow=true;
+    shin.add(foot);
+
+    return {thigh,shin,foot};
+  };
+
+  const leftArm = makeArm(-1);
+  const rightArm = makeArm(1);
+  const leftLeg = makeLeg(-1);
+  const rightLeg = makeLeg(1);
+
+  // Slightly different jacket tone per user, still within the black/white EWS palette.
+  const variant = hash(data.username || '') % 3;
+  if(variant===1) darkMat.color.setHex(0x171717);
+  if(variant===2) darkMat.color.setHex(0x222222);
+
+  const label = makeTextSprite(data.username,1.65);
+  label.position.y = 3.55;
   g.add(label);
 
   g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y=Number(data.yaw)||0;
+  g.rotation.y = (Number(data.yaw)||0) + Math.PI;
   scene.add(g);
-
-  if(!avatarModelPromise){
-    avatarModelPromise=new Promise((resolve,reject)=>{
-      if(!THREE.FBXLoader) return reject(new Error('FBXLoader unavailable'));
-      const loader=new THREE.FBXLoader();
-      loader.load(
-        '/models/avatars/X%20Bot.fbx',
-        model=>resolve(model),
-        undefined,
-        err=>reject(err)
-      );
-    });
-  }
-
-  if(!runningAnimationPromise){
-    runningAnimationPromise=new Promise((resolve,reject)=>{
-      if(!THREE.FBXLoader) return reject(new Error('FBXLoader unavailable'));
-      const loader=new THREE.FBXLoader();
-      loader.load(
-        '/models/avatars/Running.fbx',
-        model=>{
-          const clip=model.animations && model.animations[0] ? model.animations[0] : null;
-          console.log('[EWS AVATAR] Running.fbx loaded:', !!clip, clip?.name || 'no clip');
-          resolve({source:model,clip});
-        },
-        undefined,
-        err=>reject(err)
-      );
-    });
-  }
-
-  Promise.all([avatarModelPromise,runningAnimationPromise]).then(([source,runData])=>{
-    const model=THREE.SkeletonUtils && THREE.SkeletonUtils.clone
-      ? THREE.SkeletonUtils.clone(source)
-      : source.clone(true);
-
-    model.traverse(o=>{
-      if(o.isMesh){
-        o.castShadow=true;
-        o.receiveShadow=true;
-      }
-    });
-
-    // Normalize the imported Mixamo character to a predictable club height.
-    const box=new THREE.Box3().setFromObject(model);
-    const size=box.getSize(new THREE.Vector3());
-    if(size.y>0){
-      const targetHeight=3.0;
-      model.scale.multiplyScalar(targetHeight/size.y);
-    }
-
-    const normalizedBox=new THREE.Box3().setFromObject(model);
-    model.position.y -= normalizedBox.min.y;
-
-    // Mixamo X Bot faces the opposite direction from the EWS movement yaw.
-    // Rotate the visual model only; keep the network/player yaw unchanged.
-    model.rotation.y = Math.PI;
-
-    avatarHolder.add(model);
-    fallback.visible=false;
-
-    // ANIMATION ENGINE
-    // X Bot and Running.fbx are both Mixamo rigs. First try the original
-    // Mixamo clip directly; this is the most reliable path when bone names match.
-    // Retargeting is only used as a fallback for differently named rigs.
-    let mixer=null;
-    let runAction=null;
-    const runSource=runData?.source || null;
-    const rawRunClip=runData?.clip || null;
-
-    const findSkinnedMesh = root => {
-      let found=null;
-      root?.traverse?.(o => {
-        if(!found && o.isSkinnedMesh) found=o;
-      });
-      return found;
-    };
-
-    const targetSkin=findSkinnedMesh(model);
-    const sourceSkin=findSkinnedMesh(runSource);
-
-    console.log('[EWS AVATAR] target skin:', targetSkin?.name || 'NONE');
-    console.log('[EWS AVATAR] source skin:', sourceSkin?.name || 'NONE');
-    console.log('[EWS AVATAR] running clip:', rawRunClip?.name || 'NONE',
-      'tracks:', rawRunClip?.tracks?.length || 0);
-
-    // Mixer is attached to the complete character hierarchy so tracks such as
-    // mixamorigHips.quaternion can resolve against the actual target bones.
-    if(rawRunClip){
-      try{
-        mixer=new THREE.AnimationMixer(model);
-        runAction=mixer.clipAction(rawRunClip);
-        runAction.setLoop(THREE.LoopRepeat,Infinity);
-        runAction.setEffectiveWeight(1);
-        runAction.enabled=true;
-        runAction.play();
-        runAction.paused=true;
-
-        // If the clip has no resolvable bindings, Three.js will still create
-        // the action but the bones will not change. Keep a retarget fallback.
-        const boundTracks = rawRunClip.tracks.filter(track=>{
-          try{
-            return !!mixer.clipAction(rawRunClip).getRoot();
-          }catch(_){ return false; }
-        }).length;
-
-        console.log('[EWS AVATAR] Direct Mixamo animation prepared:',{
-          tracks:rawRunClip.tracks.length,
-          boundTracks
-        });
-      }catch(err){
-        console.error('[EWS AVATAR] Direct animation FAILED:',err);
-        mixer=null;
-        runAction=null;
-      }
-    }
-
-    // Retarget fallback for rigs whose track names do not bind directly.
-    if(!runAction && targetSkin && sourceSkin && rawRunClip && THREE.SkeletonUtils?.retargetClip){
-      try{
-        const targetBones=targetSkin.skeleton?.bones || [];
-        const sourceBones=sourceSkin.skeleton?.bones || [];
-        const sourceNames=new Set(sourceBones.map(b=>b.name));
-        const sourceByShortName=new Map(
-          sourceBones.map(b=>[String(b.name).split(':').pop(),b.name])
-        );
-        const names={};
-        targetBones.forEach(b=>{
-          const exact=b.name;
-          const short=String(b.name).split(':').pop();
-          if(sourceNames.has(exact)) names[exact]=exact;
-          else if(sourceByShortName.has(short)) names[exact]=sourceByShortName.get(short);
-        });
-
-        const retargeted=THREE.SkeletonUtils.retargetClip(
-          targetSkin,
-          sourceSkin,
-          rawRunClip,
-          {hip:'mixamorigHips',names}
-        );
-
-        mixer=new THREE.AnimationMixer(targetSkin);
-        runAction=mixer.clipAction(retargeted);
-        runAction.setLoop(THREE.LoopRepeat,Infinity);
-        runAction.setEffectiveWeight(1);
-        runAction.enabled=true;
-        runAction.play();
-        runAction.paused=true;
-
-        console.log('[EWS AVATAR] RETARGET fallback prepared. mapped bones:',Object.keys(names).length);
-      }catch(err){
-        console.error('[EWS AVATAR] Retarget fallback FAILED:',err);
-        mixer=null;
-        runAction=null;
-      }
-    }
-
-    if(!runAction){
-      console.error('[EWS AVATAR] NO WORKING RUN ANIMATION. Check Running.fbx bone names.');
-    }else{
-      // Start paused; movement code controls play/pause.
-      runAction.paused=true;
-      runAction.setEffectiveWeight(1);
-    }
-
-    // Store animation state on this avatar instance.
-    avatar._mixer=mixer;
-    avatar._runAction=runAction;
-    avatar._visualModel=model;
-    avatar._idleTime=0;
-    avatar._idleBaseY=model.position.y;
-    avatar._running=false;
-    if(runAction && avatar.data?.moving){
-      avatar._running=true;
-      runAction.reset();
-      runAction.setEffectiveWeight(1);
-      runAction.play();
-    }
-
-    const finalBox=new THREE.Box3().setFromObject(model);
-    const h=finalBox.max.y-finalBox.min.y;
-    label.position.y=Math.max(3.45,h+.65);
-
-  }).catch(err=>{
-    console.error('[EWS AVATAR] X Bot.fbx failed to load:', err);
-    console.error('[EWS AVATAR] URL:', location.origin + '/models/avatars/X%20Bot.fbx');
-    console.error('[EWS AVATAR] Check Network tab for the FBX request and its HTTP status.');
-    // Keep the fallback avatar so the club remains usable.
-  });
 
   const avatar = {
     g,
@@ -1100,12 +1328,56 @@ function createAvatar(data) {
     targetZ:g.position.z,
     targetYaw:g.rotation.y,
     data,
-    _mixer:null,
-    _runAction:null,
-    _visualModel:null,
+    _ewsRig:{
+      ready:true,
+      apply(t,moving,dt){
+        const speed = moving ? 8.5 : 2.0;
+        const step = Math.sin(t*speed);
+        const step2 = Math.sin(t*speed*2);
+
+        if(moving){
+          // Natural walk cycle: legs, knees, feet and opposite arms.
+          leftLeg.thigh.rotation.x = step*.62;
+          rightLeg.thigh.rotation.x = -step*.62;
+          leftLeg.shin.rotation.x = Math.max(0,-step)*.48;
+          rightLeg.shin.rotation.x = Math.max(0,step)*.48;
+          leftLeg.foot.rotation.x = -Math.max(0,-step)*.18;
+          rightLeg.foot.rotation.x = -Math.max(0,step)*.18;
+
+          leftArm.upper.rotation.x = -step*.42;
+          rightArm.upper.rotation.x = step*.42;
+          leftArm.fore.rotation.x = .12 + Math.max(0,step)*.10;
+          rightArm.fore.rotation.x = .12 + Math.max(0,-step)*.10;
+
+          torso.rotation.z = step*.025;
+          torso.position.y = 1.86 + Math.abs(step)*.018;
+          rig.position.y = Math.abs(step2)*.025;
+          rig.rotation.z = step*.012;
+        } else {
+          // Relaxed idle pose — arms stay down, never a T-pose.
+          leftLeg.thigh.rotation.x *= .82;
+          rightLeg.thigh.rotation.x *= .82;
+          leftLeg.shin.rotation.x *= .82;
+          rightLeg.shin.rotation.x *= .82;
+          leftLeg.foot.rotation.x *= .82;
+          rightLeg.foot.rotation.x *= .82;
+
+          leftArm.upper.rotation.x = -0.035;
+          rightArm.upper.rotation.x = 0.035;
+          leftArm.fore.rotation.x = .12;
+          rightArm.fore.rotation.x = .12;
+
+          torso.rotation.z *= .82;
+          torso.position.y = 1.86;
+          rig.position.y = Math.sin(t*1.7)*.018;
+          rig.rotation.z = Math.sin(t*.9)*.008;
+        }
+      }
+    },
+    _visualModel:rig,
     _idleTime:0,
     _idleBaseY:0,
-    _running:false
+    _running:!!data.moving
   };
 
   return avatar;
@@ -1124,7 +1396,10 @@ function upsertRemote(data){
   r.data=data;
   r.targetX=Number(data.x)||0;
   r.targetZ=Number(data.z)||0;
-  r.targetYaw=Number(data.yaw)||0;
+  r.targetY=Number(data.y)||0;
+  r.targetVy=Number(data.vy)||0;
+  r.targetGrounded=data.grounded!==false;
+  r.targetYaw=(Number(data.yaw)||0) + Math.PI;
 }
 
 function removeRemote(id){
@@ -1138,6 +1413,8 @@ function updateRemotes(t,dt){
   remotes.forEach(r=>{
     r.g.position.x += (r.targetX-r.g.position.x)*.22;
     r.g.position.z += (r.targetZ-r.g.position.z)*.22;
+    const desiredY=Math.max(0, Number(r.targetY)||0);
+    r.g.position.y += (desiredY-r.g.position.y)*.35;
     let d=r.targetYaw-r.g.rotation.y;
     while(d>Math.PI)d-=Math.PI*2;
     while(d<-Math.PI)d+=Math.PI*2;
@@ -1145,32 +1422,18 @@ function updateRemotes(t,dt){
 
     const moving=!!r.data?.moving;
 
-    if(r._runAction && moving!==r._running){
-      r._running=moving;
-      if(moving){
-        r._runAction.reset();
-        r._runAction.setEffectiveWeight(1);
-        r._runAction.play();
-      }else{
-        r._runAction.stop();
-        r._runAction.setEffectiveWeight(0);
-        r._runAction.setEffectiveWeight(0);
-        r._idleTime=0;
-        if(r._visualModel){
-          r._visualModel.position.y=r._idleBaseY;
-          r._visualModel.rotation.z=0;
-        }
-      }
+    r._running=moving;
+
+    // EWS-01 custom rig animation: no Running.fbx playback.
+    if(r._ewsRig?.ready){
+      r._ewsRig.apply(t,moving,dt);
     }
 
-    // Idle animation: subtle breathing/weight shift while standing still.
-    // This works even when no separate Idle.fbx is available.
+    // Subtle whole-body idle motion keeps the character alive even while still.
     if(!moving && r._visualModel){
       r._idleTime += dt;
-      const t=r._idleTime;
-      r._visualModel.position.y=r._idleBaseY + Math.sin(t*1.8)*0.035;
-      r._visualModel.rotation.z=Math.sin(t*0.9)*0.018;
-      r._visualModel.rotation.x=Math.sin(t*1.25)*0.010;
+      const idle=r._idleTime;
+      r._visualModel.position.y=r._idleBaseY + Math.sin(idle*1.8)*0.018;
     }
 
     if(r._mixer) r._mixer.update(dt);
@@ -1300,6 +1563,77 @@ function clearCssScreen() {
   screenCssFrame=null;
 }
 
+// CSS3D iframes do not participate in WebGL depth testing. To keep the
+// screen from appearing "through" 3D objects, we hide the iframe whenever
+// the camera's view toward the screen is blocked by a real scene object.
+// This makes speakers, avatars and props behave as solid occluders.
+const screenOcclusionRaycaster = new THREE.Raycaster();
+const screenOcclusionTargets = [];
+const screenOcclusionSamples = [
+  new THREE.Vector2(-.42,-.30), new THREE.Vector2(0,-.30), new THREE.Vector2(.42,-.30),
+  new THREE.Vector2(-.42,0),    new THREE.Vector2(0,0),    new THREE.Vector2(.42,0),
+  new THREE.Vector2(-.42,.30),  new THREE.Vector2(0,.30),  new THREE.Vector2(.42,.30)
+];
+
+function refreshScreenOcclusion(){
+  if(!screenCssObject || !screenCssFrame || !camera) return;
+
+  const center = new THREE.Vector3(0,0,0);
+  screenCssObject.getWorldPosition(center);
+
+  // Build the list once per check. CSS3D objects themselves are ignored.
+  screenOcclusionTargets.length = 0;
+  scene.traverse(obj=>{
+    if(!obj.isMesh) return;
+    if(obj===screenMesh) return;
+    if(screenCssObject && (obj===screenCssObject || screenCssObject.getObjectById(obj.id))) return;
+    if(obj.userData && obj.userData.screenOccluder===false) return;
+    screenOcclusionTargets.push(obj);
+  });
+
+  let blocked=0;
+  const from=camera.getWorldPosition(new THREE.Vector3());
+
+  for(const s of screenOcclusionSamples){
+    const target=center.clone();
+
+    // Spread sample points across the screen plane.
+    target.x += s.x * 5.35;
+    target.y += s.y * 2.45;
+
+    const dir=target.clone().sub(from);
+    const distance=dir.length();
+    if(distance<=0.01) continue;
+    dir.normalize();
+
+    screenOcclusionRaycaster.set(from,dir);
+    const hits=screenOcclusionRaycaster.intersectObjects(screenOcclusionTargets,true);
+
+    if(hits.some(hit=>hit.distance < distance-0.05)) blocked++;
+  }
+
+  // If the majority of the screen is behind geometry, hide the CSS iframe.
+  // Otherwise keep it visible so small props do not make the whole screen blink.
+  screenCssFrame.style.visibility = blocked >= 5 ? 'hidden' : 'visible';
+}
+
+function enableTwitchAudio(){
+  const iframe=screenCssFrame?.querySelector('iframe');
+  if(!iframe) return;
+  try{
+    iframe.contentWindow?.postMessage({
+      event:'command',
+      func:'setMuted',
+      args:[false]
+    },'*');
+    iframe.contentWindow?.postMessage({
+      event:'command',
+      func:'play',
+      args:[]
+    },'*');
+  }catch(_){}
+}
+
 function createTwitchWallScreen(src) {
   clearCssScreen();
 
@@ -1324,9 +1658,10 @@ function createTwitchWallScreen(src) {
 
   screenCssFrame=frame;
   screenCssObject=new THREE.CSS3DObject(frame);
-  screenCssObject.position.set(0,3.175,-13.42);
-  screenCssObject.scale.set(0.01,0.01,0.01);
-  screenCssObject.rotation.set(0,0,0);
+  screenCssObject.position.set(0,3.175,13.42);
+  // Face the opposite wall without mirroring the HTML/Twitch content.
+  screenCssObject.rotation.set(0,Math.PI,0);
+  screenCssObject.scale.set(-0.01,0.01,0.01);
   scene.add(screenCssObject);
 }
 
@@ -1335,6 +1670,8 @@ function applyScreen(state) {
   $('screenOverlay').style.display='none';
 
   clearCssScreen();
+  scene.background=null;
+  if(screenMesh) screenMesh.visible=true;
 
   if(hls){ hls.destroy(); hls=null; }
   if(screenTexture){ screenTexture.dispose(); screenTexture=null; }
@@ -1352,20 +1689,30 @@ function applyScreen(state) {
   }
 
   if(!state?.active || !state.src){
+    scene.background=null;
+    if(screenMesh) screenMesh.visible=true;
     if(host) $('screenStatus').textContent='SCREEN OFF';
     return;
   }
 
   const twitch=twitchEmbedUrl(state.src);
 
-  // Twitch is rendered as a CSS3D object at the exact wall position.
+  // Twitch is rendered behind the transparent WebGL scene. Real 3D meshes
+  // therefore cover the iframe naturally instead of appearing behind it.
   if(twitch){
+    scene.background=null;
+    if(screenMesh) screenMesh.visible=false;
     createTwitchWallScreen(twitch);
+    // Browsers block audible autoplay in cross-origin Twitch iframes.
+    // The first click inside the club is used to start the player with sound.
+    setTimeout(()=>enableTwitchAudio(),120);
     if(host) $('screenStatus').textContent='Twitch · '+(state.title||'EWS SESSIONS');
     return;
   }
 
   // HLS / normal video is rendered directly onto the physical Three.js wall.
+  scene.background=new THREE.Color(0x030303);
+  if(screenMesh) screenMesh.visible=true;
   const video=document.createElement('video');
   screenVideo=video;
   video.autoplay=true;
