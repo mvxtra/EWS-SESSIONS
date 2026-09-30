@@ -339,15 +339,28 @@ function createFirstPersonHands(){
   const hands = new THREE.Group();
   hands.name = 'EWS_FIRST_PERSON_HANDS';
 
-  const skin = new THREE.MeshStandardMaterial({
-    color:0x8a6a58,
-    roughness:.82,
-    metalness:.02
+  // Match the same materials used by createAvatar():
+  // dark jacket sleeve, black forearm, light-gray skin/hand.
+  const skinMat = new THREE.MeshStandardMaterial({
+    color:0xb8b8b8,
+    roughness:.78,
+    metalness:.05,
+    transparent:false,
+    opacity:1
   });
-  const sleeve = new THREE.MeshStandardMaterial({
+  const darkMat = new THREE.MeshStandardMaterial({
     color:0x111111,
+    roughness:.62,
+    metalness:.28,
+    transparent:false,
+    opacity:1
+  });
+  const blackMat = new THREE.MeshStandardMaterial({
+    color:0x050505,
     roughness:.72,
-    metalness:.08
+    metalness:.18,
+    transparent:false,
+    opacity:1
   });
 
   function makeArm(side){
@@ -355,29 +368,28 @@ function createFirstPersonHands(){
     const s = side < 0 ? -1 : 1;
 
     const upper = new THREE.Mesh(
-      new THREE.BoxGeometry(.23,.34,.23),
-      sleeve
+      new THREE.CylinderGeometry(.105,.12,.55,7),
+      darkMat
     );
     upper.position.set(s*.34,-.31,-.55);
-    upper.rotation.z=s*.18;
+    upper.rotation.z=s*.10;
     upper.rotation.x=-.10;
     g.add(upper);
 
     const fore = new THREE.Mesh(
-      new THREE.BoxGeometry(.20,.38,.20),
-      skin
+      new THREE.CylinderGeometry(.09,.105,.52,7),
+      blackMat
     );
-    fore.position.set(s*.39,-.57,-.72);
-    fore.rotation.z=s*.10;
+    fore.position.set(s*.39,-.68,-.72);
+    fore.rotation.z=s*.07;
     fore.rotation.x=-.08;
     g.add(fore);
 
     const hand = new THREE.Mesh(
-      new THREE.BoxGeometry(.22,.25,.19),
-      skin
+      new THREE.SphereGeometry(.115,8,6),
+      skinMat
     );
-    hand.position.set(s*.40,-.79,-.82);
-    hand.rotation.z=s*.08;
+    hand.position.set(s*.40,-.98,-.82);
     g.add(hand);
 
     g.userData.side=s;
@@ -393,8 +405,11 @@ function createFirstPersonHands(){
     if(o.isMesh){
       o.frustumCulled=false;
       o.renderOrder=50;
-      o.material.depthTest=false;
+      // Opaque first-person geometry: no alpha blending and no transparency.
+      o.material.transparent=false;
+      o.material.opacity=1;
       o.material.depthWrite=false;
+      o.material.depthTest=false;
     }
   });
 
