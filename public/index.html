@@ -659,6 +659,7 @@ createWallLogo();
       depthTest:true
     });
     const s = new THREE.Sprite(mat);
+    s.renderOrder=21;
     s.position.set(Math.random()*27-13.5,.28+Math.random()*.75,Math.random()*23-11.5);
     const size=4.2+Math.random()*5.8;
     s.scale.set(size*1.35,size*.42,1);
@@ -1373,6 +1374,7 @@ function createCornerLasers(){
         blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false
       }));
       core.name='EWS_LASER_CORE_'+c.name+'_'+col.name;
+      core.renderOrder=10;
       group.add(core);
 
       // Volumetric glow cone: this is what makes the beam visible through haze,
@@ -1386,6 +1388,7 @@ function createCornerLasers(){
         })
       );
       cone.name='EWS_LASER_GLOW_'+c.name+'_'+col.name;
+      cone.renderOrder=10;
       cone.userData.noCollision=true;
       core.userData.noCollision=true;
       group.add(cone);
