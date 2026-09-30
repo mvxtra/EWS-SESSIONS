@@ -1068,10 +1068,14 @@ function createEWSRig(model) {
     setRot(rig.neck, 0, moving ? Math.sin(time*2.6)*.035 : Math.sin(time*.8)*.025, 0);
     setRot(rig.head, moving ? Math.sin(time*2.6)*.018 : Math.sin(time*1.1)*.035, moving ? Math.sin(time*1.3)*.025 : 0, 0);
 
-    setRot(rig.lUpperArm, moving ? -step*.42 : Math.sin(time*1.2)*.025, 0, moving ? .06 : .02);
-    setRot(rig.rUpperArm, moving ? step*.42 : -Math.sin(time*1.2)*.025, 0, moving ? -.06 : -.02);
-    setRot(rig.lForearm, moving ? Math.max(0,step)*.10 : 0, 0, 0);
-    setRot(rig.rForearm, moving ? Math.max(0,-step)*.10 : 0, 0, 0);
+    // Pull the arms down from X Bot's default T-pose.
+    // The shoulder rotation is relative to the imported bind pose so the
+    // character starts in a relaxed club stance instead of a T-pose.
+    const armDrop=1.22;
+    setRot(rig.lUpperArm, moving ? -step*.30 : 0, 0, armDrop);
+    setRot(rig.rUpperArm, moving ? step*.30 : 0, 0, -armDrop);
+    setRot(rig.lForearm, moving ? Math.max(0,step)*.16 : .08, 0, 0);
+    setRot(rig.rForearm, moving ? Math.max(0,-step)*.16 : .08, 0, 0);
 
     setRot(rig.lThigh, moving ? step*.55 : Math.sin(time*1.2)*.018, 0, 0);
     setRot(rig.rThigh, moving ? -step*.55 : -Math.sin(time*1.2)*.018, 0, 0);
@@ -1300,11 +1304,15 @@ function createAvatar(data) {
       runAction.setEffectiveWeight(1);
     }
 
+    // Apply the relaxed EWS-01 pose immediately. This prevents the
+    // asynchronous model load from leaving a visible T-pose for a frame.
+    avatar._ewsRig=createEWSRig(model);
+    if(avatar._ewsRig?.ready) avatar._ewsRig.apply(0,false,0);
+
     // Store animation state on this avatar instance.
     avatar._mixer=null;
     avatar._runAction=null;
     avatar._visualModel=model;
-    avatar._ewsRig=createEWSRig(model);
     avatar._idleTime=0;
     avatar._idleBaseY=model.position.y;
     avatar._running=false;
