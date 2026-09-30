@@ -64,7 +64,7 @@ button{cursor:pointer}
  #controls{width:190px}
  #screenOverlay{width:88vw}
 }
-#mobileControls{display:none;position:fixed;inset:0;z-index:9998;pointer-events:none;touch-action:none;user-select:none}.mobile-stick{position:absolute;left:22px;bottom:28px;width:118px;height:118px;border:2px solid rgba(255,255,255,.28);border-radius:50%;background:rgba(0,0,0,.24)}.mobile-knob{position:absolute;left:34px;top:34px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45)}#mobileButtons{position:absolute;right:18px;bottom:22px;display:flex;gap:10px;flex-wrap:wrap;width:185px;justify-content:flex-end}.mobile-btn{pointer-events:auto;width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.58);color:#fff;font-size:10px;font-weight:700}.mobile-btn.heart{font-size:22px;color:#f33}#mobileHint{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:6px 10px;background:rgba(0,0,0,.5);font-size:10px;opacity:.65}@media (max-width:900px),(pointer:coarse){#mobileControls{display:block}}</style>
+#mobileControls{display:none;position:fixed;inset:0;z-index:9998;pointer-events:none;touch-action:none;user-select:none}.mobile-stick{pointer-events:auto;touch-action:none;position:absolute;left:22px;bottom:28px;width:118px;height:118px;border:2px solid rgba(255,255,255,.28);border-radius:50%;background:rgba(0,0,0,.24)}.mobile-knob{position:absolute;left:34px;top:34px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45)}#mobileButtons{position:absolute;right:18px;bottom:22px;display:flex;gap:10px;flex-wrap:wrap;width:185px;justify-content:flex-end}.mobile-btn{pointer-events:auto;width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:rgba(0,0,0,.58);color:#fff;font-size:10px;font-weight:700}.mobile-btn.heart{font-size:22px;color:#f33}#mobileHint{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:6px 10px;background:rgba(0,0,0,.5);font-size:10px;opacity:.65}@media (max-width:900px),(pointer:coarse){#mobileControls{display:block}}</style>
 </head>
 <body>
 <div id="app">
@@ -2215,6 +2215,7 @@ function initMobileControls(){
  chatBtn.addEventListener('touchstart',e=>{e.preventDefault();chatOpen=!chatOpen;syncPanels();if(chatOpen)setTimeout(()=>$('chatInput').focus(),40)},{passive:false});
  syncPanels();
  const reset=()=>{keys.KeyW=keys.KeyA=keys.KeyS=keys.KeyD=false;knob.style.transform='translate(0,0)'};
+ stick.addEventListener('pointerdown',e=>e.stopPropagation());
  const move=t=>{const r=stick.getBoundingClientRect(),x=t.clientX-(r.left+r.width/2),y=t.clientY-(r.top+r.height/2),len=Math.hypot(x,y)||1,k=Math.min(48,len),px=x/len*k,py=y/len*k;knob.style.transform='translate('+px+'px,'+py+'px)';keys.KeyW=py< -9;keys.KeyS=py>9;keys.KeyA=px< -9;keys.KeyD=px>9};
  stick.addEventListener('touchstart',e=>{e.preventDefault();move(e.changedTouches[0])},{passive:false});
  stick.addEventListener('touchmove',e=>{e.preventDefault();move(e.changedTouches[0])},{passive:false});
