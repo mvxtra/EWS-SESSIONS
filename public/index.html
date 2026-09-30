@@ -102,7 +102,7 @@ button{cursor:pointer}
 
       <div id="chat">
         <div id="chatLangRow">
-          <select id="chatLanguage" aria-label="Язык перевода"></select>
+          <select id="chatLanguage" aria-label="Язык"></select>
         </div>
         <div id="messages"></div>
         <input id="chatInput" maxlength="240" autocomplete="off" placeholder="Нажми ENTER и напиши сообщение...">
@@ -160,6 +160,8 @@ function initChatLanguage(){
   select.addEventListener('change',()=>{
     language=select.value;
     localStorage.setItem('ews-language',language);
+    const start=$('startLanguage');
+    if(start) start.value=language;
     if(socket?.connected) socket.emit('language:set',language);
   });
 }
@@ -201,7 +203,13 @@ function initStartLanguage(){
   const select=$('startLanguage');
   if(!select) return;
   select.value=language;
-  select.addEventListener('change',()=>{ language=select.value; localStorage.setItem('ews-language',language); });
+  select.addEventListener('change',()=>{
+    language=select.value;
+    localStorage.setItem('ews-language',language);
+    const chat=$('chatLanguage');
+    if(chat) chat.value=language;
+    if(socket?.connected) socket.emit('language:set',language);
+  });
 }
 initStartLanguage();
 
