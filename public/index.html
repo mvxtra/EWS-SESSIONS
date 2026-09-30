@@ -386,6 +386,25 @@ function createGhostMesh(){
   g.userData.noCollision=true;
   g.renderOrder=40;
 
+  const healthCanvas=document.createElement('canvas');
+  healthCanvas.width=256;
+  healthCanvas.height=64;
+  const healthTexture=new THREE.CanvasTexture(healthCanvas);
+  healthTexture.minFilter=THREE.LinearFilter;
+  const healthSprite=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:healthTexture,
+    transparent:true,
+    depthTest:false,
+    depthWrite:false
+  }));
+  healthSprite.scale.set(2.25,.56,1);
+  healthSprite.position.set(0,1.35,0);
+  healthSprite.renderOrder=80;
+  healthSprite.userData.healthCanvas=healthCanvas;
+  healthSprite.userData.healthTexture=healthTexture;
+  healthSprite.userData.noCollision=true;
+  g.add(healthSprite);
+
   const bodyMat=new THREE.MeshStandardMaterial({
     color:0xe8e8e8,
     emissive:0x777777,
@@ -435,6 +454,7 @@ function addGhost(data){
   const mesh=createGhostMesh();
   scene.add(mesh);
   ghosts.set(data.id,{data:{...data},mesh});
+  updateGhostHealth(ghosts.get(data.id));
 }
 
 function removeGhost(id){
@@ -461,6 +481,27 @@ function ghostPosition(data,now){
   );
 }
 
+function updateGhostHealth(g){
+  if(!g?.mesh) return;
+  const sprite=g.mesh.children.find(o=>o.userData?.healthCanvas);
+  if(!sprite) return;
+
+  const hp=Math.max(0,Math.min(10,Number(g.data.hp)||10));
+  const ctx=sprite.userData.healthCanvas.getContext('2d');
+  ctx.clearRect(0,0,256,64);
+
+  ctx.font='bold 30px Arial';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillStyle='#ffffff';
+  ctx.strokeStyle='#000000';
+  ctx.lineWidth=7;
+  ctx.strokeText('HP '+hp+'/10',128,32);
+  ctx.fillText('HP '+hp+'/10',128,32);
+
+  sprite.userData.healthTexture.needsUpdate=true;
+}
+
 function updateGhosts(now,dt){
   ghosts.forEach(g=>{
     const pos=ghostPosition(g.data,now);
@@ -468,6 +509,7 @@ function updateGhosts(now,dt){
     g.mesh.rotation.y+=dt*.8;
     const bob=1+Math.sin(now*.004+g.data.phase)*.055;
     g.mesh.scale.setScalar(bob);
+    updateGhostHealth(g);
   });
 }
 
@@ -2558,7 +2600,10 @@ function connect() {
   socket.on('ghost:spawn',addGhost);
   socket.on('ghost:hit',data=>{
     const g=ghosts.get(data?.id);
-    if(g) g.data.hp=Number(data.hp)||g.data.hp;
+    if(g){
+      g.data.hp=Number(data.hp)||g.data.hp;
+      updateGhostHealth(g);
+    }
   });
   socket.on('ghost:dead',data=>removeGhost(data?.id));
 
