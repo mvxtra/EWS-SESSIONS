@@ -446,7 +446,7 @@ function createPhysicalScreen() {
 function createDJSetup() {
   const table = new THREE.Group();
   table.name = 'EWS_DJ_TABLE';
-  table.position.set(0,0,-11.5);
+  table.position.set(0,0,-9.2);
   scene.add(table);
 
   const darkMat = new THREE.MeshStandardMaterial({
@@ -535,7 +535,7 @@ function createDJSetup() {
       if(size.x>0) model.scale.multiplyScalar(targetWidth/size.x);
       const b2=new THREE.Box3().setFromObject(model);
       model.position.y-=b2.min.y;
-      model.rotation.y=0;
+      model.rotation.y=Math.PI;
       fallback.visible=false;
       cdjGroup.add(model);
     },undefined,()=>tryGLTF(i+1));
