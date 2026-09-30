@@ -1476,6 +1476,13 @@ function updateCornerLasers(t){
     const len=Math.sqrt(dx*dx+dy*dy+dz*dz);
     const dir=new THREE.Vector3(dx/len,dy/len,dz/len);
 
+    // Laser colour and pulse are calculated before the smoke segmentation,
+    // because each beam section uses them for its individual opacity.
+    const laserColor=scene.userData.lampColor==='red' ? 0xffffff : 0xff244f;
+    const pulse=.5+.5*Math.sin(t*1.9+item.phase);
+    const shimmer=.5+.5*Math.sin(t*6.2+item.phase*1.7);
+    const intensity=.78+.12*pulse+.035*shimmer;
+
     // Split the laser into short pieces so dense haze can actually hide
     // the part of the beam that passes through it, instead of only dimming
     // the whole laser at once.
@@ -1491,7 +1498,7 @@ function updateCornerLasers(t){
       const mid=p0.clone().lerp(p1,.5);
 
       let density=0;
-      for(let mi=0;mi<smokeData.length;mi+=3){
+      for(let mi=0;mi<smokeData.length;mi++){
         const d=smokeData[mi];
         if(!d || !d.sprite) continue;
         const s=d.sprite;
@@ -1523,7 +1530,6 @@ function updateCornerLasers(t){
     item.cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
 
     // Laser colour is opposite to the main room light: red light = white lasers, white light = red lasers.
-    const laserColor=scene.userData.lampColor==='red' ? 0xffffff : 0xff244f;
     item.core.material.color.setHex(laserColor);
     item.cone.material.color.setHex(laserColor);
     item.lens.material.color.setHex(laserColor);
@@ -1532,9 +1538,6 @@ function updateCornerLasers(t){
 
     // Professional laser feel: mostly continuous beam with a slow breathing
     // modulation. The room strobe remains responsible for hard flashes.
-    const pulse=.5+.5*Math.sin(t*1.9+item.phase);
-    const shimmer=.5+.5*Math.sin(t*6.2+item.phase*1.7);
-    const intensity=.78+.12*pulse+.035*shimmer;
 
     item.core.material.opacity=0;
     item.cone.material.opacity=(.115+.035*pulse)*(1-totalOcclusion*.88);
