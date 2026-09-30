@@ -935,7 +935,8 @@ function createDJSetup() {
           column.position.x = offsetX;
           column.position.y += subTopBox.max.y - fittedColumn.min.y + 0.005;
 
-          // Turn all columns 180 degrees toward the dancefloor.
+          // Turn every column on both subwoofers 180 degrees.
+          // There are 3 columns per subwoofer = 6 total.
           column.rotation.y = Math.PI;
           subGroup.add(column);
         }, undefined, err => console.warn('[EWS COLUMN] load failed', err));
