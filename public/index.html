@@ -331,188 +331,33 @@ $('password').addEventListener('keydown', e => {
 });
 
 
-let firstPersonHands = null;
 const heartProjectiles = [];
 
 function createHeartMesh(){
-  const shape = new THREE.Shape();
-  shape.moveTo(0,0.28);
-  shape.bezierCurveTo(-0.42,0.62,-0.72,0.20,0,-0.38);
-  shape.bezierCurveTo(0.72,0.20,0.42,0.62,0,0.28);
-  const geo = new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.045,bevelThickness:.035});
+  const shape=new THREE.Shape();
+  shape.moveTo(0,.28);
+  shape.bezierCurveTo(-.42,.62,-.72,.20,0,-.38);
+  shape.bezierCurveTo(.72,.20,.42,.62,0,.28);
+  const geo=new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.045,bevelThickness:.035});
   geo.center();
-
-  const mat = new THREE.MeshStandardMaterial({
-    color:0xff3b72,
-    emissive:0x8f103f,
-    emissiveIntensity:1.5,
-    roughness:.3,
-    metalness:.05,
-    transparent:true,
-    opacity:1
-  });
-
-  const mesh = new THREE.Mesh(geo,mat);
-  mesh.scale.setScalar(.34);
-  mesh.rotation.x=Math.PI;
-  mesh.userData.noCollision=true;
-  mesh.renderOrder=60;
+  const mat=new THREE.MeshStandardMaterial({color:0xff0000,emissive:0x880000,emissiveIntensity:1.8,roughness:.3,metalness:.05,transparent:false,opacity:1});
+  const mesh=new THREE.Mesh(geo,mat);
+  mesh.scale.setScalar(.34); mesh.rotation.x=Math.PI; mesh.userData.noCollision=true; mesh.renderOrder=60;
   return mesh;
 }
-
 function shootHeart(){
-  if(!camera || !scene || !joined) return;
-
-  const direction = new THREE.Vector3();
-  camera.getWorldDirection(direction);
-
-  const start = new THREE.Vector3();
-  camera.getWorldPosition(start);
-  start.addScaledVector(direction,.85);
-
-  const heart = createHeartMesh();
-  heart.position.copy(start);
-  heart.quaternion.copy(camera.quaternion);
-
-  const glow = new THREE.PointLight(0xff3b72,1.4,3.2,.8);
-  glow.userData.noCollision=true;
-  heart.add(glow);
-
-  scene.add(heart);
-  heartProjectiles.push({
-    mesh:heart,
-    velocity:direction.multiplyScalar(13),
-    born:performance.now(),
-    life:1.35
-  });
+  if(!camera||!scene||!joined)return;
+  const direction=new THREE.Vector3(); camera.getWorldDirection(direction);
+  const start=new THREE.Vector3(); camera.getWorldPosition(start); start.addScaledVector(direction,.85);
+  const heart=createHeartMesh(); heart.position.copy(start); heart.quaternion.copy(camera.quaternion);
+  const glow=new THREE.PointLight(0xff0000,1.6,3.2,.8); glow.userData.noCollision=true; heart.add(glow);
+  scene.add(heart); heartProjectiles.push({mesh:heart,velocity:direction.multiplyScalar(13),born:performance.now(),life:1.35});
 }
-
 function updateHeartProjectiles(dt,now){
   for(let i=heartProjectiles.length-1;i>=0;i--){
-    const p=heartProjectiles[i];
-    const age=(now-p.born)/1000;
-
-    p.mesh.position.addScaledVector(p.velocity,dt);
-    p.mesh.rotation.z += dt*7;
-    p.mesh.rotation.y += dt*3.5;
-
-    const fade=Math.max(0,1-age/p.life);
-    p.mesh.material.opacity=fade;
-    p.mesh.children.forEach(child=>{
-      if(child.isLight) child.intensity=1.4*fade;
-    });
-
-    if(age>=p.life){
-      scene.remove(p.mesh);
-      p.mesh.geometry.dispose();
-      p.mesh.material.dispose();
-      heartProjectiles.splice(i,1);
-    }
-  }
-}
-
-
-function createFirstPersonHands(){
-  if(!camera || firstPersonHands) return;
-
-  const hands = new THREE.Group();
-  hands.name = 'EWS_FIRST_PERSON_HANDS';
-
-  // Match the same materials used by createAvatar():
-  // dark jacket sleeve, black forearm, light-gray skin/hand.
-  const skinMat = new THREE.MeshStandardMaterial({
-    color:0xb8b8b8,
-    roughness:.78,
-    metalness:.05,
-    transparent:false,
-    opacity:1
-  });
-  const darkMat = new THREE.MeshStandardMaterial({
-    color:0x111111,
-    roughness:.62,
-    metalness:.28,
-    transparent:false,
-    opacity:1
-  });
-  const blackMat = new THREE.MeshStandardMaterial({
-    color:0x050505,
-    roughness:.72,
-    metalness:.18,
-    transparent:false,
-    opacity:1
-  });
-
-  function makeArm(side){
-    const g = new THREE.Group();
-    const s = side < 0 ? -1 : 1;
-
-    const upper = new THREE.Mesh(
-      new THREE.CylinderGeometry(.105,.12,.55,7),
-      darkMat
-    );
-    upper.position.set(s*.34,-.31,-.55);
-    upper.rotation.z=s*.10;
-    upper.rotation.x=-.10;
-    g.add(upper);
-
-    const fore = new THREE.Mesh(
-      new THREE.CylinderGeometry(.09,.105,.52,7),
-      blackMat
-    );
-    fore.position.set(s*.39,-.68,-.72);
-    fore.rotation.z=s*.07;
-    fore.rotation.x=-.08;
-    g.add(fore);
-
-    const hand = new THREE.Mesh(
-      new THREE.SphereGeometry(.115,8,6),
-      skinMat
-    );
-    hand.position.set(s*.40,-.98,-.82);
-    g.add(hand);
-
-    g.userData.side=s;
-    return g;
-  }
-
-  hands.add(makeArm(-1));
-  hands.add(makeArm(1));
-
-  hands.renderOrder=50;
-  hands.traverse(o=>{
-    o.userData.noCollision=true;
-    if(o.isMesh){
-      o.frustumCulled=false;
-      o.renderOrder=50;
-      // Opaque first-person geometry: no alpha blending and no transparency.
-      o.material.transparent=false;
-      o.material.opacity=1;
-      o.material.depthWrite=false;
-      o.material.depthTest=false;
-    }
-  });
-
-  camera.add(hands);
-  firstPersonHands=hands;
-}
-
-function updateFirstPersonHands(t){
-  if(!firstPersonHands) return;
-
-  const moving=!!(keys.w||keys.a||keys.s||keys.d);
-  const bob=moving ? Math.sin(t*9.5)*.018 : Math.sin(t*1.8)*.004;
-  const sway=moving ? Math.cos(t*4.75)*.014 : 0;
-
-  firstPersonHands.position.y=bob;
-  firstPersonHands.position.x=sway;
-  firstPersonHands.rotation.z=moving ? Math.sin(t*4.75)*.012 : 0;
-  firstPersonHands.rotation.x=moving ? Math.sin(t*9.5)*.008 : 0;
-
-  for(const arm of firstPersonHands.children){
-    const s=arm.userData.side||1;
-    arm.position.x=sway*.35;
-    arm.position.y=bob;
-    arm.rotation.z=(moving ? Math.sin(t*9.5)*.025 : 0)*s;
+    const p=heartProjectiles[i],age=(now-p.born)/1000;
+    p.mesh.position.addScaledVector(p.velocity,dt); p.mesh.rotation.z+=dt*7; p.mesh.rotation.y+=dt*3.5;
+    if(age>=p.life){scene.remove(p.mesh);p.mesh.geometry.dispose();p.mesh.material.dispose();heartProjectiles.splice(i,1);}
   }
 }
 
@@ -535,7 +380,6 @@ function buildWorld() {
   // First-person camera: no visible local avatar.
   camera.position.set(0, seated ? 1.25 : (crouching ? 1.35 : 2.05), 0);
   camera.rotation.set(0, 0, 0);
-  createFirstPersonHands();
 
   renderer = new THREE.WebGLRenderer({canvas:$('scene'), antialias:true, alpha:true, powerPreference:'high-performance'});
   renderer.setClearColor(0x000000,0);
@@ -2087,7 +1931,6 @@ function tryMovePlayer(nx,nz){
 
 function animate() {
   const frameNow=performance.now();
-  updateFirstPersonHands(frameNow*.001);
 
   requestAnimationFrame(animate);
   updateSofaHint();
