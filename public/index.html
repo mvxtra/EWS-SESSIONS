@@ -423,7 +423,7 @@ createWallLogo();
   const lampHousingMat = new THREE.MeshStandardMaterial({color:0x171717,roughness:.45,metalness:.7});
   const lampGlowMat = new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:1,depthWrite:false});
 
-  [-10.5,-3,5].forEach((z,i)=>{
+  [-4.2,1.0,6.2].forEach((z,i)=>{
     const g=new THREE.Group();
     g.name='CEILING_HOSPITAL_LAMP_'+(i+1);
     g.position.set(0,6.86,z);
