@@ -373,8 +373,8 @@ function buildWorld() {
   sheen.position.y=.041;
   dance.add(sheen);
 
-  // White club roof
-  const roofMat = new THREE.MeshStandardMaterial({color:0xffffff,roughness:.72,metalness:.12,side:THREE.DoubleSide});
+  // Black club ceiling
+  const roofMat = new THREE.MeshStandardMaterial({color:0x000000,roughness:.82,metalness:.05,side:THREE.DoubleSide});
   const roof = new THREE.Mesh(new THREE.BoxGeometry(32,.22,28), roofMat);
   roof.position.set(0,7.05,0);
   roof.receiveShadow = true;
