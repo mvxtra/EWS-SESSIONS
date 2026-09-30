@@ -385,6 +385,7 @@ function buildWorld() {
 
   // EWS logo mounted on the wall behind the DJ booth.
   createWallDoor();
+createCornerSofas();
 createWallLogo();
 
 // Ceiling: three long hospital-style fluorescent fixtures.
@@ -591,6 +592,49 @@ function createWallDoor() {
 
     scene.add(door);
   }, undefined, err => console.warn('[EWS DOOR] load failed', err));
+}
+
+
+function createCornerSofas() {
+  const loader = new THREE.GLTFLoader();
+  const corners = [
+    [-14.2, -12.2, Math.PI / 4],
+    [ 14.2, -12.2, -Math.PI / 4],
+    [-14.2,  12.0, 3 * Math.PI / 4],
+    [ 14.2,  12.0, -3 * Math.PI / 4]
+  ];
+
+  corners.forEach(([x, z, rotation], index) => {
+    loader.load('/models/sofa_202206_001.glb', gltf => {
+      const sofa = gltf.scene;
+      sofa.name = 'EWS_CORNER_SOFA_' + (index + 1);
+      sofa.traverse(o => {
+        if(o.isMesh){
+          o.castShadow = true;
+          o.receiveShadow = true;
+          if(o.material){
+            const mats = Array.isArray(o.material) ? o.material : [o.material];
+            mats.forEach(m => {
+              if(!m) return;
+              m.transparent = false;
+              m.opacity = 1;
+              m.depthWrite = true;
+              m.depthTest = true;
+            });
+          }
+        }
+      });
+
+      const box = new THREE.Box3().setFromObject(sofa);
+      const size = box.getSize(new THREE.Vector3());
+      if(size.x > 0) sofa.scale.multiplyScalar(3.8 / size.x);
+
+      const fitted = new THREE.Box3().setFromObject(sofa);
+      sofa.position.set(x, -fitted.min.y, z);
+      sofa.rotation.y = rotation;
+      scene.add(sofa);
+    }, undefined, err => console.warn('[EWS SOFA] load failed', err));
+  });
 }
 
 function createWallLogo() {
