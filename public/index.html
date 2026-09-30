@@ -752,20 +752,53 @@ function createDJSetup() {
 }
 
 function setupClubLighting() {
-  // Старую светомузыку и движущиеся лучи убираем.
   scene.userData.clubLights = [];
   scene.userData.clubBeams = [];
   scene.userData.strobe = [];
+
+  // Each ceiling lamp gets its own generated rhythm.
+  // The rhythm changes automatically, so lamps can blink quickly, slowly,
+  // in short bursts or pause for a moment before starting again.
+  const lamps=scene.userData.ceilingLamps || [];
+  lamps.forEach((lamp,i)=>{
+    lamp.userData.random={
+      nextChange: performance.now()/1000 + Math.random()*1.5,
+      on:false,
+      speed:.8 + Math.random()*5.5,
+      hold:.04 + Math.random()*.65
+    };
+    lamp.userData.glow.material.opacity=.025;
+    lamp.userData.light.intensity=0;
+  });
 }
 function updateClubLighting(t) {
   const lamps=scene.userData.ceilingLamps || [];
-  lamps.forEach((lamp,i)=>{
-    const p=lamp.userData.phase || 0;
-    const wave=Math.sin(t*7.2+p)+0.45*Math.sin(t*13.7+p*2.1);
-    const on=wave>0.72;
-    const brightness=on ? 0.72+0.28*(0.5+0.5*Math.sin(t*18+p)) : 0.025;
-    lamp.userData.glow.material.opacity=brightness;
-    lamp.userData.light.intensity=on ? 1.7+brightness*1.4 : 0;
+  lamps.forEach(lamp=>{
+    const r=lamp.userData.random;
+    if(!r) return;
+
+    if(t>=r.nextChange){
+      r.on=!r.on;
+      r.speed=.55 + Math.random()*7.0;
+      r.hold=.03 + Math.random()*.75;
+
+      if(r.on){
+        // Sometimes a very fast flash, sometimes a long club-style glow.
+        const fast=Math.random()<.38;
+        r.nextChange=t + (fast ? .025+Math.random()*.16 : .12+Math.random()*.95);
+      }else{
+        // Dark pauses are also randomly generated.
+        r.nextChange=t + .04+Math.random()*.9;
+      }
+    }
+
+    const target=r.on ? (.55+Math.random()*.45) : .018;
+    const current=lamp.userData.glow.material.opacity;
+    const smooth=Math.min(1, .12 + r.speed*.018);
+    lamp.userData.glow.material.opacity += (target-current)*smooth;
+
+    const glow=lamp.userData.glow.material.opacity;
+    lamp.userData.light.intensity=r.on ? 1.0+glow*2.4 : 0;
   });
 }
 function addSpeaker(x,z) {
