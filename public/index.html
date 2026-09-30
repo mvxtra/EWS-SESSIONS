@@ -486,39 +486,7 @@ function createWallLogo() {
   logo.rotation.y = 0;
   scene.add(logo);
 
-  // Industrial EWS frame: black metal, white edge, subtle club glow.
-  const outer = new THREE.Mesh(
-    new THREE.BoxGeometry(6.35, 3.45, 0.12),
-    new THREE.MeshStandardMaterial({
-      color: 0x050505,
-      roughness: .28,
-      metalness: .82
-    })
-  );
-  outer.name = 'EWS_LOGO_FRAME';
-  outer.position.set(0, 3.55, -13.91);
-  scene.add(outer);
-
-  const glow = new THREE.Mesh(
-    new THREE.BoxGeometry(6.05, 3.15, 0.025),
-    new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: .20,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    })
-  );
-  glow.name = 'EWS_LOGO_FRAME_GLOW';
-  glow.position.set(0, 3.55, -13.975);
-  scene.add(glow);
-
-  const frameEdges = [
-    [6.45,.055,.08,0,5.29,-13.99],
-    [6.45,.055,.08,0,1.81,-13.99],
-    [.055,3.53,.08,-3.20,3.55,-13.99],
-    [.055,3.53,.08,3.20,3.55,-13.99]
-  ];
+  // Only a thin neon outline remains around the logo.
   const edgeMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     transparent: true,
@@ -526,8 +494,14 @@ function createWallLogo() {
     blending: THREE.AdditiveBlending,
     depthWrite: false
   });
-  frameEdges.forEach(([w,h,d,x,y,z])=>{
-    const e = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), edgeMat);
+
+  [
+    [6.05,.055,.06,0,5.01,-13.93],
+    [6.05,.055,.06,0,2.09,-13.93],
+    [.055,2.97,.06,-3.00,3.55,-13.93],
+    [.055,2.97,.06,3.00,3.55,-13.93]
+  ].forEach(([w,h,d,x,y,z])=>{
+    const e=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),edgeMat);
     e.position.set(x,y,z);
     scene.add(e);
   });
