@@ -674,9 +674,62 @@ function createWallBar() {
     bar.position.y -= fitted.min.y;
 
     scene.add(bar);
+    createBarBeers(bar);
   }, undefined, err => console.warn('[EWS BAR] load failed', err));
 }
 
+
+function createBarBeers(bar) {
+  const loader = new THREE.GLTFLoader();
+  const beerModels = [
+    '/models/beer_can.glb',
+    '/models/half-_life_2_beer.glb'
+  ];
+
+  // Several bottles/cans are scattered across the bar top with random
+  // horizontal positions, depth, rotation and a small tilt.
+  const count = 10;
+  for(let i=0;i<count;i++){
+    const modelPath = beerModels[i % beerModels.length];
+    loader.load(modelPath, gltf => {
+      const beer = gltf.scene;
+      beer.name = 'EWS_BAR_BEER_' + (i + 1);
+      beer.traverse(o => {
+        if(o.isMesh){
+          o.castShadow = true;
+          o.receiveShadow = true;
+          if(o.material){
+            const mats = Array.isArray(o.material) ? o.material : [o.material];
+            mats.forEach(m => {
+              if(!m) return;
+              m.transparent = false;
+              m.opacity = 1;
+              m.depthWrite = true;
+              m.depthTest = true;
+            });
+          }
+        }
+      });
+
+      const box = new THREE.Box3().setFromObject(beer);
+      const size = box.getSize(new THREE.Vector3());
+      const targetHeight = modelPath.includes('half-_life_2_beer') ? 0.62 : 0.48;
+      if(size.y > 0) beer.scale.multiplyScalar(targetHeight / size.y);
+
+      const fitted = new THREE.Box3().setFromObject(beer);
+      const topY = new THREE.Box3().setFromObject(bar).max.y;
+
+      // Randomly spread drinks over the usable bar surface.
+      beer.position.x = THREE.MathUtils.randFloat(-3.0, 3.0);
+      beer.position.z = THREE.MathUtils.randFloat(-0.42, 0.42);
+      beer.position.y += topY - fitted.min.y + 0.012;
+      beer.rotation.y = Math.random() * Math.PI * 2;
+      beer.rotation.z = THREE.MathUtils.randFloat(-0.10, 0.10);
+
+      bar.add(beer);
+    }, undefined, err => console.warn('[EWS BAR BEER] load failed', err));
+  }
+}
 function createWallLogo() {
   const logoTexture = new THREE.TextureLoader().load('/assets/logo.png');
   logoTexture.colorSpace = THREE.SRGBColorSpace || undefined;
