@@ -1380,6 +1380,8 @@ function animate() {
 
   updateRemotes(now/1000,dt);
   updateClubLighting(now/1000);
+  // CSS3D cannot depth-test against WebGL, so hide the screen when 3D geometry is in front.
+  refreshScreenOcclusion();
 
   // Move the dense haze slowly through the room. Large, soft layers overlap
   // so the air stays visibly filled with smoky club atmosphere.
