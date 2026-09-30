@@ -388,6 +388,9 @@ function buildWorld() {
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
 
+  // EWS logo mounted on the wall behind the DJ booth.
+  createWallLogo();
+
 // Ceiling: three long hospital-style fluorescent fixtures.
   const ceilingLampGroups = [];
   const lampHousingMat = new THREE.MeshStandardMaterial({color:0x171717,roughness:.45,metalness:.7});
@@ -461,6 +464,53 @@ function addBox(w,h,d,x,y,z,mat) {
   m.position.set(x,y,z);
   scene.add(m);
   return m;
+}
+
+
+function createWallLogo() {
+  const canvas=document.createElement('canvas');
+  canvas.width=1024;
+  canvas.height=512;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // Dark circular plaque with a clean white EWS mark.
+  const cx=512, cy=256, r=190;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle='#050505';
+  ctx.fill();
+  ctx.lineWidth=12;
+  ctx.strokeStyle='#ffffff';
+  ctx.shadowColor='#ffffff';
+  ctx.shadowBlur=24;
+  ctx.stroke();
+  ctx.shadowBlur=0;
+
+  ctx.fillStyle='#ffffff';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.font='900 112px Arial,Helvetica,sans-serif';
+  ctx.fillText('EWS',cx,cy-12);
+  ctx.font='900 34px Arial,Helvetica,sans-serif';
+  ctx.letterSpacing='8px';
+  ctx.fillText('SESSIONS',cx,cy+88);
+  ctx.restore();
+
+  const texture=new THREE.CanvasTexture(canvas);
+  texture.colorSpace=THREE.SRGBColorSpace || undefined;
+  const mat=new THREE.MeshBasicMaterial({
+    map:texture,
+    transparent:true,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+  const logo=new THREE.Mesh(new THREE.PlaneGeometry(5.2,2.6),mat);
+  logo.name='EWS_WALL_LOGO';
+  logo.position.set(0,3.55,-13.78);
+  logo.rotation.y=0;
+  scene.add(logo);
 }
 
 function createPhysicalScreen() {
