@@ -1386,7 +1386,15 @@ function createCornerLasers(){
         })
       );
       cone.name='EWS_LASER_GLOW_'+c.name+'_'+col.name;
+      cone.userData.noCollision=true;
+      core.userData.noCollision=true;
       group.add(cone);
+
+      // Lasers, lenses and mounting hardware are visual-only and must never
+      // become invisible collision walls for the player.
+      [rig,lamp,head,housing,barrel,lens,statusLed,plate,arm,yoke].forEach(o=>{
+        if(o) o.userData.noCollision=true;
+      });
 
       beams.push({c,ci,slot,phase,start,core,cone,lens,bulb,halo});
     });
