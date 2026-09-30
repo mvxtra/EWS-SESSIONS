@@ -611,7 +611,23 @@ function createDJSetup() {
 
     subwooferLoader.load('/models/%D1%81%D0%B0%D0%B1%D1%83%D1%84%D0%B5%D1%80.glb',gltf=>{
       const model=gltf.scene;
-      model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+      model.traverse(o=>{
+      if(o.isMesh){
+        o.castShadow=true;
+        o.receiveShadow=true;
+        // Opaque physical objects: no see-through materials.
+        if(o.material){
+          const mats=Array.isArray(o.material)?o.material:[o.material];
+          mats.forEach(m=>{
+            if(!m) return;
+            m.transparent=false;
+            m.opacity=1;
+            m.depthWrite=true;
+            m.depthTest=true;
+          });
+        }
+      }
+    });
       const box=new THREE.Box3().setFromObject(model);
       const size=box.getSize(new THREE.Vector3());
       if(size.x>0) model.scale.multiplyScalar(4.35/size.x);
