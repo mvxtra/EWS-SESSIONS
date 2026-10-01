@@ -171,11 +171,11 @@ function initChatLanguage(){
 }
 const LANGS = ['ru','en','es','de','fr','zh','ja','ko','ar','hi','pt','it','tr','uk','nl','pl'];
 const LANG_NAMES = {ru:'Русский',en:'English',es:'Español',de:'Deutsch',fr:'Français',zh:'中文',ja:'日本語',ko:'한국어',ar:'العربية',hi:'हिन्दी',pt:'Português',it:'Italiano',tr:'Türkçe',uk:'Українська',nl:'Nederlands',pl:'Polski'};
-initChatLanguage();
 
 let socket = null;
 let username = '';
 let language = localStorage.getItem('ews-language') || 'en';
+initChatLanguage();
 let host = false;
 let joined = false;
 let hls = null;
