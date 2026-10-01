@@ -2501,8 +2501,11 @@ $('chatInput').addEventListener('keydown', async e => {
 function createAvatar(data) {
   const g=new THREE.Group();
   g.name='EWS_CHARACTER_'+(data.username||'guest');
+  g.userData.isAvatar=true;
+  g.frustumCulled=false;
 
   const rig=new THREE.Group();
+  rig.frustumCulled=false;
   rig.name='EWS01_RIG';
   g.add(rig);
 
@@ -2727,8 +2730,12 @@ function createAvatar(data) {
   label.position.y=3.58;
   g.add(label);
 
-  g.position.set(Number(data.x)||0,Number(data.y)||0,Number(data.z)||0);
+  g.position.set(Number(data.x)||0,Math.max(0,Number(data.y)||0),Number(data.z)||0);
   g.rotation.y=(Number(data.yaw)||0)+Math.PI;
+  // Never let a remote skin become invisible because of a stale seated/visibility state.
+  g.visible=true;
+  rig.visible=true;
+  rig.traverse(n=>{ if(n.isMesh || n.isSprite) n.frustumCulled=false; });
   scene.add(g);
 
   const avatar={
@@ -2751,11 +2758,13 @@ function createAvatar(data) {
           leftArm.fore.rotation.x=.65;
           rightArm.fore.rotation.x=.65;
           torso.rotation.x=-.12;
-          rig.position.y=-.62;
+          torso.position.y=1.82;
+          rig.position.y=-.12;
           return;
         }
 
         rig.position.y=0;
+        torso.rotation.x*=.72;
         const speed=moving?8.5:2.0;
         const step=Math.sin(t*speed);
         const step2=Math.sin(t*speed*2);
@@ -2833,6 +2842,8 @@ function updateRemotes(t,dt){
     r.g.position.z += (r.targetZ-r.g.position.z)*.22;
     const desiredY=Math.max(0, Number(r.targetY)||0);
     r.g.position.y += (desiredY-r.g.position.y)*.35;
+    r.g.visible=true;
+    r._visualModel.visible=true;
     let d=r.targetYaw-r.g.rotation.y;
     while(d>Math.PI)d-=Math.PI*2;
     while(d<-Math.PI)d+=Math.PI*2;
