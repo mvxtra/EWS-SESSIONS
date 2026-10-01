@@ -2752,7 +2752,7 @@ function animateAlienState(r,dt){
   if(seated){
     r._sitAnim=Math.min(1,r._sitAnim+dt*5);
     r._jumpAnim=0;
-    if(r._currentAlienAction){ r._currentAlienAction.fadeOut(.12); r._currentAlienAction=null; r._currentAlienClip=''; }
+    // Keep the current Alien pose; do not clear the mixer (clearing it resets to T-pose).
     // Stable seated pose: lower the whole Alien and bend the legs/arms when
     // matching bones are available. This does not depend on an external FBX.
     r._visualModel.position.y=r._alienBaseY-0.38;
@@ -2770,7 +2770,11 @@ function animateAlienState(r,dt){
   if(r._sitPoseApplied){
     r._sitPoseApplied=false;
     if(r._walkBones){
-      Object.values(r._walkBones).forEach(b=>{ if(b) b.rotation.set(0,0,0); });
+      // Return to the bind pose only for bones we actually modified.
+      if(r._walkBones.leftUpperLeg) r._walkBones.leftUpperLeg.rotation.x=0;
+      if(r._walkBones.rightUpperLeg) r._walkBones.rightUpperLeg.rotation.x=0;
+      if(r._walkBones.leftLowerLeg) r._walkBones.leftLowerLeg.rotation.x=0;
+      if(r._walkBones.rightLowerLeg) r._walkBones.rightLowerLeg.rotation.x=0;
     }
   }
 
@@ -2778,7 +2782,7 @@ function animateAlienState(r,dt){
 
   if(airborne){
     r._jumpAnim=Math.min(1,r._jumpAnim+dt*7);
-    if(r._currentAlienAction){ r._currentAlienAction.fadeOut(.08); r._currentAlienAction=null; r._currentAlienClip=''; }
+    // Keep the current Alien pose; do not clear the mixer (clearing it resets to T-pose).
     // Keep the Alien visibly airborne even without a compatible jump clip.
     r._visualModel.position.y=r._alienBaseY+Math.max(0,Math.sin(r._jumpAnim*Math.PI))*0.65;
     return;
