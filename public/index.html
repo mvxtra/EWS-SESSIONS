@@ -1598,6 +1598,42 @@ function createDJSetup() {
     },undefined,()=>{});
   });
 
+  // Large speaker model on the opposite side, mirroring the gopnik position.
+  {
+    const bigSpeakerLoader = new THREE.GLTFLoader();
+    bigSpeakerLoader.load('/models/speakers%20big.glb',gltf3=>{
+      const bigSpeaker = gltf3.scene;
+      bigSpeaker.name = 'EWS_BIG_SPEAKER_OPPOSITE_GOPNIK';
+      bigSpeaker.traverse(o=>{
+        if(o.isMesh){
+          o.castShadow=true;
+          o.receiveShadow=true;
+          if(o.material){
+            const mats=Array.isArray(o.material)?o.material:[o.material];
+            mats.forEach(m=>{
+              if(!m) return;
+              m.transparent=false;
+              m.opacity=1;
+              m.depthWrite=true;
+              m.depthTest=true;
+            });
+          }
+        }
+      });
+
+      const sb=new THREE.Box3().setFromObject(bigSpeaker);
+      const ss=sb.getSize(new THREE.Vector3());
+      if(ss.y>0) bigSpeaker.scale.multiplyScalar(3.2/ss.y);
+
+      // Same side-relative position as the gopnik, but on the right.
+      bigSpeaker.position.set(7.25,0,-0.05);
+      const floorBox=new THREE.Box3().setFromObject(bigSpeaker);
+      bigSpeaker.position.y -= floorBox.min.y;
+      bigSpeaker.rotation.y=Math.PI;
+      table.add(bigSpeaker);
+    },undefined,err=>console.warn('[EWS BIG SPEAKER] load failed',err));
+  }
+
   // Keep the setup visually centred and facing the DJ, without moving the screen.
   table.rotation.y=0;
 }
