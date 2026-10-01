@@ -2828,6 +2828,7 @@ function upsertRemote(data){
   r.targetGrounded=data.grounded!==false;
   r.targetSeated=!!data.seated;
   r.targetYaw=(Number(data.yaw)||0) + Math.PI;
+  if(data.heart && Number(data.heart.ts)>Number(r._lastHeartTs||0)){ r._lastHeartTs=Number(data.heart.ts); spawnRemoteHeart(data.heart); }
 }
 
 function removeRemote(id){
