@@ -1985,6 +1985,12 @@ function setLampColor(color){
       node.material.color.set(red?0xff1744:0xffffff);
     });
   });
+
+  // The round EWS logo ring follows the same lamp colour.
+  const ring=scene.userData.logoNeonRing;
+  const ringGlow=scene.userData.logoNeonRingGlow;
+  if(ring?.material?.color) ring.material.color.set(red?0xff1744:0xffffff);
+  if(ringGlow?.material?.color) ringGlow.material.color.set(red?0xff1744:0xffffff);
 }
 function initLampMenu(){
   $('lampWhite').onclick=()=>{if(host&&socket?.connected)socket.emit('lamp-color:set','white');};
