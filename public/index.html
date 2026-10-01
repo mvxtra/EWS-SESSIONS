@@ -1200,71 +1200,86 @@ function updatePsychedelicMirrors(t){
     const ctx=m.userData.videoCtx, canvas=m.userData.videoCanvas;
     if(!ctx||!canvas)return;
 
-    const w=canvas.width,h=canvas.height,tm=t*.001+index*3.7;
+    const w=canvas.width,h=canvas.height;
+    const tm=t*.001+index*2.8;
     ctx.fillStyle='#000';
     ctx.fillRect(0,0,w,h);
 
-    // Procedurally generated black/white/red psychedelic video.
-    const waves=[
-      {freq:.035,speed:1.15,amp:.20,phase:0},
-      {freq:.062,speed:-.72,amp:.14,phase:1.9},
-      {freq:.019,speed:1.8,amp:.26,phase:3.4}
-    ];
-
+    // Generated "flying through a portal" effect: recursive tunnel rings
+    // rush toward the viewer in black, white and red.
     ctx.save();
     ctx.globalCompositeOperation='screen';
-    for(let band=0;band<15;band++){
+
+    const cx=w*.5 + Math.sin(tm*.37)*w*.045;
+    const cy=h*.5 + Math.cos(tm*.29)*h*.035;
+
+    for(let ring=0;ring<24;ring++){
+      const z=((ring/24 + tm*.22)%1);
+      const perspective=z*z;
+      const rw=10 + perspective*w*.72;
+      const rh=7 + perspective*h*.72;
+      const rot=tm*.55 + ring*.48 + Math.sin(tm*.31+ring)*.16;
+
+      ctx.save();
+      ctx.translate(cx,cy);
+      ctx.rotate(rot);
+
+      const skew=1+Math.sin(tm*.8+ring*.7)*.18;
       ctx.beginPath();
-      for(let x=0;x<=w;x+=5){
-        let y=h*.5;
-        waves.forEach((q,j)=>{
-          y += Math.sin(x*q.freq+tm*q.speed+q.phase+band*.37)*h*q.amp/(j+1);
-        });
-        y += Math.sin((x+band*31)*.09-tm*1.7)*10;
-        if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-      }
-      const redBand=(band%3===0||band%5===0);
-      ctx.strokeStyle=redBand
-        ? 'rgba(235,0,0,'+(0.30+0.035*band)+')'
-        : 'rgba(255,255,255,'+(0.12+0.025*band)+')';
-      ctx.lineWidth=3+band%4;
+      ctx.ellipse(0,0,rw*skew,rh,0,0,Math.PI*2);
+
+      const red=(ring%5===0||ring%7===0);
+      ctx.strokeStyle=red
+        ? 'rgba(235,0,0,'+(0.28+perspective*.58)+')'
+        : 'rgba(255,255,255,'+(0.16+perspective*.52)+')';
+      ctx.lineWidth=1.2+perspective*5;
+      ctx.shadowBlur=red?10:6;
+      ctx.shadowColor=red?'rgba(255,0,0,.8)':'rgba(255,255,255,.65)';
       ctx.stroke();
+      ctx.restore();
     }
 
-    // Pulsing red/white generated forms.
-    for(let k=0;k<9;k++){
-      const x=w*(.5+.48*Math.sin(tm*.21+k*1.31));
-      const y=h*(.5+.40*Math.cos(tm*.27+k*1.83));
-      const r=12+34*(.5+.5*Math.sin(tm*.9+k));
-      const red=(k%3===0||k===7);
-      const g=ctx.createRadialGradient(x,y,0,x,y,r);
-      if(red){
-        g.addColorStop(0,'rgba(255,40,40,.78)');
-        g.addColorStop(.45,'rgba(190,0,0,.30)');
-      }else{
-        g.addColorStop(0,'rgba(255,255,255,.72)');
-        g.addColorStop(.45,'rgba(255,255,255,.16)');
-      }
-      g.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=g;
-      ctx.beginPath();
-      ctx.arc(x,y,r,0,Math.PI*2);
-      ctx.fill();
-    }
-
-    // Fast generated scanlines give it a real visualizer/video feel.
-    ctx.globalCompositeOperation='overlay';
+    // Radial speed streaks create the sensation of moving forward.
     ctx.lineWidth=1;
-    for(let y=0;y<h;y+=4){
-      ctx.strokeStyle=(Math.floor(y/4)%7===0)
-        ? 'rgba(255,0,0,.24)'
-        : 'rgba(255,255,255,.055)';
+    for(let i=0;i<85;i++){
+      const a=i/85*Math.PI*2 + tm*.12;
+      const inner=.08 + ((i*17)%100)/100*.22;
+      const travel=(tm*.65 + i*.071)%1;
+      const outer=inner + travel*.86;
+      const x0=cx+Math.cos(a)*inner*w;
+      const y0=cy+Math.sin(a)*inner*h;
+      const x1=cx+Math.cos(a)*outer*w;
+      const y1=cy+Math.sin(a)*outer*h;
+      const red=i%9===0||i%13===0;
+      ctx.strokeStyle=red
+        ? 'rgba(230,0,0,'+(0.18+travel*.55)+')'
+        : 'rgba(255,255,255,'+(0.10+travel*.38)+')';
       ctx.beginPath();
-      ctx.moveTo(0,y+Math.sin(tm*2+y*.03)*2);
-      ctx.lineTo(w,y+Math.sin(tm*2+y*.03)*2);
+      ctx.moveTo(x0,y0);
+      ctx.lineTo(x1,y1);
       ctx.stroke();
     }
+
+    // Bright portal core with subtle red pulse.
+    const pulse=.5+.5*Math.sin(tm*2.4);
+    const core=ctx.createRadialGradient(cx,cy,0,cx,cy,w*.22);
+    core.addColorStop(0,'rgba(255,255,255,'+(.16+.12*pulse)+')');
+    core.addColorStop(.35,'rgba(255,0,0,'+(.10+.12*pulse)+')');
+    core.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=core;
+    ctx.fillRect(0,0,w,h);
+
     ctx.restore();
+
+    // Slight monochrome grain so it reads as a generated video feed.
+    const grainStep=8;
+    for(let y=0;y<h;y+=grainStep){
+      ctx.strokeStyle='rgba(255,255,255,.035)';
+      ctx.beginPath();
+      ctx.moveTo(0,y);
+      ctx.lineTo(w,y);
+      ctx.stroke();
+    }
 
     m.userData.videoTexture.needsUpdate=true;
   });
