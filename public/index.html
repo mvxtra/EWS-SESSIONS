@@ -2690,6 +2690,40 @@ function createAvatar(data){
   return r;
 }
 
+function setupAlienWalkBones(r){
+  r._walkBones={leftUpperLeg:null,rightUpperLeg:null,leftLowerLeg:null,rightLowerLeg:null,leftArm:null,rightArm:null,leftForeArm:null,rightForeArm:null};
+  const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  r._visualModel.traverse(o=>{
+    if(!o.isBone) return;
+    const n=norm(o.name);
+    const left=n.includes('left')||n.includes('lup')||n.includes('lleg')||n.includes('larm');
+    const right=n.includes('right')||n.includes('rup')||n.includes('rleg')||n.includes('rarm');
+    if(left && !r._walkBones.leftUpperLeg && /(upleg|thigh|legl|leftleg)/.test(n)) r._walkBones.leftUpperLeg=o;
+    if(right && !r._walkBones.rightUpperLeg && /(upleg|thigh|legr|rightleg)/.test(n)) r._walkBones.rightUpperLeg=o;
+    if(left && !r._walkBones.leftLowerLeg && /(lowerleg|calf|shin|leftleg2)/.test(n)) r._walkBones.leftLowerLeg=o;
+    if(right && !r._walkBones.rightLowerLeg && /(lowerleg|calf|shin|rightleg2)/.test(n)) r._walkBones.rightLowerLeg=o;
+    if(left && !r._walkBones.leftArm && /(upperarm|arm|shoulder)/.test(n)) r._walkBones.leftArm=o;
+    if(right && !r._walkBones.rightArm && /(upperarm|arm|shoulder)/.test(n)) r._walkBones.rightArm=o;
+    if(left && !r._walkBones.leftForeArm && /(forearm|lowerarm)/.test(n)) r._walkBones.leftForeArm=o;
+    if(right && !r._walkBones.rightForeArm && /(forearm|lowerarm)/.test(n)) r._walkBones.rightForeArm=o;
+  });
+}
+
+function proceduralAlienWalk(r,dt){
+  if(!r._walkBones) setupAlienWalkBones(r);
+  const b=r._walkBones, t=(r._walkTime||0)+dt*8.5; r._walkTime=t;
+  const s=Math.sin(t), c=Math.cos(t);
+  if(b.leftUpperLeg) b.leftUpperLeg.rotation.x=0.48*s;
+  if(b.rightUpperLeg) b.rightUpperLeg.rotation.x=-0.48*s;
+  if(b.leftLowerLeg) b.leftLowerLeg.rotation.x=Math.max(0,-0.65*s);
+  if(b.rightLowerLeg) b.rightLowerLeg.rotation.x=Math.max(0,0.65*s);
+  if(b.leftArm) b.leftArm.rotation.x=-0.32*s;
+  if(b.rightArm) b.rightArm.rotation.x=0.32*s;
+  if(b.leftForeArm) b.leftForeArm.rotation.x=-0.18*s;
+  if(b.rightForeArm) b.rightForeArm.rotation.x=0.18*s;
+  r._visualModel.position.y=r._alienBaseY+Math.abs(c)*0.025;
+}
+
 function playAlienClip(r,key,fade){
   if(!r || !r._mixer || !r._alienClips || !r._alienClips[key]) return false;
   if(r._currentAlienClip===key) return true;
@@ -2737,8 +2771,12 @@ function animateAlienState(r,dt){
 
   r._jumpAnim=Math.max(0,r._jumpAnim-dt*8);
 
-  if(moving && r._alienClips.run){
-    playAlienClip(r,'run',.12);
+  if(moving){
+    // The supplied FBX uses a different skeleton from the Alien GLB, so its
+    // tracks do not reliably drive this character. Use a skeleton-safe walk
+    // cycle on the Alien bones instead of showing the run animation in place.
+    if(r._currentAlienAction){ r._currentAlienAction.fadeOut(.12); r._currentAlienAction=null; r._currentAlienClip=''; }
+    proceduralAlienWalk(r,dt);
   }else if(!moving && r._alienClips.dance){
     playAlienClip(r,'dance',.20);
   }else if(r._alienClips.idle){
