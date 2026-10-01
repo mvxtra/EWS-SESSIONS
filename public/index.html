@@ -1133,72 +1133,69 @@ function createCornerSofas() {
 
 
 function createClubMirror(){
-  // Full-height club mirrors on opposite side walls.
-  // They are decorative/reflective surfaces and never block player movement.
+  // Large, unmistakable wall-mounted mirrors on both side walls.
   const frameMat=new THREE.MeshStandardMaterial({
-    color:0x101010,
-    metalness:.8,
-    roughness:.3
+    color:0x242424,
+    metalness:.65,
+    roughness:.22,
+    emissive:0x080808,
+    emissiveIntensity:.25
   });
 
-  function addMirror(name,x,rotationY){
+  function addMirror(name,wallX,rotationY){
     const mirrorGroup=new THREE.Group();
     mirrorGroup.name=name;
-    mirrorGroup.position.set(x,3.65,0);
+    // Keep the whole mirror clearly INSIDE the club wall so the wall can never hide it.
+    mirrorGroup.position.set(wallX > 0 ? 15.68 : -15.68,3.75,0);
     mirrorGroup.rotation.y=rotationY;
 
+    // Dark silver reflective-looking glass with a bright rim.
     const mirrorMat=new THREE.MeshStandardMaterial({
-      color:0x6f7b86,
-      metalness:.35,
-      roughness:.18,
-      emissive:0x182028,
-      emissiveIntensity:.35,
+      color:0x9aa7b2,
+      metalness:.72,
+      roughness:.12,
+      emissive:0x18242c,
+      emissiveIntensity:.55,
       side:THREE.DoubleSide
     });
 
     const glass=new THREE.Mesh(
-      new THREE.PlaneGeometry(8.8,5.2),
+      new THREE.PlaneGeometry(9.2,5.45),
       mirrorMat
     );
-    glass.position.z=.08;
+    glass.position.z=0;
     glass.userData.noCollision=true;
     glass.userData.isMirror=true;
     mirrorGroup.add(glass);
 
-    const frameParts=[
-      [9.15,.16,.12,0,2.68,0],
-      [9.15,.16,.12,0,-2.68,0],
-      [.16,5.2,.12,-4.5,0,0],
-      [.16,5.2,.12,4.5,0,0]
-    ];
+    // Dark backing makes the mirror silhouette visible even with no environment map.
+    const backing=new THREE.Mesh(
+      new THREE.PlaneGeometry(9.55,5.8),
+      new THREE.MeshBasicMaterial({color:0x11161a,side:THREE.DoubleSide})
+    );
+    backing.position.z=.035;
+    backing.userData.noCollision=true;
+    mirrorGroup.add(backing);
 
+    const frameParts=[
+      [9.75,.16,.14,0,2.93,0],
+      [9.75,.16,.14,0,-2.93,0],
+      [.16,5.72,.14,-4.78,0,0],
+      [.16,5.72,.14,4.78,0,0]
+    ];
     frameParts.forEach(([w,h,d,fx,fy,fz])=>{
-      const f=new THREE.Mesh(
-        new THREE.BoxGeometry(w,h,d),
-        frameMat
-      );
+      const f=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),frameMat.clone());
       f.position.set(fx,fy,fz);
       f.userData.noCollision=true;
       mirrorGroup.add(f);
     });
 
-    // Keep the mirror face almost flush with the wall so it reads as wall-mounted, not floating.\n    mirrorGroup.position.x = x > 0 ? 15.83 : -15.83;\n    scene.add(mirrorGroup);
+    scene.add(mirrorGroup);
     return mirrorGroup;
   }
 
-  // Existing mirror on the right wall.
-  const rightMirror=addMirror(
-    'EWS_REAL_MIRROR_RIGHT',
-    15.35,
-    -Math.PI/2
-  );
-
-  // NEW: matching mirror directly opposite on the left wall.
-  const leftMirror=addMirror(
-    'EWS_REAL_MIRROR_LEFT',
-    -15.35,
-    Math.PI/2
-  );
+  const rightMirror=addMirror('EWS_REAL_MIRROR_RIGHT',15.68,-Math.PI/2);
+  const leftMirror=addMirror('EWS_REAL_MIRROR_LEFT',-15.68,Math.PI/2);
 
   scene.userData.clubMirror=rightMirror;
   scene.userData.clubMirrorOpposite=leftMirror;
@@ -1223,27 +1220,43 @@ function createWallLogo() {
   logo.rotation.y = Math.PI;
   scene.add(logo);
 
-  // Only a thin neon outline remains around the logo.
-  const edgeMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: .85,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
+  // Round neon ring around the EWS logo. The lamp colour controls the ring.
+  const ringMaterial = new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.95,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+  const ringGlowMaterial = new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.22,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false,
+    side:THREE.DoubleSide
   });
 
-  [
-    [12.15,.055,.06,0,6.165,-13.93],
-    [12.15,.055,.06,0,.185,-13.93],
-    [.055,5.98,.06,-6.05,3.175,-13.93],
-    [.055,5.98,.06,6.05,3.175,-13.93]
-  ].forEach(([w,h,d,x,y,z])=>{
-    const e=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),edgeMat);
-    e.position.set(x,y,z);
-    scene.add(e);
+  const ringGlow = new THREE.Mesh(
+    new THREE.TorusGeometry(2.35,.18,12,96),
+    ringGlowMaterial
+  );
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(2.35,.055,10,96),
+    ringMaterial
+  );
+  [ringGlow,ring].forEach(r=>{
+    r.position.set(0,3.175,13.70);
+    r.rotation.y=Math.PI;
+    r.userData.noCollision=true;
+    r.userData.logoNeonRing=true;
+    scene.add(r);
   });
+
+  scene.userData.logoNeonRing=ring;
+  scene.userData.logoNeonRingGlow=ringGlow;
 }
-
 function createPhysicalScreen() {
   // Black screen body.
   const backing = new THREE.Mesh(
