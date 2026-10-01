@@ -271,7 +271,8 @@ function normalizePlayer(p) {
     moving: p.moving,
     vy: p.vy || 0,
     grounded: p.grounded !== false,
-    seated: !!p.seated
+    seated: !!p.seated,
+    heart: p.heart || null
   };
 }
 
@@ -412,6 +413,7 @@ io.on('connection', socket => {
     p.vy = Number.isFinite(Number(data.vy)) ? Number(data.vy) : 0;
     p.grounded = data.grounded !== false;
     p.seated = !!data.seated;
+    if(data.heart && Number.isFinite(Number(data.heart.ts))) p.heart = data.heart;
 
     socket.to(ROOM).emit('player:state', normalizePlayer(p));
   });
