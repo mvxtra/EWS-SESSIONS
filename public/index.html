@@ -2692,6 +2692,7 @@ function createAvatar(data){
 
 function setupAlienWalkBones(r){
   r._walkBones={leftUpperLeg:null,rightUpperLeg:null,leftLowerLeg:null,rightLowerLeg:null,leftArm:null,rightArm:null,leftForeArm:null,rightForeArm:null};
+  r._walkBaseRotations={};
   const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
   r._visualModel.traverse(o=>{
     if(!o.isBone) return;
@@ -2771,10 +2772,7 @@ function animateAlienState(r,dt){
     r._sitPoseApplied=false;
     if(r._walkBones){
       // Return to the bind pose only for bones we actually modified.
-      if(r._walkBones.leftUpperLeg) r._walkBones.leftUpperLeg.rotation.x=0;
-      if(r._walkBones.rightUpperLeg) r._walkBones.rightUpperLeg.rotation.x=0;
-      if(r._walkBones.leftLowerLeg) r._walkBones.leftLowerLeg.rotation.x=0;
-      if(r._walkBones.rightLowerLeg) r._walkBones.rightLowerLeg.rotation.x=0;
+      Object.values(r._walkBones).forEach(b=>{ const q=r._walkBaseRotations?.[b?.uuid]; if(b&&q) b.rotation.set(q.x,q.y,q.z); });
     }
   }
 
@@ -2794,7 +2792,7 @@ function animateAlienState(r,dt){
     // The supplied FBX uses a different skeleton from the Alien GLB, so its
     // tracks do not reliably drive this character. Use a skeleton-safe walk
     // cycle on the Alien bones instead of showing the run animation in place.
-    if(r._currentAlienAction){ r._currentAlienAction.fadeOut(.12); r._currentAlienAction=null; r._currentAlienClip=''; }
+    if(r._currentAlienAction){ r._currentAlienAction.stop(); r._currentAlienAction=null; r._currentAlienClip=''; }
     proceduralAlienWalk(r,dt);
   }else if(!moving && r._alienClips.dance){
     playAlienClip(r,'dance',.20);
@@ -2856,9 +2854,8 @@ function updateRemotes(t,dt){
 
     r._running=!!r.data?.moving;
 
-    animateAlienState(r,dt);
-
     if(r._mixer) r._mixer.update(dt);
+    animateAlienState(r,dt);
   });
 }
 
