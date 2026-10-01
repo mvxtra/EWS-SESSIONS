@@ -1625,6 +1625,25 @@ function createDJSetup() {
       const ss=sb.getSize(new THREE.Vector3());
       if(ss.y>0) bigSpeaker.scale.multiplyScalar(3.2/ss.y);
 
+      // The Alien B-Boy model contains its own dance animation.
+      // Play the first embedded clip continuously.
+      if(gltf3.animations && gltf3.animations.length){
+        const alienMixer = new THREE.AnimationMixer(bigSpeaker);
+        const alienAction = alienMixer.clipAction(gltf3.animations[0]);
+        alienAction.reset();
+        alienAction.setLoop(THREE.LoopRepeat, Infinity);
+        alienAction.play();
+        bigSpeaker.userData.alienMixer = alienMixer;
+        bigSpeaker.userData.alienAction = alienAction;
+        bigSpeaker.userData.alienAnimated = true;
+        console.log('[EWS ALIEN] playing animation:', gltf3.animations[0].name || 'clip 0');
+      }else{
+        // Fallback so the Alien still moves if a loader/export dropped the clip.
+        bigSpeaker.userData.alienAnimated = false;
+        bigSpeaker.userData.alienFallback = true;
+        bigSpeaker.userData.alienBaseY = 0;
+      }
+
       // Same side-relative position as the gopnik, but on the right.
       bigSpeaker.position.set(7.25,0,-0.05);
       const floorBox=new THREE.Box3().setFromObject(bigSpeaker);
@@ -2403,6 +2422,17 @@ function animate() {
   }
 
   updateRemotes(now/1000,dt);
+
+  // Update the embedded Alien B-Boy dance animation.
+  scene.traverse(obj=>{
+    if(obj.userData?.alienMixer) obj.userData.alienMixer.update(dt);
+    if(obj.userData?.alienFallback){
+      const t=now/1000;
+      obj.position.y = obj.userData.alienBaseY + Math.abs(Math.sin(t*5.2))*0.12;
+      obj.rotation.y = Math.PI + Math.sin(t*2.6)*0.16;
+    }
+  });
+
   updateClubLighting(now/1000);
   updateCornerLasers(now/1000);
   updatePsychedelicMirrors(now);
