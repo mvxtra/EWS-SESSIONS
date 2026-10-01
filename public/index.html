@@ -334,6 +334,7 @@ $('password').addEventListener('keydown', e => {
 });
 
 const heartProjectiles = [];
+let pendingHeart = null;
 const ghostBursts = [];
 let ghostAudio = null;
 
@@ -440,6 +441,7 @@ function shootHeart(){
   const heart=createHeartMesh(); heart.position.copy(start); heart.quaternion.copy(camera.quaternion);
   const glow=new THREE.PointLight(0xff0000,1.6,3.2,.8); glow.userData.noCollision=true; heart.add(glow);
   scene.add(heart); heartProjectiles.push({mesh:heart,velocity:direction.multiplyScalar(13),born:performance.now(),life:1.35});
+  pendingHeart={ts:Date.now(),x:start.x,y:start.y,z:start.z,dx:direction.x,dy:direction.y,dz:direction.z};
 }
 function spawnRemoteHeart(data){ const start=new THREE.Vector3(Number(data.x)||0,Number(data.y)||0,Number(data.z)||0); const dir=new THREE.Vector3(Number(data.dx)||0,Number(data.dy)||0,Number(data.dz)||-1).normalize(); const heart=createHeartMesh(); heart.position.copy(start); scene.add(heart); heartProjectiles.push({mesh:heart,velocity:dir.multiplyScalar(13),born:performance.now(),life:1.35,remote:true}); }
 function updateHeartProjectiles(dt,now){
@@ -2419,8 +2421,9 @@ function animate() {
   if(socket?.connected && now-lastState>40){
     lastState=now;
     socket.emit('player:state',{
-      x:px,z:pz,yaw,moving:Boolean(!seated && (forward||side)),vy,grounded,seated
+      x:px,z:pz,yaw,moving:Boolean(!seated && (forward||side)),vy,grounded,seated,heart:pendingHeart
     });
+    pendingHeart=null;
   }
 
   updateRemotes(now/1000,dt);
