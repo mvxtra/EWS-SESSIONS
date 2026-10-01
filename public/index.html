@@ -3164,6 +3164,7 @@ function resumeScreenPlayback(){
 function startClub() {
   $('gopnikClose').onclick=()=>{gopnikInfoVisible=false;$('gopnikWindow').style.display='none';};
   buildWorld();
+  initLampMenu();
   connect();
   window.addEventListener('pointerdown',resumeScreenPlayback,{once:true,passive:true});
   window.addEventListener('keydown',resumeScreenPlayback,{once:true});
