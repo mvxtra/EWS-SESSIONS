@@ -630,28 +630,77 @@ function ghostHitTest(heartMesh){
 function createWallLogo(){
   const group=new THREE.Group();
   group.name='EWS_WALL_LOGO';
+  // Front wall is at z=+14. The club is toward negative Z.
   group.position.set(0,3.55,13.70);
   group.rotation.y=Math.PI;
 
   const texture=new THREE.TextureLoader().load('/logo.png');
   texture.encoding=THREE.sRGBEncoding;
-  const logoMat=new THREE.MeshBasicMaterial({map:texture,transparent:false,depthWrite:false,side:THREE.DoubleSide});
+
+  // Put the real logo clearly in front of the wall and force it to render.
+  const logoMat=new THREE.MeshBasicMaterial({
+    map:texture,
+    transparent:true,
+    alphaTest:.01,
+    depthTest:false,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
   const logo=new THREE.Mesh(new THREE.PlaneGeometry(4.6,2.2),logoMat);
-  logo.position.z=-0.16;
+  logo.position.z=.22;
+  logo.renderOrder=60;
   logo.name='EWS_WALL_LOGO_IMAGE';
   logo.userData.noCollision=true;
   group.add(logo);
 
-  // Compact round neon frame, centred around the logo.
-  const ringGlowMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.18,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
-  const ringMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.98,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  // Dark backing makes the logo visible even if the source image has transparency.
+  const backing=new THREE.Mesh(
+    new THREE.PlaneGeometry(4.9,2.5),
+    new THREE.MeshBasicMaterial({
+      color:0x050505,
+      transparent:false,
+      depthTest:false,
+      depthWrite:false,
+      side:THREE.DoubleSide
+    })
+  );
+  backing.position.z=.18;
+  backing.renderOrder=58;
+  backing.userData.noCollision=true;
+  group.add(backing);
+
+  // Round neon frame, behind the logo and centred on it.
+  const ringGlowMat=new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.22,
+    blending:THREE.AdditiveBlending,
+    depthTest:false,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+  const ringMat=new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.98,
+    blending:THREE.AdditiveBlending,
+    depthTest:false,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
   const ringGlow=new THREE.Mesh(new THREE.TorusGeometry(2.55,.16,16,128),ringGlowMat);
   const ring=new THREE.Mesh(new THREE.TorusGeometry(2.55,.055,16,128),ringMat);
   ringGlow.scale.y=.62;
   ring.scale.y=.62;
-  ringGlow.position.z=0.02;
-  ring.position.z=0.04;
-  [ringGlow,ring].forEach(r=>{r.userData.noCollision=true;r.userData.logoNeonRing=true;group.add(r);});
+  ringGlow.position.z=.10;
+  ring.position.z=.12;
+  ringGlow.renderOrder=55;
+  ring.renderOrder=56;
+  [ringGlow,ring].forEach(r=>{
+    r.userData.noCollision=true;
+    r.userData.logoNeonRing=true;
+    group.add(r);
+  });
 
   scene.add(group);
   scene.userData.logoNeonRing=ring;
@@ -663,6 +712,7 @@ function createWallLogo(){
   };
   scene.userData.setLogoRingColor(scene.userData.lampColor||'white');
 }
+
 
 function buildWorld() {
   scene = new THREE.Scene();
