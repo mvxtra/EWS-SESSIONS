@@ -2041,45 +2041,76 @@ function scheduleBlackouts(){
 }
 
 function createRearWallSpeakers() {
-  const loader = new THREE.GLTFLoader();
-  const positions = [
-    {x:-10.8, z:-12.15, yaw:0.72, name:'EWS_REAR_SPEAKER_LEFT'},
-    {x: 10.8, z:-12.15, yaw:-0.72, name:'EWS_REAR_SPEAKER_RIGHT'}
-  ];
+  // Two clearly visible rear-fill speakers mounted just inside the back corners.
+  // They face diagonally toward the centre of the dancefloor.
+  const cabinetMat = new THREE.MeshStandardMaterial({
+    color:0x080808, roughness:.34, metalness:.58
+  });
+  const grilleMat = new THREE.MeshStandardMaterial({
+    color:0x1b1b1b, roughness:.72, metalness:.08
+  });
+  const ringMat = new THREE.MeshStandardMaterial({
+    color:0x333333, roughness:.48, metalness:.35
+  });
 
-  positions.forEach(pos=>{
-    loader.load('/models/колонки.glb', gltf=>{
-      const speaker = gltf.scene;
-      speaker.name = pos.name;
+  [
+    {x:-11.8, z:-11.65, yaw:Math.PI*0.25, name:'EWS_REAR_SPEAKER_LEFT'},
+    {x: 11.8, z:-11.65, yaw:-Math.PI*0.25, name:'EWS_REAR_SPEAKER_RIGHT'}
+  ].forEach(pos=>{
+    const group=new THREE.Group();
+    group.name=pos.name;
 
-      speaker.traverse(o=>{
-        if(!o.isMesh) return;
-        o.castShadow = true;
-        o.receiveShadow = true;
-        if(o.material){
-          const mats = Array.isArray(o.material) ? o.material : [o.material];
-          mats.forEach(m=>{
-            if(!m) return;
-            m.transparent = false;
-            m.opacity = 1;
-            m.depthWrite = true;
-            m.depthTest = true;
-          });
-        }
-      });
+    const cabinet=new THREE.Mesh(
+      new THREE.BoxGeometry(1.35,3.25,.82),
+      cabinetMat.clone()
+    );
+    cabinet.position.y=1.78;
+    cabinet.castShadow=true;
+    cabinet.receiveShadow=true;
+    group.add(cabinet);
 
-      const box = new THREE.Box3().setFromObject(speaker);
-      const size = box.getSize(new THREE.Vector3());
-      if(size.y > 0) speaker.scale.multiplyScalar(2.35 / size.y);
+    const grille=new THREE.Mesh(
+      new THREE.BoxGeometry(1.12,2.78,.045),
+      grilleMat.clone()
+    );
+    grille.position.set(0,1.78,.435);
+    group.add(grille);
 
-      const fitted = new THREE.Box3().setFromObject(speaker);
-      speaker.position.set(pos.x, -fitted.min.y + 0.08, pos.z);
-      speaker.rotation.y = pos.yaw;
+    [1.05,1.78,2.51].forEach(y=>{
+      const ring=new THREE.Mesh(
+        new THREE.TorusGeometry(.235,.035,10,28),
+        ringMat.clone()
+      );
+      ring.position.set(0,y,.47);
+      group.add(ring);
 
-      scene.add(speaker);
-    }, undefined, err=>console.warn('[EWS REAR SPEAKER] load failed', err));
+      const driver=new THREE.Mesh(
+        new THREE.CircleGeometry(.20,28),
+        new THREE.MeshStandardMaterial({
+          color:0x090909, roughness:.78, metalness:.05
+        })
+      );
+      driver.position.set(0,y,.475);
+      group.add(driver);
+    });
+
+    // Small mounting bracket so they read as installed club speakers.
+    const bracket=new THREE.Mesh(
+      new THREE.BoxGeometry(1.48,.12,.58),
+      ringMat.clone()
+    );
+    bracket.position.y=.22;
+    group.add(bracket);
+
+    group.position.set(pos.x,0,pos.z);
+    group.rotation.y=pos.yaw;
+    group.traverse(o=>{
+      if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}
+    });
+    scene.add(group);
   });
 }
+
 
 function addSpeaker(x,z) {
   const group=new THREE.Group();
