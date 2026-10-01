@@ -19,11 +19,18 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const USERS_FILE = path.join(__dirname, 'users.json');
 const SCREEN_FILE = path.join(__dirname, 'screen-state.json');
+const LAMP_FILE = path.join(__dirname, 'lamp-state.json');
 const HOST_NAME = 'mvxtra';
 const ROOM = 'ews-club';
 
 const LANGS = new Set(['ru','en','es','de','fr','zh','ja','ko','ar','hi','pt','it','tr','uk','nl','pl']);
 const players = new Map();
+const ghosts = new Map();
+let nextGhostId = 1;
+let ghostTimer = null;
+let defeatedGhosts = 0;
+let defeatedBosses = 0;
+let bossEncountered = false;
 
 const world = {
   minX: -15, maxX: 15,
@@ -55,7 +62,9 @@ function readScreen() {
 }
 
 const screen = readScreen();
-
+function readLampColor(){ try { const d=JSON.parse(fs.readFileSync(LAMP_FILE,'utf8')); return d.color==='red'?'red':'white'; } catch { return 'white'; } }
+function writeLampColor(){ fs.writeFileSync(LAMP_FILE, JSON.stringify({color:lampColor},null,2),'utf8'); }
+let lampColor=readLampColor();
 fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]\n', 'utf8');
 
@@ -261,7 +270,8 @@ function normalizePlayer(p) {
     yaw: p.yaw,
     moving: p.moving,
     vy: p.vy || 0,
-    grounded: p.grounded !== false
+    grounded: p.grounded !== false,
+    seated: !!p.seated
   };
 }
 
@@ -279,6 +289,50 @@ function onlineState() {
 function broadcastOnline() {
   io.to(ROOM).emit('online:state', onlineState());
 }
+
+function spawnGhost() {
+  if (ghosts.size >= 2) return;
+  const id = 'ghost-' + nextGhostId++;
+  const ghost = {
+    id,
+    hp: 10,
+    x: (Math.random() * 16) - 8,
+    y: 2.8 + Math.random() * 2.4,
+    z: (Math.random() * 10) - 2,
+    born: Date.now(),
+    phase: Math.random() * Math.PI * 2,
+    speed: 0.7 + Math.random() * 0.45,
+    radius: 2.2 + Math.random() * 1.8,
+    life: 0
+  };
+  ghosts.set(id, ghost);
+  io.to(ROOM).emit('ghost:spawn', ghost);
+}
+
+function broadcastGhosts() {
+  io.to(ROOM).emit('ghost:state', [...ghosts.values()]);
+}
+
+function ghostScoreState() {
+  return { ghosts: defeatedGhosts, bosses: defeatedBosses };
+}
+
+function broadcastGhostScore() {
+  io.to(ROOM).emit('ghost:score', ghostScoreState());
+}
+
+function startGhostEvents() {
+  clearInterval(ghostTimer);
+  const schedule = () => {
+    const delay = 14000 + Math.floor(Math.random() * 18000);
+    ghostTimer = setTimeout(() => {
+      spawnGhost();
+      schedule();
+    }, delay);
+  };
+  schedule();
+}
+startGhostEvents();
 
 function randomSpawn() {
   const points = [
@@ -308,7 +362,8 @@ io.on('connection', socket => {
       yaw: 0,
       moving: false,
       vy: 0,
-      grounded: true
+      grounded: true,
+      seated: false
     };
 
     players.set(socket.id, player);
@@ -319,13 +374,16 @@ io.on('connection', socket => {
     socket.emit('club:ready', {
       username,
       host: username.toLowerCase() === HOST_NAME,
-      screen: screenState()
+      screen: screenState(),
+      lampColor
     });
 
     socket.emit('world:state', {
       players: [...players.values()].map(normalizePlayer),
       screen: screenState()
     });
+    socket.emit('ghost:state', [...ghosts.values()]);
+    socket.emit('ghost:score', ghostScoreState());
 
     socket.to(ROOM).emit('player:joined', normalizePlayer(player));
     broadcastOnline();
@@ -338,6 +396,9 @@ io.on('connection', socket => {
       screen: screenState()
     });
     socket.emit('online:state', onlineState());
+    socket.emit('lamp-color:state', lampColor);
+    socket.emit('ghost:state', [...ghosts.values()]);
+    socket.emit('ghost:score', ghostScoreState());
   });
 
   socket.on('player:state', data => {
@@ -350,11 +411,64 @@ io.on('connection', socket => {
     p.moving = !!data.moving;
     p.vy = Number.isFinite(Number(data.vy)) ? Number(data.vy) : 0;
     p.grounded = data.grounded !== false;
+    p.seated = !!data.seated;
 
     socket.to(ROOM).emit('player:state', normalizePlayer(p));
   });
 
+  socket.on('ghost:hit', ghostId => {
+    const p = players.get(socket.id);
+    if (!p || !socket.data.joined) return;
+    const id = String(ghostId || '');
+    const ghost = ghosts.get(id);
+    if (!ghost) return;
 
+    ghost.hp -= 1;
+    if (ghost.hp <= 0) {
+      ghosts.delete(id);
+      if (!ghost.boss) {
+        defeatedGhosts++;
+        broadcastGhostScore();
+        io.to(ROOM).emit('ghost:progress', { count: defeatedGhosts, target: 50 });
+        io.to(ROOM).emit('ghost:dead', { id, by: p.username, count: defeatedGhosts });
+        if (defeatedGhosts >= 50 && !bossEncountered) {
+          bossEncountered = true;
+          const boss = {
+            id: 'ghost-boss-1', hp: 100, boss: true,
+            x: (Math.random() * 10) - 5, y: 4.2, z: (Math.random() * 8) - 1,
+            born: Date.now(), phase: Math.random() * Math.PI * 2,
+            speed: 0.42, radius: 3.4, life: 0
+          };
+          ghosts.set(boss.id, boss);
+          io.to(ROOM).emit('ghost:boss-spawn', boss);
+        }
+      } else {
+        defeatedBosses++;
+        io.to(ROOM).emit('ghost:dead', { id, by: p.username, boss: true });
+        broadcastGhostScore();
+      }
+    } else {
+      io.to(ROOM).emit('ghost:hit', { id, hp: ghost.hp, by: p.username });
+    }
+  });
+
+
+
+  socket.on('blackout:start', () => {
+    const p = players.get(socket.id);
+    if (!p || p.username.toLowerCase() !== HOST_NAME) return;
+    io.to(ROOM).emit('blackout:start');
+  });
+
+  socket.on('lamp-color:set', value => {
+    const p=players.get(socket.id);
+    if(!p || p.username.toLowerCase()!==HOST_NAME) return;
+    const color=String(value||'').toLowerCase();
+    if(color!=='red' && color!=='white') return;
+    lampColor=color;
+    writeLampColor();
+    io.to(ROOM).emit('lamp-color:state',lampColor);
+  });
 
   socket.on('language:set', value => {
     const p = players.get(socket.id);
@@ -422,6 +536,16 @@ io.on('connection', socket => {
 app.get('*', (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, ghost] of ghosts) {
+    if (ghost.life > 0 && now - ghost.born >= ghost.life) {
+      ghosts.delete(id);
+      io.to(ROOM).emit('ghost:dead', { id, expired: true });
+    }
+  }
+}, 2000);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log('======================================');
