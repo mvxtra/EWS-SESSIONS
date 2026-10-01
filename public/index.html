@@ -2588,7 +2588,7 @@ function createAvatar(data){
     targetZ:Number(data.z)||0,
     targetY:Number(data.y)||0,
     targetVy:Number(data.vy)||0,
-    targetGrounded=data.grounded!==false,
+    targetGrounded:data.grounded!==false,
     targetYaw:(Number(data.yaw)||0)+Math.PI,
     targetSeated:!!data.seated,
     data
