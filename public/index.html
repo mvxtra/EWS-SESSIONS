@@ -2752,20 +2752,35 @@ function animateAlienState(r,dt){
   if(seated){
     r._sitAnim=Math.min(1,r._sitAnim+dt*5);
     r._jumpAnim=0;
-    if(r._alienClips.sit) playAlienClip(r,'sit',.12);
-    else if(r._alienClips.idle) playAlienClip(r,'idle',.12);
-    r._visualModel.position.y=r._alienBaseY-Math.sin(r._sitAnim*Math.PI*.5)*0.38;
+    if(r._currentAlienAction){ r._currentAlienAction.fadeOut(.12); r._currentAlienAction=null; r._currentAlienClip=''; }
+    // Stable seated pose: lower the whole Alien and bend the legs/arms when
+    // matching bones are available. This does not depend on an external FBX.
+    r._visualModel.position.y=r._alienBaseY-0.38;
+    if(!r._sitPoseApplied){
+      if(!r._walkBones) setupAlienWalkBones(r);
+      const b=r._walkBones;
+      if(b.leftUpperLeg) b.leftUpperLeg.rotation.x=-1.05;
+      if(b.rightUpperLeg) b.rightUpperLeg.rotation.x=-1.05;
+      if(b.leftLowerLeg) b.leftLowerLeg.rotation.x=1.15;
+      if(b.rightLowerLeg) b.rightLowerLeg.rotation.x=1.15;
+      r._sitPoseApplied=true;
+    }
     return;
+  }
+  if(r._sitPoseApplied){
+    r._sitPoseApplied=false;
+    if(r._walkBones){
+      Object.values(r._walkBones).forEach(b=>{ if(b) b.rotation.set(0,0,0); });
+    }
   }
 
   r._sitAnim=Math.max(0,r._sitAnim-dt*5);
 
   if(airborne){
     r._jumpAnim=Math.min(1,r._jumpAnim+dt*7);
-    if(r._alienClips.jump) playAlienClip(r,'jump',.08);
-    else if(r._alienClips.idle) playAlienClip(r,'idle',.08);
-    // Small procedural jump motion while keeping the Alien's own animation.
-    r._visualModel.position.y=r._alienBaseY+Math.max(0,Math.sin(r._jumpAnim*Math.PI))*0.12;
+    if(r._currentAlienAction){ r._currentAlienAction.fadeOut(.08); r._currentAlienAction=null; r._currentAlienClip=''; }
+    // Keep the Alien visibly airborne even without a compatible jump clip.
+    r._visualModel.position.y=r._alienBaseY+Math.max(0,Math.sin(r._jumpAnim*Math.PI))*0.65;
     return;
   }
 
