@@ -451,7 +451,7 @@ function updateHeartProjectiles(dt,now){
     p.mesh.rotation.z+=dt*7;
     p.mesh.rotation.y+=dt*3.5;
 
-    const hitId=p.remote?null:ghostHitTest(p.mesh);
+    const hitId=ghostHitTest(p.mesh);
     if(hitId){
       socket?.emit('ghost:hit',hitId);
       scene.remove(p.mesh);
