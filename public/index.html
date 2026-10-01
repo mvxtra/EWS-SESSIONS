@@ -1202,52 +1202,80 @@ function createClubMirror(){
 }
 
 function createWallLogo() {
-  const logoTexture = new THREE.TextureLoader().load('/assets/logo.png');
-  logoTexture.colorSpace = THREE.SRGBColorSpace || undefined;
+  // Fresh EWS wall logo: rebuilt from scratch, with no old rectangular frame.
+  const canvas=document.createElement('canvas');
+  canvas.width=1600;
+  canvas.height=400;
+  const ctx=canvas.getContext('2d');
 
-  const logo = new THREE.Mesh(
-    new THREE.PlaneGeometry(5.8, 1.45),
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+
+  // Subtle dark backing/glow so the logo stays readable in the club.
+  const glow=ctx.createRadialGradient(800,200,40,800,200,620);
+  glow.addColorStop(0,'rgba(255,255,255,.12)');
+  glow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=glow;
+  ctx.fillRect(0,0,1600,400);
+
+  ctx.font='900 210px Arial, Helvetica, sans-serif';
+  ctx.letterSpacing='34px';
+  ctx.shadowColor='rgba(255,255,255,.28)';
+  ctx.shadowBlur=24;
+  ctx.fillStyle='#ffffff';
+  ctx.fillText('EWS SESSIONS',800,205);
+  ctx.shadowBlur=0;
+
+  const logoTexture=new THREE.CanvasTexture(canvas);
+  logoTexture.needsUpdate=true;
+  logoTexture.encoding=THREE.sRGBEncoding;
+
+  const logo=new THREE.Mesh(
+    new THREE.PlaneGeometry(8.0,2.0),
     new THREE.MeshBasicMaterial({
-      map: logoTexture,
-      transparent: true,
-      depthWrite: false,
-      side: THREE.DoubleSide
+      map:logoTexture,
+      transparent:true,
+      depthWrite:false,
+      side:THREE.DoubleSide
     })
   );
 
-  logo.name = 'EWS_WALL_LOGO';
-  logo.position.set(0, 3.175, 13.78);
-  logo.rotation.y = Math.PI;
+  logo.name='EWS_WALL_LOGO_NEW';
+  logo.position.set(0,3.175,13.72);
+  logo.rotation.y=Math.PI;
+  logo.userData.noCollision=true;
   scene.add(logo);
 
-  // Round neon ring around the EWS logo. The lamp colour controls the ring.
-  const ringMaterial = new THREE.MeshBasicMaterial({
+  // New circular neon frame. It follows the room lamp colour.
+  const ringGlowMaterial=new THREE.MeshBasicMaterial({
     color:0xffffff,
     transparent:true,
-    opacity:.95,
+    opacity:.20,
     blending:THREE.AdditiveBlending,
     depthWrite:false,
     side:THREE.DoubleSide
   });
-  const ringGlowMaterial = new THREE.MeshBasicMaterial({
+  const ringMaterial=new THREE.MeshBasicMaterial({
     color:0xffffff,
     transparent:true,
-    opacity:.22,
+    opacity:.98,
     blending:THREE.AdditiveBlending,
     depthWrite:false,
     side:THREE.DoubleSide
   });
 
-  const ringGlow = new THREE.Mesh(
-    new THREE.TorusGeometry(2.35,.18,12,96),
+  const ringGlow=new THREE.Mesh(
+    new THREE.TorusGeometry(2.55,.20,12,128),
     ringGlowMaterial
   );
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(2.35,.055,10,96),
+  const ring=new THREE.Mesh(
+    new THREE.TorusGeometry(2.55,.065,12,128),
     ringMaterial
   );
+
   [ringGlow,ring].forEach(r=>{
-    r.position.set(0,3.175,13.70);
+    r.position.set(0,3.175,13.64);
     r.rotation.y=Math.PI;
     r.userData.noCollision=true;
     r.userData.logoNeonRing=true;
@@ -1256,14 +1284,14 @@ function createWallLogo() {
 
   scene.userData.logoNeonRing=ring;
   scene.userData.logoNeonRingGlow=ringGlow;
-  scene.userData.setLogoRingColor = (color)=>{
-    const c = String(color)==='red' ? 0xff1744 : 0xffffff;
+  scene.userData.setLogoRingColor=(color)=>{
+    const c=String(color)==='red'?0xff1744:0xffffff;
     ring.material.color.setHex(c);
     ringGlow.material.color.setHex(c);
     ring.material.needsUpdate=true;
     ringGlow.material.needsUpdate=true;
   };
-  scene.userData.setLogoRingColor(scene.userData.lampColor || 'white');
+  scene.userData.setLogoRingColor(scene.userData.lampColor||'white');
 }
 function createPhysicalScreen() {
   // Black screen body.
