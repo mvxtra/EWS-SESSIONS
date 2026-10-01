@@ -627,6 +627,75 @@ function ghostHitTest(heartMesh){
   return null;
 }
 
+function createWallLogo(){
+  const group=new THREE.Group();
+  group.name='EWS_WALL_LOGO';
+  group.position.set(0,3.35,13.62);
+  group.rotation.y=Math.PI;
+
+  const texture=new THREE.TextureLoader().load('/logo.png');
+  texture.encoding=THREE.sRGBEncoding;
+  texture.anisotropy=renderer?.capabilities?.getMaxAnisotropy?.()||1;
+
+  const logoMat=new THREE.MeshBasicMaterial({
+    map:texture,
+    transparent:true,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+  const logo=new THREE.Mesh(new THREE.PlaneGeometry(5.8,2.9),logoMat);
+  logo.name='EWS_WALL_LOGO_IMAGE';
+  logo.userData.noCollision=true;
+  group.add(logo);
+
+  const ringGlowMat=new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.20,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+  const ringMat=new THREE.MeshBasicMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:.98,
+    blending:THREE.AdditiveBlending,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+
+  const ringGlow=new THREE.Mesh(new THREE.TorusGeometry(3.35,.20,16,128),ringGlowMat);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(3.35,.065,16,128),ringMat);
+  [ringGlow,ring].forEach(r=>{
+    r.userData.noCollision=true;
+    r.userData.logoNeonRing=true;
+    group.add(r);
+  });
+
+  group.userData.ring=ring;
+  group.userData.ringGlow=ringGlow;
+  scene.add(group);
+  scene.userData.logoNeonRing=ring;
+  scene.userData.logoNeonRingGlow=ringGlow;
+  scene.userData.setLogoRingColor=(color)=>{
+    const c=String(color)==='red'?0xff1744:0xffffff;
+    ring.material.color.setHex(c);
+    ringGlow.material.color.setHex(c);
+  };
+  scene.userData.setLogoRingColor(scene.userData.lampColor||'white');
+
+  texture.image?.addEventListener?.('load',()=>{
+    const img=texture.image;
+    if(!img?.width||!img?.height)return;
+    const aspect=img.width/img.height;
+    const h=aspect>=1?2.65:5.0;
+    const w=h*aspect;
+    logo.geometry.dispose();
+    logo.geometry=new THREE.PlaneGeometry(Math.min(w,6.2),h);
+  });
+}
+
 function buildWorld() {
   scene = new THREE.Scene();
   // Transparent WebGL canvas: the Twitch CSS3D screen remains visible behind
@@ -857,12 +926,17 @@ function buildWorld() {
 
   scene.userData.neonBaseboards=baseboards;
 
+  // Logo ring is updated together with the room lamps in setLampColor().
+
   // Stage removed. The wall-mounted screen stays in place, and the DJ table + CDJ remain.
   // Central DJ table and one Pioneer CDJ-3000.
   createDJSetup();
 
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
+
+  // Official logo asset from public/logo.png, surrounded by a colour-changing round neon frame.
+  createWallLogo();
 
   // EWS logo mounted on the wall behind the DJ booth.
   createWallDoor();
