@@ -841,6 +841,7 @@ function buildWorld() {
   // Stage removed. The wall-mounted screen stays in place, and the DJ table + CDJ remain.
   // Central DJ table and one Pioneer CDJ-3000.
   createDJSetup();
+  createRearWallSpeakers();
 
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
@@ -2037,6 +2038,47 @@ function scheduleBlackouts(){
     if(host&&socket?.connected) socket.emit('blackout:start');
     scheduleBlackouts();
   },26000+Math.random()*34000);
+}
+
+function createRearWallSpeakers() {
+  const loader = new THREE.GLTFLoader();
+  const positions = [
+    {x:-10.8, z:-12.15, yaw:0.72, name:'EWS_REAR_SPEAKER_LEFT'},
+    {x: 10.8, z:-12.15, yaw:-0.72, name:'EWS_REAR_SPEAKER_RIGHT'}
+  ];
+
+  positions.forEach(pos=>{
+    loader.load('/models/колонки.glb', gltf=>{
+      const speaker = gltf.scene;
+      speaker.name = pos.name;
+
+      speaker.traverse(o=>{
+        if(!o.isMesh) return;
+        o.castShadow = true;
+        o.receiveShadow = true;
+        if(o.material){
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          mats.forEach(m=>{
+            if(!m) return;
+            m.transparent = false;
+            m.opacity = 1;
+            m.depthWrite = true;
+            m.depthTest = true;
+          });
+        }
+      });
+
+      const box = new THREE.Box3().setFromObject(speaker);
+      const size = box.getSize(new THREE.Vector3());
+      if(size.y > 0) speaker.scale.multiplyScalar(2.35 / size.y);
+
+      const fitted = new THREE.Box3().setFromObject(speaker);
+      speaker.position.set(pos.x, -fitted.min.y + 0.08, pos.z);
+      speaker.rotation.y = pos.yaw;
+
+      scene.add(speaker);
+    }, undefined, err=>console.warn('[EWS REAR SPEAKER] load failed', err));
+  });
 }
 
 function addSpeaker(x,z) {
