@@ -1256,6 +1256,14 @@ function createWallLogo() {
 
   scene.userData.logoNeonRing=ring;
   scene.userData.logoNeonRingGlow=ringGlow;
+  scene.userData.setLogoRingColor = (color)=>{
+    const c = String(color)==='red' ? 0xff1744 : 0xffffff;
+    ring.material.color.setHex(c);
+    ringGlow.material.color.setHex(c);
+    ring.material.needsUpdate=true;
+    ringGlow.material.needsUpdate=true;
+  };
+  scene.userData.setLogoRingColor(scene.userData.lampColor || 'white');
 }
 function createPhysicalScreen() {
   // Black screen body.
@@ -1282,26 +1290,8 @@ function createPhysicalScreen() {
   frame.rotation.y = 0;
   scene.add(frame);
 
-  // Thin white luminous trim.
-  const trimMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: .88,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false
-  });
-  const trim = [
-    [12.25,.07,.10,0,6.16,13.55],
-    [12.25,.07,.10,0,.19,13.55],
-    [.07,5.97,.10,-6.09,3.175,13.55],
-    [.07,5.97,.10,6.09,3.175,13.55]
-  ];
-  trim.forEach(([w,h,d,x,y,z])=>{
-    const e = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), trimMat);
-    e.position.set(x,y,z);
-    e.rotation.y = Math.PI;
-    scene.add(e);
-  });
+  // The old white rectangular trim around the logo wall is intentionally removed.
+  // The EWS logo uses only the round neon ring created in createWallLogo().
 }
 
 function createDJSetup() {
@@ -1987,10 +1977,14 @@ function setLampColor(color){
   });
 
   // The round EWS logo ring follows the same lamp colour.
-  const ring=scene.userData.logoNeonRing;
-  const ringGlow=scene.userData.logoNeonRingGlow;
-  if(ring?.material?.color) ring.material.color.set(red?0xff1744:0xffffff);
-  if(ringGlow?.material?.color) ringGlow.material.color.set(red?0xff1744:0xffffff);
+  if(scene.userData.setLogoRingColor) {
+    scene.userData.setLogoRingColor(red?'red':'white');
+  } else {
+    const ring=scene.userData.logoNeonRing;
+    const ringGlow=scene.userData.logoNeonRingGlow;
+    if(ring?.material?.color) ring.material.color.set(red?0xff1744:0xffffff);
+    if(ringGlow?.material?.color) ringGlow.material.color.set(red?0xff1744:0xffffff);
+  }
 }
 function initLampMenu(){
   $('lampWhite').onclick=()=>{if(host&&socket?.connected)socket.emit('lamp-color:set','white');};
