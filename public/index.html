@@ -627,6 +627,26 @@ function ghostHitTest(heartMesh){
   return null;
 }
 
+function createWallLogo(){
+  const texture=new THREE.TextureLoader().load('/logo.png');
+  texture.encoding=THREE.sRGBEncoding;
+  const mat=new THREE.MeshBasicMaterial({
+    map:texture,
+    transparent:true,
+    depthTest:false,
+    depthWrite:false,
+    side:THREE.DoubleSide
+  });
+  const logo=new THREE.Mesh(new THREE.PlaneGeometry(4.8,2.3),mat);
+  logo.name='EWS_WALL_LOGO';
+  logo.position.set(0,3.55,13.55);
+  logo.rotation.y=Math.PI;
+  logo.renderOrder=80;
+  logo.userData.noCollision=true;
+  scene.add(logo);
+  scene.userData.wallLogo=logo;
+}
+
 function buildWorld() {
   scene = new THREE.Scene();
   // Transparent WebGL canvas: the Twitch CSS3D screen remains visible behind
@@ -865,6 +885,7 @@ function buildWorld() {
 
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
+  createWallLogo();
 
   // Official logo asset from public/logo.png, surrounded by a colour-changing round neon frame.
 // EWS logo mounted on the wall behind the DJ booth.
