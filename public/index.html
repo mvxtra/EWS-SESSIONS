@@ -630,14 +630,14 @@ function ghostHitTest(heartMesh){
 function createWallLogo(){
   const group=new THREE.Group();
   group.name='EWS_WALL_LOGO';
-  group.position.set(0,3.55,13.55);
-  group.rotation.y=0;
+  group.position.set(0,3.55,13.70);
+  group.rotation.y=Math.PI;
 
   const texture=new THREE.TextureLoader().load('/logo.png');
   texture.encoding=THREE.sRGBEncoding;
-  const logoMat=new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  const logoMat=new THREE.MeshBasicMaterial({map:texture,transparent:false,depthWrite:false,side:THREE.DoubleSide});
   const logo=new THREE.Mesh(new THREE.PlaneGeometry(4.6,2.2),logoMat);
-  logo.position.z=-0.08;
+  logo.position.z=-0.16;
   logo.name='EWS_WALL_LOGO_IMAGE';
   logo.userData.noCollision=true;
   group.add(logo);
@@ -649,8 +649,8 @@ function createWallLogo(){
   const ring=new THREE.Mesh(new THREE.TorusGeometry(2.55,.055,16,128),ringMat);
   ringGlow.scale.y=.62;
   ring.scale.y=.62;
-  ringGlow.position.z=-0.10;
-  ring.position.z=-0.12;
+  ringGlow.position.z=0.02;
+  ring.position.z=0.04;
   [ringGlow,ring].forEach(r=>{r.userData.noCollision=true;r.userData.logoNeonRing=true;group.add(r);});
 
   scene.add(group);
