@@ -2593,7 +2593,8 @@ function createAvatar(data){
     if(size.y>0) model.scale.multiplyScalar(2.45/size.y);
     const fitted=new THREE.Box3().setFromObject(model);
     model.position.y-=fitted.min.y;
-    model.rotation.y=Math.PI;
+    // Flip the Alien 180° so the character faces the direction of travel.
+    model.rotation.y=0;
     g.add(model);
 
     r._visualModel=model;
