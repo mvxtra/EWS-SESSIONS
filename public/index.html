@@ -1981,6 +1981,10 @@ function setLampColor(color){
       node.material.color.set(red?0xff1744:0xffffff);
     });
   });
+
+  if(scene.userData.setLogoRingColor){
+    scene.userData.setLogoRingColor(red?'red':'white');
+  }
 }
 function initLampMenu(){
   $('lampWhite').onclick=()=>{if(host&&socket?.connected)socket.emit('lamp-color:set','white');};
