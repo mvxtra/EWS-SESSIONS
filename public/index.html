@@ -163,13 +163,15 @@ function initChatLanguage(){
   select.addEventListener('change',()=>{
     language=select.value;
     localStorage.setItem('ews-language',language);
+    retranslateChat();
     const start=$('startLanguage');
     if(start) start.value=language;
     if(socket?.connected) socket.emit('language:set',language);
   });
 }
 const LANGS = ['ru','en','es','de','fr','zh','ja','ko','ar','hi','pt','it','tr','uk','nl','pl'];
-const LANG_NAMES = {ru:'RU',en:'EN',es:'ES',de:'DE',fr:'FR',zh:'ZH',ja:'JA',ko:'KO',ar:'AR',hi:'HI',pt:'PT',it:'IT',tr:'TR',uk:'UK',nl:'NL',pl:'PL'};
+const LANG_NAMES = {ru:'Русский',en:'English',es:'Español',de:'Deutsch',fr:'Français',zh:'中文',ja:'日本語',ko:'한국어',ar:'العربية',hi:'हिन्दी',pt:'Português',it:'Italiano',tr:'Türkçe',uk:'Українська',nl:'Nederlands',pl:'Polski'};
+initChatLanguage();
 
 let socket = null;
 let username = '';
@@ -2953,6 +2955,24 @@ function renderOnline(users) {
   });
 }
 
+async function translateChatText(text,target){
+  try{
+    const r=await fetch('/api/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,target})});
+    const data=await r.json();
+    return data.ok&&data.text?data.text:text;
+  }catch{return text;}
+}
+
+async function retranslateChat(){
+  const spans=document.querySelectorAll('#messages .msg span[data-original]');
+  for(const span of spans){
+    const original=span.dataset.original||span.textContent;
+    const translated=await translateChatText(original,language);
+    span.textContent=translated===original?original:original+' → '+translated;
+    span.dataset.language=language;
+  }
+}
+
 async function renderMessage(msg) {
   const div=document.createElement('div');
   div.className='msg';
@@ -2962,21 +2982,15 @@ async function renderMessage(msg) {
 
   const span=document.createElement('span');
   span.textContent=msg.text;
+  span.dataset.original=msg.text;
+  span.dataset.language=language;
   div.appendChild(span);
   $('messages').appendChild(div);
   $('messages').scrollTop=$('messages').scrollHeight;
 
-  if(language==='en' || language==='ru' || language) {
-    try {
-      const r=await fetch('/api/translate',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({text:msg.text,target:language})
-      });
-      const data=await r.json();
-      if(data.ok && data.text && data.text!==msg.text) span.textContent=msg.text+' → '+data.text;
-    } catch {}
-  }
+  const translated=await translateChatText(msg.text,language);
+  span.textContent=translated===msg.text?msg.text:msg.text+' → '+translated;
+  span.dataset.language=language;
 }
 
 function twitchEmbedUrl(value) {
