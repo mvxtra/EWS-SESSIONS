@@ -2547,11 +2547,36 @@ function createAvatar(data) {
   neck.castShadow = true;
   rig.add(neck);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.34, 12, 8), skinMat);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.34, 16, 12), skinMat);
   head.scale.set(1,.98,.94);
   head.position.y = 2.78;
   head.castShadow = true;
   rig.add(head);
+
+  // More natural head details: ears, hair and a subtle jaw/chin.
+  const earMat = skinMat;
+  [-1,1].forEach(side=>{
+    const ear=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),earMat);
+    ear.scale.set(.55,1,.65);
+    ear.position.set(side*.335,2.78,.015);
+    ear.castShadow=true;
+    rig.add(ear);
+  });
+
+  const hairMat = new THREE.MeshStandardMaterial({
+    color:0x151515, roughness:.9, metalness:.02
+  });
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(.355,16,10),hairMat);
+  hair.scale.set(1.01,.42,.98);
+  hair.position.set(0,3.025,-.015);
+  hair.castShadow=true;
+  rig.add(hair);
+
+  const jaw=new THREE.Mesh(new THREE.SphereGeometry(.22,12,8),skinMat);
+  jaw.scale.set(1,.55,.78);
+  jaw.position.set(0,2.68,.06);
+  jaw.castShadow=true;
+  rig.add(jaw);
 
   // Minimal EWS face: two small dark eyes, no cartoon smile.
   const eyeMat = new THREE.MeshBasicMaterial({color:0x050505});
@@ -2619,6 +2644,44 @@ function createAvatar(data) {
   const rightArm = makeArm(1);
   const leftLeg = makeLeg(-1);
   const rightLeg = makeLeg(1);
+
+  // Jacket shoulders and collar make the silhouette less boxy.
+  const shoulderMat = darkMat;
+  [-1,1].forEach(side=>{
+    const shoulder=new THREE.Mesh(new THREE.SphereGeometry(.22,10,7),shoulderMat);
+    shoulder.scale.set(1.15,.72,1.0);
+    shoulder.position.set(side*.43,2.29,0);
+    shoulder.castShadow=true;
+    rig.add(shoulder);
+  });
+
+  const collarMat=new THREE.MeshStandardMaterial({color:0x2a2a2a,roughness:.55,metalness:.18});
+  [-1,1].forEach(side=>{
+    const collar=new THREE.Mesh(new THREE.BoxGeometry(.19,.22,.16),collarMat);
+    collar.rotation.z=side*.42;
+    collar.position.set(side*.115,2.38,.12);
+    collar.castShadow=true;
+    rig.add(collar);
+  });
+
+  // Waist, belt and realistic shoe layers.
+  const waist=new THREE.Mesh(new THREE.CylinderGeometry(.31,.36,.18,10),darkMat);
+  waist.position.y=1.38;
+  waist.castShadow=true;
+  rig.add(waist);
+
+  const beltMat=new THREE.MeshStandardMaterial({color:0x090909,roughness:.4,metalness:.65});
+  const belt=new THREE.Mesh(new THREE.BoxGeometry(.68,.10,.49),beltMat);
+  belt.position.set(0,1.48,0);
+  belt.castShadow=true;
+  rig.add(belt);
+
+  [leftLeg,rightLeg].forEach(leg=>{
+    const sole=new THREE.Mesh(new THREE.BoxGeometry(.29,.07,.57),blackMat);
+    sole.position.set(0,-.70,.10);
+    sole.castShadow=true;
+    leg.shin.add(sole);
+  });
 
   // Slightly different jacket tone per user, still within the black/white EWS palette.
   const variant = hash(data.username || '') % 3;
