@@ -1648,7 +1648,7 @@ function createDJSetup() {
       bigSpeaker.position.set(7.25,0,-0.05);
       const floorBox=new THREE.Box3().setFromObject(bigSpeaker);
       bigSpeaker.position.y -= floorBox.min.y;
-      bigSpeaker.rotation.y=Math.PI;
+      bigSpeaker.rotation.y=0;
       table.add(bigSpeaker);
     },undefined,err=>console.warn('[EWS BIG SPEAKER] load failed',err));
   }
