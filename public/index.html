@@ -1122,20 +1122,31 @@ function createClubMirror(){
     mirrorGroup.position.set(wallX > 0 ? 15.68 : -15.68,3.75,0);
     mirrorGroup.rotation.y=rotationY;
 
-    // Dark silver reflective-looking glass with a bright rim.
-    const mirrorMat=new THREE.MeshStandardMaterial({
-      color:0x9aa7b2,
-      metalness:.72,
-      roughness:.12,
-      emissive:0x18242c,
-      emissiveIntensity:.55,
-      side:THREE.DoubleSide
+    // Animated psychedelic video-like visuals inside the mirror.
+    const videoCanvas=document.createElement('canvas');
+    videoCanvas.width=256;
+    videoCanvas.height=150;
+    const videoCtx=videoCanvas.getContext('2d');
+    const videoTexture=new THREE.CanvasTexture(videoCanvas);
+    videoTexture.colorSpace=THREE.SRGBColorSpace;
+
+    const mirrorMat=new THREE.MeshBasicMaterial({
+      map:videoTexture,
+      transparent:true,
+      opacity:.88,
+      side:THREE.DoubleSide,
+      blending:THREE.AdditiveBlending,
+      depthWrite:false
     });
 
     const glass=new THREE.Mesh(
       new THREE.PlaneGeometry(9.2,5.45),
       mirrorMat
     );
+    glass.userData.psychedelic=true;
+    glass.userData.videoCanvas=videoCanvas;
+    glass.userData.videoCtx=videoCtx;
+    glass.userData.videoTexture=videoTexture;
     glass.position.z=0;
     glass.userData.noCollision=true;
     glass.userData.isMirror=true;
@@ -1172,6 +1183,51 @@ function createClubMirror(){
 
   scene.userData.clubMirror=rightMirror;
   scene.userData.clubMirrorOpposite=leftMirror;
+  scene.userData.psychedelicMirrors=[
+    rightMirror.children.find(o=>o.userData?.psychedelic),
+    leftMirror.children.find(o=>o.userData?.psychedelic)
+  ].filter(Boolean);
+}
+
+function updatePsychedelicMirrors(t){
+  const list=scene?.userData?.psychedelicMirrors;
+  if(!list)return;
+  if(scene.userData.lastPsychedelicUpdate && t-scene.userData.lastPsychedelicUpdate<55)return;
+  scene.userData.lastPsychedelicUpdate=t;
+  list.forEach((m,index)=>{
+    const ctx=m.userData.videoCtx, canvas=m.userData.videoCanvas;
+    if(!ctx||!canvas)return;
+    const w=canvas.width,h=canvas.height,tm=t*.001+index*2.3;
+    ctx.fillStyle='#050505';
+    ctx.fillRect(0,0,w,h);
+    for(let k=0;k<7;k++){
+      const x=w*(.5+.43*Math.sin(tm*(.22+k*.035)+k*1.7));
+      const y=h*(.5+.40*Math.cos(tm*(.27+k*.041)+k*2.1));
+      const r=18+24*(.5+.5*Math.sin(tm*.7+k));
+      const hue=(tm*42+k*51)%360;
+      const g=ctx.createRadialGradient(x,y,0,x,y,r);
+      g.addColorStop(0,'hsla('+hue+',100%,70%,.9)');
+      g.addColorStop(.45,'hsla('+((hue+80)%360)+',100%,55%,.45)');
+      g.addColorStop(1,'hsla('+((hue+180)%360)+',100%,35%,0)');
+      ctx.fillStyle=g;
+      ctx.beginPath();
+      ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation='screen';
+    ctx.lineWidth=3;
+    for(let i=0;i<5;i++){
+      ctx.beginPath();
+      for(let x=0;x<=w;x+=8){
+        const y=h*.5+Math.sin(x*.045+tm*(1.1+i*.13)+i)*h*.22+Math.sin(x*.018-tm*.7)*h*.12;
+        if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle='hsla('+((tm*70+i*70)%360)+',100%,65%,.55)';
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation='source-over';
+    m.userData.videoTexture.needsUpdate=true;
+  });
 }
 
 function createPhysicalScreen() {
@@ -2259,6 +2315,7 @@ function animate() {
   updateRemotes(now/1000,dt);
   updateClubLighting(now/1000);
   updateCornerLasers(now/1000);
+  updatePsychedelicMirrors(now);
   updateGopnikInteraction();
   if(host && !scene.userData.blackoutTimer) scheduleBlackouts();
   // CSS3D cannot depth-test against WebGL, so hide the screen when 3D geometry is in front.
