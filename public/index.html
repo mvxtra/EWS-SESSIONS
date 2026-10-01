@@ -1147,6 +1147,7 @@ function createClubMirror(){
     glass.userData.videoCanvas=videoCanvas;
     glass.userData.videoCtx=videoCtx;
     glass.userData.videoTexture=videoTexture;
+    glass.renderOrder=12;
     glass.position.z=0;
     glass.userData.noCollision=true;
     glass.userData.isMirror=true;
@@ -1157,7 +1158,7 @@ function createClubMirror(){
       new THREE.PlaneGeometry(9.55,5.8),
       new THREE.MeshBasicMaterial({color:0x11161a,side:THREE.DoubleSide})
     );
-    backing.position.z=.035;
+    backing.position.z=-.035;
     backing.userData.noCollision=true;
     mirrorGroup.add(backing);
 
