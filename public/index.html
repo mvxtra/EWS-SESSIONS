@@ -630,70 +630,35 @@ function ghostHitTest(heartMesh){
 function createWallLogo(){
   const group=new THREE.Group();
   group.name='EWS_WALL_LOGO';
-  group.position.set(0,3.35,13.62);
+  group.position.set(0,3.55,13.70);
   group.rotation.y=Math.PI;
 
   const texture=new THREE.TextureLoader().load('/logo.png');
   texture.encoding=THREE.sRGBEncoding;
-  texture.anisotropy=renderer?.capabilities?.getMaxAnisotropy?.()||1;
-
-  const logoMat=new THREE.MeshBasicMaterial({
-    map:texture,
-    transparent:true,
-    depthWrite:false,
-    side:THREE.DoubleSide
-  });
-  const logo=new THREE.Mesh(new THREE.PlaneGeometry(5.8,2.9),logoMat);
+  const logoMat=new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false,side:THREE.DoubleSide});
+  const logo=new THREE.Mesh(new THREE.PlaneGeometry(4.6,2.2),logoMat);
   logo.name='EWS_WALL_LOGO_IMAGE';
   logo.userData.noCollision=true;
   group.add(logo);
 
-  const ringGlowMat=new THREE.MeshBasicMaterial({
-    color:0xffffff,
-    transparent:true,
-    opacity:.20,
-    blending:THREE.AdditiveBlending,
-    depthWrite:false,
-    side:THREE.DoubleSide
-  });
-  const ringMat=new THREE.MeshBasicMaterial({
-    color:0xffffff,
-    transparent:true,
-    opacity:.98,
-    blending:THREE.AdditiveBlending,
-    depthWrite:false,
-    side:THREE.DoubleSide
-  });
+  // Compact round neon frame, centred around the logo.
+  const ringGlowMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.18,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const ringMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.98,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
+  const ringGlow=new THREE.Mesh(new THREE.TorusGeometry(2.55,.16,16,128),ringGlowMat);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(2.55,.055,16,128),ringMat);
+  ringGlow.scale.y=.62;
+  ring.scale.y=.62;
+  [ringGlow,ring].forEach(r=>{r.userData.noCollision=true;r.userData.logoNeonRing=true;group.add(r);});
 
-  const ringGlow=new THREE.Mesh(new THREE.TorusGeometry(3.35,.20,16,128),ringGlowMat);
-  const ring=new THREE.Mesh(new THREE.TorusGeometry(3.35,.065,16,128),ringMat);
-  [ringGlow,ring].forEach(r=>{
-    r.userData.noCollision=true;
-    r.userData.logoNeonRing=true;
-    group.add(r);
-  });
-
-  group.userData.ring=ring;
-  group.userData.ringGlow=ringGlow;
   scene.add(group);
   scene.userData.logoNeonRing=ring;
   scene.userData.logoNeonRingGlow=ringGlow;
   scene.userData.setLogoRingColor=(color)=>{
-    const c=String(color)==='red'?0xff1744:0xffffff;
-    ring.material.color.setHex(c);
-    ringGlow.material.color.setHex(c);
+    const col=String(color)==='red'?0xff1744:0xffffff;
+    ring.material.color.setHex(col);
+    ringGlow.material.color.setHex(col);
   };
   scene.userData.setLogoRingColor(scene.userData.lampColor||'white');
-
-  texture.image?.addEventListener?.('load',()=>{
-    const img=texture.image;
-    if(!img?.width||!img?.height)return;
-    const aspect=img.width/img.height;
-    const h=aspect>=1?2.65:5.0;
-    const w=h*aspect;
-    logo.geometry.dispose();
-    logo.geometry=new THREE.PlaneGeometry(Math.min(w,6.2),h);
-  });
 }
 
 function buildWorld() {
