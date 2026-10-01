@@ -2691,6 +2691,7 @@ function updateRemotes(t,dt){
     r.g.position.y += (desiredY-r.g.position.y)*.35;
     r.g.visible=true;
     r._visualModel.visible=true;
+
     let d=r.targetYaw-r.g.rotation.y;
     while(d>Math.PI)d-=Math.PI*2;
     while(d<-Math.PI)d+=Math.PI*2;
@@ -2700,19 +2701,25 @@ function updateRemotes(t,dt){
     const remoteSeated=!!r.targetSeated;
     r._running=moving;
 
-    // EWS-01 custom rig animation: no Running.fbx playback.
-    if(r._ewsRig?.ready){
-      r._ewsRig.apply(t,moving,dt,remoteSeated);
+    // External FBX animations on the same Alien skin:
+    // moving -> Mutant Run, standing -> Taunt Shake Dance.
+    if(r._mixer && r._alienClips){
+      if(moving){
+        playAlienClip(r,'run',.16);
+      }else if(!remoteSeated){
+        playAlienClip(r,'dance',.22);
+      }
     }
 
-    // Subtle whole-body idle motion keeps the character alive even while still.
-    if(!moving && r._visualModel){
+    // If an external animation has not loaded yet, keep the built-in Alien animation alive.
+    if(!moving && !r._alienClips?.dance && r._visualModel){
       r._idleTime += dt;
       const idle=r._idleTime;
       r._visualModel.position.y=r._idleBaseY + Math.sin(idle*1.8)*0.018;
     }
 
     if(r._mixer) r._mixer.update(dt);
+
     if(r._alienFallback && r._visualModel){
       const alienT=t;
       r._visualModel.position.y=r._alienBaseY + Math.abs(Math.sin(alienT*5.2))*0.06;
@@ -2720,9 +2727,6 @@ function updateRemotes(t,dt){
     }
   });
 }
-
-initChatLanguage();
-initLampMenu();
 
 function connect() {
   socket=io({
