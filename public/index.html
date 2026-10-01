@@ -1193,40 +1193,79 @@ function createClubMirror(){
 function updatePsychedelicMirrors(t){
   const list=scene?.userData?.psychedelicMirrors;
   if(!list)return;
-  if(scene.userData.lastPsychedelicUpdate && t-scene.userData.lastPsychedelicUpdate<55)return;
+  if(scene.userData.lastPsychedelicUpdate && t-scene.userData.lastPsychedelicUpdate<45)return;
   scene.userData.lastPsychedelicUpdate=t;
+
   list.forEach((m,index)=>{
     const ctx=m.userData.videoCtx, canvas=m.userData.videoCanvas;
     if(!ctx||!canvas)return;
-    const w=canvas.width,h=canvas.height,tm=t*.001+index*2.3;
-    ctx.fillStyle='#050505';
+
+    const w=canvas.width,h=canvas.height,tm=t*.001+index*3.7;
+    ctx.fillStyle='#000';
     ctx.fillRect(0,0,w,h);
-    for(let k=0;k<7;k++){
-      const x=w*(.5+.43*Math.sin(tm*(.22+k*.035)+k*1.7));
-      const y=h*(.5+.40*Math.cos(tm*(.27+k*.041)+k*2.1));
-      const r=18+24*(.5+.5*Math.sin(tm*.7+k));
-      const hue=(tm*42+k*51)%360;
+
+    // Procedurally generated black/white/red psychedelic video.
+    const waves=[
+      {freq:.035,speed:1.15,amp:.20,phase:0},
+      {freq:.062,speed:-.72,amp:.14,phase:1.9},
+      {freq:.019,speed:1.8,amp:.26,phase:3.4}
+    ];
+
+    ctx.save();
+    ctx.globalCompositeOperation='screen';
+    for(let band=0;band<15;band++){
+      ctx.beginPath();
+      for(let x=0;x<=w;x+=5){
+        let y=h*.5;
+        waves.forEach((q,j)=>{
+          y += Math.sin(x*q.freq+tm*q.speed+q.phase+band*.37)*h*q.amp/(j+1);
+        });
+        y += Math.sin((x+band*31)*.09-tm*1.7)*10;
+        if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      }
+      const redBand=(band%3===0||band%5===0);
+      ctx.strokeStyle=redBand
+        ? 'rgba(235,0,0,'+(0.30+0.035*band)+')'
+        : 'rgba(255,255,255,'+(0.12+0.025*band)+')';
+      ctx.lineWidth=3+band%4;
+      ctx.stroke();
+    }
+
+    // Pulsing red/white generated forms.
+    for(let k=0;k<9;k++){
+      const x=w*(.5+.48*Math.sin(tm*.21+k*1.31));
+      const y=h*(.5+.40*Math.cos(tm*.27+k*1.83));
+      const r=12+34*(.5+.5*Math.sin(tm*.9+k));
+      const red=(k%3===0||k===7);
       const g=ctx.createRadialGradient(x,y,0,x,y,r);
-      g.addColorStop(0,'hsla('+hue+',100%,70%,.9)');
-      g.addColorStop(.45,'hsla('+((hue+80)%360)+',100%,55%,.45)');
-      g.addColorStop(1,'hsla('+((hue+180)%360)+',100%,35%,0)');
+      if(red){
+        g.addColorStop(0,'rgba(255,40,40,.78)');
+        g.addColorStop(.45,'rgba(190,0,0,.30)');
+      }else{
+        g.addColorStop(0,'rgba(255,255,255,.72)');
+        g.addColorStop(.45,'rgba(255,255,255,.16)');
+      }
+      g.addColorStop(1,'rgba(0,0,0,0)');
       ctx.fillStyle=g;
       ctx.beginPath();
       ctx.arc(x,y,r,0,Math.PI*2);
       ctx.fill();
     }
-    ctx.globalCompositeOperation='screen';
-    ctx.lineWidth=3;
-    for(let i=0;i<5;i++){
+
+    // Fast generated scanlines give it a real visualizer/video feel.
+    ctx.globalCompositeOperation='overlay';
+    ctx.lineWidth=1;
+    for(let y=0;y<h;y+=4){
+      ctx.strokeStyle=(Math.floor(y/4)%7===0)
+        ? 'rgba(255,0,0,.24)'
+        : 'rgba(255,255,255,.055)';
       ctx.beginPath();
-      for(let x=0;x<=w;x+=8){
-        const y=h*.5+Math.sin(x*.045+tm*(1.1+i*.13)+i)*h*.22+Math.sin(x*.018-tm*.7)*h*.12;
-        if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-      }
-      ctx.strokeStyle='hsla('+((tm*70+i*70)%360)+',100%,65%,.55)';
+      ctx.moveTo(0,y+Math.sin(tm*2+y*.03)*2);
+      ctx.lineTo(w,y+Math.sin(tm*2+y*.03)*2);
       ctx.stroke();
     }
-    ctx.globalCompositeOperation='source-over';
+    ctx.restore();
+
     m.userData.videoTexture.needsUpdate=true;
   });
 }
