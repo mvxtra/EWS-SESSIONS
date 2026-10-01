@@ -626,6 +626,38 @@ function ghostHitTest(heartMesh){
   return null;
 }
 
+function createWallLogo(){
+  // Wall-mounted HTML logo: uses the actual /logo.png asset and CSS3D,
+  // so it stays visible on the wall without PlaneGeometry/backface issues.
+  const frame=document.createElement('div');
+  frame.style.width='480px';
+  frame.style.height='230px';
+  frame.style.display='flex';
+  frame.style.alignItems='center';
+  frame.style.justifyContent='center';
+  frame.style.pointerEvents='none';
+  frame.style.background='transparent';
+
+  const img=document.createElement('img');
+  img.src='/logo.png';
+  img.alt='EWS SESSIONS';
+  img.draggable=false;
+  img.style.width='480px';
+  img.style.height='230px';
+  img.style.objectFit='contain';
+  img.style.display='block';
+  img.style.pointerEvents='none';
+  img.style.background='transparent';
+  frame.appendChild(img);
+
+  const logo=new THREE.CSS3DObject(frame);
+  logo.name='EWS_WALL_LOGO';
+  logo.position.set(0,3.55,13.68);
+  logo.rotation.y=Math.PI;
+  logo.scale.set(.01,.01,.01);
+  scene.add(logo);
+  scene.userData.wallLogo=logo;
+}
 function buildWorld() {
   scene = new THREE.Scene();
   // Transparent WebGL canvas: the Twitch CSS3D screen remains visible behind
@@ -864,6 +896,12 @@ function buildWorld() {
 
   // Physical club screen: this is a real Three.js object fixed to the back wall.
   createPhysicalScreen();
+  createWallLogo();
+
+  createWallDoor();
+createCornerSofas();
+
+  createClubMirror();
 
 // Ceiling: three long hospital-style fluorescent fixtures.
   const ceilingLampGroups = [];
