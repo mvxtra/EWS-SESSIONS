@@ -144,6 +144,7 @@ button{cursor:pointer}
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/renderers/CSS3DRenderer.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fflate@0.6.10/umd/index.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
@@ -2567,7 +2568,32 @@ function createAvatar(data){
   const g=new THREE.Group();
   g.name='EWS_ALIEN_AVATAR_'+(data.username||'guest');
 
-  // All remote club players use the same Alien B-Boy model.
+  const r={
+    g,
+    _visualModel:{visible:true,position:{y:0}},
+    _idleTime:0,
+    _idleBaseY:0,
+    _alienBaseY:0,
+    _running:!!data.moving,
+    _alienReady:false,
+    _alienAnimated:false,
+    _alienFallback:false,
+    _alienClips:{},
+    _currentAlienClip:null,
+    _currentAlienAction:null,
+    _mixer:null,
+    _jumpAnim:0,
+    _sitAnim:0,
+    targetX:Number(data.x)||0,
+    targetZ:Number(data.z)||0,
+    targetY:Number(data.y)||0,
+    targetVy:Number(data.vy)||0,
+    targetGrounded=data.grounded!==false,
+    targetYaw:(Number(data.yaw)||0)+Math.PI,
+    targetSeated:!!data.seated,
+    data
+  };
+
   const loader=new THREE.GLTFLoader();
   loader.load('/models/alien_-_bboy_hip_hop_move_3d_model_free.glb',gltf=>{
     const model=gltf.scene;
@@ -2593,26 +2619,50 @@ function createAvatar(data){
     if(size.y>0) model.scale.multiplyScalar(2.45/size.y);
     const fitted=new THREE.Box3().setFromObject(model);
     model.position.y-=fitted.min.y;
-    // Flip the Alien 180° so the character faces the direction of travel.
+
+    // The GLB faces opposite to the movement convention used by the club.
+    // Keep the avatar model flipped once; the group handles world yaw.
     model.rotation.y=0;
     g.add(model);
 
     r._visualModel=model;
     r._idleBaseY=0;
+    r._alienBaseY=0;
     r._alienReady=true;
 
     if(gltf.animations&&gltf.animations.length){
       r._mixer=new THREE.AnimationMixer(model);
-      r._alienAction=r._mixer.clipAction(gltf.animations[0]);
-      r._alienAction.reset();
-      r._alienAction.setLoop(THREE.LoopRepeat,Infinity);
-      r._alienAction.play();
+      r._alienClips.idle=gltf.animations[0];
+      r._alienClips.default=gltf.animations[0];
+      const idle=r._mixer.clipAction(gltf.animations[0]);
+      idle.reset();
+      idle.setLoop(THREE.LoopRepeat,Infinity);
+      idle.play();
+      r._currentAlienAction=idle;
+      r._currentAlienClip='idle';
       r._alienAnimated=true;
-      console.log('[EWS AVATARS] Alien animation:',gltf.animations[0].name||'clip 0');
-    }else{
-      r._alienAnimated=false;
-      r._alienFallback=true;
-      r._alienBaseY=0;
+      console.log('[EWS AVATARS] Alien built-in idle:',gltf.animations[0].name||'clip 0');
+    }
+
+    // External animations are loaded into the same mixer. If their skeleton is
+    // compatible with the Alien GLB they play directly; otherwise the built-in
+    // animation remains the safe fallback.
+    if(window.FBXLoader){
+      const fbxLoader=new THREE.FBXLoader();
+      const external={
+        run:'/animations/Mutant%20Run.fbx',
+        dance:'/animations/Taunt%20Shake%20Dance.fbx'
+      };
+      Object.entries(external).forEach(([key,url])=>{
+        fbxLoader.load(url,fbx=>{
+          const clip=fbx.animations&&fbx.animations[0];
+          if(!clip) return;
+          r._alienClips[key]=clip;
+          console.log('[EWS AVATARS] Alien '+key+' animation loaded:',clip.name||key);
+        },undefined,err=>{
+          console.warn('[EWS AVATARS] '+key+' animation unavailable',err);
+        });
+      });
     }
   },undefined,err=>console.warn('[EWS AVATAR] Alien load failed',err));
 
@@ -2637,25 +2687,72 @@ function createAvatar(data){
   sprite.renderOrder=90;
   g.add(sprite);
 
-  // Keep the remote entry compatible with the existing interpolation code.
-  const r={
-    g,
-    _visualModel:{visible:true,position:{y:0}},
-    _idleTime:0,
-    _idleBaseY:0,
-    _running:!!data.moving,
-    _alienReady:false,
-    _alienAnimated:false,
-    _alienFallback:false,
-    targetX:Number(data.x)||0,
-    targetZ:Number(data.z)||0,
-    targetY:Number(data.y)||0,
-    targetYaw:(Number(data.yaw)||0)+Math.PI,
-    targetSeated:!!data.seated,
-    data
-  };
   return r;
 }
+
+function playAlienClip(r,key,fade){
+  if(!r || !r._mixer || !r._alienClips || !r._alienClips[key]) return false;
+  if(r._currentAlienClip===key) return true;
+
+  const next=r._mixer.clipAction(r._alienClips[key]);
+  next.reset();
+  next.setLoop(THREE.LoopRepeat,Infinity);
+  next.enabled=true;
+  const prev=r._currentAlienAction;
+  if(prev && prev!==next) prev.crossFadeTo(next,fade||0.16,true);
+  next.play();
+  r._currentAlienAction=next;
+  r._currentAlienClip=key;
+  return true;
+}
+
+function animateAlienState(r,dt){
+  if(!r || !r._visualModel) return;
+
+  const moving=!!r.data?.moving;
+  const seated=!!r.targetSeated;
+  const vy=Number(r.targetVy)||0;
+  const airborne=!r.targetGrounded || Math.abs(vy)>0.25;
+
+  // Priority: sit -> jump -> run -> dance -> idle.
+  if(seated){
+    r._sitAnim=Math.min(1,r._sitAnim+dt*5);
+    r._jumpAnim=0;
+    if(r._alienClips.sit) playAlienClip(r,'sit',.12);
+    else if(r._alienClips.idle) playAlienClip(r,'idle',.12);
+    r._visualModel.position.y=r._alienBaseY-Math.sin(r._sitAnim*Math.PI*.5)*0.38;
+    return;
+  }
+
+  r._sitAnim=Math.max(0,r._sitAnim-dt*5);
+
+  if(airborne){
+    r._jumpAnim=Math.min(1,r._jumpAnim+dt*7);
+    if(r._alienClips.jump) playAlienClip(r,'jump',.08);
+    else if(r._alienClips.idle) playAlienClip(r,'idle',.08);
+    // Small procedural jump motion while keeping the Alien's own animation.
+    r._visualModel.position.y=r._alienBaseY+Math.max(0,Math.sin(r._jumpAnim*Math.PI))*0.12;
+    return;
+  }
+
+  r._jumpAnim=Math.max(0,r._jumpAnim-dt*8);
+
+  if(moving && r._alienClips.run){
+    playAlienClip(r,'run',.12);
+  }else if(!moving && r._alienClips.dance){
+    playAlienClip(r,'dance',.20);
+  }else if(r._alienClips.idle){
+    playAlienClip(r,'idle',.18);
+  }
+
+  if(!moving && !r._alienClips.dance){
+    r._idleTime+=dt;
+    r._visualModel.position.y=r._alienBaseY+Math.sin(r._idleTime*1.8)*0.018;
+  }else if(!moving){
+    r._visualModel.position.y=r._alienBaseY;
+  }
+}
+
 
 function hash(s){
   let n=0;
@@ -2688,46 +2785,26 @@ function updateRemotes(t,dt){
   remotes.forEach(r=>{
     r.g.position.x += (r.targetX-r.g.position.x)*.22;
     r.g.position.z += (r.targetZ-r.g.position.z)*.22;
-    const desiredY=Math.max(0, Number(r.targetY)||0);
+
+    const desiredY=Math.max(0,Number(r.targetY)||0);
     r.g.position.y += (desiredY-r.g.position.y)*.35;
+
     r.g.visible=true;
-    r._visualModel.visible=true;
+    if(r._visualModel) r._visualModel.visible=true;
 
     let d=r.targetYaw-r.g.rotation.y;
     while(d>Math.PI)d-=Math.PI*2;
     while(d<-Math.PI)d+=Math.PI*2;
     r.g.rotation.y += d*.22;
 
-    const moving=!!r.data?.moving;
-    const remoteSeated=!!r.targetSeated;
-    r._running=moving;
+    r._running=!!r.data?.moving;
 
-    // External FBX animations on the same Alien skin:
-    // moving -> Mutant Run, standing -> Taunt Shake Dance.
-    if(r._mixer && r._alienClips){
-      if(moving){
-        playAlienClip(r,'run',.16);
-      }else if(!remoteSeated){
-        playAlienClip(r,'dance',.22);
-      }
-    }
-
-    // If an external animation has not loaded yet, keep the built-in Alien animation alive.
-    if(!moving && !r._alienClips?.dance && r._visualModel){
-      r._idleTime += dt;
-      const idle=r._idleTime;
-      r._visualModel.position.y=r._idleBaseY + Math.sin(idle*1.8)*0.018;
-    }
+    animateAlienState(r,dt);
 
     if(r._mixer) r._mixer.update(dt);
-
-    if(r._alienFallback && r._visualModel){
-      const alienT=t;
-      r._visualModel.position.y=r._alienBaseY + Math.abs(Math.sin(alienT*5.2))*0.06;
-      r._visualModel.rotation.y=Math.PI + Math.sin(alienT*2.6)*0.10;
-    }
   });
 }
+
 
 function connect() {
   socket=io({
