@@ -441,6 +441,7 @@ function shootHeart(){
   const glow=new THREE.PointLight(0xff0000,1.6,3.2,.8); glow.userData.noCollision=true; heart.add(glow);
   scene.add(heart); heartProjectiles.push({mesh:heart,velocity:direction.multiplyScalar(13),born:performance.now(),life:1.35});
 }
+function spawnRemoteHeart(data){ const start=new THREE.Vector3(Number(data.x)||0,Number(data.y)||0,Number(data.z)||0); const dir=new THREE.Vector3(Number(data.dx)||0,Number(data.dy)||0,Number(data.dz)||-1).normalize(); const heart=createHeartMesh(); heart.position.copy(start); scene.add(heart); heartProjectiles.push({mesh:heart,velocity:dir.multiplyScalar(13),born:performance.now(),life:1.35,remote:true}); }
 function updateHeartProjectiles(dt,now){
   for(let i=heartProjectiles.length-1;i>=0;i--){
     const p=heartProjectiles[i],age=(now-p.born)/1000;
@@ -448,7 +449,7 @@ function updateHeartProjectiles(dt,now){
     p.mesh.rotation.z+=dt*7;
     p.mesh.rotation.y+=dt*3.5;
 
-    const hitId=ghostHitTest(p.mesh);
+    const hitId=p.remote?null:ghostHitTest(p.mesh);
     if(hitId){
       socket?.emit('ghost:hit',hitId);
       scene.remove(p.mesh);
