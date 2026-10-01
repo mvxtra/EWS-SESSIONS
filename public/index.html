@@ -2502,214 +2502,212 @@ function createAvatar(data) {
   const g = new THREE.Group();
   g.name = 'EWS_CHARACTER_' + (data.username || 'guest');
 
-  // EWS character: original low-poly club character built directly in Three.js.
-  // No X Bot / Mixamo / FBX dependency. Each remote gets its own simple rig.
   const rig = new THREE.Group();
   rig.name = 'EWS01_RIG';
   g.add(rig);
 
-  const skinMat = new THREE.MeshStandardMaterial({
-    color: 0xb8b8b8,
-    roughness: .78,
-    metalness: .05
-  });
-  const darkMat = new THREE.MeshStandardMaterial({
-    color: 0x111111,
-    roughness: .62,
-    metalness: .28
-  });
-  const blackMat = new THREE.MeshStandardMaterial({
-    color: 0x050505,
-    roughness: .72,
-    metalness: .18
-  });
-  const soleMat = new THREE.MeshStandardMaterial({
-    color: 0x2a2a2a,
-    roughness: .7,
-    metalness: .12
-  });
-
+  // EWS low-poly human: proportions and clothing are intentionally closer
+  // to a classic PS2/GTA-era street character than a toy/robot.
+  const skinMat = new THREE.MeshStandardMaterial({color:0xc7a58a,roughness:.9,metalness:.02});
+  const skinDarkMat = new THREE.MeshStandardMaterial({color:0xa87860,roughness:.92,metalness:.01});
+  const shirtMat = new THREE.MeshStandardMaterial({color:0x171717,roughness:.82,metalness:.05});
+  const jacketMat = new THREE.MeshStandardMaterial({color:0x252525,roughness:.72,metalness:.12});
+  const pantsMat = new THREE.MeshStandardMaterial({color:0x101010,roughness:.9,metalness:.02});
+  const shoeMat = new THREE.MeshStandardMaterial({color:0x080808,roughness:.7,metalness:.16});
+  const soleMat = new THREE.MeshStandardMaterial({color:0x303030,roughness:.78,metalness:.08});
+  const hairMat = new THREE.MeshStandardMaterial({color:0x111111,roughness:.95,metalness:.01});
+  const eyeMat = new THREE.MeshStandardMaterial({color:0x050505,roughness:.55,metalness:.1});
+  const whiteMat = new THREE.MeshStandardMaterial({color:0xe8e8e8,roughness:.72,metalness:.02});
   const characterScale = 0.72;
   rig.scale.setScalar(characterScale);
 
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(.78, 1.02, .46), darkMat);
-  torso.position.y = 1.86;
-  torso.castShadow = true;
+  // Torso / pelvis: layered clothing gives the body a more human silhouette.
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(.78,1.02,.46),shirtMat);
+  torso.position.y=1.86;
+  torso.scale.set(1,.98,.98);
   rig.add(torso);
 
-  const chest = new THREE.Mesh(new THREE.BoxGeometry(.62, .38, .49), blackMat);
-  chest.position.set(0, 2.08, .015);
-  chest.castShadow = true;
+  const jacketL = new THREE.Mesh(new THREE.BoxGeometry(.23,.86,.50),jacketMat);
+  jacketL.position.set(-.28,1.91,0);
+  rig.add(jacketL);
+  const jacketR = jacketL.clone();
+  jacketR.position.x=.28;
+  rig.add(jacketR);
+
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(.46,.36,.50),shirtMat);
+  chest.position.set(0,2.12,.025);
   rig.add(chest);
 
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.13,.15,.18,8), skinMat);
-  neck.position.y = 2.43;
-  neck.castShadow = true;
+  const pelvis = new THREE.Mesh(new THREE.BoxGeometry(.70,.34,.43),pantsMat);
+  pelvis.position.y=1.30;
+  rig.add(pelvis);
+
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(.73,.10,.46),
+    new THREE.MeshStandardMaterial({color:0x090909,roughness:.5,metalness:.45}));
+  belt.position.y=1.48;
+  rig.add(belt);
+
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(.11,.10,.025),whiteMat);
+  buckle.position.set(0,1.48,.235);
+  rig.add(buckle);
+
+  // Neck and head.
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.125,.145,.20,10),skinMat);
+  neck.position.y=2.45;
   rig.add(neck);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.34, 16, 12), skinMat);
-  head.scale.set(1,.98,.94);
-  head.position.y = 2.78;
-  head.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),skinMat);
+  head.scale.set(.98,1.03,.94);
+  head.position.y=2.79;
   rig.add(head);
 
-  // More natural head details: ears, hair and a subtle jaw/chin.
-  const earMat = skinMat;
+  const jaw = new THREE.Mesh(new THREE.SphereGeometry(.22,12,9),skinMat);
+  jaw.scale.set(1,.56,.80);
+  jaw.position.set(0,2.68,.055);
+  rig.add(jaw);
+
+  // Hair / ears / simple facial features.
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(.355,16,10),hairMat);
+  hair.scale.set(1.01,.46,.98);
+  hair.position.set(0,3.025,-.025);
+  rig.add(hair);
+
   [-1,1].forEach(side=>{
-    const ear=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),earMat);
-    ear.scale.set(.55,1,.65);
-    ear.position.set(side*.335,2.78,.015);
-    ear.castShadow=true;
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),skinDarkMat);
+    ear.scale.set(.55,1,.68);
+    ear.position.set(side*.335,2.80,.005);
     rig.add(ear);
   });
 
-  const hairMat = new THREE.MeshStandardMaterial({
-    color:0x151515, roughness:.9, metalness:.02
-  });
-  const hair=new THREE.Mesh(new THREE.SphereGeometry(.355,16,10),hairMat);
-  hair.scale.set(1.01,.42,.98);
-  hair.position.set(0,3.025,-.015);
-  hair.castShadow=true;
-  rig.add(hair);
-
-  const jaw=new THREE.Mesh(new THREE.SphereGeometry(.22,12,8),skinMat);
-  jaw.scale.set(1,.55,.78);
-  jaw.position.set(0,2.68,.06);
-  jaw.castShadow=true;
-  rig.add(jaw);
-
-  // Minimal EWS face: two small dark eyes, no cartoon smile.
-  const eyeMat = new THREE.MeshBasicMaterial({color:0x050505});
-  [-.105,.105].forEach(x=>{
-    const eye=new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),eyeMat);
-    eye.position.set(x,2.82,.315);
+  [-1,1].forEach(side=>{
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(.035,8,6),eyeMat);
+    eye.position.set(side*.115,2.82,.315);
     rig.add(eye);
   });
 
-  const makeArm = side => {
-    const upper = new THREE.Group();
-    upper.position.set(side*.49,2.22,0);
+  // Nose and mouth are subtle so the face reads at club distance.
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(.035,.09,6),skinDarkMat);
+  nose.rotation.x=Math.PI/2;
+  nose.position.set(0,2.75,.335);
+  rig.add(nose);
+
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(.10,.018,.018),eyeMat);
+  mouth.position.set(0,2.675,.325);
+  rig.add(mouth);
+
+  function makeArm(side){
+    const upper=new THREE.Group();
+    upper.position.set(side*.49,2.23,0);
     rig.add(upper);
 
-    const upperMesh = new THREE.Mesh(new THREE.CylinderGeometry(.105,.12,.55,7), darkMat);
-    upperMesh.position.y = -.28;
-    upperMesh.castShadow = true;
+    const shoulder=new THREE.Mesh(new THREE.SphereGeometry(.19,10,8),jacketMat);
+    shoulder.scale.set(1.12,.82,1);
+    upper.add(shoulder);
+
+    const upperMesh=new THREE.Mesh(new THREE.CylinderGeometry(.105,.125,.54,10),jacketMat);
+    upperMesh.position.y=-.29;
     upper.add(upperMesh);
 
-    const fore = new THREE.Group();
-    fore.position.y = -.55;
+    const fore=new THREE.Group();
+    fore.position.y=-.58;
     upper.add(fore);
 
-    const foreMesh = new THREE.Mesh(new THREE.CylinderGeometry(.09,.105,.52,7), blackMat);
-    foreMesh.position.y = -.26;
-    foreMesh.castShadow = true;
+    const foreMesh=new THREE.Mesh(new THREE.CylinderGeometry(.085,.105,.48,10),skinMat);
+    foreMesh.position.y=-.25;
     fore.add(foreMesh);
 
-    const hand = new THREE.Mesh(new THREE.SphereGeometry(.115,8,6), skinMat);
-    hand.position.y = -.55;
-    hand.castShadow = true;
+    const hand=new THREE.Mesh(new THREE.SphereGeometry(.105,10,8),skinMat);
+    hand.scale.set(.9,1.12,.9);
+    hand.position.y=-.51;
     fore.add(hand);
 
     return {upper,fore};
-  };
+  }
 
-  const makeLeg = side => {
-    const thigh = new THREE.Group();
-    thigh.position.set(side*.22,1.38,0);
+  function makeLeg(side){
+    const thigh=new THREE.Group();
+    thigh.position.set(side*.22,1.28,0);
     rig.add(thigh);
 
-    const thighMesh = new THREE.Mesh(new THREE.CylinderGeometry(.145,.17,.65,7), darkMat);
+    const thighMesh=new THREE.Mesh(new THREE.CylinderGeometry(.145,.17,.64,10),pantsMat);
     thighMesh.position.y=-.32;
-    thighMesh.castShadow=true;
     thigh.add(thighMesh);
 
-    const shin = new THREE.Group();
-    shin.position.y=-.65;
+    const knee=new THREE.Mesh(new THREE.SphereGeometry(.15,10,8),pantsMat);
+    knee.position.y=-.64;
+    thigh.add(knee);
+
+    const shin=new THREE.Group();
+    shin.position.y=-.66;
     thigh.add(shin);
 
-    const shinMesh = new THREE.Mesh(new THREE.CylinderGeometry(.115,.14,.62,7), blackMat);
+    const shinMesh=new THREE.Mesh(new THREE.CylinderGeometry(.115,.14,.62,10),pantsMat);
     shinMesh.position.y=-.31;
-    shinMesh.castShadow=true;
     shin.add(shinMesh);
 
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(.25,.13,.52), soleMat);
-    foot.position.set(0,-.64,.10);
-    foot.castShadow=true;
+    const ankle=new THREE.Mesh(new THREE.SphereGeometry(.115,9,7),skinDarkMat);
+    ankle.scale.set(1,.62,1);
+    ankle.position.y=-.61;
+    shin.add(ankle);
+
+    const foot=new THREE.Group();
+    foot.position.set(0,-.68,.07);
     shin.add(foot);
 
+    const shoe=new THREE.Mesh(new THREE.BoxGeometry(.27,.14,.55),shoeMat);
+    shoe.position.z=.07;
+    foot.add(shoe);
+
+    const sole=new THREE.Mesh(new THREE.BoxGeometry(.29,.055,.58),soleMat);
+    sole.position.set(0,-.09,.07);
+    foot.add(sole);
+
     return {thigh,shin,foot};
-  };
+  }
 
-  const leftArm = makeArm(-1);
-  const rightArm = makeArm(1);
-  const leftLeg = makeLeg(-1);
-  const rightLeg = makeLeg(1);
+  const leftArm=makeArm(-1), rightArm=makeArm(1);
+  const leftLeg=makeLeg(-1), rightLeg=makeLeg(1);
 
-  // Jacket shoulders and collar make the silhouette less boxy.
-  const shoulderMat = darkMat;
+  const collarL=new THREE.Mesh(new THREE.BoxGeometry(.24,.10,.48),jacketMat);
+  collarL.position.set(-.17,2.43,.01);
+  collarL.rotation.z=-.18;
+  rig.add(collarL);
+  const collarR=collarL.clone();
+  collarR.position.x=.17;
+  collarR.rotation.z=.18;
+  rig.add(collarR);
+
+  // Small shoulder seams and shirt hem break up the silhouette.
+  const seamMat=new THREE.MeshStandardMaterial({color:0x3a3a3a,roughness:.8,metalness:.04});
   [-1,1].forEach(side=>{
-    const shoulder=new THREE.Mesh(new THREE.SphereGeometry(.22,10,7),shoulderMat);
-    shoulder.scale.set(1.15,.72,1.0);
-    shoulder.position.set(side*.43,2.29,0);
-    shoulder.castShadow=true;
-    rig.add(shoulder);
+    const seam=new THREE.Mesh(new THREE.BoxGeometry(.035,.70,.015),seamMat);
+    seam.position.set(side*.40,1.98,.255);
+    seam.rotation.z=side*.05;
+    rig.add(seam);
   });
 
-  const collarMat=new THREE.MeshStandardMaterial({color:0x2a2a2a,roughness:.55,metalness:.18});
-  [-1,1].forEach(side=>{
-    const collar=new THREE.Mesh(new THREE.BoxGeometry(.19,.22,.16),collarMat);
-    collar.rotation.z=side*.42;
-    collar.position.set(side*.115,2.38,.12);
-    collar.castShadow=true;
-    rig.add(collar);
-  });
-
-  // Waist, belt and realistic shoe layers.
-  const waist=new THREE.Mesh(new THREE.CylinderGeometry(.31,.36,.18,10),darkMat);
-  waist.position.y=1.38;
-  waist.castShadow=true;
-  rig.add(waist);
-
-  const beltMat=new THREE.MeshStandardMaterial({color:0x090909,roughness:.4,metalness:.65});
-  const belt=new THREE.Mesh(new THREE.BoxGeometry(.68,.10,.49),beltMat);
-  belt.position.set(0,1.48,0);
-  belt.castShadow=true;
-  rig.add(belt);
-
-  [leftLeg,rightLeg].forEach(leg=>{
-    const sole=new THREE.Mesh(new THREE.BoxGeometry(.29,.07,.57),blackMat);
-    sole.position.set(0,-.70,.10);
-    sole.castShadow=true;
-    leg.shin.add(sole);
-  });
-
-  // Slightly different jacket tone per user, still within the black/white EWS palette.
-  const variant = hash(data.username || '') % 3;
-  if(variant===1) darkMat.color.setHex(0x171717);
-  if(variant===2) darkMat.color.setHex(0x222222);
-
-  // mvxtra logo on the shirt/chest.
   const logoTexture = new THREE.TextureLoader().load('/assets/logo.png');
   logoTexture.colorSpace = THREE.SRGBColorSpace || undefined;
   const shirtLogo = new THREE.Mesh(
     new THREE.PlaneGeometry(.30,.15),
     new THREE.MeshBasicMaterial({map:logoTexture,transparent:true,depthWrite:false})
   );
-  shirtLogo.position.set(0,2.08,.265);
+  shirtLogo.position.set(0,2.10,.265);
   shirtLogo.rotation.y=Math.PI;
   rig.add(shirtLogo);
 
   const label = makeTextSprite(data.username,1.65);
-  label.position.y = 3.55;
+  label.position.y=3.58;
   g.add(label);
 
-  g.position.set(Number(data.x)||0,0,Number(data.z)||0);
-  g.rotation.y = (Number(data.yaw)||0) + Math.PI;
+  g.position.set(Number(data.x)||0,Number(data.y)||0,Number(data.z)||0);
+  g.rotation.y=(Number(data.yaw)||0)+Math.PI;
   scene.add(g);
 
   const avatar = {
     g,
     targetX:g.position.x,
+    targetY:g.position.y,
     targetZ:g.position.z,
     targetYaw:g.rotation.y,
     data,
@@ -2717,59 +2715,58 @@ function createAvatar(data) {
       ready:true,
       apply(t,moving,dt,seatedNow=false){
         if(seatedNow){
-          leftLeg.thigh.rotation.x = -1.15;
-          rightLeg.thigh.rotation.x = -1.15;
-          leftLeg.shin.rotation.x = 1.25;
-          rightLeg.shin.rotation.x = 1.25;
-          leftArm.upper.rotation.x = -0.35;
-          rightArm.upper.rotation.x = 0.35;
-          leftArm.fore.rotation.x = .65;
-          rightArm.fore.rotation.x = .65;
-          torso.rotation.x = -0.12;
-          rig.position.y = -.62;
+          leftLeg.thigh.rotation.x=-1.15;
+          rightLeg.thigh.rotation.x=-1.15;
+          leftLeg.shin.rotation.x=1.25;
+          rightLeg.shin.rotation.x=1.25;
+          leftArm.upper.rotation.x=-.35;
+          rightArm.upper.rotation.x=.35;
+          leftArm.fore.rotation.x=.65;
+          rightArm.fore.rotation.x=.65;
+          torso.rotation.x=-.12;
+          rig.position.y=-.62;
           return;
         }
-        rig.position.y = 0;
-        const speed = moving ? 8.5 : 2.0;
-        const step = Math.sin(t*speed);
-        const step2 = Math.sin(t*speed*2);
+
+        rig.position.y=0;
+        const speed=moving?8.5:2.0;
+        const step=Math.sin(t*speed);
+        const step2=Math.sin(t*speed*2);
 
         if(moving){
-          // Natural walk cycle: legs, knees, feet and opposite arms.
-          leftLeg.thigh.rotation.x = step*.62;
-          rightLeg.thigh.rotation.x = -step*.62;
-          leftLeg.shin.rotation.x = Math.max(0,-step)*.48;
-          rightLeg.shin.rotation.x = Math.max(0,step)*.48;
-          leftLeg.foot.rotation.x = -Math.max(0,-step)*.18;
-          rightLeg.foot.rotation.x = -Math.max(0,step)*.18;
+          leftLeg.thigh.rotation.x=step*.62;
+          rightLeg.thigh.rotation.x=-step*.62;
+          leftLeg.shin.rotation.x=Math.max(0,-step)*.48;
+          rightLeg.shin.rotation.x=Math.max(0,step)*.48;
+          leftLeg.foot.rotation.x=-Math.max(0,-step)*.18;
+          rightLeg.foot.rotation.x=-Math.max(0,step)*.18;
 
-          leftArm.upper.rotation.x = -step*.42;
-          rightArm.upper.rotation.x = step*.42;
-          leftArm.fore.rotation.x = .12 + Math.max(0,step)*.10;
-          rightArm.fore.rotation.x = .12 + Math.max(0,-step)*.10;
+          leftArm.upper.rotation.x=-step*.42;
+          rightArm.upper.rotation.x=step*.42;
+          leftArm.fore.rotation.x=.12+Math.max(0,step)*.10;
+          rightArm.fore.rotation.x=.12+Math.max(0,-step)*.10;
 
-          torso.rotation.z = step*.025;
-          torso.position.y = 1.86 + Math.abs(step)*.018;
-          rig.position.y = Math.abs(step2)*.025;
-          rig.rotation.z = step*.012;
-        } else {
-          // Relaxed idle pose — arms stay down, never a T-pose.
-          leftLeg.thigh.rotation.x *= .82;
-          rightLeg.thigh.rotation.x *= .82;
-          leftLeg.shin.rotation.x *= .82;
-          rightLeg.shin.rotation.x *= .82;
-          leftLeg.foot.rotation.x *= .82;
-          rightLeg.foot.rotation.x *= .82;
+          torso.rotation.z=step*.025;
+          torso.position.y=1.86+Math.abs(step)*.018;
+          rig.position.y=Math.abs(step2)*.025;
+          rig.rotation.z=step*.012;
+        }else{
+          leftLeg.thigh.rotation.x*=.82;
+          rightLeg.thigh.rotation.x*=.82;
+          leftLeg.shin.rotation.x*=.82;
+          rightLeg.shin.rotation.x*=.82;
+          leftLeg.foot.rotation.x*=.82;
+          rightLeg.foot.rotation.x*=.82;
 
-          leftArm.upper.rotation.x = -0.035;
-          rightArm.upper.rotation.x = 0.035;
-          leftArm.fore.rotation.x = .12;
-          rightArm.fore.rotation.x = .12;
+          leftArm.upper.rotation.x=-.035;
+          rightArm.upper.rotation.x=.035;
+          leftArm.fore.rotation.x=.12;
+          rightArm.fore.rotation.x=.12;
 
-          torso.rotation.z *= .82;
-          torso.position.y = 1.86;
-          rig.position.y = Math.sin(t*1.7)*.018;
-          rig.rotation.z = Math.sin(t*.9)*.008;
+          torso.rotation.z*=.82;
+          torso.position.y=1.86;
+          rig.position.y=Math.sin(t*1.7)*.018;
+          rig.rotation.z=Math.sin(t*.9)*.008;
         }
       }
     },
@@ -2781,7 +2778,6 @@ function createAvatar(data) {
 
   return avatar;
 }
-
 function hash(s){
   let n=0;
   for(let i=0;i<String(s).length;i++) n=((n<<5)-n+String(s).charCodeAt(i))|0;
